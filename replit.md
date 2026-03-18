@@ -39,6 +39,24 @@ Enhanced `epp_status.ts` with:
 - **New categories**: Added `unknown` category for unregistered/available status codes
 - **More EPP statuses**: quarantine, dispute, abuse, withheld, pendingPurge, verificationFailed, courtOrder, etc.
 
+## Custom WHOIS Server Management (2026-03)
+
+Added local WHOIS server management without touching rdap/whoiser libraries:
+
+- **`src/lib/whois/custom-servers.ts`** — Extended server entry types:
+  - `string` → TCP hostname (legacy, port 43)
+  - `{ type: "tcp", host, port? }` → TCP with optional custom port
+  - `{ type: "http", url, method?, body? }` → HTTP GET/POST with `{{domain}}` placeholder
+- **`src/lib/whois/lookup.ts`** — Added:
+  - `queryWhoisTcp()` — raw Node.js `net` TCP connection for non-43 ports
+  - `queryWhoisHttp()` — fetch-based HTTP WHOIS query with URL template substitution
+  - Updated `getLookupWhois()` to dispatch based on entry type
+- **`src/pages/api/whois-servers.ts`** — GET/POST/DELETE API for managing custom servers (no auth required)
+- **`src/pages/whois-servers.tsx`** — Full UI management page accessible via navbar "Servers" link
+- **`src/data/custom-tld-servers.json`** — User-editable server map (persisted on disk)
+
+Priority order: user custom servers → built-in servers → ccTLD servers → whoiser default discovery.
+
 ## Dev Server
 
 Runs on port 5000 via `pnpm run dev` (next dev -p 5000 -H 0.0.0.0).

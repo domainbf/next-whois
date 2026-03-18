@@ -95,6 +95,15 @@ export function Navbar() {
 
         <div className="h-4 w-[1px] bg-primary/10" />
 
+        <Link
+          href="/whois-servers"
+          className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+        >
+          Servers
+        </Link>
+
+        <div className="h-4 w-[1px] bg-primary/10" />
+
         <div className="flex items-center gap-3">
           <ThemeToggle />
           <LanguageSwitcher />

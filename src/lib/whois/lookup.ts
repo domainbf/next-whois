@@ -5,7 +5,12 @@ import { analyzeWhois } from "@/lib/whois/common_parser";
 import { extractDomain } from "@/lib/utils";
 import { lookupRdap, convertRdapToWhoisResult } from "@/lib/whois/rdap_client";
 import { whoisDomain, whoisIp, whoisAsn, whoisQuery } from "whoiser";
-import { getCustomServer } from "@/lib/whois/custom-servers";
+import {
+  getCustomServerEntry,
+  isHttpEntry,
+  getTcpHost,
+  HttpServerEntry,
+} from "@/lib/whois/custom-servers";
 import { probeDomain } from "@/lib/whois/dns-check";
 
 const LOOKUP_TIMEOUT = 15_000;
@@ -123,6 +128,60 @@ function isASNumber(query: string): boolean {
   return /^AS\d+$/i.test(query);
 }
 
+function queryWhoisTcp(
+  host: string,
+  port: number,
+  query: string,
+  timeoutMs: number,
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const net = require("net") as typeof import("net");
+    let data = "";
+    const socket = net.connect({ host, port }, () =>
+      socket.write(query + "\r\n"),
+    );
+    socket.setTimeout(timeoutMs);
+    socket.on("data", (chunk: Buffer) => (data += chunk.toString()));
+    socket.on("close", () => resolve(data));
+    socket.on("timeout", () => socket.destroy(new Error("TCP WHOIS timeout")));
+    socket.on("error", reject);
+  });
+}
+
+async function queryWhoisHttp(
+  entry: HttpServerEntry,
+  domain: string,
+  timeoutMs: number,
+): Promise<string> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const placeholder = (s: string) => s.replace(/\{\{domain\}\}/g, domain);
+  const url = placeholder(entry.url);
+  const method = entry.method || "GET";
+
+  try {
+    const init: RequestInit = {
+      method,
+      signal: controller.signal,
+      headers: { "User-Agent": "next-whois-ui/1.0", Accept: "text/plain, */*" },
+    };
+    if (method === "POST") {
+      init.body = entry.body ? placeholder(entry.body) : domain;
+      (init.headers as Record<string, string>)["Content-Type"] =
+        "application/x-www-form-urlencoded";
+    }
+    const res = await fetch(url, init);
+    if (!res.ok) {
+      throw new Error(`HTTP WHOIS server returned ${res.status}`);
+    }
+    const text = await res.text();
+    return text;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function getLookupWhois(domain: string): Promise<WhoisRawResult> {
   if (isIPAddress(domain)) {
     const ip = domain.replace(/\/\d{1,3}$/, "");
@@ -148,14 +207,35 @@ async function getLookupWhois(domain: string): Promise<WhoisRawResult> {
   const follow = Math.min(Math.max(MAX_WHOIS_FOLLOW, 1), 2) as 1 | 2;
   const tld = domainToQuery.split(".").slice(1).join(".");
   const tldSuffix = domainToQuery.split(".").pop() || "";
-  const customServer = getCustomServer(tld) || getCustomServer(tldSuffix);
+  const customEntry =
+    getCustomServerEntry(tld) || getCustomServerEntry(tldSuffix);
 
-  if (customServer) {
-    const raw = await whoisQuery(customServer, domainToQuery, LOOKUP_TIMEOUT);
-    if (!raw || raw.trim().length === 0) {
-      throw new Error(`No data returned from custom WHOIS server: ${customServer}`);
+  if (customEntry) {
+    if (isHttpEntry(customEntry)) {
+      const raw = await queryWhoisHttp(customEntry, domainToQuery, LOOKUP_TIMEOUT);
+      if (!raw || raw.trim().length === 0) {
+        throw new Error(
+          `No data returned from HTTP WHOIS server: ${customEntry.url}`,
+        );
+      }
+      return { raw, structured: {}, server: customEntry.url };
     }
-    return { raw, structured: {}, server: customServer };
+
+    const tcpHost = getTcpHost(customEntry);
+    if (tcpHost) {
+      const port =
+        typeof customEntry === "object" && "port" in customEntry && customEntry.port
+          ? customEntry.port
+          : 43;
+      const raw =
+        port === 43
+          ? await whoisQuery(tcpHost, domainToQuery, LOOKUP_TIMEOUT)
+          : await queryWhoisTcp(tcpHost, port, domainToQuery, LOOKUP_TIMEOUT);
+      if (!raw || raw.trim().length === 0) {
+        throw new Error(`No data returned from custom WHOIS server: ${tcpHost}`);
+      }
+      return { raw, structured: {}, server: tcpHost };
+    }
   }
 
   const data = await whoisDomain(domainToQuery, {
