@@ -2,6 +2,16 @@ import fs from "fs";
 import path from "path";
 
 const DATA_FILE = path.join(process.cwd(), "src/data/custom-tld-servers.json");
+const CCTLD_FILE = path.join(process.cwd(), "src/data/cctld-whois-servers.json");
+
+function readCctldServers(): Record<string, string> {
+  try {
+    const raw = fs.readFileSync(CCTLD_FILE, "utf-8");
+    return JSON.parse(raw) as Record<string, string>;
+  } catch {
+    return {};
+  }
+}
 
 const BUILTIN_SERVERS: Record<string, string> = {
   bn: "whois.bnnic.bn",
@@ -21,8 +31,9 @@ function writeCustomServers(servers: Record<string, string>): void {
 }
 
 export function getAllCustomServers(): Record<string, string> {
+  const cctld = readCctldServers();
   const file = readCustomServers();
-  return { ...BUILTIN_SERVERS, ...file };
+  return { ...BUILTIN_SERVERS, ...cctld, ...file };
 }
 
 export function getUserManagedServers(): Record<string, string> {

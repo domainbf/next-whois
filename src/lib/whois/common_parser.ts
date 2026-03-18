@@ -112,12 +112,62 @@ function analyzeDomainStatus(status: string): DomainStatusProps {
   };
 }
 
+const DATE_FORMATS = [
+  "YYYY-MM-DDTHH:mm:ssZ",
+  "YYYY-MM-DDTHH:mm:ss.SSSZ",
+  "YYYY-MM-DDTHH:mm:ssZZ",
+  "YYYY-MM-DD HH:mm:ss",
+  "YYYY-MM-DD HH:mm:ssZ",
+  "YYYY-MM-DD",
+  "DD.MM.YYYY HH:mm:ss",
+  "DD.MM.YYYY HH:mm",
+  "DD.MM.YYYY",
+  "DD-MM-YYYY HH:mm:ss",
+  "DD-MM-YYYY",
+  "MM/DD/YYYY HH:mm:ss",
+  "MM/DD/YYYY",
+  "YYYY/MM/DD HH:mm:ss",
+  "YYYY/MM/DD",
+  "YYYY.MM.DD HH:mm:ss",
+  "YYYY.MM.DD",
+  "DD MMM YYYY",
+  "DD-MMM-YYYY",
+  "MMM DD YYYY",
+  "MMM DD, YYYY",
+  "D-MMM-YYYY",
+  "YYYYMMDD",
+  "YYYY-MM-DDTHH:mm:ss.SSS[Z]",
+  "ddd MMM DD HH:mm:ss [UTC] YYYY",
+  "ddd, DD MMM YYYY HH:mm:ss ZZ",
+  "DD/MM/YYYY HH:mm:ss",
+  "DD/MM/YYYY",
+];
+
 function analyzeTime(time: string): string {
   if (!time || time.length === 0) return time;
 
   try {
-    const date = new Date(time.replace("<", "").replace(">", "").trim());
-    return date.toISOString();
+    let cleaned = time
+      .replace(/<|>/g, "")
+      .replace(/\[.*?\]/g, "")
+      .trim();
+
+    const beforePrefix = cleaned.match(/^before\s+(.+)$/i);
+    if (beforePrefix) cleaned = beforePrefix[1].trim();
+
+    const parenMatch = cleaned.match(/^(.+?)\s*\(.*?\)\s*$/);
+    if (parenMatch) cleaned = parenMatch[1].trim();
+
+    const m = moment(cleaned, DATE_FORMATS, true);
+    if (m.isValid()) return m.toISOString();
+
+    const mLenient = moment(cleaned, DATE_FORMATS, false);
+    if (mLenient.isValid()) return mLenient.toISOString();
+
+    const native = new Date(cleaned);
+    if (!isNaN(native.getTime())) return native.toISOString();
+
+    return time;
   } catch (e) {
     return time;
   }
@@ -235,6 +285,15 @@ export async function analyzeWhois(data: string): Promise<WhoisAnalyzeResult> {
       case "last-modified":
       case "modification date":
       case "modified":
+      case "last update":
+      case "last updated":
+      case "update date":
+      case "date updated":
+      case "updated on":
+      case "modified on":
+      case "date de mise a jour":
+      case "zuletzt geaendert am":
+      case "updated (utc)":
         result.updatedDate = analyzeTime(value);
         break;
       case "changed":
@@ -247,6 +306,16 @@ export async function analyzeWhois(data: string): Promise<WhoisAnalyzeResult> {
       case "registered on":
       case "date registered":
       case "domain registered":
+      case "created":
+      case "created on":
+      case "created date":
+      case "registration date":
+      case "registration time":
+      case "date de creation":
+      case "registriert am":
+      case "datum registracije":
+      case "created (utc)":
+      case "created date (utc)":
         result.creationDate = analyzeTime(value);
         break;
       case "domain name commencement date":
@@ -259,6 +328,15 @@ export async function analyzeWhois(data: string): Promise<WhoisAnalyzeResult> {
       case "expires on":
       case "expire date":
       case "expire":
+      case "expires":
+      case "expiry date":
+      case "expiry":
+      case "registry expiration date":
+      case "date expiration":
+      case "ablaufdatum":
+      case "expires (utc)":
+      case "expiration date (utc)":
+      case "renewal date":
         result.expirationDate = analyzeTime(value);
         break;
       case "registrar registration expiration date":
@@ -286,6 +364,17 @@ export async function analyzeWhois(data: string): Promise<WhoisAnalyzeResult> {
       case "name server (db)":
       case "host name":
       case "nameserver":
+      case "ns":
+      case "ns1":
+      case "ns2":
+      case "ns3":
+      case "ns4":
+      case "dns":
+      case "dns1":
+      case "dns2":
+      case "dns3":
+      case "dns4":
+      case "serveur dns":
         result.nameServers.push(value.split(/\s+/)[0]);
         break;
       case "nameservers":
