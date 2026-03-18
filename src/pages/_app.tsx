@@ -4,7 +4,6 @@ import Head from "next/head";
 import { Toaster } from "sonner";
 import { ThemeProvider } from "@/components/theme-provider";
 import { siteTitle, siteDescription, siteKeywords } from "@/lib/seo";
-import PWAInstaller from "@/components/pwa_installer";
 import { Navbar } from "@/components/navbar";
 
 export default function App({ Component, pageProps }: AppProps) {
@@ -55,11 +54,6 @@ export default function App({ Component, pageProps }: AppProps) {
         enableSystem
         disableTransitionOnChange
       >
-        <PWAInstaller
-          manifest-url="/manifest.json"
-          name="Next Whois"
-          description="🧪 Your Next Generation Of Whois Lookup Tool With Modern UI. Support Domain/IPv4/IPv6/ASN/CIDR Whois Lookup And Powerful Features."
-        />
         <div className="fixed inset-0 -z-10">
           <div className="absolute inset-0 bg-dot-pattern opacity-10" />
           <div className="absolute inset-0 bg-gradient-to-b from-transparent via-background/20 to-background" />
