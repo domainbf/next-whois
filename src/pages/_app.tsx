@@ -17,6 +17,7 @@ export default function App({ Component, pageProps }: AppProps) {
         <meta name="tags" content={siteKeywords} />
         <meta name="keywords" content={siteKeywords} />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="format-detection" content="telephone=no" />
         <meta key="og:title" property="og:title" content={siteTitle} />
         <meta
           key="og:description"

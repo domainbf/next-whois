@@ -1190,7 +1190,7 @@ export default function LookupPage({
   target: string;
   origin: string;
 }) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const [loading, setLoading] = React.useState(false);
   const [expandStatus, setExpandStatus] = React.useState(false);
   const [showImagePreview, setShowImagePreview] = React.useState(false);
@@ -1206,6 +1206,27 @@ export default function LookupPage({
       document.documentElement.classList.contains("dark") ? "dark" : "light",
     );
   }, []);
+
+  const isChinese = locale === "zh" || locale === "zh-tw";
+  const [eurRates, setEurRates] = React.useState<Record<string, number> | null>(null);
+  useEffect(() => {
+    if (!isChinese) return;
+    fetch("https://api.frankfurter.app/latest")
+      .then((r) => r.json())
+      .then((data) => setEurRates(data.rates))
+      .catch(() => {});
+  }, [isChinese]);
+
+  function toCNY(amount: number, currency: string): string {
+    const cur = currency.toUpperCase();
+    if (eurRates) {
+      const cnyRate = eurRates["CNY"] ?? 7.8;
+      const eurAmount =
+        cur === "EUR" ? amount : amount / (eurRates[cur] ?? 1);
+      return `¥${(eurAmount * cnyRate).toFixed(2)}`;
+    }
+    return `${amount} ${cur}`;
+  }
 
   const current = getWindowHref();
   const queryType = detectQueryType(target);
@@ -1328,8 +1349,9 @@ export default function LookupPage({
                       )}
                     >
                       {t("register_price")}
-                      {result.registerPrice.new}{" "}
-                      {result.registerPrice.currency.toUpperCase()}
+                      {isChinese
+                        ? toCNY(result.registerPrice.new as number, result.registerPrice.currency)
+                        : `${result.registerPrice.new} ${result.registerPrice.currency.toUpperCase()}`}
                     </span>
                   </Link>
                 )}
@@ -1344,8 +1366,9 @@ export default function LookupPage({
                     <RiExchangeDollarFill className="w-3 h-3 text-muted-foreground shrink-0" />
                     <span className="text-[11px] sm:text-xs font-normal text-muted-foreground">
                       {t("renew_price")}
-                      {result.renewPrice.renew}{" "}
-                      {result.renewPrice.currency.toUpperCase()}
+                      {isChinese
+                        ? toCNY(result.renewPrice.renew as number, result.renewPrice.currency)
+                        : `${result.renewPrice.renew} ${result.renewPrice.currency.toUpperCase()}`}
                     </span>
                   </Link>
                 )}
@@ -1360,8 +1383,9 @@ export default function LookupPage({
                     <RiExchangeDollarFill className="w-3 h-3 text-muted-foreground shrink-0" />
                     <span className="text-[11px] sm:text-xs font-normal text-muted-foreground">
                       {t("transfer_price")}
-                      {result.transferPrice.transfer}{" "}
-                      {result.transferPrice.currency.toUpperCase()}
+                      {isChinese
+                        ? toCNY(result.transferPrice.transfer as number, result.transferPrice.currency)
+                        : `${result.transferPrice.transfer} ${result.transferPrice.currency.toUpperCase()}`}
                     </span>
                   </Link>
                 )}
