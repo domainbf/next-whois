@@ -4,7 +4,9 @@ import { getJsonRedisValue, setJsonRedisValue } from "@/lib/server/redis";
 import { analyzeWhois } from "@/lib/whois/common_parser";
 import { extractDomain } from "@/lib/utils";
 import { lookupRdap, convertRdapToWhoisResult } from "@/lib/whois/rdap_client";
-import { whoisDomain, whoisIp, whoisAsn } from "whoiser";
+import { whoisDomain, whoisIp, whoisAsn, whoisQuery } from "whoiser";
+import { getCustomServer } from "@/lib/whois/custom-servers";
+import { probeDomain } from "@/lib/whois/dns-check";
 
 const LOOKUP_TIMEOUT = 15_000;
 
@@ -144,6 +146,18 @@ async function getLookupWhois(domain: string): Promise<WhoisRawResult> {
 
   const domainToQuery = extractDomain(domain) || domain;
   const follow = Math.min(Math.max(MAX_WHOIS_FOLLOW, 1), 2) as 1 | 2;
+  const tld = domainToQuery.split(".").slice(1).join(".");
+  const tldSuffix = domainToQuery.split(".").pop() || "";
+  const customServer = getCustomServer(tld) || getCustomServer(tldSuffix);
+
+  if (customServer) {
+    const raw = await whoisQuery(customServer, domainToQuery, LOOKUP_TIMEOUT);
+    if (!raw || raw.trim().length === 0) {
+      throw new Error(`No data returned from custom WHOIS server: ${customServer}`);
+    }
+    return { raw, structured: {}, server: customServer };
+  }
+
   const data = await whoisDomain(domainToQuery, {
     raw: true,
     follow,
@@ -296,15 +310,18 @@ export async function lookupWhois(domain: string): Promise<WhoisResult> {
     } catch {}
   }
 
+  const isDomainQuery = !isIPAddress(domain) && !isASNumber(domain);
+
+  async function failWithDns(error: string): Promise<WhoisResult> {
+    const dnsProbe = isDomainQuery
+      ? await probeDomain(domain).catch(() => undefined)
+      : undefined;
+    return { time: elapsed(), status: false, cached: false, error, dnsProbe };
+  }
+
   if (whoisRawData) {
     if (isIanaFallback(whoisRawData)) {
-      return {
-        time: elapsed(),
-        status: false,
-        cached: false,
-        source: "whois",
-        error: "No WHOIS/RDAP server available for this TLD",
-      };
+      return failWithDns("No WHOIS/RDAP server available for this TLD");
     }
 
     try {
@@ -312,13 +329,7 @@ export async function lookupWhois(domain: string): Promise<WhoisResult> {
 
       const whoisError = detectWhoisError(whoisRawData);
       if (whoisError || isEmptyResult(result)) {
-        return {
-          time: elapsed(),
-          status: false,
-          cached: false,
-          source: "whois",
-          error: whoisError || "Empty WHOIS response",
-        };
+        return failWithDns(whoisError || "Empty WHOIS response");
       }
 
       if (whoisData?.server) {
@@ -334,16 +345,11 @@ export async function lookupWhois(domain: string): Promise<WhoisResult> {
         result,
       };
     } catch (parseError: unknown) {
-      return {
-        time: elapsed(),
-        status: false,
-        cached: false,
-        source: "whois",
-        error:
-          parseError instanceof Error
-            ? parseError.message
-            : "Failed to parse WHOIS response",
-      };
+      return failWithDns(
+        parseError instanceof Error
+          ? parseError.message
+          : "Failed to parse WHOIS response",
+      );
     }
   }
 
@@ -357,14 +363,12 @@ export async function lookupWhois(domain: string): Promise<WhoisResult> {
   const isInternalError =
     /cannot read properties/i.test(whoisMsg) ||
     /cannot read properties/i.test(rdapMsg);
+  const errMsg = isTldUnsupported
+    ? "WHOIS/RDAP not available for this TLD"
+    : isInternalError
+      ? "No WHOIS/RDAP data found for this query"
+      : whoisMsg || rdapMsg || "Unknown error occurred";
   return {
-    time: elapsed(),
-    status: false,
-    cached: false,
-    error: isTldUnsupported
-      ? "WHOIS/RDAP not available for this TLD"
-      : isInternalError
-        ? "No WHOIS/RDAP data found for this query"
-        : whoisMsg || rdapMsg || "Unknown error occurred",
+    ...(await failWithDns(errMsg)),
   };
 }

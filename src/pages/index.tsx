@@ -2,6 +2,7 @@ import { cn, toSearchURI } from "@/lib/utils";
 import Link from "next/link";
 import { RiDeleteBinLine, RiHistoryLine, RiGlobalLine } from "@remixicon/react";
 import React, { useEffect, useMemo, useCallback } from "react";
+import { useRouter } from "next/router";
 import { detectQueryType, listHistory, removeHistory } from "@/lib/history";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -93,6 +94,7 @@ function getDateGroupLabel(
 
 export default function HomePage() {
   const { t } = useTranslation();
+  const router = useRouter();
   const [loading, setLoading] = React.useState(false);
   const [mounted, setMounted] = React.useState(false);
   const [refreshTrigger, setRefreshTrigger] = React.useState(0);
@@ -100,12 +102,25 @@ export default function HomePage() {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    const handleStart = () => setLoading(true);
+    const handleComplete = () => setLoading(false);
+    router.events.on("routeChangeStart", handleStart);
+    router.events.on("routeChangeComplete", handleComplete);
+    router.events.on("routeChangeError", handleComplete);
+    return () => {
+      router.events.off("routeChangeStart", handleStart);
+      router.events.off("routeChangeComplete", handleComplete);
+      router.events.off("routeChangeError", handleComplete);
+    };
+  }, [router]);
+
   useSearchHotkeys({});
 
   const handleSearch = useCallback((query: string) => {
-    setLoading(true);
-    window.location.href = toSearchURI(query);
-  }, []);
+    router.push(toSearchURI(query));
+  }, [router]);
 
   const allHistory = useMemo(() => {
     if (!mounted) return [];

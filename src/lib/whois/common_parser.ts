@@ -8,8 +8,101 @@ import moment from "moment";
 import { getMozMetrics } from "@/lib/moz/client";
 import { getDomainPricing } from "@/lib/pricing/client";
 
+const HTML_ENTITIES: Record<string, string> = {
+  "&amp;": "&",
+  "&lt;": "<",
+  "&gt;": ">",
+  "&quot;": '"',
+  "&apos;": "'",
+  "&nbsp;": " ",
+  "&eacute;": "é",
+  "&Eacute;": "É",
+  "&egrave;": "è",
+  "&Egrave;": "È",
+  "&ecirc;": "ê",
+  "&Ecirc;": "Ê",
+  "&euml;": "ë",
+  "&aacute;": "á",
+  "&Aacute;": "Á",
+  "&agrave;": "à",
+  "&Agrave;": "À",
+  "&acirc;": "â",
+  "&Acirc;": "Â",
+  "&auml;": "ä",
+  "&Auml;": "Ä",
+  "&aring;": "å",
+  "&Aring;": "Å",
+  "&oacute;": "ó",
+  "&Oacute;": "Ó",
+  "&ograve;": "ò",
+  "&ocirc;": "ô",
+  "&ouml;": "ö",
+  "&Ouml;": "Ö",
+  "&uacute;": "ú",
+  "&ugrave;": "ù",
+  "&uuml;": "ü",
+  "&Uuml;": "Ü",
+  "&iacute;": "í",
+  "&igrave;": "ì",
+  "&icirc;": "î",
+  "&iuml;": "ï",
+  "&ccedil;": "ç",
+  "&Ccedil;": "Ç",
+  "&ntilde;": "ñ",
+  "&Ntilde;": "Ñ",
+  "&szlig;": "ß",
+  "&aelig;": "æ",
+  "&AElig;": "Æ",
+  "&oslash;": "ø",
+  "&Oslash;": "Ø",
+  "&eth;": "ð",
+  "&thorn;": "þ",
+  "&laquo;": "«",
+  "&raquo;": "»",
+  "&copy;": "©",
+  "&reg;": "®",
+  "&trade;": "™",
+  "&mdash;": "—",
+  "&ndash;": "–",
+  "&hellip;": "…",
+};
+
+function decodeHtmlEntities(str: string): string {
+  if (!str || !str.includes("&")) return str;
+  let result = str;
+  for (const [entity, char] of Object.entries(HTML_ENTITIES)) {
+    result = result.split(entity).join(char);
+  }
+  result = result.replace(/&#(\d+);/g, (_, code) =>
+    String.fromCharCode(parseInt(code, 10)),
+  );
+  result = result.replace(/&#x([0-9a-fA-F]+);/g, (_, hex) =>
+    String.fromCharCode(parseInt(hex, 16)),
+  );
+  return result;
+}
+
+function cleanFieldValue(value: string): string {
+  if (!value) return value;
+  let cleaned = value.trim();
+  cleaned = decodeHtmlEntities(cleaned);
+  cleaned = cleaned.replace(/^[\s\u00a0\u2022\u00b7·\-]+/, "").trim();
+  cleaned = cleaned.replace(/^\.{3,}\s*/, "").trim();
+  return cleaned;
+}
+
+function isRedactedValue(value: string): boolean {
+  if (!value) return false;
+  const dotRatio = (value.match(/\./g) || []).length / value.length;
+  if (dotRatio > 0.5 && value.length > 5) return true;
+  if (/^[.\s]+$/.test(value)) return true;
+  if (/REDACTED|WITHHELD|PRIVACY|NOT DISCLOSED/i.test(value)) return true;
+  return false;
+}
+
 function analyzeDomainStatus(status: string): DomainStatusProps {
-  const segments = status.split(" ");
+  const cleaned = cleanFieldValue(status);
+  const segments = cleaned.split(" ");
   let url = segments.slice(1).join(" ");
 
   url.startsWith("(") && url.endsWith(")") && (url = url.slice(1, -1));
@@ -19,12 +112,62 @@ function analyzeDomainStatus(status: string): DomainStatusProps {
   };
 }
 
+const DATE_FORMATS = [
+  "YYYY-MM-DDTHH:mm:ssZ",
+  "YYYY-MM-DDTHH:mm:ss.SSSZ",
+  "YYYY-MM-DDTHH:mm:ssZZ",
+  "YYYY-MM-DD HH:mm:ss",
+  "YYYY-MM-DD HH:mm:ssZ",
+  "YYYY-MM-DD",
+  "DD.MM.YYYY HH:mm:ss",
+  "DD.MM.YYYY HH:mm",
+  "DD.MM.YYYY",
+  "DD-MM-YYYY HH:mm:ss",
+  "DD-MM-YYYY",
+  "MM/DD/YYYY HH:mm:ss",
+  "MM/DD/YYYY",
+  "YYYY/MM/DD HH:mm:ss",
+  "YYYY/MM/DD",
+  "YYYY.MM.DD HH:mm:ss",
+  "YYYY.MM.DD",
+  "DD MMM YYYY",
+  "DD-MMM-YYYY",
+  "MMM DD YYYY",
+  "MMM DD, YYYY",
+  "D-MMM-YYYY",
+  "YYYYMMDD",
+  "YYYY-MM-DDTHH:mm:ss.SSS[Z]",
+  "ddd MMM DD HH:mm:ss [UTC] YYYY",
+  "ddd, DD MMM YYYY HH:mm:ss ZZ",
+  "DD/MM/YYYY HH:mm:ss",
+  "DD/MM/YYYY",
+];
+
 function analyzeTime(time: string): string {
   if (!time || time.length === 0) return time;
 
   try {
-    const date = new Date(time.replace("<", "").replace(">", "").trim());
-    return date.toISOString();
+    let cleaned = time
+      .replace(/<|>/g, "")
+      .replace(/\[.*?\]/g, "")
+      .trim();
+
+    const beforePrefix = cleaned.match(/^before\s+(.+)$/i);
+    if (beforePrefix) cleaned = beforePrefix[1].trim();
+
+    const parenMatch = cleaned.match(/^(.+?)\s*\(.*?\)\s*$/);
+    if (parenMatch) cleaned = parenMatch[1].trim();
+
+    const m = moment(cleaned, DATE_FORMATS, true);
+    if (m.isValid()) return m.toISOString();
+
+    const mLenient = moment(cleaned, DATE_FORMATS, false);
+    if (mLenient.isValid()) return mLenient.toISOString();
+
+    const native = new Date(cleaned);
+    if (!isNaN(native.getTime())) return native.toISOString();
+
+    return time;
   } catch (e) {
     return time;
   }
@@ -95,7 +238,7 @@ export async function analyzeWhois(data: string): Promise<WhoisAnalyzeResult> {
     const bracketMatch = line.match(/^(?:[a-z]\.\s*)?\[(.+?)\]\s+(.+)/);
     if (bracketMatch) {
       key = bracketMatch[1].trim().toLowerCase();
-      value = bracketMatch[2].trim();
+      value = cleanFieldValue(bracketMatch[2].trim());
     } else {
       let segments = line.split(":");
       if (segments.length < 2) continue;
@@ -103,8 +246,10 @@ export async function analyzeWhois(data: string): Promise<WhoisAnalyzeResult> {
         segments = segments.slice(1);
       }
       key = segments[0].trim().toLowerCase();
-      value = segments.slice(1).join(":").trim();
+      value = cleanFieldValue(segments.slice(1).join(":").trim());
     }
+
+    if (!value) continue;
 
     switch (key) {
       case "domain name":
@@ -136,6 +281,19 @@ export async function analyzeWhois(data: string): Promise<WhoisAnalyzeResult> {
         break;
       case "updated date":
       case "last updated date":
+      case "last modified":
+      case "last-modified":
+      case "modification date":
+      case "modified":
+      case "last update":
+      case "last updated":
+      case "update date":
+      case "date updated":
+      case "updated on":
+      case "modified on":
+      case "date de mise a jour":
+      case "zuletzt geaendert am":
+      case "updated (utc)":
         result.updatedDate = analyzeTime(value);
         break;
       case "changed":
@@ -143,12 +301,42 @@ export async function analyzeWhois(data: string): Promise<WhoisAnalyzeResult> {
         break;
       case "creation date":
       case "registered date":
+      case "activation":
+      case "activation date":
+      case "registered on":
+      case "date registered":
+      case "domain registered":
+      case "created":
+      case "created on":
+      case "created date":
+      case "registration date":
+      case "registration time":
+      case "date de creation":
+      case "registriert am":
+      case "datum registracije":
+      case "created (utc)":
+      case "created date (utc)":
         result.creationDate = analyzeTime(value);
         break;
       case "domain name commencement date":
         result.creationDate = analyzeTime(value);
         break;
       case "expiration date":
+      case "expiration":
+      case "valid until":
+      case "paid-till":
+      case "expires on":
+      case "expire date":
+      case "expire":
+      case "expires":
+      case "expiry date":
+      case "expiry":
+      case "registry expiration date":
+      case "date expiration":
+      case "ablaufdatum":
+      case "expires (utc)":
+      case "expiration date (utc)":
+      case "renewal date":
         result.expirationDate = analyzeTime(value);
         break;
       case "registrar registration expiration date":
@@ -173,8 +361,21 @@ export async function analyzeWhois(data: string): Promise<WhoisAnalyzeResult> {
         result.status.push(analyzeDomainStatus(value));
         break;
       case "name server":
+      case "name server (db)":
       case "host name":
-        result.nameServers.push(value);
+      case "nameserver":
+      case "ns":
+      case "ns1":
+      case "ns2":
+      case "ns3":
+      case "ns4":
+      case "dns":
+      case "dns1":
+      case "dns2":
+      case "dns3":
+      case "dns4":
+      case "serveur dns":
+        result.nameServers.push(value.split(/\s+/)[0]);
         break;
       case "nameservers":
         result.nameServers.push(value);
@@ -183,65 +384,71 @@ export async function analyzeWhois(data: string): Promise<WhoisAnalyzeResult> {
         result.nameServers.push(value.split(/\s+/)[0]);
         break;
       case "registrant name":
-        result.registrantOrganization = value;
+        if (!isRedactedValue(value)) result.registrantOrganization = value;
         break;
       case "registrant organization":
-        result.registrantOrganization = value;
+        if (!isRedactedValue(value)) result.registrantOrganization = value;
         break;
       case "organization":
-        result.registrantOrganization = value;
+        if (!isRedactedValue(value)) result.registrantOrganization = value;
         break;
       case "organisation":
-        result.registrantOrganization = value;
+        if (!isRedactedValue(value)) result.registrantOrganization = value;
         break;
       case "org-name":
-        result.registrantOrganization = value;
+        if (!isRedactedValue(value)) result.registrantOrganization = value;
         break;
       case "registrant":
-        result.registrantOrganization = value;
+        if (!isRedactedValue(value)) result.registrantOrganization = value;
         break;
       case "descr":
-        result.registrantOrganization === "Unknown" &&
-          (result.registrantOrganization = value);
+        if (
+          !isRedactedValue(value) &&
+          result.registrantOrganization === "Unknown"
+        )
+          result.registrantOrganization = value;
         break;
       case "registrant state/province":
-        result.registrantProvince = value;
+        if (!isRedactedValue(value)) result.registrantProvince = value;
         break;
       case "city":
-        result.registrantProvince = value;
+        if (!isRedactedValue(value)) result.registrantProvince = value;
         break;
       case "registrant country":
-        result.registrantCountry = value;
+        if (!isRedactedValue(value)) result.registrantCountry = value;
         break;
       case "country":
-        result.registrantCountry = value;
+        if (!isRedactedValue(value)) result.registrantCountry = value;
         break;
       case "registrant phone":
-        result.registrantPhone = value.replace("tel:", "").replace(".", " ");
+        if (!isRedactedValue(value))
+          result.registrantPhone = value.replace("tel:", "").trim();
         break;
       case "registrar abuse contact phone":
       case "ac phone number":
-        result.registrantPhone = value.replace("tel:", "").replace(".", " ");
+        if (!isRedactedValue(value))
+          result.registrantPhone = value.replace("tel:", "").trim();
         break;
       case "orgtechphone":
-        result.registrantPhone = value;
+        if (!isRedactedValue(value)) result.registrantPhone = value;
         break;
       case "registrant email":
-        result.registrantEmail = value.replace(
-          "Select Request Email Form at ",
-          "",
-        );
+        if (!isRedactedValue(value))
+          result.registrantEmail = value.replace(
+            "Select Request Email Form at ",
+            "",
+          );
         break;
       case "dnssec":
         result.dnssec = value;
         break;
       case "email":
       case "ac e-mail":
-        result.registrantEmail = value;
+        if (!isRedactedValue(value)) result.registrantEmail = value;
         break;
       case "e-mail":
-        result.registrantEmail === "Unknown" &&
-          (result.registrantEmail = value);
+        if (!isRedactedValue(value) && result.registrantEmail === "Unknown")
+          result.registrantEmail = value;
         break;
       case "cidr":
         result.cidr = value;
@@ -281,12 +488,14 @@ export async function analyzeWhois(data: string): Promise<WhoisAnalyzeResult> {
       result.registrar = value;
     } else if (
       includeArgs(key, "contact email") &&
-      result.registrantEmail === "Unknown"
+      result.registrantEmail === "Unknown" &&
+      !isRedactedValue(value)
     ) {
       result.registrantEmail = value;
     } else if (
       includeArgs(key, "contact phone") &&
-      result.registrantPhone === "Unknown"
+      result.registrantPhone === "Unknown" &&
+      !isRedactedValue(value)
     ) {
       result.registrantPhone = value;
     } else if (
@@ -321,7 +530,8 @@ export async function analyzeWhois(data: string): Promise<WhoisAnalyzeResult> {
       result.updatedDate = analyzeTime(value);
     } else if (
       includeArgs(key, "account name", "registrant org") &&
-      result.registrantOrganization === "Unknown"
+      result.registrantOrganization === "Unknown" &&
+      !isRedactedValue(value)
     ) {
       result.registrantOrganization = value;
     }
@@ -334,6 +544,14 @@ export async function analyzeWhois(data: string): Promise<WhoisAnalyzeResult> {
     newStatus.push(status);
   }
   result.status = newStatus;
+
+  const seenNS = new Set<string>();
+  result.nameServers = result.nameServers.filter((ns) => {
+    const key = ns.toLowerCase().trim();
+    if (!key || seenNS.has(key)) return false;
+    seenNS.add(key);
+    return true;
+  });
 
   return await applyParams(result);
 }

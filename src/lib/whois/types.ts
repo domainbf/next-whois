@@ -1,4 +1,5 @@
 import { DomainPricing } from "../pricing/client";
+import { DnsProbeResult } from "./dns-check";
 
 export type WhoisResult = {
   status: boolean;
@@ -7,6 +8,7 @@ export type WhoisResult = {
   source?: "rdap" | "whois";
   result?: WhoisAnalyzeResult;
   error?: string;
+  dnsProbe?: DnsProbeResult;
 };
 
 export type WhoisAnalyzeResult = {

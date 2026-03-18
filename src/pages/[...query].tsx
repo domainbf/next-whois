@@ -8,6 +8,7 @@ import {
   useSaver,
 } from "@/lib/utils";
 import { GetServerSidePropsContext } from "next";
+import { useRouter } from "next/router";
 import { getOrigin } from "@/lib/seo";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
@@ -1239,6 +1240,120 @@ function CobeGlobe() {
   );
 }
 
+function getDomainRegistrationStatus(result: WhoisAnalyzeResult): {
+  label: string;
+  color: string;
+  dotColor: string;
+} {
+  const reservedStatuses = [
+    "reserved",
+    "reserved-delegated",
+    "server-hold",
+    "client-hold",
+  ];
+  const isReserved = result.status.some((s) =>
+    reservedStatuses.some((r) => s.status.toLowerCase().includes(r)),
+  );
+  if (isReserved) {
+    return {
+      label: "保留",
+      color: "text-amber-600 border-amber-400/50 bg-amber-50 dark:bg-amber-950/20",
+      dotColor: "bg-amber-500",
+    };
+  }
+  const hasData =
+    (result.registrar && result.registrar !== "Unknown") ||
+    (result.creationDate && result.creationDate !== "Unknown") ||
+    result.nameServers.length > 0 ||
+    result.status.length > 0;
+  if (hasData) {
+    return {
+      label: "已注册",
+      color: "text-emerald-600 border-emerald-400/50 bg-emerald-50 dark:bg-emerald-950/20",
+      dotColor: "bg-emerald-500",
+    };
+  }
+  return {
+    label: "已注册",
+    color: "text-emerald-600 border-emerald-400/50 bg-emerald-50 dark:bg-emerald-950/20",
+    dotColor: "bg-emerald-500",
+  };
+}
+
+function ResultSkeleton() {
+  return (
+    <div className="space-y-6 mt-6">
+      <div className="text-center py-4">
+        <p className="text-sm text-muted-foreground font-medium animate-pulse">
+          我知道你很急，但请你先别急
+        </p>
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="lg:col-span-8 space-y-6">
+          <div className="glass-panel border border-border rounded-xl p-6 sm:p-8 relative overflow-hidden">
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+              <div className="space-y-3 flex-1">
+                <div className="h-5 w-16 rounded-md bg-muted animate-pulse" />
+                <div className="h-9 w-48 rounded-md bg-muted animate-pulse" />
+                <div className="h-4 w-64 rounded-md bg-muted/70 animate-pulse" />
+              </div>
+              <div className="flex flex-col items-start sm:items-end gap-2">
+                <div className="h-6 w-20 rounded-full bg-muted animate-pulse" />
+                <div className="h-3 w-24 rounded-md bg-muted/60 animate-pulse" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-6 mt-8 pt-8 border-t border-border/50">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="space-y-1.5">
+                  <div className="h-3 w-20 rounded bg-muted/60 animate-pulse" />
+                  <div className="h-4 w-28 rounded bg-muted animate-pulse" />
+                  <div className="h-3 w-16 rounded bg-muted/50 animate-pulse" />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="glass-panel border border-border rounded-xl p-6">
+            <div className="h-4 w-24 rounded bg-muted/70 animate-pulse mb-4" />
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <div className="w-2 h-2 rounded-full bg-muted animate-pulse shrink-0" />
+                  <div className="h-4 w-40 rounded bg-muted animate-pulse" />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="glass-panel border border-border rounded-xl p-6">
+            <div className="h-4 w-28 rounded bg-muted/70 animate-pulse mb-4" />
+            <div className="space-y-2">
+              {[1, 2].map((i) => (
+                <div key={i} className="h-4 w-52 rounded bg-muted animate-pulse" />
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="lg:col-span-4">
+          <div className="glass-panel border border-border rounded-xl p-6 h-64 flex flex-col gap-3">
+            <div className="h-4 w-24 rounded bg-muted/70 animate-pulse" />
+            <div className="flex-1 space-y-2">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div
+                  key={i}
+                  className="h-3 rounded bg-muted/50 animate-pulse"
+                  style={{ width: `${60 + Math.random() * 35}%` }}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function LookupPage({
   data,
   target,
@@ -1249,8 +1364,22 @@ export default function LookupPage({
   origin: string;
 }) {
   const { t, locale } = useTranslation();
+  const router = useRouter();
   const [loading, setLoading] = React.useState(false);
   const [expandStatus, setExpandStatus] = React.useState(false);
+
+  useEffect(() => {
+    const handleStart = () => setLoading(true);
+    const handleComplete = () => setLoading(false);
+    router.events.on("routeChangeStart", handleStart);
+    router.events.on("routeChangeComplete", handleComplete);
+    router.events.on("routeChangeError", handleComplete);
+    return () => {
+      router.events.off("routeChangeStart", handleStart);
+      router.events.off("routeChangeComplete", handleComplete);
+      router.events.off("routeChangeError", handleComplete);
+    };
+  }, [router]);
   const [showImagePreview, setShowImagePreview] = React.useState(false);
   const [imgWidth, setImgWidth] = React.useState(1200);
   const [imgHeight, setImgHeight] = React.useState(630);
@@ -1288,11 +1417,10 @@ export default function LookupPage({
 
   const current = getWindowHref();
   const queryType = detectQueryType(target);
-  const { status, result, error, time } = data;
+  const { status, result, error, time, dnsProbe } = data;
 
   const handleSearch = (query: string) => {
-    setLoading(true);
-    window.location.href = toSearchURI(query);
+    router.push(toSearchURI(query));
   };
 
   useEffect(() => {
@@ -1375,7 +1503,9 @@ export default function LookupPage({
             <SearchHotkeysText className="mt-2 px-1 justify-end" />
           </div>
 
-          {result && (
+          {loading && <ResultSkeleton />}
+
+          {!loading && result && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -1556,7 +1686,7 @@ export default function LookupPage({
             </motion.div>
           )}
 
-          {!status && (
+          {!loading && !status && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -1564,47 +1694,97 @@ export default function LookupPage({
               className="grid grid-cols-1 lg:grid-cols-12 gap-6"
             >
               <div className="lg:col-span-8 space-y-6">
-                <div className="glass-panel border border-border rounded-xl p-8 sm:p-12 text-center">
-                  <div className="w-16 h-16 bg-red-50 dark:bg-red-950/30 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="32"
-                      height="32"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="text-red-500"
-                    >
-                      <path d="m21 21-4.3-4.3" />
-                      <circle cx="11" cy="11" r="8" />
-                      <path d="m8 8 6 6" />
-                      <path d="m14 8-6 6" />
-                    </svg>
-                  </div>
-                  <h2 className="text-2xl font-bold mb-2">
-                    {t("lookup_failed")}
-                  </h2>
-                  <p className="text-muted-foreground max-w-md mx-auto text-sm leading-relaxed mb-8">
-                    {t("lookup_failed_description")}{" "}
-                    <span className="font-mono font-medium text-foreground">
-                      {target}
-                    </span>
-                    {". "}
-                    {error || t("lookup_failed_fallback")}
-                  </p>
-                  <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-                    <Button onClick={() => handleSearch(target)}>
-                      {t("try_again")}
-                    </Button>
-                    <Link href="/">
-                      <Button variant="outline">{t("new_search")}</Button>
-                    </Link>
-                  </div>
-                </div>
+                {dnsProbe?.registrationStatus === "registered" ? (
+                  <>
+                    <div className="glass-panel border border-emerald-400/40 bg-emerald-50/30 dark:bg-emerald-950/20 rounded-xl p-6 sm:p-8 relative overflow-hidden">
+                      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                        <div>
+                          <div className="flex items-center gap-3 mb-2">
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] font-bold uppercase tracking-wider font-mono"
+                            >
+                              {queryType}
+                            </Badge>
+                          </div>
+                          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight mb-1">
+                            {target}
+                          </h2>
+                          <p className="text-muted-foreground text-sm mt-2 max-w-sm leading-relaxed">
+                            该域名已注册，但注册机构未提供公开的 WHOIS/RDAP 查询服务，无法获取详细注册信息。
+                          </p>
+                        </div>
+                        <div className="flex flex-col items-start sm:items-end gap-2 shrink-0">
+                          <Badge
+                            variant="outline"
+                            className="text-emerald-600 border-emerald-400/50 bg-emerald-50 dark:bg-emerald-950/30 font-medium"
+                          >
+                            <div className="w-2 h-2 rounded-full bg-emerald-500 mr-1.5" />
+                            已注册
+                          </Badge>
+                          <span className="text-[10px] text-muted-foreground font-mono">
+                            {time.toFixed(2)}s
+                          </span>
+                        </div>
+                      </div>
+                    </div>
 
+                    <div className="flex gap-3">
+                      <Button variant="outline" size="sm" onClick={() => handleSearch(target)}>
+                        重新查询
+                      </Button>
+                      <Link href="/">
+                        <Button variant="outline" size="sm">{t("new_search")}</Button>
+                      </Link>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="glass-panel border border-border rounded-xl p-8 sm:p-12 text-center">
+                      <div className="w-16 h-16 bg-red-50 dark:bg-red-950/30 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="32"
+                          height="32"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className="text-red-500"
+                        >
+                          <path d="m21 21-4.3-4.3" />
+                          <circle cx="11" cy="11" r="8" />
+                          <path d="m8 8 6 6" />
+                          <path d="m14 8-6 6" />
+                        </svg>
+                      </div>
+                      <h2 className="text-2xl font-bold mb-2">
+                        {t("lookup_failed")}
+                      </h2>
+                      <p className="text-muted-foreground max-w-md mx-auto text-sm leading-relaxed mb-8">
+                        {t("lookup_failed_description")}{" "}
+                        <span className="font-mono font-medium text-foreground">
+                          {target}
+                        </span>
+                        {". "}
+                        {error || t("lookup_failed_fallback")}
+                      </p>
+                      <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                        <Button onClick={() => handleSearch(target)}>
+                          {t("try_again")}
+                        </Button>
+                        <Link href="/">
+                          <Button variant="outline">{t("new_search")}</Button>
+                        </Link>
+                      </div>
+                    </div>
+
+                  </>
+                )}
+
+                {dnsProbe?.registrationStatus !== "registered" && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div className="glass-panel border border-border rounded-xl p-6">
                     <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-4 flex items-center gap-2">
@@ -1684,6 +1864,7 @@ export default function LookupPage({
                     </div>
                   </div>
                 </div>
+                )}
               </div>
 
               <div className="lg:col-span-4">
@@ -1707,7 +1888,7 @@ export default function LookupPage({
             </motion.div>
           )}
 
-          {status && result && (
+          {!loading && status && result && (
             <>
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -1762,13 +1943,18 @@ export default function LookupPage({
                             </Badge>
                           )
                         ) : (
-                          <Badge
-                            variant="outline"
-                            className="text-muted-foreground"
-                          >
-                            <div className="w-2 h-2 rounded-full bg-muted-foreground/50 mr-1.5" />
-                            N/A
-                          </Badge>
+                          (() => {
+                            const regStatus = getDomainRegistrationStatus(result);
+                            return (
+                              <Badge
+                                variant="outline"
+                                className={cn("font-medium", regStatus.color)}
+                              >
+                                <div className={cn("w-2 h-2 rounded-full mr-1.5", regStatus.dotColor)} />
+                                {regStatus.label}
+                              </Badge>
+                            );
+                          })()
                         )}
                         <span className="text-[10px] text-muted-foreground font-mono">
                           {time.toFixed(2)}s{data.cached && ` · ${t("cached")}`}
