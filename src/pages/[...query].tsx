@@ -1382,15 +1382,6 @@ export default function LookupPage({
               transition={{ duration: 0.3, delay: 0.1 }}
               className="flex items-center flex-wrap gap-2 mb-6"
             >
-              {result.domainAge !== null && (
-                <div className="px-2 py-0.5 rounded-md border border-primary/30 bg-primary/5 flex items-center space-x-1">
-                  <RiTimeLine className="w-3 h-3 text-primary shrink-0" />
-                  <span className="text-[11px] sm:text-xs font-normal text-primary">
-                    {result.domainAge === 0 ? "<1" : result.domainAge}{" "}
-                    {result.domainAge === 1 ? t("year") : t("years")}
-                  </span>
-                </div>
-              )}
               {result.registerPrice &&
                 result.registerPrice.new !== -1 &&
                 result.registerPrice.currency !== "Unknown" && (
@@ -1727,7 +1718,7 @@ export default function LookupPage({
                 {" "}
                 <div className="lg:col-span-8 space-y-6">
                   <div className="glass-panel border border-border rounded-xl p-6 sm:p-8 relative overflow-hidden">
-                    <div className="absolute top-0 right-0 p-2 opacity-20 pointer-events-none">
+                    <div className="absolute top-0 right-0 p-2 opacity-40 pointer-events-none">
                       <CobeGlobe />
                     </div>
                     <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 relative z-10">
@@ -1783,6 +1774,15 @@ export default function LookupPage({
                           {time.toFixed(2)}s{data.cached && ` · ${t("cached")}`}
                           {data.source && ` · ${data.source}`}
                         </span>
+                        {result.domainAge !== null && (
+                          <div className="flex items-center gap-1 px-2 py-0.5 rounded-md border border-primary/30 bg-primary/5">
+                            <RiTimeLine className="w-3 h-3 text-primary shrink-0" />
+                            <span className="text-[11px] font-normal text-primary">
+                              {result.domainAge === 0 ? "<1" : result.domainAge}{" "}
+                              {result.domainAge === 1 ? t("year") : t("years")}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
 
