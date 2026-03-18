@@ -30,7 +30,6 @@ import {
   RiBillLine,
   RiDownloadLine,
   RiServerLine,
-  RiEarthLine,
   RiGlobalLine,
 } from "@remixicon/react";
 import React, { useEffect, useMemo } from "react";
@@ -43,6 +42,7 @@ import {
   getEppStatusColor,
   getEppStatusDisplayName,
   getEppStatusLink,
+  getEppStatusDescription,
 } from "@/lib/whois/epp_status";
 import { SearchBox } from "@/components/search_box";
 import {
@@ -1181,6 +1181,64 @@ export async function getServerSideProps(context: GetServerSidePropsContext) {
   }
 }
 
+function CobeGlobe() {
+  const canvasRef = React.useRef<HTMLCanvasElement>(null);
+  const [supported, setSupported] = React.useState(true);
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("webgl") || canvas.getContext("webgl2");
+    if (!ctx) {
+      setSupported(false);
+      return;
+    }
+    let phi = 0;
+    let globe: { destroy: () => void } | undefined;
+    import("cobe")
+      .then(({ default: createGlobe }) => {
+        if (!canvasRef.current) return;
+        try {
+          globe = createGlobe(canvasRef.current, {
+            devicePixelRatio: 2,
+            width: 224,
+            height: 224,
+            phi: 0,
+            theta: 0.1,
+            dark: 0,
+            diffuse: 1.2,
+            scale: 1,
+            mapSamples: 16000,
+            mapBrightness: 6,
+            baseColor: [1, 1, 1],
+            markerColor: [1, 0.5, 1],
+            glowColor: [1, 1, 1],
+            offset: [0, 0],
+            markers: [],
+            onRender: (state: Record<string, unknown>) => {
+              state.phi = phi;
+              phi += 0.005;
+            },
+          });
+        } catch {
+          setSupported(false);
+        }
+      })
+      .catch(() => setSupported(false));
+    return () => {
+      if (globe) globe.destroy();
+    };
+  }, []);
+  if (!supported) return null;
+  return (
+    <canvas
+      ref={canvasRef}
+      style={{ width: 112, height: 112 }}
+      width={224}
+      height={224}
+    />
+  );
+}
+
 export default function LookupPage({
   data,
   target,
@@ -1669,8 +1727,8 @@ export default function LookupPage({
                 {" "}
                 <div className="lg:col-span-8 space-y-6">
                   <div className="glass-panel border border-border rounded-xl p-6 sm:p-8 relative overflow-hidden">
-                    <div className="absolute top-0 right-0 p-4 opacity-[0.03] pointer-events-none">
-                      <RiEarthLine className="w-28 h-28" />
+                    <div className="absolute top-0 right-0 p-2 opacity-20 pointer-events-none">
+                      <CobeGlobe />
                     </div>
                     <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 relative z-10">
                       <div>
@@ -1887,7 +1945,7 @@ export default function LookupPage({
                                   </a>
                                   {info && (
                                     <p className="text-[10px] text-muted-foreground leading-snug mt-0.5">
-                                      {info.description}
+                                      {getEppStatusDescription(s.status, locale)}
                                     </p>
                                   )}
                                 </div>
