@@ -1723,33 +1723,9 @@ export default function LookupPage({
                             已注册
                           </Badge>
                           <span className="text-[10px] text-muted-foreground font-mono">
-                            {time.toFixed(2)}s · DNS 检测
+                            {time.toFixed(2)}s
                           </span>
                         </div>
-                      </div>
-
-                      <div className="mt-6 pt-6 border-t border-emerald-400/20">
-                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-3">
-                          DNS 检测信号
-                        </p>
-                        <div className="flex flex-wrap gap-2">
-                          {dnsProbe.signals.map((sig) => (
-                            <div
-                              key={sig.type}
-                              className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border bg-background/60 text-xs"
-                            >
-                              <span className="font-mono font-bold text-[10px] uppercase text-muted-foreground w-8 shrink-0">
-                                {sig.type}
-                              </span>
-                              <span className="font-mono text-foreground/80 truncate max-w-[200px]">
-                                {sig.value}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                        <p className="text-[10px] text-muted-foreground/50 mt-4">
-                          以上信息通过 DNS 解析获取，非官方 WHOIS 数据，仅供参考。
-                        </p>
                       </div>
                     </div>
 
@@ -1805,36 +1781,6 @@ export default function LookupPage({
                       </div>
                     </div>
 
-                    {dnsProbe && (
-                      <div
-                        className={cn(
-                          "glass-panel border rounded-xl p-6",
-                          dnsProbe.registrationStatus === "unregistered"
-                            ? "border-muted bg-muted/20"
-                            : "border-border",
-                        )}
-                      >
-                        <div className="flex items-center justify-between mb-3">
-                          <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                            <RiGlobalLine className="w-4 h-4" />
-                            DNS 检测结果
-                          </h3>
-                          <Badge
-                            variant="outline"
-                            className="text-muted-foreground text-xs"
-                          >
-                            <div className="w-2 h-2 rounded-full bg-muted-foreground/50 mr-1.5" />
-                            {dnsProbe.registrationStatus === "unregistered" ? "未注册" : "未知"}
-                          </Badge>
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                          未检测到任何 DNS 记录，该域名可能尚未注册或 DNS 未配置。
-                        </p>
-                        <p className="text-[10px] text-muted-foreground/50 mt-3">
-                          WHOIS/RDAP 查询失败，以上结果通过 DNS 解析推断，仅供参考。
-                        </p>
-                      </div>
-                    )}
                   </>
                 )}
 
