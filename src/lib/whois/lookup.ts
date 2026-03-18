@@ -9,6 +9,7 @@ import {
   getCustomServerEntry,
   isHttpEntry,
   getTcpHost,
+  isUserManagedServer,
   HttpServerEntry,
 } from "@/lib/whois/custom-servers";
 import { probeDomain } from "@/lib/whois/dns-check";
@@ -149,6 +150,26 @@ function queryWhoisTcp(
   });
 }
 
+function stripHtmlToWhoisText(html: string): string {
+  return html
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(/<style[\s\S]*?<\/style>/gi, "")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(?:tr|p|div|li|h[1-6]|pre)>/gi, "\n")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/[ \t]+/g, " ")
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0)
+    .join("\n");
+}
+
 async function queryWhoisHttp(
   entry: HttpServerEntry,
   domain: string,
@@ -164,7 +185,11 @@ async function queryWhoisHttp(
     const init: RequestInit = {
       method,
       signal: controller.signal,
-      headers: { "User-Agent": "next-whois-ui/1.0", Accept: "text/plain, */*" },
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (compatible; next-whois-ui/1.0; +https://github.com/zmh-program/next-whois-ui)",
+        Accept: "text/plain, text/html, */*",
+      },
     };
     if (method === "POST") {
       init.body = entry.body ? placeholder(entry.body) : domain;
@@ -175,7 +200,11 @@ async function queryWhoisHttp(
     if (!res.ok) {
       throw new Error(`HTTP WHOIS server returned ${res.status}`);
     }
+    const contentType = res.headers.get("content-type") || "";
     const text = await res.text();
+    if (contentType.includes("text/html") || text.trimStart().startsWith("<!")) {
+      return stripHtmlToWhoisText(text);
+    }
     return text;
   } finally {
     clearTimeout(timer);
@@ -210,31 +239,51 @@ async function getLookupWhois(domain: string): Promise<WhoisRawResult> {
   const customEntry =
     getCustomServerEntry(tld) || getCustomServerEntry(tldSuffix);
 
+  const isUserServer =
+    isUserManagedServer(tld) || isUserManagedServer(tldSuffix);
+
   if (customEntry) {
     if (isHttpEntry(customEntry)) {
-      const raw = await queryWhoisHttp(customEntry, domainToQuery, LOOKUP_TIMEOUT);
+      const raw = await queryWhoisHttp(
+        customEntry,
+        domainToQuery,
+        LOOKUP_TIMEOUT,
+      );
       if (!raw || raw.trim().length === 0) {
-        throw new Error(
-          `No data returned from HTTP WHOIS server: ${customEntry.url}`,
-        );
+        if (isUserServer) {
+          throw new Error(
+            `No data returned from HTTP WHOIS server: ${customEntry.url}`,
+          );
+        }
+      } else {
+        return { raw, structured: {}, server: customEntry.url };
       }
-      return { raw, structured: {}, server: customEntry.url };
-    }
-
-    const tcpHost = getTcpHost(customEntry);
-    if (tcpHost) {
-      const port =
-        typeof customEntry === "object" && "port" in customEntry && customEntry.port
-          ? customEntry.port
-          : 43;
-      const raw =
-        port === 43
-          ? await whoisQuery(tcpHost, domainToQuery, LOOKUP_TIMEOUT)
-          : await queryWhoisTcp(tcpHost, port, domainToQuery, LOOKUP_TIMEOUT);
-      if (!raw || raw.trim().length === 0) {
-        throw new Error(`No data returned from custom WHOIS server: ${tcpHost}`);
+    } else {
+      const tcpHost = getTcpHost(customEntry);
+      if (tcpHost) {
+        const port =
+          typeof customEntry === "object" &&
+          "port" in customEntry &&
+          customEntry.port
+            ? customEntry.port
+            : 43;
+        try {
+          const raw =
+            port === 43
+              ? await whoisQuery(tcpHost, domainToQuery, LOOKUP_TIMEOUT)
+              : await queryWhoisTcp(tcpHost, port, domainToQuery, LOOKUP_TIMEOUT);
+          if (raw && raw.trim().length > 0) {
+            return { raw, structured: {}, server: tcpHost };
+          }
+          if (isUserServer) {
+            throw new Error(
+              `No data returned from custom WHOIS server: ${tcpHost}`,
+            );
+          }
+        } catch (tcpErr) {
+          if (isUserServer) throw tcpErr;
+        }
       }
-      return { raw, structured: {}, server: tcpHost };
     }
   }
 
@@ -361,6 +410,10 @@ export async function lookupWhois(domain: string): Promise<WhoisResult> {
     whoisSettled.status === "fulfilled" ? whoisSettled.value : null;
   const rdapRaw = rdapData ? JSON.stringify(rdapData, null, 2) : undefined;
   const whoisRawData = whoisData?.raw || null;
+  const whoisReturnedEmpty =
+    whoisSettled.status === "fulfilled" &&
+    whoisData !== null &&
+    (!whoisData.raw || whoisData.raw.trim().length === 0);
 
   if (rdapData) {
     try {
@@ -443,11 +496,15 @@ export async function lookupWhois(domain: string): Promise<WhoisResult> {
   const isInternalError =
     /cannot read properties/i.test(whoisMsg) ||
     /cannot read properties/i.test(rdapMsg);
+  const isWhoisServerEmpty =
+    whoisReturnedEmpty && whoisData?.server && whoisData.server !== "ip-whois";
   const errMsg = isTldUnsupported
     ? "WHOIS/RDAP not available for this TLD"
     : isInternalError
       ? "No WHOIS/RDAP data found for this query"
-      : whoisMsg || rdapMsg || "Unknown error occurred";
+      : isWhoisServerEmpty
+        ? `WHOIS server (${whoisData!.server}) connected but returned no data — the server may restrict access by IP or require queries from the registry's country`
+        : whoisMsg || rdapMsg || "Unknown error occurred";
   return {
     ...(await failWithDns(errMsg)),
   };

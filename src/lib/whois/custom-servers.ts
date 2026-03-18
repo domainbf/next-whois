@@ -92,6 +92,12 @@ export function deleteCustomServer(tld: string): boolean {
   return false;
 }
 
+export function isUserManagedServer(tld: string): boolean {
+  const normalized = tld.toLowerCase().replace(/^\./, "");
+  const userServers = readCustomServers();
+  return normalized in userServers;
+}
+
 export function isHttpEntry(entry: CustomServerEntry): entry is HttpServerEntry {
   return typeof entry === "object" && entry.type === "http";
 }
