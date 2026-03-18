@@ -1239,6 +1239,120 @@ function CobeGlobe() {
   );
 }
 
+function getDomainRegistrationStatus(result: WhoisAnalyzeResult): {
+  label: string;
+  color: string;
+  dotColor: string;
+} {
+  const reservedStatuses = [
+    "reserved",
+    "reserved-delegated",
+    "server-hold",
+    "client-hold",
+  ];
+  const isReserved = result.status.some((s) =>
+    reservedStatuses.some((r) => s.status.toLowerCase().includes(r)),
+  );
+  if (isReserved) {
+    return {
+      label: "保留",
+      color: "text-amber-600 border-amber-400/50 bg-amber-50 dark:bg-amber-950/20",
+      dotColor: "bg-amber-500",
+    };
+  }
+  const hasData =
+    (result.registrar && result.registrar !== "Unknown") ||
+    (result.creationDate && result.creationDate !== "Unknown") ||
+    result.nameServers.length > 0 ||
+    result.status.length > 0;
+  if (hasData) {
+    return {
+      label: "已注册",
+      color: "text-emerald-600 border-emerald-400/50 bg-emerald-50 dark:bg-emerald-950/20",
+      dotColor: "bg-emerald-500",
+    };
+  }
+  return {
+    label: "已注册",
+    color: "text-emerald-600 border-emerald-400/50 bg-emerald-50 dark:bg-emerald-950/20",
+    dotColor: "bg-emerald-500",
+  };
+}
+
+function ResultSkeleton() {
+  return (
+    <div className="space-y-6 mt-6">
+      <div className="text-center py-4">
+        <p className="text-sm text-muted-foreground font-medium animate-pulse">
+          我知道你很急，但请你先别急
+        </p>
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="lg:col-span-8 space-y-6">
+          <div className="glass-panel border border-border rounded-xl p-6 sm:p-8 relative overflow-hidden">
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+              <div className="space-y-3 flex-1">
+                <div className="h-5 w-16 rounded-md bg-muted animate-pulse" />
+                <div className="h-9 w-48 rounded-md bg-muted animate-pulse" />
+                <div className="h-4 w-64 rounded-md bg-muted/70 animate-pulse" />
+              </div>
+              <div className="flex flex-col items-start sm:items-end gap-2">
+                <div className="h-6 w-20 rounded-full bg-muted animate-pulse" />
+                <div className="h-3 w-24 rounded-md bg-muted/60 animate-pulse" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-6 mt-8 pt-8 border-t border-border/50">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="space-y-1.5">
+                  <div className="h-3 w-20 rounded bg-muted/60 animate-pulse" />
+                  <div className="h-4 w-28 rounded bg-muted animate-pulse" />
+                  <div className="h-3 w-16 rounded bg-muted/50 animate-pulse" />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="glass-panel border border-border rounded-xl p-6">
+            <div className="h-4 w-24 rounded bg-muted/70 animate-pulse mb-4" />
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <div className="w-2 h-2 rounded-full bg-muted animate-pulse shrink-0" />
+                  <div className="h-4 w-40 rounded bg-muted animate-pulse" />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="glass-panel border border-border rounded-xl p-6">
+            <div className="h-4 w-28 rounded bg-muted/70 animate-pulse mb-4" />
+            <div className="space-y-2">
+              {[1, 2].map((i) => (
+                <div key={i} className="h-4 w-52 rounded bg-muted animate-pulse" />
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="lg:col-span-4">
+          <div className="glass-panel border border-border rounded-xl p-6 h-64 flex flex-col gap-3">
+            <div className="h-4 w-24 rounded bg-muted/70 animate-pulse" />
+            <div className="flex-1 space-y-2">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div
+                  key={i}
+                  className="h-3 rounded bg-muted/50 animate-pulse"
+                  style={{ width: `${60 + Math.random() * 35}%` }}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function LookupPage({
   data,
   target,
@@ -1375,7 +1489,9 @@ export default function LookupPage({
             <SearchHotkeysText className="mt-2 px-1 justify-end" />
           </div>
 
-          {result && (
+          {loading && <ResultSkeleton />}
+
+          {!loading && result && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -1556,7 +1672,7 @@ export default function LookupPage({
             </motion.div>
           )}
 
-          {!status && (
+          {!loading && !status && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -1707,7 +1823,7 @@ export default function LookupPage({
             </motion.div>
           )}
 
-          {status && result && (
+          {!loading && status && result && (
             <>
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -1762,13 +1878,18 @@ export default function LookupPage({
                             </Badge>
                           )
                         ) : (
-                          <Badge
-                            variant="outline"
-                            className="text-muted-foreground"
-                          >
-                            <div className="w-2 h-2 rounded-full bg-muted-foreground/50 mr-1.5" />
-                            N/A
-                          </Badge>
+                          (() => {
+                            const regStatus = getDomainRegistrationStatus(result);
+                            return (
+                              <Badge
+                                variant="outline"
+                                className={cn("font-medium", regStatus.color)}
+                              >
+                                <div className={cn("w-2 h-2 rounded-full mr-1.5", regStatus.dotColor)} />
+                                {regStatus.label}
+                              </Badge>
+                            );
+                          })()
                         )}
                         <span className="text-[10px] text-muted-foreground font-mono">
                           {time.toFixed(2)}s{data.cached && ` · ${t("cached")}`}

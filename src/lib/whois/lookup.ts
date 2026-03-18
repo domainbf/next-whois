@@ -5,6 +5,7 @@ import { analyzeWhois } from "@/lib/whois/common_parser";
 import { extractDomain } from "@/lib/utils";
 import { lookupRdap, convertRdapToWhoisResult } from "@/lib/whois/rdap_client";
 import { whoisDomain, whoisIp, whoisAsn } from "whoiser";
+import { getCustomServer } from "@/lib/whois/custom-servers";
 
 const LOOKUP_TIMEOUT = 15_000;
 
@@ -144,10 +145,13 @@ async function getLookupWhois(domain: string): Promise<WhoisRawResult> {
 
   const domainToQuery = extractDomain(domain) || domain;
   const follow = Math.min(Math.max(MAX_WHOIS_FOLLOW, 1), 2) as 1 | 2;
+  const tld = domainToQuery.split(".").slice(1).join(".");
+  const customServer = getCustomServer(tld) || getCustomServer(domainToQuery.split(".").pop() || "");
   const data = await whoisDomain(domainToQuery, {
     raw: true,
     follow,
     timeout: LOOKUP_TIMEOUT,
+    ...(customServer ? { host: customServer } : {}),
   });
 
   const servers = Object.keys(data);
