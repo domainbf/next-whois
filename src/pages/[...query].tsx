@@ -1402,7 +1402,7 @@ export default function LookupPage({
 
   const current = getWindowHref();
   const queryType = detectQueryType(target);
-  const { status, result, error, time } = data;
+  const { status, result, error, time, dnsProbe } = data;
 
   const handleSearch = (query: string) => {
     setLoading(true);
@@ -1720,6 +1720,79 @@ export default function LookupPage({
                     </Link>
                   </div>
                 </div>
+
+                {dnsProbe && (
+                  <div
+                    className={cn(
+                      "glass-panel border rounded-xl p-6",
+                      dnsProbe.registrationStatus === "registered"
+                        ? "border-emerald-400/40 bg-emerald-50/40 dark:bg-emerald-950/20"
+                        : dnsProbe.registrationStatus === "unregistered"
+                          ? "border-muted bg-muted/20"
+                          : "border-border",
+                    )}
+                  >
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                        <RiGlobalLine className="w-4 h-4" />
+                        DNS 检测结果
+                      </h3>
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          "font-medium text-xs",
+                          dnsProbe.registrationStatus === "registered"
+                            ? "text-emerald-600 border-emerald-400/50 bg-emerald-50 dark:bg-emerald-950/30"
+                            : dnsProbe.registrationStatus === "unregistered"
+                              ? "text-muted-foreground"
+                              : "text-amber-600 border-amber-400/50",
+                        )}
+                      >
+                        <div
+                          className={cn(
+                            "w-2 h-2 rounded-full mr-1.5",
+                            dnsProbe.registrationStatus === "registered"
+                              ? "bg-emerald-500"
+                              : dnsProbe.registrationStatus === "unregistered"
+                                ? "bg-muted-foreground/50"
+                                : "bg-amber-500",
+                          )}
+                        />
+                        {dnsProbe.registrationStatus === "registered"
+                          ? "已注册"
+                          : dnsProbe.registrationStatus === "unregistered"
+                            ? "未注册"
+                            : "未知"}
+                        <span className="ml-1 opacity-60 text-[10px]">
+                          ({dnsProbe.confidence === "high" ? "高置信度" : dnsProbe.confidence === "medium" ? "中置信度" : "低置信度"})
+                        </span>
+                      </Badge>
+                    </div>
+
+                    {dnsProbe.signals.length > 0 ? (
+                      <div className="space-y-2">
+                        {dnsProbe.signals.map((sig) => (
+                          <div key={sig.type} className="flex items-center gap-3 text-xs">
+                            <span className="font-mono font-bold text-[10px] uppercase px-1.5 py-0.5 rounded bg-muted text-muted-foreground w-10 text-center shrink-0">
+                              {sig.type}
+                            </span>
+                            <span className="font-mono text-foreground/80 truncate">
+                              {sig.value}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        未检测到任何 DNS 记录，该域名可能尚未注册或 DNS 未配置。
+                      </p>
+                    )}
+
+                    <p className="text-[10px] text-muted-foreground/60 mt-4 leading-relaxed">
+                      WHOIS/RDAP 查询失败，以上结果通过 DNS 解析推断，仅供参考。
+                    </p>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div className="glass-panel border border-border rounded-xl p-6">
