@@ -1680,120 +1680,151 @@ export default function LookupPage({
               className="grid grid-cols-1 lg:grid-cols-12 gap-6"
             >
               <div className="lg:col-span-8 space-y-6">
-                <div className="glass-panel border border-border rounded-xl p-8 sm:p-12 text-center">
-                  <div className="w-16 h-16 bg-red-50 dark:bg-red-950/30 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="32"
-                      height="32"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="text-red-500"
-                    >
-                      <path d="m21 21-4.3-4.3" />
-                      <circle cx="11" cy="11" r="8" />
-                      <path d="m8 8 6 6" />
-                      <path d="m14 8-6 6" />
-                    </svg>
-                  </div>
-                  <h2 className="text-2xl font-bold mb-2">
-                    {t("lookup_failed")}
-                  </h2>
-                  <p className="text-muted-foreground max-w-md mx-auto text-sm leading-relaxed mb-8">
-                    {t("lookup_failed_description")}{" "}
-                    <span className="font-mono font-medium text-foreground">
-                      {target}
-                    </span>
-                    {". "}
-                    {error || t("lookup_failed_fallback")}
-                  </p>
-                  <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-                    <Button onClick={() => handleSearch(target)}>
-                      {t("try_again")}
-                    </Button>
-                    <Link href="/">
-                      <Button variant="outline">{t("new_search")}</Button>
-                    </Link>
-                  </div>
-                </div>
+                {dnsProbe?.registrationStatus === "registered" ? (
+                  <>
+                    <div className="glass-panel border border-emerald-400/40 bg-emerald-50/30 dark:bg-emerald-950/20 rounded-xl p-6 sm:p-8 relative overflow-hidden">
+                      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                        <div>
+                          <div className="flex items-center gap-3 mb-2">
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] font-bold uppercase tracking-wider font-mono"
+                            >
+                              {queryType}
+                            </Badge>
+                          </div>
+                          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight mb-1">
+                            {target}
+                          </h2>
+                          <p className="text-muted-foreground text-sm mt-2 max-w-sm leading-relaxed">
+                            该域名已注册，但注册机构未提供公开的 WHOIS/RDAP 查询服务，无法获取详细注册信息。
+                          </p>
+                        </div>
+                        <div className="flex flex-col items-start sm:items-end gap-2 shrink-0">
+                          <Badge
+                            variant="outline"
+                            className="text-emerald-600 border-emerald-400/50 bg-emerald-50 dark:bg-emerald-950/30 font-medium"
+                          >
+                            <div className="w-2 h-2 rounded-full bg-emerald-500 mr-1.5" />
+                            已注册
+                          </Badge>
+                          <span className="text-[10px] text-muted-foreground font-mono">
+                            {time.toFixed(2)}s · DNS 检测
+                          </span>
+                        </div>
+                      </div>
 
-                {dnsProbe && (
-                  <div
-                    className={cn(
-                      "glass-panel border rounded-xl p-6",
-                      dnsProbe.registrationStatus === "registered"
-                        ? "border-emerald-400/40 bg-emerald-50/40 dark:bg-emerald-950/20"
-                        : dnsProbe.registrationStatus === "unregistered"
-                          ? "border-muted bg-muted/20"
-                          : "border-border",
-                    )}
-                  >
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                        <RiGlobalLine className="w-4 h-4" />
-                        DNS 检测结果
-                      </h3>
-                      <Badge
-                        variant="outline"
-                        className={cn(
-                          "font-medium text-xs",
-                          dnsProbe.registrationStatus === "registered"
-                            ? "text-emerald-600 border-emerald-400/50 bg-emerald-50 dark:bg-emerald-950/30"
-                            : dnsProbe.registrationStatus === "unregistered"
-                              ? "text-muted-foreground"
-                              : "text-amber-600 border-amber-400/50",
-                        )}
-                      >
-                        <div
-                          className={cn(
-                            "w-2 h-2 rounded-full mr-1.5",
-                            dnsProbe.registrationStatus === "registered"
-                              ? "bg-emerald-500"
-                              : dnsProbe.registrationStatus === "unregistered"
-                                ? "bg-muted-foreground/50"
-                                : "bg-amber-500",
-                          )}
-                        />
-                        {dnsProbe.registrationStatus === "registered"
-                          ? "已注册"
-                          : dnsProbe.registrationStatus === "unregistered"
-                            ? "未注册"
-                            : "未知"}
-                        <span className="ml-1 opacity-60 text-[10px]">
-                          ({dnsProbe.confidence === "high" ? "高置信度" : dnsProbe.confidence === "medium" ? "中置信度" : "低置信度"})
-                        </span>
-                      </Badge>
+                      <div className="mt-6 pt-6 border-t border-emerald-400/20">
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-3">
+                          DNS 检测信号
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {dnsProbe.signals.map((sig) => (
+                            <div
+                              key={sig.type}
+                              className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border bg-background/60 text-xs"
+                            >
+                              <span className="font-mono font-bold text-[10px] uppercase text-muted-foreground w-8 shrink-0">
+                                {sig.type}
+                              </span>
+                              <span className="font-mono text-foreground/80 truncate max-w-[200px]">
+                                {sig.value}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                        <p className="text-[10px] text-muted-foreground/50 mt-4">
+                          以上信息通过 DNS 解析获取，非官方 WHOIS 数据，仅供参考。
+                        </p>
+                      </div>
                     </div>
 
-                    {dnsProbe.signals.length > 0 ? (
-                      <div className="space-y-2">
-                        {dnsProbe.signals.map((sig) => (
-                          <div key={sig.type} className="flex items-center gap-3 text-xs">
-                            <span className="font-mono font-bold text-[10px] uppercase px-1.5 py-0.5 rounded bg-muted text-muted-foreground w-10 text-center shrink-0">
-                              {sig.type}
-                            </span>
-                            <span className="font-mono text-foreground/80 truncate">
-                              {sig.value}
-                            </span>
-                          </div>
-                        ))}
+                    <div className="flex gap-3">
+                      <Button variant="outline" size="sm" onClick={() => handleSearch(target)}>
+                        重新查询
+                      </Button>
+                      <Link href="/">
+                        <Button variant="outline" size="sm">{t("new_search")}</Button>
+                      </Link>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="glass-panel border border-border rounded-xl p-8 sm:p-12 text-center">
+                      <div className="w-16 h-16 bg-red-50 dark:bg-red-950/30 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="32"
+                          height="32"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className="text-red-500"
+                        >
+                          <path d="m21 21-4.3-4.3" />
+                          <circle cx="11" cy="11" r="8" />
+                          <path d="m8 8 6 6" />
+                          <path d="m14 8-6 6" />
+                        </svg>
                       </div>
-                    ) : (
-                      <p className="text-xs text-muted-foreground">
-                        未检测到任何 DNS 记录，该域名可能尚未注册或 DNS 未配置。
+                      <h2 className="text-2xl font-bold mb-2">
+                        {t("lookup_failed")}
+                      </h2>
+                      <p className="text-muted-foreground max-w-md mx-auto text-sm leading-relaxed mb-8">
+                        {t("lookup_failed_description")}{" "}
+                        <span className="font-mono font-medium text-foreground">
+                          {target}
+                        </span>
+                        {". "}
+                        {error || t("lookup_failed_fallback")}
                       </p>
-                    )}
+                      <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                        <Button onClick={() => handleSearch(target)}>
+                          {t("try_again")}
+                        </Button>
+                        <Link href="/">
+                          <Button variant="outline">{t("new_search")}</Button>
+                        </Link>
+                      </div>
+                    </div>
 
-                    <p className="text-[10px] text-muted-foreground/60 mt-4 leading-relaxed">
-                      WHOIS/RDAP 查询失败，以上结果通过 DNS 解析推断，仅供参考。
-                    </p>
-                  </div>
+                    {dnsProbe && (
+                      <div
+                        className={cn(
+                          "glass-panel border rounded-xl p-6",
+                          dnsProbe.registrationStatus === "unregistered"
+                            ? "border-muted bg-muted/20"
+                            : "border-border",
+                        )}
+                      >
+                        <div className="flex items-center justify-between mb-3">
+                          <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                            <RiGlobalLine className="w-4 h-4" />
+                            DNS 检测结果
+                          </h3>
+                          <Badge
+                            variant="outline"
+                            className="text-muted-foreground text-xs"
+                          >
+                            <div className="w-2 h-2 rounded-full bg-muted-foreground/50 mr-1.5" />
+                            {dnsProbe.registrationStatus === "unregistered" ? "未注册" : "未知"}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          未检测到任何 DNS 记录，该域名可能尚未注册或 DNS 未配置。
+                        </p>
+                        <p className="text-[10px] text-muted-foreground/50 mt-3">
+                          WHOIS/RDAP 查询失败，以上结果通过 DNS 解析推断，仅供参考。
+                        </p>
+                      </div>
+                    )}
+                  </>
                 )}
 
+                {dnsProbe?.registrationStatus !== "registered" && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div className="glass-panel border border-border rounded-xl p-6">
                     <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-4 flex items-center gap-2">
@@ -1873,6 +1904,7 @@ export default function LookupPage({
                     </div>
                   </div>
                 </div>
+                )}
               </div>
 
               <div className="lg:col-span-4">
