@@ -8,8 +8,101 @@ import moment from "moment";
 import { getMozMetrics } from "@/lib/moz/client";
 import { getDomainPricing } from "@/lib/pricing/client";
 
+const HTML_ENTITIES: Record<string, string> = {
+  "&amp;": "&",
+  "&lt;": "<",
+  "&gt;": ">",
+  "&quot;": '"',
+  "&apos;": "'",
+  "&nbsp;": " ",
+  "&eacute;": "é",
+  "&Eacute;": "É",
+  "&egrave;": "è",
+  "&Egrave;": "È",
+  "&ecirc;": "ê",
+  "&Ecirc;": "Ê",
+  "&euml;": "ë",
+  "&aacute;": "á",
+  "&Aacute;": "Á",
+  "&agrave;": "à",
+  "&Agrave;": "À",
+  "&acirc;": "â",
+  "&Acirc;": "Â",
+  "&auml;": "ä",
+  "&Auml;": "Ä",
+  "&aring;": "å",
+  "&Aring;": "Å",
+  "&oacute;": "ó",
+  "&Oacute;": "Ó",
+  "&ograve;": "ò",
+  "&ocirc;": "ô",
+  "&ouml;": "ö",
+  "&Ouml;": "Ö",
+  "&uacute;": "ú",
+  "&ugrave;": "ù",
+  "&uuml;": "ü",
+  "&Uuml;": "Ü",
+  "&iacute;": "í",
+  "&igrave;": "ì",
+  "&icirc;": "î",
+  "&iuml;": "ï",
+  "&ccedil;": "ç",
+  "&Ccedil;": "Ç",
+  "&ntilde;": "ñ",
+  "&Ntilde;": "Ñ",
+  "&szlig;": "ß",
+  "&aelig;": "æ",
+  "&AElig;": "Æ",
+  "&oslash;": "ø",
+  "&Oslash;": "Ø",
+  "&eth;": "ð",
+  "&thorn;": "þ",
+  "&laquo;": "«",
+  "&raquo;": "»",
+  "&copy;": "©",
+  "&reg;": "®",
+  "&trade;": "™",
+  "&mdash;": "—",
+  "&ndash;": "–",
+  "&hellip;": "…",
+};
+
+function decodeHtmlEntities(str: string): string {
+  if (!str || !str.includes("&")) return str;
+  let result = str;
+  for (const [entity, char] of Object.entries(HTML_ENTITIES)) {
+    result = result.split(entity).join(char);
+  }
+  result = result.replace(/&#(\d+);/g, (_, code) =>
+    String.fromCharCode(parseInt(code, 10)),
+  );
+  result = result.replace(/&#x([0-9a-fA-F]+);/g, (_, hex) =>
+    String.fromCharCode(parseInt(hex, 16)),
+  );
+  return result;
+}
+
+function cleanFieldValue(value: string): string {
+  if (!value) return value;
+  let cleaned = value.trim();
+  cleaned = decodeHtmlEntities(cleaned);
+  cleaned = cleaned.replace(/^[\s\u00a0\u2022\u00b7·\-]+/, "").trim();
+  cleaned = cleaned.replace(/^\.{3,}\s*/, "").trim();
+  return cleaned;
+}
+
+function isRedactedValue(value: string): boolean {
+  if (!value) return false;
+  const dotRatio = (value.match(/\./g) || []).length / value.length;
+  if (dotRatio > 0.5 && value.length > 5) return true;
+  if (/^[.\s]+$/.test(value)) return true;
+  if (/REDACTED|WITHHELD|PRIVACY|NOT DISCLOSED/i.test(value)) return true;
+  return false;
+}
+
 function analyzeDomainStatus(status: string): DomainStatusProps {
-  const segments = status.split(" ");
+  const cleaned = cleanFieldValue(status);
+  const segments = cleaned.split(" ");
   let url = segments.slice(1).join(" ");
 
   url.startsWith("(") && url.endsWith(")") && (url = url.slice(1, -1));
@@ -95,7 +188,7 @@ export async function analyzeWhois(data: string): Promise<WhoisAnalyzeResult> {
     const bracketMatch = line.match(/^(?:[a-z]\.\s*)?\[(.+?)\]\s+(.+)/);
     if (bracketMatch) {
       key = bracketMatch[1].trim().toLowerCase();
-      value = bracketMatch[2].trim();
+      value = cleanFieldValue(bracketMatch[2].trim());
     } else {
       let segments = line.split(":");
       if (segments.length < 2) continue;
@@ -103,8 +196,10 @@ export async function analyzeWhois(data: string): Promise<WhoisAnalyzeResult> {
         segments = segments.slice(1);
       }
       key = segments[0].trim().toLowerCase();
-      value = segments.slice(1).join(":").trim();
+      value = cleanFieldValue(segments.slice(1).join(":").trim());
     }
+
+    if (!value) continue;
 
     switch (key) {
       case "domain name":
@@ -183,65 +278,71 @@ export async function analyzeWhois(data: string): Promise<WhoisAnalyzeResult> {
         result.nameServers.push(value.split(/\s+/)[0]);
         break;
       case "registrant name":
-        result.registrantOrganization = value;
+        if (!isRedactedValue(value)) result.registrantOrganization = value;
         break;
       case "registrant organization":
-        result.registrantOrganization = value;
+        if (!isRedactedValue(value)) result.registrantOrganization = value;
         break;
       case "organization":
-        result.registrantOrganization = value;
+        if (!isRedactedValue(value)) result.registrantOrganization = value;
         break;
       case "organisation":
-        result.registrantOrganization = value;
+        if (!isRedactedValue(value)) result.registrantOrganization = value;
         break;
       case "org-name":
-        result.registrantOrganization = value;
+        if (!isRedactedValue(value)) result.registrantOrganization = value;
         break;
       case "registrant":
-        result.registrantOrganization = value;
+        if (!isRedactedValue(value)) result.registrantOrganization = value;
         break;
       case "descr":
-        result.registrantOrganization === "Unknown" &&
-          (result.registrantOrganization = value);
+        if (
+          !isRedactedValue(value) &&
+          result.registrantOrganization === "Unknown"
+        )
+          result.registrantOrganization = value;
         break;
       case "registrant state/province":
-        result.registrantProvince = value;
+        if (!isRedactedValue(value)) result.registrantProvince = value;
         break;
       case "city":
-        result.registrantProvince = value;
+        if (!isRedactedValue(value)) result.registrantProvince = value;
         break;
       case "registrant country":
-        result.registrantCountry = value;
+        if (!isRedactedValue(value)) result.registrantCountry = value;
         break;
       case "country":
-        result.registrantCountry = value;
+        if (!isRedactedValue(value)) result.registrantCountry = value;
         break;
       case "registrant phone":
-        result.registrantPhone = value.replace("tel:", "").replace(".", " ");
+        if (!isRedactedValue(value))
+          result.registrantPhone = value.replace("tel:", "").trim();
         break;
       case "registrar abuse contact phone":
       case "ac phone number":
-        result.registrantPhone = value.replace("tel:", "").replace(".", " ");
+        if (!isRedactedValue(value))
+          result.registrantPhone = value.replace("tel:", "").trim();
         break;
       case "orgtechphone":
-        result.registrantPhone = value;
+        if (!isRedactedValue(value)) result.registrantPhone = value;
         break;
       case "registrant email":
-        result.registrantEmail = value.replace(
-          "Select Request Email Form at ",
-          "",
-        );
+        if (!isRedactedValue(value))
+          result.registrantEmail = value.replace(
+            "Select Request Email Form at ",
+            "",
+          );
         break;
       case "dnssec":
         result.dnssec = value;
         break;
       case "email":
       case "ac e-mail":
-        result.registrantEmail = value;
+        if (!isRedactedValue(value)) result.registrantEmail = value;
         break;
       case "e-mail":
-        result.registrantEmail === "Unknown" &&
-          (result.registrantEmail = value);
+        if (!isRedactedValue(value) && result.registrantEmail === "Unknown")
+          result.registrantEmail = value;
         break;
       case "cidr":
         result.cidr = value;
@@ -281,12 +382,14 @@ export async function analyzeWhois(data: string): Promise<WhoisAnalyzeResult> {
       result.registrar = value;
     } else if (
       includeArgs(key, "contact email") &&
-      result.registrantEmail === "Unknown"
+      result.registrantEmail === "Unknown" &&
+      !isRedactedValue(value)
     ) {
       result.registrantEmail = value;
     } else if (
       includeArgs(key, "contact phone") &&
-      result.registrantPhone === "Unknown"
+      result.registrantPhone === "Unknown" &&
+      !isRedactedValue(value)
     ) {
       result.registrantPhone = value;
     } else if (
@@ -321,7 +424,8 @@ export async function analyzeWhois(data: string): Promise<WhoisAnalyzeResult> {
       result.updatedDate = analyzeTime(value);
     } else if (
       includeArgs(key, "account name", "registrant org") &&
-      result.registrantOrganization === "Unknown"
+      result.registrantOrganization === "Unknown" &&
+      !isRedactedValue(value)
     ) {
       result.registrantOrganization = value;
     }
