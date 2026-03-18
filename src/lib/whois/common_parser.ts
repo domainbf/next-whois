@@ -231,6 +231,10 @@ export async function analyzeWhois(data: string): Promise<WhoisAnalyzeResult> {
         break;
       case "updated date":
       case "last updated date":
+      case "last modified":
+      case "last-modified":
+      case "modification date":
+      case "modified":
         result.updatedDate = analyzeTime(value);
         break;
       case "changed":
@@ -238,12 +242,23 @@ export async function analyzeWhois(data: string): Promise<WhoisAnalyzeResult> {
         break;
       case "creation date":
       case "registered date":
+      case "activation":
+      case "activation date":
+      case "registered on":
+      case "date registered":
+      case "domain registered":
         result.creationDate = analyzeTime(value);
         break;
       case "domain name commencement date":
         result.creationDate = analyzeTime(value);
         break;
       case "expiration date":
+      case "expiration":
+      case "valid until":
+      case "paid-till":
+      case "expires on":
+      case "expire date":
+      case "expire":
         result.expirationDate = analyzeTime(value);
         break;
       case "registrar registration expiration date":
@@ -268,8 +283,10 @@ export async function analyzeWhois(data: string): Promise<WhoisAnalyzeResult> {
         result.status.push(analyzeDomainStatus(value));
         break;
       case "name server":
+      case "name server (db)":
       case "host name":
-        result.nameServers.push(value);
+      case "nameserver":
+        result.nameServers.push(value.split(/\s+/)[0]);
         break;
       case "nameservers":
         result.nameServers.push(value);
@@ -438,6 +455,14 @@ export async function analyzeWhois(data: string): Promise<WhoisAnalyzeResult> {
     newStatus.push(status);
   }
   result.status = newStatus;
+
+  const seenNS = new Set<string>();
+  result.nameServers = result.nameServers.filter((ns) => {
+    const key = ns.toLowerCase().trim();
+    if (!key || seenNS.has(key)) return false;
+    seenNS.add(key);
+    return true;
+  });
 
   return await applyParams(result);
 }

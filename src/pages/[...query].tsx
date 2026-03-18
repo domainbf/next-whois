@@ -8,6 +8,7 @@ import {
   useSaver,
 } from "@/lib/utils";
 import { GetServerSidePropsContext } from "next";
+import { useRouter } from "next/router";
 import { getOrigin } from "@/lib/seo";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
@@ -1363,8 +1364,22 @@ export default function LookupPage({
   origin: string;
 }) {
   const { t, locale } = useTranslation();
+  const router = useRouter();
   const [loading, setLoading] = React.useState(false);
   const [expandStatus, setExpandStatus] = React.useState(false);
+
+  useEffect(() => {
+    const handleStart = () => setLoading(true);
+    const handleComplete = () => setLoading(false);
+    router.events.on("routeChangeStart", handleStart);
+    router.events.on("routeChangeComplete", handleComplete);
+    router.events.on("routeChangeError", handleComplete);
+    return () => {
+      router.events.off("routeChangeStart", handleStart);
+      router.events.off("routeChangeComplete", handleComplete);
+      router.events.off("routeChangeError", handleComplete);
+    };
+  }, [router]);
   const [showImagePreview, setShowImagePreview] = React.useState(false);
   const [imgWidth, setImgWidth] = React.useState(1200);
   const [imgHeight, setImgHeight] = React.useState(630);
@@ -1405,8 +1420,7 @@ export default function LookupPage({
   const { status, result, error, time, dnsProbe } = data;
 
   const handleSearch = (query: string) => {
-    setLoading(true);
-    window.location.href = toSearchURI(query);
+    router.push(toSearchURI(query));
   };
 
   useEffect(() => {
