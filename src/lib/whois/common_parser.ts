@@ -141,7 +141,31 @@ const DATE_FORMATS = [
   "ddd, DD MMM YYYY HH:mm:ss ZZ",
   "DD/MM/YYYY HH:mm:ss",
   "DD/MM/YYYY",
+  "D MMM YYYY",
+  "YYYY-MM-DD HH:mm:ss UTC",
+  "YYYY-MM-DDZ",
+  "MM-DD-YYYY",
+  "YYYY MM DD",
+  "D/M/YYYY",
+  "D.M.YYYY",
 ];
+
+const DATE_REGEX = /\b(\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}:\d{2}(?:[+-]\d{2}:?\d{2}|Z)?)?|\d{2}[.\/\-]\d{2}[.\/\-]\d{4}(?:\s+\d{2}:\d{2}(?::\d{2})?)?|\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+\d{4}|\d{4}[.\/]\d{2}[.\/]\d{2})\b/i;
+
+function extractDateNearKeyword(raw: string, keywords: string[]): string {
+  const lines = raw.split("\n");
+  for (const line of lines) {
+    const lower = line.toLowerCase();
+    const hasKeyword = keywords.some((kw) => lower.includes(kw));
+    if (!hasKeyword) continue;
+    const m = line.match(DATE_REGEX);
+    if (m) {
+      const parsed = analyzeTime(m[1]);
+      if (parsed && parsed !== m[1]) return parsed;
+    }
+  }
+  return "";
+}
 
 function analyzeTime(time: string): string {
   if (!time || time.length === 0) return time;
@@ -254,12 +278,21 @@ export async function analyzeWhois(data: string): Promise<WhoisAnalyzeResult> {
     switch (key) {
       case "domain name":
       case "domain":
-        result.domain = value;
+      case "domain name (ascii)":
+      case "domain name (unicode)":
+      case "nom de domaine":
+      case "domaine":
+        result.domain = result.domain || value;
         break;
       case "registrar":
       case "authorized agency":
       case "sponsoring registrar":
-        result.registrar = value;
+      case "registrar name":
+      case "registrant registrar":
+      case "registration service provider":
+      case "enregistreur":
+      case "bureau d'enregistrement":
+        result.registrar = result.registrar === "Unknown" ? value : result.registrar;
         break;
       case "registrar url":
         result.registrarURL = value;
@@ -292,12 +325,20 @@ export async function analyzeWhois(data: string): Promise<WhoisAnalyzeResult> {
       case "updated on":
       case "modified on":
       case "date de mise a jour":
+      case "date de mise à jour":
       case "zuletzt geaendert am":
       case "updated (utc)":
-        result.updatedDate = analyzeTime(value);
+      case "last-update":
+      case "updated":
+      case "last changed":
+      case "changed on":
+      case "modifié le":
+      case "fecha de modificacion":
+      case "actualizado":
+        if (result.updatedDate === "Unknown") result.updatedDate = analyzeTime(value);
         break;
       case "changed":
-        result.updatedDate = analyzeTime(value);
+        if (result.updatedDate === "Unknown") result.updatedDate = analyzeTime(value);
         break;
       case "creation date":
       case "registered date":
@@ -312,19 +353,37 @@ export async function analyzeWhois(data: string): Promise<WhoisAnalyzeResult> {
       case "registration date":
       case "registration time":
       case "date de creation":
+      case "date de création":
       case "registriert am":
       case "datum registracije":
       case "created (utc)":
       case "created date (utc)":
-        result.creationDate = analyzeTime(value);
+      case "reg date":
+      case "create date":
+      case "entry created":
+      case "domain registration date":
+      case "first registered":
+      case "registered":
+      case "register date":
+      case "start date":
+      case "date d'enregistrement":
+      case "enregistré le":
+      case "fecha de registro":
+      case "fecha de creacion":
+      case "fecha creacion":
+      case "criado em":
+      case "data de registro":
+      case "anniversary":
+        if (result.creationDate === "Unknown") result.creationDate = analyzeTime(value);
         break;
       case "domain name commencement date":
-        result.creationDate = analyzeTime(value);
+        if (result.creationDate === "Unknown") result.creationDate = analyzeTime(value);
         break;
       case "expiration date":
       case "expiration":
       case "valid until":
       case "paid-till":
+      case "paid till":
       case "expires on":
       case "expire date":
       case "expire":
@@ -333,17 +392,31 @@ export async function analyzeWhois(data: string): Promise<WhoisAnalyzeResult> {
       case "expiry":
       case "registry expiration date":
       case "date expiration":
+      case "date d'expiration":
       case "ablaufdatum":
       case "expires (utc)":
       case "expiration date (utc)":
       case "renewal date":
-        result.expirationDate = analyzeTime(value);
+      case "due date":
+      case "valid-date":
+      case "expire-date":
+      case "expiration-date":
+      case "end date":
+      case "domain expiration date":
+      case "fecha de vencimiento":
+      case "fecha expiracion":
+      case "fecha de expiracion":
+      case "validade":
+      case "vence em":
+      case "ablauf":
+      case "laufzeit bis":
+        if (result.expirationDate === "Unknown") result.expirationDate = analyzeTime(value);
         break;
       case "registrar registration expiration date":
-        result.expirationDate = analyzeTime(value);
+        if (result.expirationDate === "Unknown") result.expirationDate = analyzeTime(value);
         break;
       case "registry expiry date":
-        result.expirationDate = analyzeTime(value);
+        if (result.expirationDate === "Unknown") result.expirationDate = analyzeTime(value);
         break;
       case "state": {
         const expiryMatch = value.match(/\((\d{4}\/\d{2}\/\d{2})\)/);
@@ -547,11 +620,35 @@ export async function analyzeWhois(data: string): Promise<WhoisAnalyzeResult> {
 
   const seenNS = new Set<string>();
   result.nameServers = result.nameServers.filter((ns) => {
-    const key = ns.toLowerCase().trim();
-    if (!key || seenNS.has(key)) return false;
-    seenNS.add(key);
+    const nsKey = ns.toLowerCase().trim();
+    if (!nsKey || seenNS.has(nsKey)) return false;
+    seenNS.add(nsKey);
     return true;
   });
+
+  if (result.creationDate === "Unknown") {
+    const fallback = extractDateNearKeyword(data, [
+      "creat", "registered", "activation", "anniversary", "inception",
+      "enregistr", "registro", "criado",
+    ]);
+    if (fallback) result.creationDate = fallback;
+  }
+
+  if (result.expirationDate === "Unknown") {
+    const fallback = extractDateNearKeyword(data, [
+      "expir", "valid until", "paid-till", "paid till", "renewal",
+      "due date", "venc", "ablauf", "validade",
+    ]);
+    if (fallback) result.expirationDate = fallback;
+  }
+
+  if (result.updatedDate === "Unknown") {
+    const fallback = extractDateNearKeyword(data, [
+      "updated", "modified", "last change", "last update", "mise à jour",
+      "mise a jour", "modificat", "actualiz",
+    ]);
+    if (fallback) result.updatedDate = fallback;
+  }
 
   return await applyParams(result);
 }
