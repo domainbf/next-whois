@@ -32,7 +32,16 @@ import {
   RiDownloadLine,
   RiServerLine,
   RiGlobalLine,
+  RiBanLine,
+  RiLockLine,
+  RiPauseCircleLine,
+  RiScalesLine,
+  RiLoopLeftLine,
+  RiDeleteBin2Line,
+  RiCheckLine,
+  RiShoppingCartLine,
 } from "@remixicon/react";
+import { getTopRegistrars, DomainPricing } from "@/lib/pricing/client";
 import React, { useEffect, useMemo } from "react";
 import { addHistory, detectQueryType } from "@/lib/history";
 import { Badge } from "@/components/ui/badge";
@@ -1250,12 +1259,27 @@ type RegistrationStatusType =
   | "redemption"
   | "pending-delete";
 
-function getDomainRegistrationStatus(result: WhoisAnalyzeResult): {
+const STATUS_LABELS: Record<RegistrationStatusType, { zh: string; en: string }> = {
+  registered: { zh: "已注册", en: "Registered" },
+  available: { zh: "未注册", en: "Available" },
+  reserved: { zh: "保留域名", en: "Reserved" },
+  prohibited: { zh: "禁止注册", en: "Prohibited" },
+  hold: { zh: "暂停", en: "On Hold" },
+  dispute: { zh: "争议中", en: "In Dispute" },
+  redemption: { zh: "赎回期", en: "Redemption" },
+  "pending-delete": { zh: "待删除", en: "Pending Delete" },
+};
+
+function getDomainRegistrationStatus(
+  result: WhoisAnalyzeResult,
+  locale = "en",
+): {
   type: RegistrationStatusType;
   label: string;
   color: string;
   dotColor: string;
 } {
+  const isZh = locale.startsWith("zh");
   const allStatusText = result.status
     .map((s) => s.status.toLowerCase())
     .join(" ");
@@ -1267,87 +1291,59 @@ function getDomainRegistrationStatus(result: WhoisAnalyzeResult): {
     allStatusText.includes("not-available") ||
     allStatusText.includes("ineligible");
 
-  if (isProhibited) {
-    return {
-      type: "prohibited",
-      label: "禁止注册",
-      color: "text-red-600 border-red-400/50 bg-red-50 dark:bg-red-950/20",
-      dotColor: "bg-red-500",
-    };
+  function makeStatus(
+    type: RegistrationStatusType,
+    color: string,
+    dotColor: string,
+  ) {
+    return { type, label: isZh ? STATUS_LABELS[type].zh : STATUS_LABELS[type].en, color, dotColor };
   }
+
+  if (isProhibited)
+    return makeStatus("prohibited", "text-red-600 border-red-400/50 bg-red-50 dark:bg-red-950/20", "bg-red-500");
 
   const isReserved =
     allStatusText.includes("reserved") ||
     allStatusText.includes("reserved-delegated") ||
     allStatusText.includes("registry-hold");
 
-  if (isReserved) {
-    return {
-      type: "reserved",
-      label: "保留域名",
-      color: "text-amber-600 border-amber-400/50 bg-amber-50 dark:bg-amber-950/20",
-      dotColor: "bg-amber-500",
-    };
-  }
+  if (isReserved)
+    return makeStatus("reserved", "text-amber-600 border-amber-400/50 bg-amber-50 dark:bg-amber-950/20", "bg-amber-500");
 
   const isRedemption =
     allStatusText.includes("redemptionperiod") ||
     allStatusText.includes("redemption period");
 
-  if (isRedemption) {
-    return {
-      type: "redemption",
-      label: "赎回期",
-      color: "text-purple-600 border-purple-400/50 bg-purple-50 dark:bg-purple-950/20",
-      dotColor: "bg-purple-500",
-    };
-  }
+  if (isRedemption)
+    return makeStatus("redemption", "text-purple-600 border-purple-400/50 bg-purple-50 dark:bg-purple-950/20", "bg-purple-500");
 
   const isPendingDelete =
     allStatusText.includes("pendingdelete") ||
     allStatusText.includes("pending delete") ||
     allStatusText.includes("pending-delete");
 
-  if (isPendingDelete) {
-    return {
-      type: "pending-delete",
-      label: "待删除",
-      color: "text-slate-600 border-slate-400/50 bg-slate-50 dark:bg-slate-950/20",
-      dotColor: "bg-slate-500",
-    };
-  }
+  if (isPendingDelete)
+    return makeStatus("pending-delete", "text-slate-600 border-slate-400/50 bg-slate-50 dark:bg-slate-950/20", "bg-slate-500");
 
   const isHold =
     (allStatusText.includes("server-hold") ||
       allStatusText.includes("client-hold")) &&
     !allStatusText.includes("ok");
 
-  if (isHold) {
-    return {
-      type: "hold",
-      label: "暂停",
-      color: "text-orange-600 border-orange-400/50 bg-orange-50 dark:bg-orange-950/20",
-      dotColor: "bg-orange-500",
-    };
-  }
+  if (isHold)
+    return makeStatus("hold", "text-orange-600 border-orange-400/50 bg-orange-50 dark:bg-orange-950/20", "bg-orange-500");
 
   const isDispute =
     allStatusText.includes("dispute") ||
     allStatusText.includes("udrp") ||
     allStatusText.includes("locked-udrp");
 
-  if (isDispute) {
-    return {
-      type: "dispute",
-      label: "争议中",
-      color: "text-rose-600 border-rose-400/50 bg-rose-50 dark:bg-rose-950/20",
-      dotColor: "bg-rose-500",
-    };
-  }
+  if (isDispute)
+    return makeStatus("dispute", "text-rose-600 border-rose-400/50 bg-rose-50 dark:bg-rose-950/20", "bg-rose-500");
 
   return {
-    type: "registered",
-    label: "已注册",
+    type: "registered" as RegistrationStatusType,
+    label: isZh ? STATUS_LABELS.registered.zh : STATUS_LABELS.registered.en,
     color: "text-emerald-600 border-emerald-400/50 bg-emerald-50 dark:bg-emerald-950/20",
     dotColor: "bg-emerald-500",
   };
@@ -1356,9 +1352,11 @@ function getDomainRegistrationStatus(result: WhoisAnalyzeResult): {
 const STATUS_INFO: Record<
   RegistrationStatusType,
   {
-    icon: string;
-    title: string;
-    desc: string;
+    icon: React.ReactNode;
+    titleZh: string;
+    titleEn: string;
+    descZh: string;
+    descEn: string;
     border: string;
     bg: string;
     iconBg: string;
@@ -1368,9 +1366,11 @@ const STATUS_INFO: Record<
   }
 > = {
   prohibited: {
-    icon: "🚫",
-    title: "禁止注册域名",
-    desc: "该域名被注册局标记为禁止注册字符串，无法通过任何常规渠道注册。通常为政策性保护词汇或敏感字符串。",
+    icon: <RiBanLine className="w-5 h-5" />,
+    titleZh: "禁止注册域名",
+    titleEn: "Prohibited Domain",
+    descZh: "该域名被注册局标记为禁止注册字符串，无法通过任何常规渠道注册。通常为政策性保护词汇或敏感字符串。",
+    descEn: "This domain is marked as a prohibited string by the registry and cannot be registered through any conventional channel.",
     border: "border-red-300/60 dark:border-red-800/50",
     bg: "bg-gradient-to-r from-red-50/80 to-red-50/30 dark:from-red-950/30 dark:to-transparent",
     iconBg: "bg-red-100 dark:bg-red-900/40",
@@ -1379,9 +1379,11 @@ const STATUS_INFO: Record<
     descText: "text-red-700/80 dark:text-red-400/70",
   },
   reserved: {
-    icon: "🔒",
-    title: "保留域名",
-    desc: "该域名为注册局保留域名，由官方机构专用或预留，暂不向公众开放注册。",
+    icon: <RiLockLine className="w-5 h-5" />,
+    titleZh: "保留域名",
+    titleEn: "Reserved Domain",
+    descZh: "该域名为注册局保留域名，由官方机构专用或预留，暂不向公众开放注册。",
+    descEn: "This domain is reserved by the registry for official use and is not available for public registration.",
     border: "border-amber-300/60 dark:border-amber-800/50",
     bg: "bg-gradient-to-r from-amber-50/80 to-amber-50/30 dark:from-amber-950/30 dark:to-transparent",
     iconBg: "bg-amber-100 dark:bg-amber-900/40",
@@ -1390,9 +1392,11 @@ const STATUS_INFO: Record<
     descText: "text-amber-700/80 dark:text-amber-400/70",
   },
   hold: {
-    icon: "⏸",
-    title: "域名暂停",
-    desc: "该域名当前处于暂停状态（Server Hold / Client Hold），可能由于违规行为、未付款或争议被暂时锁定，无法正常解析。",
+    icon: <RiPauseCircleLine className="w-5 h-5" />,
+    titleZh: "域名暂停",
+    titleEn: "Domain On Hold",
+    descZh: "该域名当前处于暂停状态（Server Hold / Client Hold），可能由于违规行为、未付款或争议被暂时锁定，无法正常解析。",
+    descEn: "This domain is currently on hold (Server Hold / Client Hold) and cannot resolve normally. This is usually due to a policy violation, non-payment, or dispute.",
     border: "border-orange-300/60 dark:border-orange-800/50",
     bg: "bg-gradient-to-r from-orange-50/80 to-orange-50/30 dark:from-orange-950/30 dark:to-transparent",
     iconBg: "bg-orange-100 dark:bg-orange-900/40",
@@ -1401,9 +1405,11 @@ const STATUS_INFO: Record<
     descText: "text-orange-700/80 dark:text-orange-400/70",
   },
   dispute: {
-    icon: "⚖️",
-    title: "域名争议",
-    desc: "该域名正处于 UDRP 争议程序或其他争议处理中，当前处于锁定状态，等待仲裁结果。",
+    icon: <RiScalesLine className="w-5 h-5" />,
+    titleZh: "域名争议",
+    titleEn: "Domain Dispute",
+    descZh: "该域名正处于 UDRP 争议程序或其他争议处理中，当前处于锁定状态，等待仲裁结果。",
+    descEn: "This domain is currently undergoing a UDRP dispute or other legal proceedings and is locked pending arbitration.",
     border: "border-rose-300/60 dark:border-rose-800/50",
     bg: "bg-gradient-to-r from-rose-50/80 to-rose-50/30 dark:from-rose-950/30 dark:to-transparent",
     iconBg: "bg-rose-100 dark:bg-rose-900/40",
@@ -1412,9 +1418,11 @@ const STATUS_INFO: Record<
     descText: "text-rose-700/80 dark:text-rose-400/70",
   },
   redemption: {
-    icon: "🔄",
-    title: "赎回期",
-    desc: "该域名已过期并进入赎回期，原注册人可在此期间支付额外费用赎回，赎回期结束后将被公开删除。",
+    icon: <RiLoopLeftLine className="w-5 h-5" />,
+    titleZh: "赎回期",
+    titleEn: "Redemption Period",
+    descZh: "该域名已过期并进入赎回期，原注册人可在此期间支付额外费用赎回，赎回期结束后将被公开删除。",
+    descEn: "This domain has expired and entered the redemption period. The original registrant can reclaim it for an extra fee before it is deleted.",
     border: "border-purple-300/60 dark:border-purple-800/50",
     bg: "bg-gradient-to-r from-purple-50/80 to-purple-50/30 dark:from-purple-950/30 dark:to-transparent",
     iconBg: "bg-purple-100 dark:bg-purple-900/40",
@@ -1423,9 +1431,11 @@ const STATUS_INFO: Record<
     descText: "text-purple-700/80 dark:text-purple-400/70",
   },
   "pending-delete": {
-    icon: "🗑️",
-    title: "待删除",
-    desc: "该域名即将从注册系统中删除，删除后将重新开放注册。删除通常在 5 天内完成。",
+    icon: <RiDeleteBin2Line className="w-5 h-5" />,
+    titleZh: "待删除",
+    titleEn: "Pending Delete",
+    descZh: "该域名即将从注册系统中删除，删除后将重新开放注册。删除通常在 5 天内完成。",
+    descEn: "This domain is about to be deleted from the registry and will soon become available for registration again.",
     border: "border-slate-300/60 dark:border-slate-700/50",
     bg: "bg-gradient-to-r from-slate-50/80 to-slate-50/30 dark:from-slate-950/30 dark:to-transparent",
     iconBg: "bg-slate-100 dark:bg-slate-800/60",
@@ -1434,9 +1444,11 @@ const STATUS_INFO: Record<
     descText: "text-slate-600/80 dark:text-slate-400/70",
   },
   available: {
-    icon: "✅",
-    title: "域名可注册",
-    desc: "该域名当前未被注册，您可以立即前往域名注册商注册此域名。",
+    icon: <RiCheckLine className="w-5 h-5" />,
+    titleZh: "域名可注册",
+    titleEn: "Domain Available",
+    descZh: "该域名当前未被注册，您可以立即前往域名注册商注册此域名。",
+    descEn: "This domain is currently unregistered and available for purchase.",
     border: "border-emerald-300/60 dark:border-emerald-800/50",
     bg: "bg-gradient-to-r from-emerald-50/80 to-emerald-50/30 dark:from-emerald-950/30 dark:to-transparent",
     iconBg: "bg-emerald-100 dark:bg-emerald-900/40",
@@ -1445,9 +1457,11 @@ const STATUS_INFO: Record<
     descText: "text-emerald-700/80 dark:text-emerald-400/70",
   },
   registered: {
-    icon: "",
-    title: "",
-    desc: "",
+    icon: null,
+    titleZh: "",
+    titleEn: "",
+    descZh: "",
+    descEn: "",
     border: "",
     bg: "",
     iconBg: "",
@@ -1457,9 +1471,16 @@ const STATUS_INFO: Record<
   },
 };
 
-function DomainStatusInfoCard({ type }: { type: RegistrationStatusType }) {
+function DomainStatusInfoCard({
+  type,
+  locale,
+}: {
+  type: RegistrationStatusType;
+  locale: string;
+}) {
   if (type === "registered") return null;
   const info = STATUS_INFO[type];
+  const isZh = locale.startsWith("zh");
   return (
     <div
       className={cn(
@@ -1471,19 +1492,175 @@ function DomainStatusInfoCard({ type }: { type: RegistrationStatusType }) {
     >
       <div
         className={cn(
-          "w-9 h-9 rounded-xl flex items-center justify-center shrink-0 text-lg",
+          "w-9 h-9 rounded-xl flex items-center justify-center shrink-0",
           info.iconBg,
+          info.iconText,
         )}
       >
         {info.icon}
       </div>
       <div className="min-w-0">
         <p className={cn("text-sm font-semibold leading-tight", info.titleText)}>
-          {info.title}
+          {isZh ? info.titleZh : info.titleEn}
         </p>
         <p className={cn("text-xs mt-1 leading-relaxed", info.descText)}>
-          {info.desc}
+          {isZh ? info.descZh : info.descEn}
         </p>
+      </div>
+    </div>
+  );
+}
+
+const CONFETTI_COLORS = [
+  "#f59e0b", "#10b981", "#3b82f6", "#8b5cf6",
+  "#ef4444", "#ec4899", "#06b6d4", "#84cc16",
+];
+
+function ConfettiPieces() {
+  const pieces = React.useMemo(
+    () =>
+      Array.from({ length: 36 }, (_, i) => ({
+        id: i,
+        left: `${(i * 2.78 + (i % 3) * 7) % 100}%`,
+        delay: (i * 0.07) % 1.8,
+        duration: 1.6 + (i * 0.09) % 1.0,
+        color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+        size: 5 + (i % 4) * 2,
+        isCircle: i % 3 === 0,
+        rotateDir: i % 2 === 0 ? 360 : -360,
+      })),
+    [],
+  );
+
+  return (
+    <div className="absolute inset-x-0 top-0 h-28 overflow-hidden pointer-events-none">
+      {pieces.map((p) => (
+        <motion.div
+          key={p.id}
+          style={{
+            position: "absolute",
+            left: p.left,
+            top: -12,
+            width: p.size,
+            height: p.size,
+            backgroundColor: p.color,
+            borderRadius: p.isCircle ? "50%" : 2,
+          }}
+          animate={{
+            y: [0, 110, 110],
+            opacity: [0, 1, 0],
+            rotate: [0, p.rotateDir],
+          }}
+          transition={{
+            duration: p.duration,
+            delay: p.delay,
+            repeat: Infinity,
+            repeatDelay: 0.6,
+            ease: "easeIn",
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+function AvailableDomainCard({ domain, locale }: { domain: string; locale: string }) {
+  const [registrars, setRegistrars] = React.useState<DomainPricing[]>([]);
+  const [loadingPrices, setLoadingPrices] = React.useState(true);
+  const isZh = locale.startsWith("zh");
+
+  React.useEffect(() => {
+    getTopRegistrars(domain, "new", 3)
+      .then(setRegistrars)
+      .finally(() => setLoadingPrices(false));
+  }, [domain]);
+
+  return (
+    <div className="glass-panel border border-emerald-300/50 dark:border-emerald-700/40 rounded-xl overflow-hidden">
+      <div className="relative pt-8 pb-6 px-6 sm:px-8 text-center">
+        <ConfettiPieces />
+        <div className="relative z-10">
+          <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-900/40 rounded-full flex items-center justify-center mx-auto mb-4 border-2 border-emerald-300/60 dark:border-emerald-600/40">
+            <RiCheckLine className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
+          </div>
+          <h2 className="text-2xl font-bold text-emerald-800 dark:text-emerald-300 mb-1">
+            {isZh ? "恭喜！这个域名可用！" : "Congratulations! Domain Available!"}
+          </h2>
+          <p className="text-sm text-emerald-700/70 dark:text-emerald-400/60 max-w-xs mx-auto">
+            {isZh
+              ? `${domain} 尚未被注册，抢先注册属于你的域名！`
+              : `${domain} is unregistered. Grab it before someone else does!`}
+          </p>
+        </div>
+      </div>
+
+      <div className="px-4 sm:px-6 pb-6 border-t border-emerald-200/50 dark:border-emerald-700/30 pt-4">
+        <p className="text-xs text-muted-foreground mb-3 flex items-center gap-1.5 font-medium">
+          <RiShoppingCartLine className="w-3.5 h-3.5" />
+          {isZh ? "最便宜的注册渠道" : "Cheapest registrars"}
+        </p>
+
+        {loadingPrices ? (
+          <div className="grid grid-cols-3 gap-3">
+            {[1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className="h-24 rounded-xl bg-muted/40 animate-pulse"
+              />
+            ))}
+          </div>
+        ) : registrars.length > 0 ? (
+          <div className="grid grid-cols-3 gap-2">
+            {registrars.map((r, idx) => (
+              <a
+                key={r.registrar}
+                href={r.registrarweb}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block group"
+              >
+                <div
+                  className={cn(
+                    "border rounded-xl p-3 text-center transition-all duration-150",
+                    "hover:bg-emerald-50/60 dark:hover:bg-emerald-950/30 hover:border-emerald-300/60",
+                    "border-border/60 bg-background/60",
+                    idx === 0 &&
+                      "border-emerald-300/70 dark:border-emerald-600/40 bg-emerald-50/40 dark:bg-emerald-950/20",
+                  )}
+                >
+                  {idx === 0 && (
+                    <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
+                      {isZh ? "最低价" : "Lowest"}
+                    </span>
+                  )}
+                  <p className="text-[11px] font-medium text-foreground/80 truncate mt-0.5">
+                    {r.registrarname}
+                  </p>
+                  <p className="text-base font-bold text-emerald-600 dark:text-emerald-400 mt-1 leading-none">
+                    {typeof r.new === "number"
+                      ? `${r.currency.toUpperCase()} ${r.new.toFixed(2)}`
+                      : "N/A"}
+                  </p>
+                  <p className="text-[9px] text-muted-foreground mt-1">
+                    {isZh ? "首年" : "1st yr"}
+                  </p>
+                </div>
+              </a>
+            ))}
+          </div>
+        ) : (
+          <p className="text-xs text-muted-foreground text-center py-3">
+            {isZh ? "暂无价格数据" : "No pricing data available"}
+          </p>
+        )}
+
+        {registrars.length > 0 && (
+          <p className="text-[10px] text-muted-foreground/60 mt-3 text-center">
+            {isZh
+              ? "价格来源：nazhumi.com · 仅供参考，以官网为准"
+              : "Prices from nazhumi.com · For reference only"}
+          </p>
+        )}
       </div>
     </div>
   );
@@ -1947,6 +2124,8 @@ export default function LookupPage({
                       </Link>
                     </div>
                   </>
+                ) : dnsProbe?.registrationStatus === "unregistered" ? (
+                  <AvailableDomainCard domain={target} locale={locale} />
                 ) : (
                   <>
                     <div className="glass-panel border border-border rounded-xl p-8 sm:p-12 text-center">
@@ -1989,11 +2168,11 @@ export default function LookupPage({
                         </Link>
                       </div>
                     </div>
-
                   </>
                 )}
 
-                {dnsProbe?.registrationStatus !== "registered" && (
+                {dnsProbe?.registrationStatus !== "registered" &&
+                dnsProbe?.registrationStatus !== "unregistered" && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div className="glass-panel border border-border rounded-xl p-6">
                     <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-4 flex items-center gap-2">
@@ -2146,7 +2325,7 @@ export default function LookupPage({
                           )
                         ) : (
                           (() => {
-                            const regStatus = getDomainRegistrationStatus(result);
+                            const regStatus = getDomainRegistrationStatus(result, locale);
                             return (
                               <Badge
                                 variant="outline"
@@ -2176,9 +2355,9 @@ export default function LookupPage({
 
                     {result.remainingDays === null &&
                       (() => {
-                        const regStatus = getDomainRegistrationStatus(result);
+                        const regStatus = getDomainRegistrationStatus(result, locale);
                         return regStatus.type !== "registered" ? (
-                          <DomainStatusInfoCard type={regStatus.type} />
+                          <DomainStatusInfoCard type={regStatus.type} locale={locale} />
                         ) : null;
                       })()}
 

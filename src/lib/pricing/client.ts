@@ -43,6 +43,25 @@ const defaultDomainPricing: DomainPricing = {
   externalLink: "",
 };
 
+async function fetchNazhumiData(
+  tld: string,
+  type: NazhumiOrder,
+): Promise<NazhumiResponse | null> {
+  try {
+    const url = `${NAZHUMI_API_URL}?domain=${encodeURIComponent(tld)}&order=${type}`;
+    const response = await fetch(url, { headers: { Accept: "application/json" } });
+    if (!response.ok) return null;
+    const data: NazhumiResponse | undefined = await response
+      .json()
+      .then((res) => res.data);
+    if (!data || !Array.isArray(data.price) || data.price.length === 0)
+      return null;
+    return data;
+  } catch {
+    return null;
+  }
+}
+
 export async function getDomainPricing(
   domain: string,
   type: NazhumiOrder,
@@ -53,26 +72,9 @@ export async function getDomainPricing(
       .replace("www.", "")
       .toLowerCase()
       .trim();
-    const url = `${NAZHUMI_API_URL}?domain=${encodeURIComponent(tld)}&order=${type}`;
-    const response = await fetch(url, {
-      headers: {
-        Accept: "application/json",
-      },
-    });
-
-    if (!response.ok) {
-      console.error(`Nazhumi API error: ${response.statusText}`);
-      return null;
-    }
-
-    const data: NazhumiResponse | undefined = await response
-      .json()
-      .then((res) => res.data);
-    if (!data || !Array.isArray(data.price) || data.price.length === 0) {
-      return null;
-    }
+    const data = await fetchNazhumiData(tld, type);
+    if (!data) return null;
     const registrar = data.price[0];
-
     return {
       ...registrar,
       isPremium:
@@ -84,5 +86,39 @@ export async function getDomainPricing(
   } catch (error) {
     console.error("Error fetching domain pricing:", error);
     return null;
+  }
+}
+
+export async function getTopRegistrars(
+  domain: string,
+  type: NazhumiOrder,
+  count = 3,
+): Promise<DomainPricing[]> {
+  try {
+    const tld = domain
+      .substring(domain.lastIndexOf(".") + 1)
+      .replace("www.", "")
+      .toLowerCase()
+      .trim();
+    const data = await fetchNazhumiData(tld, type);
+    if (!data) return [];
+    return data.price
+      .filter((r) => typeof r[type] === "number")
+      .sort((a, b) => {
+        const av = typeof a[type] === "number" ? (a[type] as number) : Infinity;
+        const bv = typeof b[type] === "number" ? (b[type] as number) : Infinity;
+        return av - bv;
+      })
+      .slice(0, count)
+      .map((r) => ({
+        ...r,
+        isPremium:
+          typeof r.new === "number" &&
+          r.new > 100 &&
+          ["usd", "eur", "cad"].includes(r.currency.toLowerCase()),
+        externalLink: `https://www.nazhumi.com/domain/${tld}/new`,
+      }));
+  } catch {
+    return [];
   }
 }
