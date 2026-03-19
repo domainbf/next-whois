@@ -1899,7 +1899,7 @@ export default function LookupPage({
                 {" "}
                 <div className="lg:col-span-8 space-y-6">
                   <div className="glass-panel border border-border rounded-xl p-6 sm:p-8 relative overflow-hidden">
-                    <div className="absolute top-3 -right-3 opacity-60 pointer-events-none select-none">
+                    <div className="absolute top-3 right-2 opacity-60 pointer-events-none select-none">
                       <CssGlobe />
                     </div>
                     <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 relative z-10">
@@ -1918,57 +1918,54 @@ export default function LookupPage({
                         >
                           {result.domain || target.toUpperCase()}
                         </h2>
-                        {result.registrar && result.registrar !== "Unknown" && (
-                          <p className="text-muted-foreground text-sm">
-                            {t("whois_fields.registrar")}: {result.registrar}
-                          </p>
-                        )}
                       </div>
                       <div className="flex flex-col items-start sm:items-end gap-2">
-                        {result.remainingDays !== null ? (
-                          result.remainingDays <= 0 ? (
-                            <Badge className="bg-red-500 hover:bg-red-600 text-white border-0">
-                              <div className="w-2 h-2 rounded-full bg-white/80 animate-pulse mr-1.5" />
-                              {t("expired")}
-                            </Badge>
-                          ) : result.remainingDays <= 60 ? (
-                            <Badge className="bg-amber-500 hover:bg-amber-600 text-white border-0">
-                              <div className="w-2 h-2 rounded-full bg-white/80 animate-pulse mr-1.5" />
-                              {t("expiring_soon")}
-                            </Badge>
-                          ) : (
-                            <Badge className="bg-primary hover:bg-primary/90 text-primary-foreground border-0">
-                              <div className="w-2 h-2 rounded-full bg-emerald-400 mr-1.5" />
-                              {t("active")}
-                            </Badge>
-                          )
-                        ) : (
-                          (() => {
-                            const regStatus = getDomainRegistrationStatus(result);
-                            return (
-                              <Badge
-                                variant="outline"
-                                className={cn("font-medium", regStatus.color)}
-                              >
-                                <div className={cn("w-2 h-2 rounded-full mr-1.5", regStatus.dotColor)} />
-                                {regStatus.label}
+                        <div className="flex items-center gap-2 flex-wrap justify-end">
+                          {result.remainingDays !== null ? (
+                            result.remainingDays <= 0 ? (
+                              <Badge className="bg-red-500 hover:bg-red-600 text-white border-0">
+                                <div className="w-2 h-2 rounded-full bg-white/80 animate-pulse mr-1.5" />
+                                {t("expired")}
                               </Badge>
-                            );
-                          })()
-                        )}
+                            ) : result.remainingDays <= 60 ? (
+                              <Badge className="bg-amber-500 hover:bg-amber-600 text-white border-0">
+                                <div className="w-2 h-2 rounded-full bg-white/80 animate-pulse mr-1.5" />
+                                {t("expiring_soon")}
+                              </Badge>
+                            ) : (
+                              <Badge className="bg-primary hover:bg-primary/90 text-primary-foreground border-0">
+                                <div className="w-2 h-2 rounded-full bg-emerald-400 mr-1.5" />
+                                {t("active")}
+                              </Badge>
+                            )
+                          ) : (
+                            (() => {
+                              const regStatus = getDomainRegistrationStatus(result);
+                              return (
+                                <Badge
+                                  variant="outline"
+                                  className={cn("font-medium", regStatus.color)}
+                                >
+                                  <div className={cn("w-2 h-2 rounded-full mr-1.5", regStatus.dotColor)} />
+                                  {regStatus.label}
+                                </Badge>
+                              );
+                            })()
+                          )}
+                          {result.domainAge !== null && (
+                            <div className="flex items-center gap-1 px-2 py-0.5 rounded-md border border-primary/30 bg-primary/5">
+                              <RiTimeLine className="w-3 h-3 text-primary shrink-0" />
+                              <span className="text-[11px] font-normal text-primary">
+                                {result.domainAge === 0 ? "<1" : result.domainAge}{" "}
+                                {result.domainAge === 1 ? t("year") : t("years")}
+                              </span>
+                            </div>
+                          )}
+                        </div>
                         <span className="text-[10px] text-muted-foreground font-mono">
                           {time.toFixed(2)}s{data.cached && ` · ${t("cached")}`}
                           {data.source && ` · ${data.source}`}
                         </span>
-                        {result.domainAge !== null && (
-                          <div className="flex items-center gap-1 px-2 py-0.5 rounded-md border border-primary/30 bg-primary/5">
-                            <RiTimeLine className="w-3 h-3 text-primary shrink-0" />
-                            <span className="text-[11px] font-normal text-primary">
-                              {result.domainAge === 0 ? "<1" : result.domainAge}{" "}
-                              {result.domainAge === 1 ? t("year") : t("years")}
-                            </span>
-                          </div>
-                        )}
                       </div>
                     </div>
 
