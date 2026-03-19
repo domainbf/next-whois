@@ -53,6 +53,7 @@ import {
 import { useTranslation, TranslationKey } from "@/lib/i18n";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
+import { useTheme } from "next-themes";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -1185,7 +1186,12 @@ export async function getServerSideProps(context: GetServerSidePropsContext) {
 function CobeGlobe() {
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
   const [supported, setSupported] = React.useState(true);
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = React.useState(false);
+  useEffect(() => { setMounted(true); }, []);
+
   useEffect(() => {
+    if (!mounted) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("webgl") || canvas.getContext("webgl2");
@@ -1193,6 +1199,7 @@ function CobeGlobe() {
       setSupported(false);
       return;
     }
+    const isDark = resolvedTheme === "dark";
     let phi = 0;
     let globe: { destroy: () => void } | undefined;
     import("cobe")
@@ -1201,23 +1208,23 @@ function CobeGlobe() {
         try {
           globe = createGlobe(canvasRef.current, {
             devicePixelRatio: 2,
-            width: 224,
-            height: 224,
+            width: 320,
+            height: 320,
             phi: 0,
-            theta: 0.1,
-            dark: 0,
-            diffuse: 1.2,
+            theta: 0.25,
+            dark: 1,
+            diffuse: 0.45,
             scale: 1,
-            mapSamples: 16000,
-            mapBrightness: 6,
-            baseColor: [1, 1, 1],
-            markerColor: [1, 0.5, 1],
-            glowColor: [1, 1, 1],
+            mapSamples: 24000,
+            mapBrightness: isDark ? 10 : 12,
+            baseColor: isDark ? [0.04, 0.12, 0.32] : [0.06, 0.16, 0.42],
+            markerColor: [0.25, 0.65, 1],
+            glowColor: isDark ? [0.06, 0.16, 0.40] : [0.08, 0.20, 0.50],
             offset: [0, 0],
             markers: [],
             onRender: (state: Record<string, unknown>) => {
               state.phi = phi;
-              phi += 0.005;
+              phi += 0.003;
             },
           });
         } catch {
@@ -1228,14 +1235,15 @@ function CobeGlobe() {
     return () => {
       if (globe) globe.destroy();
     };
-  }, []);
+  }, [mounted, resolvedTheme]);
+
   if (!supported) return null;
   return (
     <canvas
       ref={canvasRef}
-      style={{ width: 112, height: 112 }}
-      width={224}
-      height={224}
+      style={{ width: 160, height: 160 }}
+      width={320}
+      height={320}
     />
   );
 }
@@ -1899,7 +1907,7 @@ export default function LookupPage({
                 {" "}
                 <div className="lg:col-span-8 space-y-6">
                   <div className="glass-panel border border-border rounded-xl p-6 sm:p-8 relative overflow-hidden">
-                    <div className="absolute top-0 right-0 p-2 opacity-40 pointer-events-none">
+                    <div className="absolute -top-4 -right-4 opacity-60 pointer-events-none select-none">
                       <CobeGlobe />
                     </div>
                     <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 relative z-10">
