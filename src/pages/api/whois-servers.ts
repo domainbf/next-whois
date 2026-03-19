@@ -7,6 +7,10 @@ import {
   CustomServerEntry,
 } from "@/lib/whois/custom-servers";
 
+export const config = {
+  maxDuration: 10,
+};
+
 type ResponseData = {
   success: boolean;
   message?: string;
@@ -14,13 +18,13 @@ type ResponseData = {
   userServers?: Record<string, CustomServerEntry>;
 };
 
-export default function handler(
+export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse<ResponseData>,
 ) {
   if (req.method === "GET") {
-    const servers = getAllCustomServers();
-    const userServers = getUserManagedServers();
+    const servers = await getAllCustomServers();
+    const userServers = await getUserManagedServers();
     return res.status(200).json({ success: true, servers, userServers });
   }
 
@@ -41,7 +45,7 @@ export default function handler(
     const normalized = tld.toLowerCase().replace(/^\./, "");
 
     if (entry) {
-      setCustomServer(normalized, entry);
+      await setCustomServer(normalized, entry);
       return res.status(200).json({
         success: true,
         message: `Saved .${normalized}`,
@@ -49,7 +53,7 @@ export default function handler(
     }
 
     if (server) {
-      setCustomServer(normalized, server);
+      await setCustomServer(normalized, server);
       return res.status(200).json({
         success: true,
         message: `Saved .${normalized} → ${server}`,
@@ -68,7 +72,7 @@ export default function handler(
         .status(400)
         .json({ success: false, message: "tld is required" });
     }
-    const removed = deleteCustomServer(tld);
+    const removed = await deleteCustomServer(tld);
     if (!removed) {
       return res.status(404).json({
         success: false,

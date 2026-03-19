@@ -2,6 +2,10 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { lookupWhoisWithCache } from "@/lib/whois/lookup";
 import { WhoisAnalyzeResult } from "@/lib/whois/types";
 
+export const config = {
+  maxDuration: 30,
+};
+
 type Data = {
   status: boolean;
   time: number;

@@ -1,4 +1,4 @@
-import { MAX_WHOIS_FOLLOW } from "@/lib/env";
+import { MAX_WHOIS_FOLLOW, LOOKUP_TIMEOUT } from "@/lib/env";
 import { WhoisResult, WhoisAnalyzeResult } from "@/lib/whois/types";
 import { getJsonRedisValue, setJsonRedisValue } from "@/lib/server/redis";
 import { analyzeWhois } from "@/lib/whois/common_parser";
@@ -13,8 +13,6 @@ import {
   HttpServerEntry,
 } from "@/lib/whois/custom-servers";
 import { probeDomain } from "@/lib/whois/dns-check";
-
-const LOOKUP_TIMEOUT = 15_000;
 
 const WHOIS_ERROR_PATTERNS = [
   /no match/i,
@@ -137,7 +135,7 @@ function queryWhoisTcp(
 ): Promise<string> {
   return new Promise((resolve, reject) => {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const net = require("net") as typeof import("net");
+    const net = require("node:net") as typeof import("net");
     let data = "";
     const socket = net.connect({ host, port }, () =>
       socket.write(query + "\r\n"),
@@ -237,10 +235,10 @@ async function getLookupWhois(domain: string): Promise<WhoisRawResult> {
   const tld = domainToQuery.split(".").slice(1).join(".");
   const tldSuffix = domainToQuery.split(".").pop() || "";
   const customEntry =
-    getCustomServerEntry(tld) || getCustomServerEntry(tldSuffix);
+    (await getCustomServerEntry(tld)) || (await getCustomServerEntry(tldSuffix));
 
   const isUserServer =
-    isUserManagedServer(tld) || isUserManagedServer(tldSuffix);
+    (await isUserManagedServer(tld)) || (await isUserManagedServer(tldSuffix));
 
   if (customEntry) {
     if (isHttpEntry(customEntry)) {

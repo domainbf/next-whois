@@ -1,5 +1,10 @@
 import fs from "fs";
 import path from "path";
+import {
+  getJsonRedisValue,
+  setJsonRedisValue,
+  isRedisAvailable,
+} from "@/lib/server/redis";
 
 export type TcpServerEntry = {
   type: "tcp";
@@ -17,6 +22,8 @@ export type HttpServerEntry = {
 export type CustomServerEntry = string | TcpServerEntry | HttpServerEntry;
 
 export type CustomServerMap = Record<string, CustomServerEntry>;
+
+const REDIS_KEY = "whois:user-servers";
 
 const DATA_FILE = path.join(process.cwd(), "src/data/custom-tld-servers.json");
 const CCTLD_FILE = path.join(
@@ -37,7 +44,7 @@ const BUILTIN_SERVERS: CustomServerMap = {
   bn: "whois.bnnic.bn",
 };
 
-function readCustomServers(): CustomServerMap {
+function readCustomServersFromFile(): CustomServerMap {
   try {
     const raw = fs.readFileSync(DATA_FILE, "utf-8");
     return JSON.parse(raw) as CustomServerMap;
@@ -46,55 +53,78 @@ function readCustomServers(): CustomServerMap {
   }
 }
 
-function writeCustomServers(servers: CustomServerMap): void {
-  fs.writeFileSync(DATA_FILE, JSON.stringify(servers, null, 2), "utf-8");
+function writeCustomServersToFile(servers: CustomServerMap): void {
+  try {
+    fs.writeFileSync(DATA_FILE, JSON.stringify(servers, null, 2), "utf-8");
+  } catch {
+  }
 }
 
-export function getAllCustomServers(): CustomServerMap {
+async function readUserManagedServers(): Promise<CustomServerMap> {
+  if (isRedisAvailable()) {
+    const fromRedis = await getJsonRedisValue<CustomServerMap>(REDIS_KEY);
+    if (fromRedis) return fromRedis;
+  }
+  return readCustomServersFromFile();
+}
+
+async function writeUserManagedServers(servers: CustomServerMap): Promise<void> {
+  if (isRedisAvailable()) {
+    await setJsonRedisValue(REDIS_KEY, servers, 0);
+  }
+  writeCustomServersToFile(servers);
+}
+
+export async function getAllCustomServers(): Promise<CustomServerMap> {
   const cctld = readCctldServers();
-  const file = readCustomServers();
-  return { ...BUILTIN_SERVERS, ...cctld, ...file };
+  const user = await readUserManagedServers();
+  return { ...BUILTIN_SERVERS, ...cctld, ...user };
 }
 
-export function getUserManagedServers(): CustomServerMap {
-  return readCustomServers();
+export async function getUserManagedServers(): Promise<CustomServerMap> {
+  return readUserManagedServers();
 }
 
-export function getCustomServerEntry(tld: string): CustomServerEntry | null {
-  const all = getAllCustomServers();
+export async function getCustomServerEntry(
+  tld: string,
+): Promise<CustomServerEntry | null> {
+  const all = await getAllCustomServers();
   const normalized = tld.toLowerCase().replace(/^\./, "");
   return all[normalized] ?? null;
 }
 
-export function getCustomServer(tld: string): string | null {
-  const entry = getCustomServerEntry(tld);
+export async function getCustomServer(tld: string): Promise<string | null> {
+  const entry = await getCustomServerEntry(tld);
   if (!entry) return null;
   if (typeof entry === "string") return entry;
   if (entry.type === "tcp") return entry.host;
   return null;
 }
 
-export function setCustomServer(tld: string, entry: CustomServerEntry): void {
+export async function setCustomServer(
+  tld: string,
+  entry: CustomServerEntry,
+): Promise<void> {
   const normalized = tld.toLowerCase().replace(/^\./, "");
-  const servers = readCustomServers();
+  const servers = await readUserManagedServers();
   servers[normalized] = entry;
-  writeCustomServers(servers);
+  await writeUserManagedServers(servers);
 }
 
-export function deleteCustomServer(tld: string): boolean {
+export async function deleteCustomServer(tld: string): Promise<boolean> {
   const normalized = tld.toLowerCase().replace(/^\./, "");
-  const servers = readCustomServers();
+  const servers = await readUserManagedServers();
   if (normalized in servers) {
     delete servers[normalized];
-    writeCustomServers(servers);
+    await writeUserManagedServers(servers);
     return true;
   }
   return false;
 }
 
-export function isUserManagedServer(tld: string): boolean {
+export async function isUserManagedServer(tld: string): Promise<boolean> {
   const normalized = tld.toLowerCase().replace(/^\./, "");
-  const userServers = readCustomServers();
+  const userServers = await readUserManagedServers();
   return normalized in userServers;
 }
 

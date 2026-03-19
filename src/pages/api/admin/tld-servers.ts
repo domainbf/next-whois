@@ -4,7 +4,12 @@ import {
   getUserManagedServers,
   setCustomServer,
   deleteCustomServer,
+  CustomServerEntry,
 } from "@/lib/whois/custom-servers";
+
+export const config = {
+  maxDuration: 10,
+};
 
 const ADMIN_SECRET = process.env.ADMIN_SECRET;
 
@@ -17,11 +22,11 @@ function isAuthorized(req: NextApiRequest): boolean {
 type ResponseData = {
   success: boolean;
   message?: string;
-  servers?: Record<string, string>;
-  userServers?: Record<string, string>;
+  servers?: Record<string, CustomServerEntry>;
+  userServers?: Record<string, CustomServerEntry>;
 };
 
-export default function handler(
+export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse<ResponseData>,
 ) {
@@ -32,8 +37,8 @@ export default function handler(
   }
 
   if (req.method === "GET") {
-    const servers = getAllCustomServers();
-    const userServers = getUserManagedServers();
+    const servers = await getAllCustomServers();
+    const userServers = await getUserManagedServers();
     return res.status(200).json({ success: true, servers, userServers });
   }
 
@@ -44,7 +49,7 @@ export default function handler(
         .status(400)
         .json({ success: false, message: "tld and server are required" });
     }
-    setCustomServer(tld, server);
+    await setCustomServer(tld, server);
     return res
       .status(200)
       .json({ success: true, message: `Added: .${tld.replace(/^\./, "")} → ${server}` });
@@ -57,7 +62,7 @@ export default function handler(
         .status(400)
         .json({ success: false, message: "tld is required" });
     }
-    const removed = deleteCustomServer(tld);
+    const removed = await deleteCustomServer(tld);
     if (!removed) {
       return res
         .status(404)
