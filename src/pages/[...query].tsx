@@ -1240,44 +1240,253 @@ function CssGlobe() {
   );
 }
 
+type RegistrationStatusType =
+  | "registered"
+  | "available"
+  | "reserved"
+  | "prohibited"
+  | "hold"
+  | "dispute"
+  | "redemption"
+  | "pending-delete";
+
 function getDomainRegistrationStatus(result: WhoisAnalyzeResult): {
+  type: RegistrationStatusType;
   label: string;
   color: string;
   dotColor: string;
 } {
-  const reservedStatuses = [
-    "reserved",
-    "reserved-delegated",
-    "server-hold",
-    "client-hold",
-  ];
-  const isReserved = result.status.some((s) =>
-    reservedStatuses.some((r) => s.status.toLowerCase().includes(r)),
-  );
+  const allStatusText = result.status
+    .map((s) => s.status.toLowerCase())
+    .join(" ");
+
+  const isProhibited =
+    allStatusText.includes("prohibited") ||
+    allStatusText.includes("cannot be registered") ||
+    allStatusText.includes("not available for registration") ||
+    allStatusText.includes("not-available") ||
+    allStatusText.includes("ineligible");
+
+  if (isProhibited) {
+    return {
+      type: "prohibited",
+      label: "禁止注册",
+      color: "text-red-600 border-red-400/50 bg-red-50 dark:bg-red-950/20",
+      dotColor: "bg-red-500",
+    };
+  }
+
+  const isReserved =
+    allStatusText.includes("reserved") ||
+    allStatusText.includes("reserved-delegated") ||
+    allStatusText.includes("registry-hold");
+
   if (isReserved) {
     return {
-      label: "保留",
+      type: "reserved",
+      label: "保留域名",
       color: "text-amber-600 border-amber-400/50 bg-amber-50 dark:bg-amber-950/20",
       dotColor: "bg-amber-500",
     };
   }
-  const hasData =
-    (result.registrar && result.registrar !== "Unknown") ||
-    (result.creationDate && result.creationDate !== "Unknown") ||
-    result.nameServers.length > 0 ||
-    result.status.length > 0;
-  if (hasData) {
+
+  const isRedemption =
+    allStatusText.includes("redemptionperiod") ||
+    allStatusText.includes("redemption period");
+
+  if (isRedemption) {
     return {
-      label: "已注册",
-      color: "text-emerald-600 border-emerald-400/50 bg-emerald-50 dark:bg-emerald-950/20",
-      dotColor: "bg-emerald-500",
+      type: "redemption",
+      label: "赎回期",
+      color: "text-purple-600 border-purple-400/50 bg-purple-50 dark:bg-purple-950/20",
+      dotColor: "bg-purple-500",
     };
   }
+
+  const isPendingDelete =
+    allStatusText.includes("pendingdelete") ||
+    allStatusText.includes("pending delete") ||
+    allStatusText.includes("pending-delete");
+
+  if (isPendingDelete) {
+    return {
+      type: "pending-delete",
+      label: "待删除",
+      color: "text-slate-600 border-slate-400/50 bg-slate-50 dark:bg-slate-950/20",
+      dotColor: "bg-slate-500",
+    };
+  }
+
+  const isHold =
+    (allStatusText.includes("server-hold") ||
+      allStatusText.includes("client-hold")) &&
+    !allStatusText.includes("ok");
+
+  if (isHold) {
+    return {
+      type: "hold",
+      label: "暂停",
+      color: "text-orange-600 border-orange-400/50 bg-orange-50 dark:bg-orange-950/20",
+      dotColor: "bg-orange-500",
+    };
+  }
+
+  const isDispute =
+    allStatusText.includes("dispute") ||
+    allStatusText.includes("udrp") ||
+    allStatusText.includes("locked-udrp");
+
+  if (isDispute) {
+    return {
+      type: "dispute",
+      label: "争议中",
+      color: "text-rose-600 border-rose-400/50 bg-rose-50 dark:bg-rose-950/20",
+      dotColor: "bg-rose-500",
+    };
+  }
+
   return {
+    type: "registered",
     label: "已注册",
     color: "text-emerald-600 border-emerald-400/50 bg-emerald-50 dark:bg-emerald-950/20",
     dotColor: "bg-emerald-500",
   };
+}
+
+const STATUS_INFO: Record<
+  RegistrationStatusType,
+  {
+    icon: string;
+    title: string;
+    desc: string;
+    border: string;
+    bg: string;
+    iconBg: string;
+    iconText: string;
+    titleText: string;
+    descText: string;
+  }
+> = {
+  prohibited: {
+    icon: "🚫",
+    title: "禁止注册域名",
+    desc: "该域名被注册局标记为禁止注册字符串，无法通过任何常规渠道注册。通常为政策性保护词汇或敏感字符串。",
+    border: "border-red-300/60 dark:border-red-800/50",
+    bg: "bg-gradient-to-r from-red-50/80 to-red-50/30 dark:from-red-950/30 dark:to-transparent",
+    iconBg: "bg-red-100 dark:bg-red-900/40",
+    iconText: "text-red-600 dark:text-red-400",
+    titleText: "text-red-800 dark:text-red-300",
+    descText: "text-red-700/80 dark:text-red-400/70",
+  },
+  reserved: {
+    icon: "🔒",
+    title: "保留域名",
+    desc: "该域名为注册局保留域名，由官方机构专用或预留，暂不向公众开放注册。",
+    border: "border-amber-300/60 dark:border-amber-800/50",
+    bg: "bg-gradient-to-r from-amber-50/80 to-amber-50/30 dark:from-amber-950/30 dark:to-transparent",
+    iconBg: "bg-amber-100 dark:bg-amber-900/40",
+    iconText: "text-amber-600 dark:text-amber-400",
+    titleText: "text-amber-800 dark:text-amber-300",
+    descText: "text-amber-700/80 dark:text-amber-400/70",
+  },
+  hold: {
+    icon: "⏸",
+    title: "域名暂停",
+    desc: "该域名当前处于暂停状态（Server Hold / Client Hold），可能由于违规行为、未付款或争议被暂时锁定，无法正常解析。",
+    border: "border-orange-300/60 dark:border-orange-800/50",
+    bg: "bg-gradient-to-r from-orange-50/80 to-orange-50/30 dark:from-orange-950/30 dark:to-transparent",
+    iconBg: "bg-orange-100 dark:bg-orange-900/40",
+    iconText: "text-orange-600 dark:text-orange-400",
+    titleText: "text-orange-800 dark:text-orange-300",
+    descText: "text-orange-700/80 dark:text-orange-400/70",
+  },
+  dispute: {
+    icon: "⚖️",
+    title: "域名争议",
+    desc: "该域名正处于 UDRP 争议程序或其他争议处理中，当前处于锁定状态，等待仲裁结果。",
+    border: "border-rose-300/60 dark:border-rose-800/50",
+    bg: "bg-gradient-to-r from-rose-50/80 to-rose-50/30 dark:from-rose-950/30 dark:to-transparent",
+    iconBg: "bg-rose-100 dark:bg-rose-900/40",
+    iconText: "text-rose-600 dark:text-rose-400",
+    titleText: "text-rose-800 dark:text-rose-300",
+    descText: "text-rose-700/80 dark:text-rose-400/70",
+  },
+  redemption: {
+    icon: "🔄",
+    title: "赎回期",
+    desc: "该域名已过期并进入赎回期，原注册人可在此期间支付额外费用赎回，赎回期结束后将被公开删除。",
+    border: "border-purple-300/60 dark:border-purple-800/50",
+    bg: "bg-gradient-to-r from-purple-50/80 to-purple-50/30 dark:from-purple-950/30 dark:to-transparent",
+    iconBg: "bg-purple-100 dark:bg-purple-900/40",
+    iconText: "text-purple-600 dark:text-purple-400",
+    titleText: "text-purple-800 dark:text-purple-300",
+    descText: "text-purple-700/80 dark:text-purple-400/70",
+  },
+  "pending-delete": {
+    icon: "🗑️",
+    title: "待删除",
+    desc: "该域名即将从注册系统中删除，删除后将重新开放注册。删除通常在 5 天内完成。",
+    border: "border-slate-300/60 dark:border-slate-700/50",
+    bg: "bg-gradient-to-r from-slate-50/80 to-slate-50/30 dark:from-slate-950/30 dark:to-transparent",
+    iconBg: "bg-slate-100 dark:bg-slate-800/60",
+    iconText: "text-slate-600 dark:text-slate-400",
+    titleText: "text-slate-700 dark:text-slate-300",
+    descText: "text-slate-600/80 dark:text-slate-400/70",
+  },
+  available: {
+    icon: "✅",
+    title: "域名可注册",
+    desc: "该域名当前未被注册，您可以立即前往域名注册商注册此域名。",
+    border: "border-emerald-300/60 dark:border-emerald-800/50",
+    bg: "bg-gradient-to-r from-emerald-50/80 to-emerald-50/30 dark:from-emerald-950/30 dark:to-transparent",
+    iconBg: "bg-emerald-100 dark:bg-emerald-900/40",
+    iconText: "text-emerald-600 dark:text-emerald-400",
+    titleText: "text-emerald-800 dark:text-emerald-300",
+    descText: "text-emerald-700/80 dark:text-emerald-400/70",
+  },
+  registered: {
+    icon: "",
+    title: "",
+    desc: "",
+    border: "",
+    bg: "",
+    iconBg: "",
+    iconText: "",
+    titleText: "",
+    descText: "",
+  },
+};
+
+function DomainStatusInfoCard({ type }: { type: RegistrationStatusType }) {
+  if (type === "registered") return null;
+  const info = STATUS_INFO[type];
+  return (
+    <div
+      className={cn(
+        "rounded-xl border p-4 mt-5",
+        "flex items-start gap-3.5",
+        info.border,
+        info.bg,
+      )}
+    >
+      <div
+        className={cn(
+          "w-9 h-9 rounded-xl flex items-center justify-center shrink-0 text-lg",
+          info.iconBg,
+        )}
+      >
+        {info.icon}
+      </div>
+      <div className="min-w-0">
+        <p className={cn("text-sm font-semibold leading-tight", info.titleText)}>
+          {info.title}
+        </p>
+        <p className={cn("text-xs mt-1 leading-relaxed", info.descText)}>
+          {info.desc}
+        </p>
+      </div>
+    </div>
+  );
 }
 
 function ResultSkeleton() {
@@ -1964,6 +2173,14 @@ export default function LookupPage({
                         {data.source && ` · ${data.source}`}
                       </span>
                     </div>
+
+                    {result.remainingDays === null &&
+                      (() => {
+                        const regStatus = getDomainRegistrationStatus(result);
+                        return regStatus.type !== "registered" ? (
+                          <DomainStatusInfoCard type={regStatus.type} />
+                        ) : null;
+                      })()}
 
                     {(result.creationDate !== "Unknown" ||
                       result.expirationDate !== "Unknown" ||
