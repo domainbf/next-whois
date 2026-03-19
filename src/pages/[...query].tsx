@@ -1567,13 +1567,31 @@ function ConfettiPieces() {
 function AvailableDomainCard({ domain, locale }: { domain: string; locale: string }) {
   const [registrars, setRegistrars] = React.useState<DomainPricing[]>([]);
   const [loadingPrices, setLoadingPrices] = React.useState(true);
+  const [eurRates, setEurRates] = React.useState<Record<string, number> | null>(null);
   const isZh = locale.startsWith("zh");
 
   React.useEffect(() => {
-    getTopRegistrars(domain, "new", 3)
+    getTopRegistrars(domain, "new", 5)
       .then(setRegistrars)
       .finally(() => setLoadingPrices(false));
   }, [domain]);
+
+  React.useEffect(() => {
+    fetch("https://api.frankfurter.app/latest")
+      .then((r) => r.json())
+      .then((data) => setEurRates(data.rates))
+      .catch(() => {});
+  }, []);
+
+  function formatPrice(amount: number, currency: string): string {
+    const cur = currency.toUpperCase();
+    if (isZh && eurRates) {
+      const cnyRate = eurRates["CNY"] ?? 7.8;
+      const eurAmount = cur === "EUR" ? amount : amount / (eurRates[cur] ?? 1);
+      return `¥${(eurAmount * cnyRate).toFixed(2)}`;
+    }
+    return `${cur} ${amount.toFixed(2)}`;
+  }
 
   return (
     <div className="glass-panel border border-emerald-300/50 dark:border-emerald-700/40 rounded-xl overflow-hidden">
@@ -1597,20 +1615,17 @@ function AvailableDomainCard({ domain, locale }: { domain: string; locale: strin
       <div className="px-4 sm:px-6 pb-6 border-t border-emerald-200/50 dark:border-emerald-700/30 pt-4">
         <p className="text-xs text-muted-foreground mb-3 flex items-center gap-1.5 font-medium">
           <RiShoppingCartLine className="w-3.5 h-3.5" />
-          {isZh ? "最便宜的注册渠道" : "Cheapest registrars"}
+          {isZh ? "注册渠道价格对比" : "Registrar price comparison"}
         </p>
 
         {loadingPrices ? (
-          <div className="grid grid-cols-3 gap-3">
+          <div className="space-y-2">
             {[1, 2, 3].map((i) => (
-              <div
-                key={i}
-                className="h-24 rounded-xl bg-muted/40 animate-pulse"
-              />
+              <div key={i} className="h-14 rounded-xl bg-muted/40 animate-pulse" />
             ))}
           </div>
         ) : registrars.length > 0 ? (
-          <div className="grid grid-cols-3 gap-2">
+          <div className="space-y-2">
             {registrars.map((r, idx) => (
               <a
                 key={r.registrar}
@@ -1621,29 +1636,36 @@ function AvailableDomainCard({ domain, locale }: { domain: string; locale: strin
               >
                 <div
                   className={cn(
-                    "border rounded-xl p-3 text-center transition-all duration-150",
+                    "border rounded-xl px-4 py-3 flex items-center justify-between transition-all duration-150",
                     "hover:bg-emerald-50/60 dark:hover:bg-emerald-950/30 hover:border-emerald-300/60",
                     "border-border/60 bg-background/60",
                     idx === 0 &&
                       "border-emerald-300/70 dark:border-emerald-600/40 bg-emerald-50/40 dark:bg-emerald-950/20",
                   )}
                 >
-                  {idx === 0 && (
-                    <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
-                      {isZh ? "最低价" : "Lowest"}
+                  <div className="flex items-center gap-2 min-w-0">
+                    {idx === 0 && (
+                      <span className="shrink-0 text-[9px] font-bold text-white bg-emerald-500 dark:bg-emerald-600 px-1.5 py-0.5 rounded uppercase tracking-wide">
+                        {isZh ? "最低价" : "Best"}
+                      </span>
+                    )}
+                    {idx > 0 && (
+                      <span className="shrink-0 w-5 h-5 flex items-center justify-center text-[10px] font-semibold text-muted-foreground/60 bg-muted/40 rounded-full">
+                        {idx + 1}
+                      </span>
+                    )}
+                    <p className="text-sm font-medium text-foreground/80 truncate">
+                      {r.registrarname}
+                    </p>
+                  </div>
+                  <div className="flex items-baseline gap-1.5 shrink-0 ml-3">
+                    <span className="text-base font-bold text-emerald-600 dark:text-emerald-400">
+                      {typeof r.new === "number" ? formatPrice(r.new, r.currency) : "N/A"}
                     </span>
-                  )}
-                  <p className="text-[11px] font-medium text-foreground/80 truncate mt-0.5">
-                    {r.registrarname}
-                  </p>
-                  <p className="text-base font-bold text-emerald-600 dark:text-emerald-400 mt-1 leading-none">
-                    {typeof r.new === "number"
-                      ? `${r.currency.toUpperCase()} ${r.new.toFixed(2)}`
-                      : "N/A"}
-                  </p>
-                  <p className="text-[9px] text-muted-foreground mt-1">
-                    {isZh ? "首年" : "1st yr"}
-                  </p>
+                    <span className="text-[10px] text-muted-foreground">
+                      /{isZh ? "首年" : "yr"}
+                    </span>
+                  </div>
                 </div>
               </a>
             ))}

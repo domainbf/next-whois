@@ -757,7 +757,7 @@ export default async function handler(req: NextRequest) {
                   letterSpacing: "0.05em",
                 }}
               >
-                NEXT WHOIS
+                RDAP+WHOIS
               </span>
             </div>
 
@@ -849,10 +849,10 @@ export default async function handler(req: NextRequest) {
                 color: muted,
               }}
             >
-              <span>next-whois-ui</span>
+              <span>RDAP+WHOIS</span>
               <span style={{ color: border }}>·</span>
               <span style={{ color: accent }}>
-                github.com/zmh-program/next-whois-ui
+                查询结果由NIC.RW提供支持
               </span>
             </div>
           </div>
