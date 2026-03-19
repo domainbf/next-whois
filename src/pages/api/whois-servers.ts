@@ -11,14 +11,6 @@ export const config = {
   maxDuration: 10,
 };
 
-const ADMIN_SECRET = process.env.ADMIN_SECRET;
-
-function isAuthorized(req: NextApiRequest): boolean {
-  if (!ADMIN_SECRET) return false;
-  const auth = req.headers["x-admin-secret"] || req.query.secret;
-  return auth === ADMIN_SECRET;
-}
-
 type ResponseData = {
   success: boolean;
   message?: string;
@@ -30,12 +22,6 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse<ResponseData>,
 ) {
-  if (!isAuthorized(req)) {
-    return res
-      .status(401)
-      .json({ success: false, message: "Unauthorized. Provide ADMIN_SECRET via x-admin-secret header." });
-  }
-
   if (req.method === "GET") {
     const servers = await getAllCustomServers();
     const userServers = await getUserManagedServers();
@@ -43,16 +29,40 @@ export default async function handler(
   }
 
   if (req.method === "POST") {
-    const { tld, server } = req.body as { tld?: string; server?: string };
-    if (!tld || !server) {
+    const body = req.body as {
+      tld?: string;
+      entry?: CustomServerEntry;
+      server?: string;
+    };
+    const { tld, entry, server } = body;
+
+    if (!tld) {
       return res
         .status(400)
-        .json({ success: false, message: "tld and server are required" });
+        .json({ success: false, message: "tld is required" });
     }
-    await setCustomServer(tld, server);
+
+    const normalized = tld.toLowerCase().replace(/^\./, "");
+
+    if (entry) {
+      await setCustomServer(normalized, entry);
+      return res.status(200).json({
+        success: true,
+        message: `Saved .${normalized}`,
+      });
+    }
+
+    if (server) {
+      await setCustomServer(normalized, server);
+      return res.status(200).json({
+        success: true,
+        message: `Saved .${normalized} → ${server}`,
+      });
+    }
+
     return res
-      .status(200)
-      .json({ success: true, message: `Added: .${tld.replace(/^\./, "")} → ${server}` });
+      .status(400)
+      .json({ success: false, message: "entry or server is required" });
   }
 
   if (req.method === "DELETE") {
@@ -64,14 +74,18 @@ export default async function handler(
     }
     const removed = await deleteCustomServer(tld);
     if (!removed) {
-      return res
-        .status(404)
-        .json({ success: false, message: `TLD .${tld.replace(/^\./, "")} not found in user-managed list` });
+      return res.status(404).json({
+        success: false,
+        message: `TLD .${tld.replace(/^\./, "")} not found in user-managed list`,
+      });
     }
-    return res
-      .status(200)
-      .json({ success: true, message: `Removed: .${tld.replace(/^\./, "")}` });
+    return res.status(200).json({
+      success: true,
+      message: `Removed .${tld.replace(/^\./, "")}`,
+    });
   }
 
-  return res.status(405).json({ success: false, message: "Method not allowed" });
+  return res
+    .status(405)
+    .json({ success: false, message: "Method not allowed" });
 }

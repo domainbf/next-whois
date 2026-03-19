@@ -39,6 +39,53 @@ Enhanced `epp_status.ts` with:
 - **New categories**: Added `unknown` category for unregistered/available status codes
 - **More EPP statuses**: quarantine, dispute, abuse, withheld, pendingPurge, verificationFailed, courtOrder, etc.
 
+## Custom WHOIS Server Management (2026-03)
+
+Added local WHOIS server management without touching rdap/whoiser libraries:
+
+- **`src/lib/whois/custom-servers.ts`** — Extended server entry types:
+  - `string` → TCP hostname (legacy, port 43)
+  - `{ type: "tcp", host, port? }` → TCP with optional custom port
+  - `{ type: "http", url, method?, body? }` → HTTP GET/POST with `{{domain}}` placeholder
+- **`src/lib/whois/lookup.ts`** — Added:
+  - `queryWhoisTcp()` — raw Node.js `net` TCP connection for non-43 ports
+  - `queryWhoisHttp()` — fetch-based HTTP WHOIS query with URL template substitution
+  - Updated `getLookupWhois()` to dispatch based on entry type
+- **`src/pages/api/whois-servers.ts`** — GET/POST/DELETE API for managing custom servers (no auth required)
+- **`src/pages/whois-servers.tsx`** — Full UI management page accessible via navbar "Servers" link
+- **`src/data/custom-tld-servers.json`** — User-editable server map (persisted on disk)
+
+Priority order: user custom servers → built-in servers → ccTLD servers → whoiser default discovery.
+
+## Vercel / Edge Platform Deployment
+
+The app is production-ready for Vercel and similar serverless platforms.
+
+### Key configuration files:
+- **`vercel.json`** — Function maxDuration per route (30s for lookup, 10s for others)
+- **`.env.example`** — All required environment variables documented
+
+### Environment variables for production:
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `REDIS_URL` | Yes* | — | Redis connection URL (Upstash/Vercel KV/Railway) |
+| `REDIS_HOST` | Yes* | — | Alternative to REDIS_URL for self-hosted Redis |
+| `WHOIS_TIMEOUT_MS` | No | 10000 | WHOIS query timeout in ms (keep ≤ 8000 on Hobby plan) |
+| `REDIS_CACHE_TTL` | No | 3600 | Result cache TTL in seconds |
+| `NEXT_PUBLIC_MAX_WHOIS_FOLLOW` | No | 0 | WHOIS follow depth (0 = fastest) |
+| `ADMIN_SECRET` | No | — | Protects /api/admin/tld-servers |
+
+*One of REDIS_URL or REDIS_HOST is required to persist custom WHOIS servers across serverless function instances.
+
+### Redis storage:
+- Lookup results cached at key `whois:{query}` with TTL from `REDIS_CACHE_TTL`
+- User-managed custom WHOIS servers stored at key `whois:user-servers` (no TTL — persistent)
+- Without Redis, custom servers fall back to `src/data/custom-tld-servers.json` (local only)
+
+### Vercel plan considerations:
+- **Hobby plan (10s limit)**: Set `WHOIS_TIMEOUT_MS=7000`. Some slow registries may still timeout.
+- **Pro plan (300s limit)**: Default 10s is fine; increase to 15000 for best coverage.
+
 ## Dev Server
 
 Runs on port 5000 via `pnpm run dev` (next dev -p 5000 -H 0.0.0.0).
