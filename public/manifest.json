@@ -1,7 +1,7 @@
 {
-  "name": "Next Whois",
-  "short_name": "Next Whois",
-  "description": "🧪 Your Next Generation Of Whois Lookup Tool With Modern UI.",
+  "name": "RDAP•WHOiS",
+  "short_name": "X.RW",
+  "description": "神秘的域名在X.RW搜索下无所遁形",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
