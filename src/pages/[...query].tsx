@@ -32,7 +32,7 @@ import {
   RiDownloadLine,
   RiServerLine,
   RiGlobalLine,
-  RiBanLine,
+  RiForbidLine,
   RiLockLine,
   RiPauseCircleLine,
   RiScalesLine,
@@ -1366,7 +1366,7 @@ const STATUS_INFO: Record<
   }
 > = {
   prohibited: {
-    icon: <RiBanLine className="w-5 h-5" />,
+    icon: <RiForbidLine className="w-5 h-5" />,
     titleZh: "禁止注册域名",
     titleEn: "Prohibited Domain",
     descZh: "该域名被注册局标记为禁止注册字符串，无法通过任何常规渠道注册。通常为政策性保护词汇或敏感字符串。",
@@ -1571,8 +1571,25 @@ function AvailableDomainCard({ domain, locale }: { domain: string; locale: strin
   const isZh = locale.startsWith("zh");
 
   React.useEffect(() => {
-    getTopRegistrars(domain, "new", 5)
-      .then(setRegistrars)
+    const tld = domain.substring(domain.lastIndexOf(".") + 1).toLowerCase();
+    fetch(`/api/pricing?tld=${encodeURIComponent(tld)}&type=new`)
+      .then((r) => r.json())
+      .then((data) => {
+        const prices: DomainPricing[] = (data.price || [])
+          .filter((r: any) => typeof r.new === "number")
+          .sort((a: any, b: any) => (a.new as number) - (b.new as number))
+          .slice(0, 5)
+          .map((r: any) => ({
+            ...r,
+            isPremium:
+              typeof r.new === "number" &&
+              r.new > 100 &&
+              ["usd", "eur", "cad"].includes((r.currency || "").toLowerCase()),
+            externalLink: `https://www.nazhumi.com/domain/${tld}/new`,
+          }));
+        setRegistrars(prices);
+      })
+      .catch(() => {})
       .finally(() => setLoadingPrices(false));
   }, [domain]);
 
@@ -2094,14 +2111,16 @@ export default function LookupPage({
             </motion.div>
           )}
 
-          {!loading && !status && (
+          {!loading && !status && (() => {
+            const hasErrorRaw = !!(result && (result.rawWhoisContent || result.rawRdapContent));
+            return (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4 }}
               className="grid grid-cols-1 lg:grid-cols-12 gap-6"
             >
-              <div className="lg:col-span-8 space-y-6">
+              <div className={cn(hasErrorRaw ? "lg:col-span-8" : "lg:col-span-12", "space-y-6")}>
                 {dnsProbe?.registrationStatus === "registered" ? (
                   <>
                     <div className="glass-panel border border-emerald-400/40 bg-emerald-50/30 dark:bg-emerald-950/20 rounded-xl p-6 sm:p-8 relative overflow-hidden">
@@ -2277,26 +2296,20 @@ export default function LookupPage({
                 )}
               </div>
 
-              <div className="lg:col-span-4">
-                {result && (result.rawWhoisContent || result.rawRdapContent) ? (
+              {hasErrorRaw && (
+                <div className="lg:col-span-4">
                   <ResponsePanel
-                    whoisContent={result.rawWhoisContent || ""}
-                    rdapContent={result.rawRdapContent}
+                    whoisContent={result!.rawWhoisContent || ""}
+                    rdapContent={result!.rawRdapContent}
                     target={target}
                     copy={copy}
                     save={save}
                   />
-                ) : (
-                  <div className="glass-panel border border-border rounded-xl p-6 text-center h-full flex flex-col items-center justify-center">
-                    <RiServerLine className="w-8 h-8 text-muted-foreground/30 mb-3" />
-                    <p className="text-xs text-muted-foreground">
-                      {t("no_raw_response")}
-                    </p>
-                  </div>
-                )}
-              </div>
+                </div>
+              )}
             </motion.div>
-          )}
+            );
+          })()}
 
           {!loading && status && result && (
             <>
