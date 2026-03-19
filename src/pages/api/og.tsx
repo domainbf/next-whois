@@ -714,11 +714,11 @@ export default async function handler(req: NextRequest) {
                 <span
                   style={{ fontSize: "12px", color: muted, fontWeight: 500 }}
                 >
-                  next-whois-ui
+                  RDAP+WHOIS
                 </span>
               </div>
               <span style={{ fontSize: "11px", color: accent }}>
-                github.com/zmh-program/next-whois-ui
+                NIC.RW提供支持
               </span>
             </div>
           </div>
