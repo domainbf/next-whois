@@ -13,6 +13,7 @@ export type WhoisResult = {
 
 export type WhoisAnalyzeResult = {
   domain: string;
+  domainPunycode?: string;
   registrar: string;
   registrarURL: string;
   ianaId: string;

@@ -329,6 +329,7 @@ function mergeResults(
 ): WhoisAnalyzeResult {
   return {
     domain: pickStr(rdap.domain, whoisParsed.domain),
+    domainPunycode: rdap.domainPunycode || whoisParsed.domainPunycode,
     registrar: pickStr(rdap.registrar, whoisParsed.registrar),
     registrarURL: pickStr(rdap.registrarURL, whoisParsed.registrarURL),
     ianaId: pickStr(rdap.ianaId, whoisParsed.ianaId),

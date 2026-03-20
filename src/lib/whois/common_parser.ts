@@ -5,8 +5,29 @@ import {
 } from "@/lib/whois/types";
 import { includeArgs } from "@/lib/utils";
 import moment from "moment";
+import { domainToUnicode } from "url";
 import { getMozMetrics } from "@/lib/moz/client";
 import { getDomainPricing } from "@/lib/pricing/client";
+
+function convertIdnToUnicode(domain: string): {
+  unicode: string;
+  punycode?: string;
+} {
+  try {
+    const hasAceLabel = domain
+      .toLowerCase()
+      .split(".")
+      .some((label) => label.startsWith("xn--"));
+    if (!hasAceLabel) return { unicode: domain };
+    const unicode = domainToUnicode(domain.toLowerCase());
+    if (unicode && unicode !== domain.toLowerCase()) {
+      return { unicode, punycode: domain.toUpperCase() };
+    }
+    return { unicode: domain };
+  } catch {
+    return { unicode: domain };
+  }
+}
 
 const HTML_ENTITIES: Record<string, string> = {
   "&amp;": "&",
@@ -253,6 +274,9 @@ export async function analyzeWhois(data: string): Promise<WhoisAnalyzeResult> {
     rawWhoisContent: data,
   };
 
+  let explicitUnicodeDomain = "";
+  let explicitAsciiDomain = "";
+
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
 
@@ -276,10 +300,15 @@ export async function analyzeWhois(data: string): Promise<WhoisAnalyzeResult> {
     if (!value) continue;
 
     switch (key) {
+      case "domain name (unicode)":
+        if (!explicitUnicodeDomain) explicitUnicodeDomain = value;
+        break;
+      case "domain name (ascii)":
+        if (!explicitAsciiDomain) explicitAsciiDomain = value;
+        result.domain = result.domain || value;
+        break;
       case "domain name":
       case "domain":
-      case "domain name (ascii)":
-      case "domain name (unicode)":
       case "nom de domaine":
       case "domaine":
         result.domain = result.domain || value;
@@ -648,6 +677,22 @@ export async function analyzeWhois(data: string): Promise<WhoisAnalyzeResult> {
       "mise a jour", "modificat", "actualiz",
     ]);
     if (fallback) result.updatedDate = fallback;
+  }
+
+  if (explicitUnicodeDomain) {
+    result.domain = explicitUnicodeDomain;
+    if (explicitAsciiDomain) {
+      result.domainPunycode = explicitAsciiDomain.toUpperCase();
+    } else if (result.domain) {
+      const punycheck = convertIdnToUnicode(result.domain);
+      if (punycheck.punycode) result.domainPunycode = punycheck.punycode;
+    }
+  } else if (result.domain) {
+    const converted = convertIdnToUnicode(result.domain);
+    if (converted.punycode) {
+      result.domainPunycode = converted.punycode;
+      result.domain = converted.unicode;
+    }
   }
 
   return await applyParams(result);

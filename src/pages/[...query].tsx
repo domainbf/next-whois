@@ -1163,16 +1163,33 @@ function ResponsePanel({
   );
 }
 
+function targetToDisplayName(target: string): string {
+  try {
+    const { domainToUnicode } = require("url");
+    const hasAce = target
+      .toLowerCase()
+      .split(".")
+      .some((l: string) => l.startsWith("xn--"));
+    if (!hasAce) return target;
+    const unicode = domainToUnicode(target.toLowerCase());
+    return unicode && unicode !== target.toLowerCase() ? unicode : target;
+  } catch {
+    return target;
+  }
+}
+
 export async function getServerSideProps(context: GetServerSidePropsContext) {
   const querySegments: string[] = (context.params?.query as string[]) ?? [];
   const origin = getOrigin(context.req);
   const target = cleanDomain(querySegments.join("/"));
+  const displayTarget = targetToDisplayName(target);
   try {
     const data = await lookupWhoisWithCache(target);
     return {
       props: {
         data: JSON.parse(JSON.stringify(data)),
         target,
+        displayTarget,
         origin,
       },
     };
@@ -1186,6 +1203,7 @@ export async function getServerSideProps(context: GetServerSidePropsContext) {
           error: e?.message || "Lookup failed",
         } as WhoisResult,
         target,
+        displayTarget,
         origin,
       },
     };
@@ -1782,10 +1800,12 @@ function ResultSkeleton() {
 export default function LookupPage({
   data,
   target,
+  displayTarget,
   origin,
 }: {
   data: WhoisResult;
   target: string;
+  displayTarget: string;
   origin: string;
 }) {
   const { t, locale } = useTranslation();
@@ -1890,11 +1910,11 @@ export default function LookupPage({
   return (
     <>
       <Head>
-        <title>{`${target} - WHOIS Lookup`}</title>
+        <title>{`${displayTarget} - WHOIS Lookup`}</title>
         <meta
           key="og:title"
           property="og:title"
-          content={`${target} - WHOIS Lookup`}
+          content={`${displayTarget} - WHOIS Lookup`}
         />
         <meta
           key="og:image"
@@ -1904,7 +1924,7 @@ export default function LookupPage({
         <meta
           key="twitter:title"
           name="twitter:title"
-          content={`${target} - WHOIS Lookup`}
+          content={`${displayTarget} - WHOIS Lookup`}
         />
         <meta
           key="twitter:image"
@@ -2135,7 +2155,7 @@ export default function LookupPage({
                             </Badge>
                           </div>
                           <h2 className="text-3xl sm:text-4xl font-bold tracking-tight mb-1">
-                            {target}
+                            {displayTarget}
                           </h2>
                           <p className="text-muted-foreground text-sm mt-2 max-w-sm leading-relaxed">
                             该域名已注册，但注册机构未提供公开的 WHOIS/RDAP 查询服务，无法获取详细注册信息。
@@ -2335,11 +2355,20 @@ export default function LookupPage({
                         </Badge>
                       </div>
                       <h2
-                        className="text-3xl sm:text-4xl font-bold tracking-tight mb-3 cursor-pointer hover:opacity-80 transition-opacity"
+                        className="text-3xl sm:text-4xl font-bold tracking-tight mb-1 cursor-pointer hover:opacity-80 transition-opacity"
                         onClick={() => copy(result.domain || target)}
                       >
-                        {result.domain || target.toUpperCase()}
+                        {result.domain || displayTarget}
                       </h2>
+                      {result.domainPunycode && (
+                        <p
+                          className="text-xs text-muted-foreground font-mono mb-3 cursor-pointer hover:opacity-70 transition-opacity"
+                          onClick={() => copy(result.domainPunycode!)}
+                        >
+                          {result.domainPunycode}
+                        </p>
+                      )}
+                      {!result.domainPunycode && <div className="mb-3" />}
                       <div className="flex items-center gap-2 flex-wrap">
                         {result.remainingDays !== null ? (
                           result.remainingDays <= 0 ? (

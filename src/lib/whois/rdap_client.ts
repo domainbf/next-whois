@@ -2,6 +2,19 @@ import { domain, ip, autnum } from "node-rdap";
 import { WhoisAnalyzeResult, DomainStatusProps } from "./types";
 import { extractDomain } from "@/lib/utils";
 import { applyParams } from "./common_parser";
+import { domainToASCII } from "url";
+
+function derivePunycode(unicodeName: string): string | undefined {
+  try {
+    const ascii = domainToASCII(unicodeName.toLowerCase());
+    if (ascii && ascii !== unicodeName.toLowerCase()) {
+      return ascii.toUpperCase();
+    }
+    return undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 export interface RdapResponse {
   handle?: string;
@@ -201,8 +214,40 @@ export async function convertRdapToWhoisResult(
     (ns: any) => (ns.ldhName || ns.unicodeName || "Unknown").split(/\s+/)[0],
   );
 
+  const ldhNameRaw = rdapData.ldhName || undefined;
+  const ldhName = ldhNameRaw ? ldhNameRaw.toUpperCase() : undefined;
+  const unicodeName = rdapData.unicodeName || undefined;
+
+  let displayDomain: string;
+  let punycodeDomain: string | undefined;
+
+  if (unicodeName) {
+    displayDomain = unicodeName;
+    if (ldhName && ldhName.toLowerCase() !== unicodeName.toLowerCase()) {
+      punycodeDomain = ldhName;
+    } else {
+      punycodeDomain = derivePunycode(unicodeName);
+    }
+  } else if (ldhNameRaw) {
+    const { domainToUnicode } = require("url");
+    try {
+      const unicode = domainToUnicode(ldhNameRaw.toLowerCase());
+      if (unicode && unicode !== ldhNameRaw.toLowerCase()) {
+        displayDomain = unicode;
+        punycodeDomain = ldhName;
+      } else {
+        displayDomain = ldhName || ldhNameRaw;
+      }
+    } catch {
+      displayDomain = ldhName || ldhNameRaw;
+    }
+  } else {
+    displayDomain = originalQuery;
+  }
+
   const result = {
-    domain: rdapData.ldhName || rdapData.unicodeName || originalQuery,
+    domain: displayDomain,
+    domainPunycode: punycodeDomain,
     registrar: entityData.registrar,
     registrarURL: entityData.registrarURL,
     ianaId: entityData.ianaId,
