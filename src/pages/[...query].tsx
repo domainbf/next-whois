@@ -1643,6 +1643,8 @@ function ConfettiPieces() {
   );
 }
 
+const REMINDER_THRESHOLDS = [60, 30, 10, 5, 1];
+
 function DomainReminderDialog({
   domain,
   expirationDate,
@@ -1660,7 +1662,6 @@ function DomainReminderDialog({
 }) {
   const hasExpiry = expirationDate && expirationDate !== "Unknown";
   const [email, setEmail] = React.useState("");
-  const [daysBefore, setDaysBefore] = React.useState(30);
   const [submitting, setSubmitting] = React.useState(false);
   const [done, setDone] = React.useState(false);
 
@@ -1678,7 +1679,7 @@ function DomainReminderDialog({
       const res = await fetch("/api/remind/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ domain, email, daysBefore, expirationDate }),
+        body: JSON.stringify({ domain, email, expirationDate }),
       });
       if (res.ok) {
         setDone(true);
@@ -1705,7 +1706,7 @@ function DomainReminderDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <RiTimerLine className="w-4 h-4 text-sky-500" />
-            {isZh ? "域历 · 到期提醒" : "Expiry Reminder"}
+            {isZh ? "域名订阅 · 到期提醒" : "Domain Subscription"}
           </DialogTitle>
         </DialogHeader>
         {done ? (
@@ -1713,12 +1714,13 @@ function DomainReminderDialog({
             <div className="w-12 h-12 bg-sky-100 dark:bg-sky-900/40 rounded-full flex items-center justify-center mx-auto">
               <RiCheckLine className="w-6 h-6 text-sky-600 dark:text-sky-400" />
             </div>
-            <p className="font-semibold text-sm">{isZh ? "提醒已设置！" : "Reminder set!"}</p>
-            <p className="text-xs text-muted-foreground">
+            <p className="font-semibold text-sm">{isZh ? "订阅成功！" : "Subscribed!"}</p>
+            <p className="text-xs text-muted-foreground leading-relaxed">
               {isZh
-                ? `我们将在 ${domain} 到期前 ${daysBefore} 天向 ${email} 发送提醒`
-                : `We'll remind ${email} ${daysBefore} days before ${domain} expires`}
+                ? `将在到期前 60、30、10、5、1 天向 ${email} 发送提醒，续费或赎回期后自动停止。`
+                : `We'll email ${email} at 60, 30, 10, 5, 1 days before expiry.`}
             </p>
+            <p className="text-[10px] text-muted-foreground/60">{isZh ? "确认邮件已发送，请查收" : "Check your inbox for confirmation"}</p>
           </div>
         ) : (
           <div className="space-y-4 pt-1">
@@ -1736,7 +1738,7 @@ function DomainReminderDialog({
             )}
             {!hasExpiry && (
               <p className="text-xs text-muted-foreground text-center py-2">
-                {isZh ? "当前域名暂无到期信息，仍可订阅提醒" : "No expiry info, but you can still subscribe"}
+                {isZh ? "当前域名暂无到期信息，仍可订阅提醒" : "No expiry info available, but you can still subscribe"}
               </p>
             )}
             <div>
@@ -1745,28 +1747,25 @@ function DomainReminderDialog({
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder={isZh ? "your@email.com" : "your@email.com"}
+                onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+                placeholder="your@email.com"
                 className="w-full text-sm rounded-lg border border-border bg-background px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-400/50"
               />
             </div>
-            <div>
-              <p className="text-xs font-medium mb-2">{isZh ? "提前提醒时间" : "Remind me before"}</p>
-              <div className="grid grid-cols-3 gap-2">
-                {[30, 60, 90].map((d) => (
-                  <button
-                    key={d}
-                    onClick={() => setDaysBefore(d)}
-                    className={cn(
-                      "py-2 rounded-lg text-xs font-semibold border transition-all",
-                      daysBefore === d
-                        ? "bg-sky-500 text-white border-sky-500"
-                        : "border-border text-muted-foreground hover:border-sky-400",
-                    )}
-                  >
-                    {isZh ? `${d} 天` : `${d}d`}
-                  </button>
+            <div className="rounded-lg bg-sky-50 dark:bg-sky-950/30 border border-sky-100 dark:border-sky-900/40 p-3">
+              <p className="text-xs font-medium text-sky-700 dark:text-sky-300 mb-2">
+                {isZh ? "📬 将在以下节点自动提醒" : "📬 Automatic reminders at"}
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {REMINDER_THRESHOLDS.map((d) => (
+                  <span key={d} className="px-2 py-0.5 rounded-full bg-sky-100 dark:bg-sky-900/50 text-sky-700 dark:text-sky-300 text-[11px] font-semibold">
+                    {isZh ? `提前 ${d} 天` : `${d}d before`}
+                  </span>
                 ))}
               </div>
+              <p className="text-[10px] text-sky-600/70 dark:text-sky-400/70 mt-2">
+                {isZh ? "续费、赎回期或您取消后自动停止" : "Auto-stops on renewal, redemption, or cancellation"}
+              </p>
             </div>
             <Button
               onClick={handleSubmit}
@@ -1774,11 +1773,10 @@ function DomainReminderDialog({
               className="w-full gap-2 bg-sky-500 hover:bg-sky-600 text-white border-0"
             >
               <RiCalendarEventLine className="w-4 h-4" />
-              {isZh ? "设置到期提醒" : "Set expiry reminder"}
+              {submitting
+                ? (isZh ? "订阅中..." : "Subscribing...")
+                : (isZh ? "订阅到期提醒" : "Subscribe to reminders")}
             </Button>
-            <p className="text-[10px] text-muted-foreground/60 text-center">
-              {isZh ? "功能持续完善中，提醒邮件将在未来版本启用" : "Email delivery coming in a future update"}
-            </p>
           </div>
         )}
       </DialogContent>
@@ -2710,7 +2708,7 @@ export default function LookupPage({
                           className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-all bg-muted/50 border-border/50 text-muted-foreground hover:border-violet-400/50 hover:text-violet-500"
                         >
                           <RiShieldCheckLine className="w-3 h-3" />
-                          {isChinese ? "域签" : "Stamp"}
+                          {isChinese ? "品牌认领" : "Claim"}
                         </button>
                         <button
                           onClick={() => setReminderDialogOpen(true)}
@@ -2722,7 +2720,7 @@ export default function LookupPage({
                           )}
                         >
                           <RiTimerLine className="w-3 h-3" />
-                          {isChinese ? "域历" : "Remind"}
+                          {isChinese ? "域名订阅" : "Subscribe"}
                         </button>
                         {verifiedStamps.map((stamp) => (
                           stamp.link ? (

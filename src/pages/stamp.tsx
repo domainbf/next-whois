@@ -128,7 +128,7 @@ export default function StampPage() {
   return (
     <>
       <Head>
-        <title>域签申请 · {domain}</title>
+        <title>品牌认领申请 · {domain}</title>
       </Head>
       <div className="min-h-screen bg-background">
         <div className="max-w-lg mx-auto px-4 py-6 pb-16">
@@ -149,7 +149,7 @@ export default function StampPage() {
               <div className="glass-panel border border-border rounded-xl p-5">
                 <h1 className="flex items-center gap-2 text-base font-bold mb-4">
                   <RiShieldCheckLine className="w-4 h-4 text-violet-500" />
-                  域签申请表单
+                  品牌认领申请表单
                 </h1>
 
                 <div className="space-y-4">
@@ -380,7 +380,7 @@ export default function StampPage() {
                 <RiCheckLine className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
               </div>
               <div>
-                <h2 className="text-xl font-bold text-emerald-700 dark:text-emerald-300 mb-1">域签验证成功！</h2>
+                <h2 className="text-xl font-bold text-emerald-700 dark:text-emerald-300 mb-1">品牌认领验证成功！</h2>
                 <p className="text-sm text-muted-foreground">
                   你的标签已生效，现在查询 <strong>{domain}</strong> 时将显示：
                 </p>
