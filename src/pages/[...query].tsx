@@ -1298,16 +1298,52 @@ function getDomainRegistrationStatus(
   dotColor: string;
 } {
   const isZh = locale.startsWith("zh");
-  const allStatusText = result.status
-    .map((s) => s.status.toLowerCase())
+
+  // EPP lock statuses that contain "prohibited" in their name but are NOT
+  // about registration prohibition — they protect already-registered domains.
+  const EPP_PROHIBITED_LOCK_STATUSES = new Set([
+    "clientdeleteprohibited",
+    "clienttransferprohibited",
+    "clientrenewprohibited",
+    "clientupdateprohibited",
+    "serverdeleteprohibited",
+    "servertransferprohibited",
+    "serverrenewprohibited",
+    "serverupdateprohibited",
+    // hyphenated / space variants used by some ccTLDs
+    "client-delete-prohibited",
+    "client-transfer-prohibited",
+    "client-renew-prohibited",
+    "client-update-prohibited",
+    "server-delete-prohibited",
+    "server-transfer-prohibited",
+    "server-renew-prohibited",
+    "server-update-prohibited",
+  ]);
+
+  const allStatusCodes = result.status.map((s) => s.status.toLowerCase().trim());
+  const allStatusText = allStatusCodes.join(" ");
+
+  // Build a separate text excluding EPP lock statuses for the prohibit check
+  // so that "clientTransferProhibited" does not trigger "禁止注册".
+  const prohibitCheckText = allStatusCodes
+    .filter((s) => {
+      const code = s.split(/\s+/)[0];
+      return !EPP_PROHIBITED_LOCK_STATUSES.has(code);
+    })
     .join(" ");
 
+  // True only for genuine registration-prohibit signals, not EPP lock flags.
   const isProhibited =
-    allStatusText.includes("prohibited") ||
-    allStatusText.includes("cannot be registered") ||
-    allStatusText.includes("not available for registration") ||
-    allStatusText.includes("not-available") ||
-    allStatusText.includes("ineligible");
+    prohibitCheckText.includes("prohibited") ||
+    prohibitCheckText.includes("registrationprohibited") ||
+    prohibitCheckText.includes("cannot be registered") ||
+    prohibitCheckText.includes("not available for registration") ||
+    prohibitCheckText.includes("not-available") ||
+    prohibitCheckText.includes("ineligible") ||
+    prohibitCheckText.includes("forbidden") ||
+    prohibitCheckText.includes("registry-prohibited") ||
+    prohibitCheckText.includes("registrybanned");
 
   function makeStatus(
     type: RegistrationStatusType,
@@ -1320,17 +1356,20 @@ function getDomainRegistrationStatus(
   if (isProhibited)
     return makeStatus("prohibited", "text-red-600 border-red-400/50 bg-red-50 dark:bg-red-950/20", "bg-red-500");
 
+  // "reserved" should not be triggered by "registry-hold" (that is a hold, not a reserve)
   const isReserved =
-    allStatusText.includes("reserved") ||
+    prohibitCheckText.includes("reserved") ||
     allStatusText.includes("reserved-delegated") ||
-    allStatusText.includes("registry-hold");
+    allStatusText.includes("registryreserved") ||
+    allStatusText.includes("registry-reserved");
 
   if (isReserved)
     return makeStatus("reserved", "text-amber-600 border-amber-400/50 bg-amber-50 dark:bg-amber-950/20", "bg-amber-500");
 
   const isRedemption =
     allStatusText.includes("redemptionperiod") ||
-    allStatusText.includes("redemption period");
+    allStatusText.includes("redemption period") ||
+    allStatusText.includes("redemption-period");
 
   if (isRedemption)
     return makeStatus("redemption", "text-purple-600 border-purple-400/50 bg-purple-50 dark:bg-purple-950/20", "bg-purple-500");
@@ -1343,10 +1382,25 @@ function getDomainRegistrationStatus(
   if (isPendingDelete)
     return makeStatus("pending-delete", "text-slate-600 border-slate-400/50 bg-slate-50 dark:bg-slate-950/20", "bg-slate-500");
 
-  const isHold =
-    (allStatusText.includes("server-hold") ||
-      allStatusText.includes("client-hold")) &&
-    !allStatusText.includes("ok");
+  // Match both camelCase EPP codes ("serverhold") and hyphenated variants ("server-hold")
+  const hasServerHold =
+    allStatusText.includes("serverhold") ||
+    allStatusText.includes("server-hold") ||
+    allStatusText.includes("server hold") ||
+    allStatusText.includes("registry-hold") ||
+    allStatusText.includes("registryhold");
+
+  const hasClientHold =
+    allStatusText.includes("clienthold") ||
+    allStatusText.includes("client-hold") ||
+    allStatusText.includes("client hold");
+
+  const hasOk =
+    allStatusText.includes(" ok ") ||
+    allStatusText === "ok" ||
+    allStatusText.includes("active");
+
+  const isHold = (hasServerHold || hasClientHold) && !hasOk;
 
   if (isHold)
     return makeStatus("hold", "text-orange-600 border-orange-400/50 bg-orange-50 dark:bg-orange-950/20", "bg-orange-500");
