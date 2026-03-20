@@ -37,3 +37,4 @@ externalPort = 80
 
 [userenv.shared]
 SUPABASE_URL = "https://zyhyufxaccjvmkbyivxz.supabase.co"
+RESEND_API_KEY = "re_Ac6SyMBg_5dbh5c8a1ZbSy9cw9jT5RRAa"
