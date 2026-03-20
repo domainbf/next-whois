@@ -1769,21 +1769,20 @@ function AvailableDomainCard({ domain, locale }: { domain: string; locale: strin
 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
-                      {idx === 0 ? (
-                        <span className="shrink-0 text-[9px] font-bold text-white bg-emerald-500 dark:bg-emerald-600 px-1.5 py-0.5 rounded-md uppercase tracking-wide">
-                          {isZh ? "最低价" : "Best"}
-                        </span>
-                      ) : (
-                        <span className="shrink-0 text-[10px] font-semibold text-muted-foreground/50 w-4 text-center">
-                          {idx + 1}
-                        </span>
-                      )}
+                      <span className="shrink-0 text-[10px] font-semibold text-muted-foreground/50 w-4 text-center">
+                        {idx + 1}
+                      </span>
                       <p className={cn(
                         "text-sm truncate",
                         idx === 0 ? "font-semibold text-foreground" : "font-medium text-foreground/75",
                       )}>
                         {r.registrarname}
                       </p>
+                      {idx === 0 && (
+                        <span className="shrink-0 text-[9px] font-bold text-white bg-emerald-500 dark:bg-emerald-600 px-1.5 py-0.5 rounded-md uppercase tracking-wide">
+                          {isZh ? "最低价" : "Best"}
+                        </span>
+                      )}
                     </div>
                     {savings > 0 && (
                       <p className="text-[10px] text-muted-foreground/50 mt-0.5 pl-5">
