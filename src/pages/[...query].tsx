@@ -68,7 +68,7 @@ import {
 } from "@/components/search_shortcuts";
 import { useTranslation, TranslationKey } from "@/lib/i18n";
 import { toast } from "sonner";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { useTheme } from "next-themes";
 import {
   DropdownMenu,
@@ -1693,7 +1693,14 @@ function DomainReminderDialog({
     }
   }
 
-  const urgencyColor =
+  const urgencyBg =
+    remainingDays === null ? "bg-muted/40" :
+    remainingDays <= 0 ? "bg-red-50/60 dark:bg-red-950/20 border-red-200/50" :
+    remainingDays <= 30 ? "bg-red-50/60 dark:bg-red-950/20 border-red-200/50" :
+    remainingDays <= 90 ? "bg-amber-50/60 dark:bg-amber-950/20 border-amber-200/50" :
+    "bg-emerald-50/60 dark:bg-emerald-950/20 border-emerald-200/50";
+
+  const urgencyNum =
     remainingDays === null ? "text-muted-foreground" :
     remainingDays <= 0 ? "text-red-500" :
     remainingDays <= 30 ? "text-red-500" :
@@ -1702,83 +1709,137 @@ function DomainReminderDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <RiTimerLine className="w-4 h-4 text-sky-500" />
-            {isZh ? "域名订阅 · 到期提醒" : "Domain Subscription"}
-          </DialogTitle>
-        </DialogHeader>
-        {done ? (
-          <div className="text-center py-6 space-y-3">
-            <div className="w-12 h-12 bg-sky-100 dark:bg-sky-900/40 rounded-full flex items-center justify-center mx-auto">
-              <RiCheckLine className="w-6 h-6 text-sky-600 dark:text-sky-400" />
+      <DialogContent className="max-w-sm p-0 overflow-hidden gap-0">
+        {/* Header */}
+        <div className="px-5 pt-5 pb-4 border-b border-border/50">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-sky-500/10 flex items-center justify-center shrink-0">
+              <RiTimerLine className="w-4 h-4 text-sky-500" />
             </div>
-            <p className="font-semibold text-sm">{isZh ? "订阅成功！" : "Subscribed!"}</p>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              {isZh
-                ? `将在到期前 60、30、10、5、1 天向 ${email} 发送提醒，续费或赎回期后自动停止。`
-                : `We'll email ${email} at 60, 30, 10, 5, 1 days before expiry.`}
-            </p>
-            <p className="text-[10px] text-muted-foreground/60">{isZh ? "确认邮件已发送，请查收" : "Check your inbox for confirmation"}</p>
-          </div>
-        ) : (
-          <div className="space-y-4 pt-1">
-            {hasExpiry && remainingDays !== null && (
-              <div className="flex items-center justify-between p-3 rounded-lg bg-muted/40">
-                <div>
-                  <p className="text-xs text-muted-foreground mb-0.5">{isZh ? "到期日期" : "Expiry date"}</p>
-                  <p className="text-sm font-mono font-medium">{expirationDate}</p>
-                </div>
-                <div className="text-right">
-                  <p className={cn("text-2xl font-black tabular-nums", urgencyColor)}>{remainingDays <= 0 ? "0" : remainingDays}</p>
-                  <p className="text-[10px] text-muted-foreground">{isZh ? "天后到期" : "days left"}</p>
-                </div>
-              </div>
-            )}
-            {!hasExpiry && (
-              <p className="text-xs text-muted-foreground text-center py-2">
-                {isZh ? "当前域名暂无到期信息，仍可订阅提醒" : "No expiry info available, but you can still subscribe"}
-              </p>
-            )}
             <div>
-              <p className="text-xs font-medium mb-1.5">{isZh ? "邮箱地址" : "Email address"} <span className="text-red-500">*</span></p>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
-                placeholder="your@email.com"
-                className="w-full text-sm rounded-lg border border-border bg-background px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-400/50"
-              />
+              <h2 className="text-sm font-bold text-foreground">
+                {isZh ? "域名订阅" : "Domain Subscription"}
+              </h2>
+              <p className="text-[11px] text-muted-foreground font-mono">{domain}</p>
             </div>
-            <div className="rounded-lg bg-sky-50 dark:bg-sky-950/30 border border-sky-100 dark:border-sky-900/40 p-3">
-              <p className="text-xs font-medium text-sky-700 dark:text-sky-300 mb-2">
-                {isZh ? "📬 将在以下节点自动提醒" : "📬 Automatic reminders at"}
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {REMINDER_THRESHOLDS.map((d) => (
-                  <span key={d} className="px-2 py-0.5 rounded-full bg-sky-100 dark:bg-sky-900/50 text-sky-700 dark:text-sky-300 text-[11px] font-semibold">
-                    {isZh ? `提前 ${d} 天` : `${d}d before`}
-                  </span>
-                ))}
-              </div>
-              <p className="text-[10px] text-sky-600/70 dark:text-sky-400/70 mt-2">
-                {isZh ? "续费、赎回期或您取消后自动停止" : "Auto-stops on renewal, redemption, or cancellation"}
-              </p>
-            </div>
-            <Button
-              onClick={handleSubmit}
-              disabled={submitting}
-              className="w-full gap-2 bg-sky-500 hover:bg-sky-600 text-white border-0"
-            >
-              <RiCalendarEventLine className="w-4 h-4" />
-              {submitting
-                ? (isZh ? "订阅中..." : "Subscribing...")
-                : (isZh ? "订阅到期提醒" : "Subscribe to reminders")}
-            </Button>
           </div>
-        )}
+        </div>
+
+        {/* Body */}
+        <div className="px-5 pb-5">
+          <AnimatePresence mode="wait" initial={false}>
+            {done ? (
+              <motion.div
+                key="done"
+                initial={{ opacity: 0, scale: 0.96, y: 8 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.96, y: -8 }}
+                transition={{ duration: 0.2, ease: [0.32, 0.72, 0, 1] }}
+                className="py-6 text-center space-y-3"
+              >
+                <div className="relative w-14 h-14 mx-auto">
+                  <div className="absolute inset-0 rounded-full bg-sky-500/15 animate-ping" style={{ animationDuration: "1.5s" }} />
+                  <div className="relative w-14 h-14 bg-sky-500/10 border-2 border-sky-400/30 rounded-full flex items-center justify-center">
+                    <RiCheckLine className="w-6 h-6 text-sky-500" />
+                  </div>
+                </div>
+                <div>
+                  <p className="font-bold text-sm text-foreground">{isZh ? "订阅成功" : "Subscribed!"}</p>
+                  <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                    {isZh
+                      ? `将在到期前 60、30、10、5、1 天向`
+                      : `We'll email`}
+                    {" "}<strong className="text-foreground font-mono">{email}</strong>{" "}
+                    {isZh ? "发送提醒邮件" : "at 60, 30, 10, 5, 1 days before expiry"}
+                  </p>
+                </div>
+                <p className="text-[10px] text-muted-foreground/60">
+                  {isZh ? "确认邮件已发送，请查收" : "Check your inbox for confirmation"}
+                </p>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="form"
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.18, ease: [0.32, 0.72, 0, 1] }}
+                className="space-y-3 pt-4"
+              >
+                {/* Expiry info */}
+                {hasExpiry && remainingDays !== null && (
+                  <div className={cn("flex items-center justify-between px-3 py-2.5 rounded-xl border", urgencyBg)}>
+                    <div>
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold mb-0.5">
+                        {isZh ? "到期日期" : "Expiry date"}
+                      </p>
+                      <p className="text-sm font-mono font-semibold">{expirationDate}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className={cn("text-3xl font-black tabular-nums leading-none", urgencyNum)}>
+                        {remainingDays <= 0 ? "0" : remainingDays}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">
+                        {isZh ? "天后到期" : "days left"}
+                      </p>
+                    </div>
+                  </div>
+                )}
+                {!hasExpiry && (
+                  <div className="px-3 py-2.5 rounded-xl border border-border/50 bg-muted/20">
+                    <p className="text-xs text-muted-foreground text-center">
+                      {isZh ? "暂无到期日期，仍可订阅提醒" : "No expiry info available, but you can still subscribe"}
+                    </p>
+                  </div>
+                )}
+
+                {/* Email input */}
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground mb-1.5">
+                    {isZh ? "邮箱地址" : "Email address"} <span className="text-red-500">*</span>
+                  </p>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+                    placeholder="your@email.com"
+                    className="w-full text-sm rounded-xl border border-border bg-background px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-sky-400/40 transition-shadow"
+                  />
+                </div>
+
+                {/* Thresholds */}
+                <div className="rounded-xl border border-border/50 bg-muted/20 p-3">
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2">
+                    {isZh ? "自动提醒时间节点" : "Reminder schedule"}
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {REMINDER_THRESHOLDS.map((d) => (
+                      <span key={d} className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md bg-sky-500/10 border border-sky-400/20 text-sky-600 dark:text-sky-400 text-[11px] font-semibold">
+                        <RiTimerLine className="w-2.5 h-2.5" />
+                        {isZh ? `提前 ${d} 天` : `${d}d before`}
+                      </span>
+                    ))}
+                  </div>
+                  <p className="text-[10px] text-muted-foreground/60 mt-2">
+                    {isZh ? "续费、赎回期或取消后自动停止" : "Auto-stops on renewal, redemption, or cancel"}
+                  </p>
+                </div>
+
+                <Button
+                  onClick={handleSubmit}
+                  disabled={submitting}
+                  className="w-full gap-2 h-10 bg-sky-500 hover:bg-sky-600 active:bg-sky-700 text-white border-0 rounded-xl font-semibold text-sm shadow-sm shadow-sky-500/20 transition-all"
+                >
+                  {submitting
+                    ? <><RiLoader4Line className="w-4 h-4 animate-spin" />{isZh ? "订阅中…" : "Subscribing…"}</>
+                    : <><RiCalendarEventLine className="w-4 h-4" />{isZh ? "订阅到期提醒" : "Subscribe"}</>
+                  }
+                </Button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </DialogContent>
     </Dialog>
   );
