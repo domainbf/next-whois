@@ -584,6 +584,297 @@ const EPP_STATUS_MAP: Record<string, EppStatusInfo> = {
     descriptionZh: "域名正常，但注册局已禁止续费。",
     category: "server",
   },
+
+  prohibited: {
+    displayName: "Prohibited",
+    description:
+      "This domain is marked as a prohibited string by the registry. It cannot be registered through any conventional channel, typically because it is a policy-protected keyword or reserved term.",
+    descriptionZh:
+      "该域名被注册局标记为禁止注册字符串，无法通过任何常规渠道注册。通常为政策性保护词汇或敏感字符串。",
+    category: "server",
+  },
+  prohibitedstring: {
+    displayName: "Prohibited String",
+    description:
+      "This domain contains a prohibited string as defined by registry policy and cannot be registered by the general public.",
+    descriptionZh: "该域名包含注册局政策规定的禁止字符串，公众无法注册。",
+    category: "server",
+  },
+  cannotberegistered: {
+    displayName: "Cannot Be Registered",
+    description:
+      "This domain cannot be registered through normal channels as defined by the registry policy.",
+    descriptionZh: "该域名无法通过常规途径注册，由注册局政策规定禁止。",
+    category: "server",
+  },
+  notavailable: {
+    displayName: "Not Available",
+    description: "This domain is not available for registration at this time.",
+    descriptionZh: "该域名当前不可注册。",
+    category: "server",
+  },
+  unavailable: {
+    displayName: "Unavailable",
+    description: "This domain is unavailable for registration.",
+    descriptionZh: "该域名不可注册。",
+    category: "server",
+  },
+  inuse: {
+    displayName: "In Use",
+    description: "This domain is currently in use and registered.",
+    descriptionZh: "该域名当前正在使用中，已被注册。",
+    category: "ok",
+  },
+  taken: {
+    displayName: "Taken",
+    description: "This domain has already been registered by someone.",
+    descriptionZh: "该域名已被他人注册。",
+    category: "ok",
+  },
+  nodelegation: {
+    displayName: "No Delegation",
+    description:
+      "The domain has no name server delegation set. It is registered but will not resolve in the DNS.",
+    descriptionZh: "该域名未设置名称服务器委派，已注册但无法在 DNS 中解析。",
+    category: "redemption",
+  },
+  pendingallocation: {
+    displayName: "Pending Allocation",
+    description: "The domain is pending allocation by the registry.",
+    descriptionZh: "域名正在等待注册局分配。",
+    category: "pending",
+  },
+  pendingregistration: {
+    displayName: "Pending Registration",
+    description: "The domain registration is pending completion.",
+    descriptionZh: "域名注册正在处理中。",
+    category: "pending",
+  },
+  pendingexpiry: {
+    displayName: "Pending Expiry",
+    description: "The domain is approaching expiry and is pending renewal.",
+    descriptionZh: "域名即将到期，等待续费处理。",
+    category: "pending",
+  },
+  pendingtransaction: {
+    displayName: "Pending Transaction",
+    description: "A transaction on this domain is currently pending.",
+    descriptionZh: "该域名当前有待处理的交易操作。",
+    category: "pending",
+  },
+  autorenew: {
+    displayName: "Auto-Renew",
+    description: "The domain is set to auto-renew upon expiry.",
+    descriptionZh: "该域名设置为到期自动续费。",
+    category: "ok",
+  },
+  autorenewed: {
+    displayName: "Auto-Renewed",
+    description: "The domain has been automatically renewed.",
+    descriptionZh: "该域名已自动完成续费。",
+    category: "ok",
+  },
+  registrantverified: {
+    displayName: "Registrant Verified",
+    description: "The registrant's identity has been verified by the registry.",
+    descriptionZh: "注册人身份已通过注册局验证。",
+    category: "ok",
+  },
+  whoisprotected: {
+    displayName: "WHOIS Protected",
+    description: "The domain's WHOIS contact information is protected/hidden.",
+    descriptionZh: "该域名的 WHOIS 联系信息受保护/已隐藏。",
+    category: "ok",
+  },
+  privacyprotected: {
+    displayName: "Privacy Protected",
+    description: "The domain's registrant contact information is protected by a privacy service.",
+    descriptionZh: "该域名的注册人联系信息受隐私保护服务保护。",
+    category: "ok",
+  },
+  redemption: {
+    displayName: "Redemption",
+    description:
+      "The domain has expired and entered the redemption period. It can be restored by the original registrant for an additional fee.",
+    descriptionZh:
+      "域名已到期并进入赎回期，原注册人可以支付额外费用恢复该域名。",
+    category: "redemption",
+  },
+  argp: {
+    displayName: "Auto-Renew Grace Period",
+    description:
+      "Auto-renewal grace period. The registrar may delete the domain for a refund.",
+    descriptionZh: "自动续费宽限期。注册商可在此期间删除域名以获得退款。",
+    category: "grace",
+  },
+  rgp: {
+    displayName: "Redemption Grace Period",
+    description:
+      "Redemption grace period. The domain may be restored by the registrant for a fee.",
+    descriptionZh: "赎回宽限期。注册人可支付费用恢复域名。",
+    category: "grace",
+  },
+  agp: {
+    displayName: "Add Grace Period",
+    description:
+      "Initial registration grace period. The domain can be deleted for a refund.",
+    descriptionZh: "初始注册宽限期。域名可被删除并退款。",
+    category: "grace",
+  },
+  transferlock: {
+    displayName: "Transfer Lock",
+    description:
+      "The domain is locked against transfers. Contact your registrar to unlock.",
+    descriptionZh: "域名已加转移锁，请联系注册商解锁。",
+    category: "client",
+  },
+  domaincreated: {
+    displayName: "Domain Created",
+    description: "The domain has been newly created in the registry.",
+    descriptionZh: "域名已在注册局新建。",
+    category: "ok",
+  },
+  domainrenewed: {
+    displayName: "Domain Renewed",
+    description: "The domain registration has been successfully renewed.",
+    descriptionZh: "域名注册已成功续费。",
+    category: "ok",
+  },
+  domaintransferred: {
+    displayName: "Domain Transferred",
+    description: "The domain has been transferred to a new registrar.",
+    descriptionZh: "域名已转移至新注册商。",
+    category: "ok",
+  },
+  domainsuspended: {
+    displayName: "Domain Suspended",
+    description: "The domain has been suspended and will not resolve.",
+    descriptionZh: "域名已被暂停，无法解析。",
+    category: "server",
+  },
+  domaindeleted: {
+    displayName: "Domain Deleted",
+    description: "The domain has been deleted from the registry.",
+    descriptionZh: "域名已从注册局删除。",
+    category: "pending",
+  },
+  outzone: {
+    displayName: "Out of Zone",
+    description:
+      "The domain is out of the DNS zone and will not resolve. Name servers may be missing or invalid.",
+    descriptionZh: "域名不在 DNS 区域内，无法解析，名称服务器可能缺失或无效。",
+    category: "redemption",
+  },
+  offhold: {
+    displayName: "Off Hold",
+    description: "The domain has been released from hold status and is active.",
+    descriptionZh: "域名已从冻结状态释放，恢复正常。",
+    category: "ok",
+  },
+  throttled: {
+    displayName: "Throttled",
+    description: "The domain has been throttled by the registry due to excessive queries.",
+    descriptionZh: "域名因查询过于频繁被注册局限流。",
+    category: "server",
+  },
+  errored: {
+    displayName: "Errored",
+    description: "The domain is in an error state at the registry level.",
+    descriptionZh: "域名在注册局层面处于错误状态。",
+    category: "redemption",
+  },
+  registrylocked: {
+    displayName: "Registry Locked",
+    description:
+      "The registry has placed a lock on this domain preventing any changes, transfers, or deletion.",
+    descriptionZh: "注册局已锁定该域名，禁止任何修改、转移或删除操作。",
+    category: "server",
+  },
+  registrarheld: {
+    displayName: "Registrar Held",
+    description: "The domain is being held by the registrar.",
+    descriptionZh: "域名被注册商暂时扣押。",
+    category: "client",
+  },
+  registryheld: {
+    displayName: "Registry Held",
+    description: "The domain is being held by the registry.",
+    descriptionZh: "域名被注册局暂时扣押。",
+    category: "server",
+  },
+  nolongeractive: {
+    displayName: "No Longer Active",
+    description: "This domain is no longer active and has ceased to function.",
+    descriptionZh: "该域名已不再处于激活状态，已停止运行。",
+    category: "redemption",
+  },
+  deactivated: {
+    displayName: "Deactivated",
+    description: "The domain has been deactivated and will not resolve.",
+    descriptionZh: "域名已被停用，无法解析。",
+    category: "redemption",
+  },
+  disabled: {
+    displayName: "Disabled",
+    description: "The domain is disabled and not currently active.",
+    descriptionZh: "域名已禁用，当前不处于激活状态。",
+    category: "redemption",
+  },
+  rejected: {
+    displayName: "Rejected",
+    description: "The domain registration or request has been rejected by the registry.",
+    descriptionZh: "域名注册或申请已被注册局拒绝。",
+    category: "server",
+  },
+  challenged: {
+    displayName: "Challenged",
+    description: "The domain registration is being challenged by a third party.",
+    descriptionZh: "域名注册正受到第三方质疑。",
+    category: "server",
+  },
+  underreview: {
+    displayName: "Under Review",
+    description:
+      "The domain is currently under review by the registry or registrar.",
+    descriptionZh: "域名正在被注册局或注册商审查中。",
+    category: "pending",
+  },
+  reviewing: {
+    displayName: "Reviewing",
+    description: "The domain registration is currently being reviewed.",
+    descriptionZh: "域名注册正在审查中。",
+    category: "pending",
+  },
+  termination: {
+    displayName: "Termination",
+    description: "The domain is in the process of being terminated.",
+    descriptionZh: "域名正在被终止处理中。",
+    category: "pending",
+  },
+  terminated: {
+    displayName: "Terminated",
+    description: "The domain registration has been terminated.",
+    descriptionZh: "域名注册已被终止。",
+    category: "pending",
+  },
+  cancelled: {
+    displayName: "Cancelled",
+    description: "The domain registration has been cancelled.",
+    descriptionZh: "域名注册已取消。",
+    category: "pending",
+  },
+  canceled: {
+    displayName: "Canceled",
+    description: "The domain registration has been canceled.",
+    descriptionZh: "域名注册已取消。",
+    category: "pending",
+  },
+  pendingcontactverification: {
+    displayName: "Pending Contact Verification",
+    description: "The domain registrant's contact details are pending verification.",
+    descriptionZh: "域名注册人的联系信息正在等待验证。",
+    category: "pending",
+  },
 };
 
 function normalizeStatusKey(status: string): string {

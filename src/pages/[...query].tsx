@@ -1701,75 +1701,124 @@ function AvailableDomainCard({ domain, locale }: { domain: string; locale: strin
         </div>
       </div>
 
-      <div className="px-4 sm:px-6 pb-6 border-t border-emerald-200/50 dark:border-emerald-700/30 pt-4">
-        <p className="text-xs text-muted-foreground mb-3 flex items-center gap-1.5 font-medium">
-          <RiShoppingCartLine className="w-3.5 h-3.5" />
-          {isZh ? "注册渠道价格对比" : "Registrar price comparison"}
-        </p>
+      <div className="border-t border-emerald-200/50 dark:border-emerald-700/30">
+        <div className="px-4 sm:px-6 pt-4 pb-1 flex items-center justify-between">
+          <p className="text-xs text-muted-foreground flex items-center gap-1.5 font-semibold uppercase tracking-wide">
+            <RiShoppingCartLine className="w-3.5 h-3.5" />
+            {isZh ? "注册渠道价格对比" : "Registrar Price Comparison"}
+          </p>
+          {registrars.length > 0 && (
+            <span className="text-[10px] text-muted-foreground/50">
+              {isZh ? "以官网为准" : "For reference only"}
+            </span>
+          )}
+        </div>
 
         {loadingPrices ? (
-          <div className="space-y-2">
+          <div className="px-4 sm:px-6 pb-5 pt-3 space-y-3">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-14 rounded-xl bg-muted/40 animate-pulse" />
+              <div key={i} className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-muted/50 animate-pulse shrink-0" />
+                <div className="flex-1 h-4 rounded bg-muted/40 animate-pulse" />
+                <div className="w-16 h-5 rounded bg-muted/40 animate-pulse shrink-0" />
+              </div>
             ))}
           </div>
         ) : registrars.length > 0 ? (
-          <div className="space-y-2">
-            {registrars.map((r, idx) => (
-              <a
-                key={r.registrar}
-                href={r.registrarweb}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block group"
-              >
-                <div
+          <div className="pb-4">
+            {registrars.map((r, idx) => {
+              const faviconDomain = (() => {
+                try { return new URL(r.registrarweb).hostname; } catch { return null; }
+              })();
+              const cheapestPrice = typeof registrars[0].new === "number" ? registrars[0].new : 0;
+              const thisPrice = typeof r.new === "number" ? r.new : 0;
+              const savings = idx > 0 && cheapestPrice > 0 ? thisPrice - cheapestPrice : 0;
+              return (
+                <a
+                  key={r.registrar}
+                  href={r.registrarweb}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className={cn(
-                    "border rounded-xl px-4 py-3 flex items-center justify-between transition-all duration-150",
-                    "hover:bg-emerald-50/60 dark:hover:bg-emerald-950/30 hover:border-emerald-300/60",
-                    "border-border/60 bg-background/60",
-                    idx === 0 &&
-                      "border-emerald-300/70 dark:border-emerald-600/40 bg-emerald-50/40 dark:bg-emerald-950/20",
+                    "flex items-center gap-3 px-4 sm:px-6 py-3 transition-colors duration-150",
+                    "hover:bg-emerald-50/50 dark:hover:bg-emerald-950/25",
+                    idx === 0 && "bg-emerald-50/30 dark:bg-emerald-950/15",
                   )}
                 >
-                  <div className="flex items-center gap-2 min-w-0">
-                    {idx === 0 && (
-                      <span className="shrink-0 text-[9px] font-bold text-white bg-emerald-500 dark:bg-emerald-600 px-1.5 py-0.5 rounded uppercase tracking-wide">
-                        {isZh ? "最低价" : "Best"}
+                  <div className="shrink-0 w-8 h-8 rounded-lg overflow-hidden border border-border/40 bg-muted/30 flex items-center justify-center">
+                    {faviconDomain ? (
+                      <img
+                        src={`https://www.google.com/s2/favicons?domain=${faviconDomain}&sz=32`}
+                        alt={r.registrarname}
+                        className="w-5 h-5 object-contain"
+                        onError={(e) => {
+                          const t = e.currentTarget;
+                          t.style.display = "none";
+                          const parent = t.parentElement;
+                          if (parent) {
+                            parent.innerHTML = `<span class="text-[11px] font-bold text-muted-foreground">${r.registrarname.charAt(0).toUpperCase()}</span>`;
+                          }
+                        }}
+                      />
+                    ) : (
+                      <span className="text-[11px] font-bold text-muted-foreground">
+                        {r.registrarname.charAt(0).toUpperCase()}
                       </span>
                     )}
-                    {idx > 0 && (
-                      <span className="shrink-0 w-5 h-5 flex items-center justify-center text-[10px] font-semibold text-muted-foreground/60 bg-muted/40 rounded-full">
-                        {idx + 1}
-                      </span>
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      {idx === 0 ? (
+                        <span className="shrink-0 text-[9px] font-bold text-white bg-emerald-500 dark:bg-emerald-600 px-1.5 py-0.5 rounded-md uppercase tracking-wide">
+                          {isZh ? "最低价" : "Best"}
+                        </span>
+                      ) : (
+                        <span className="shrink-0 text-[10px] font-semibold text-muted-foreground/50 w-4 text-center">
+                          {idx + 1}
+                        </span>
+                      )}
+                      <p className={cn(
+                        "text-sm truncate",
+                        idx === 0 ? "font-semibold text-foreground" : "font-medium text-foreground/75",
+                      )}>
+                        {r.registrarname}
+                      </p>
+                    </div>
+                    {savings > 0 && (
+                      <p className="text-[10px] text-muted-foreground/50 mt-0.5 pl-5">
+                        +{formatPrice(savings, r.currency)} {isZh ? "较最低价" : "vs best"}
+                      </p>
                     )}
-                    <p className="text-sm font-medium text-foreground/80 truncate">
-                      {r.registrarname}
-                    </p>
                   </div>
-                  <div className="flex items-baseline gap-1.5 shrink-0 ml-3">
-                    <span className="text-base font-bold text-emerald-600 dark:text-emerald-400">
-                      {typeof r.new === "number" ? formatPrice(r.new, r.currency) : "N/A"}
-                    </span>
-                    <span className="text-[10px] text-muted-foreground">
-                      /{isZh ? "首年" : "yr"}
-                    </span>
+
+                  <div className="shrink-0 text-right">
+                    <div className="flex items-baseline gap-0.5 justify-end">
+                      <span className={cn(
+                        "text-sm font-bold",
+                        idx === 0
+                          ? "text-emerald-600 dark:text-emerald-400"
+                          : "text-foreground/80",
+                      )}>
+                        {typeof r.new === "number" ? formatPrice(r.new, r.currency) : "N/A"}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground/60">
+                        /{isZh ? "首年" : "yr"}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              </a>
-            ))}
+                </a>
+              );
+            })}
+            <p className="text-[10px] text-muted-foreground/40 px-4 sm:px-6 pt-2 pb-2">
+              {isZh
+                ? "数据来源：nazhumi.com · 价格仅供参考"
+                : "Data from nazhumi.com · Prices for reference only"}
+            </p>
           </div>
         ) : (
-          <p className="text-xs text-muted-foreground text-center py-3">
+          <p className="text-xs text-muted-foreground text-center py-5">
             {isZh ? "暂无价格数据" : "No pricing data available"}
-          </p>
-        )}
-
-        {registrars.length > 0 && (
-          <p className="text-[10px] text-muted-foreground/60 mt-3 text-center">
-            {isZh
-              ? "价格来源：nazhumi.com · 仅供参考，以官网为准"
-              : "Prices from nazhumi.com · For reference only"}
           </p>
         )}
       </div>
@@ -2636,11 +2685,13 @@ export default function LookupPage({
                                   >
                                     {displayName}
                                   </a>
-                                  {info && (
-                                    <p className="text-[10px] text-muted-foreground leading-snug mt-0.5">
-                                      {getEppStatusDescription(s.status, locale)}
-                                    </p>
-                                  )}
+                                  <p className="text-[10px] text-muted-foreground leading-snug mt-0.5">
+                                    {info
+                                      ? getEppStatusDescription(s.status, locale)
+                                      : locale === "zh" || locale === "zh-tw"
+                                        ? "注册局特定状态码，暂无标准释义。请参阅对应注册局文档了解详情。"
+                                        : "Registry-specific status code with no standard description. Refer to the registry's documentation for details."}
+                                  </p>
                                 </div>
                               </div>
                             );
