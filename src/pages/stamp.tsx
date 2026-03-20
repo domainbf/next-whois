@@ -17,7 +17,7 @@ import {
 import { toast } from "sonner";
 
 const TAG_STYLES: { id: string; label: string; className: string }[] = [
-  { id: "personal", label: "个人持有", className: "border border-border text-foreground bg-background" },
+  { id: "personal", label: "个人持有", className: "bg-violet-50 border border-violet-200 text-violet-700 dark:bg-violet-950/40 dark:border-violet-700/60 dark:text-violet-300" },
   { id: "official", label: "官方", className: "bg-blue-500 text-white border-0" },
   { id: "brand", label: "品牌", className: "bg-violet-500 text-white border-0" },
   { id: "verified", label: "认证", className: "bg-emerald-500 text-white border-0" },

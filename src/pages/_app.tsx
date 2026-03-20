@@ -68,10 +68,10 @@ export default function App({ Component, pageProps }: AppProps) {
             <AnimatePresence mode="wait" initial={false}>
               <motion.div
                 key={router.pathname}
-                initial={{ opacity: 0, y: 6 }}
+                initial={{ opacity: 0, y: 14 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                transition={{ duration: 0.18, ease: "easeInOut" }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
               >
                 <Component {...pageProps} />
               </motion.div>

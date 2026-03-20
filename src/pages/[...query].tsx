@@ -2067,10 +2067,14 @@ export default function LookupPage({
   const router = useRouter();
   const [loading, setLoading] = React.useState(false);
   const [expandStatus, setExpandStatus] = React.useState(false);
+  const suppressNextLoad = React.useRef(false);
 
   useEffect(() => {
-    const handleStart = (url: string) => {
-      if (url.startsWith("/stamp") || url.startsWith("/remind")) return;
+    const handleStart = (_url: string) => {
+      if (suppressNextLoad.current) {
+        suppressNextLoad.current = false;
+        return;
+      }
       setLoading(true);
     };
     const handleComplete = () => setLoading(false);
@@ -2106,8 +2110,8 @@ export default function LookupPage({
   >([]);
 
   const STAMP_STYLE_MAP: Record<string, string> = {
-    personal: "border border-border text-foreground bg-background",
-    default: "border border-border text-foreground bg-background",
+    personal: "bg-violet-50 border border-violet-200 text-violet-700 dark:bg-violet-950/40 dark:border-violet-700/60 dark:text-violet-300",
+    default: "bg-violet-50 border border-violet-200 text-violet-700 dark:bg-violet-950/40 dark:border-violet-700/60 dark:text-violet-300",
     official: "bg-blue-500 text-white border-0",
     brand: "bg-violet-500 text-white border-0",
     verified: "bg-emerald-500 text-white border-0",
@@ -2698,14 +2702,16 @@ export default function LookupPage({
                         )}
                       </div>
                       <div className="flex items-center gap-2 mt-3 flex-wrap">
-                        <Link href={`/stamp?domain=${encodeURIComponent(result.domain || target)}`}>
-                          <button
-                            className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-all bg-muted/50 border-border/50 text-muted-foreground hover:border-violet-400/50 hover:text-violet-500"
-                          >
-                            <RiShieldCheckLine className="w-3 h-3" />
-                            {isChinese ? "域签" : "Stamp"}
-                          </button>
-                        </Link>
+                        <button
+                          onClick={() => {
+                            suppressNextLoad.current = true;
+                            router.push(`/stamp?domain=${encodeURIComponent(result.domain || target)}`);
+                          }}
+                          className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-all bg-muted/50 border-border/50 text-muted-foreground hover:border-violet-400/50 hover:text-violet-500"
+                        >
+                          <RiShieldCheckLine className="w-3 h-3" />
+                          {isChinese ? "域签" : "Stamp"}
+                        </button>
                         <button
                           onClick={() => setReminderDialogOpen(true)}
                           className={cn(
