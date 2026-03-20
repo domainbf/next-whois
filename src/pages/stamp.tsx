@@ -13,6 +13,9 @@ import {
   RiExternalLinkLine,
   RiAlertLine,
   RiLoader4Line,
+  RiRefreshLine,
+  RiTimeLine,
+  RiWifiLine,
 } from "@remixicon/react";
 import { toast } from "sonner";
 
@@ -85,6 +88,12 @@ export default function StampPage() {
   const [form, setForm] = React.useState(defaultForm);
   const [submitResult, setSubmitResult] = React.useState<{ id: string; txtRecord: string; txtValue: string } | null>(null);
   const [verifyState, setVerifyState] = React.useState<"idle" | "loading" | "fail" | "dnsError">("idle");
+  const [resolvers, setResolvers] = React.useState<{ name: string; ip: string; latencyMs: number; found: boolean; error: string | null }[]>([]);
+  const [countdown, setCountdown] = React.useState(0);
+  const pollRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const countdownRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const AUTO_POLL_SEC = 15;
 
   // Restore session once domain is available
   React.useEffect(() => {
@@ -145,9 +154,33 @@ export default function StampPage() {
     }
   }
 
-  async function handleVerify() {
+  function stopPolling() {
+    if (pollRef.current) { clearTimeout(pollRef.current); pollRef.current = null; }
+    if (countdownRef.current) { clearInterval(countdownRef.current); countdownRef.current = null; }
+    setCountdown(0);
+  }
+
+  function startCountdown(sec: number, onDone: () => void) {
+    stopPolling();
+    setCountdown(sec);
+    countdownRef.current = setInterval(() => {
+      setCountdown((c) => {
+        if (c <= 1) {
+          clearInterval(countdownRef.current!);
+          countdownRef.current = null;
+          return 0;
+        }
+        return c - 1;
+      });
+    }, 1000);
+    pollRef.current = setTimeout(onDone, sec * 1000);
+  }
+
+  const handleVerify = React.useCallback(async (silent = false) => {
     if (!submitResult) return;
-    setVerifyState("loading");
+    if (!silent) setVerifyState("loading");
+    else setVerifyState("loading");
+    stopPolling();
     try {
       const res = await fetch("/api/stamp/verify", {
         method: "POST",
@@ -155,18 +188,31 @@ export default function StampPage() {
         body: JSON.stringify({ id: submitResult.id, domain }),
       });
       const data = await res.json();
+      if (data.resolvers) setResolvers(data.resolvers);
       if (data.verified) {
         setStep("done");
         setVerifyState("idle");
+        return;
       } else if (data.dnsError) {
         setVerifyState("dnsError");
       } else {
         setVerifyState("fail");
       }
+      // Schedule next auto-poll
+      startCountdown(AUTO_POLL_SEC, () => handleVerify(true));
     } catch {
       setVerifyState("fail");
+      startCountdown(AUTO_POLL_SEC, () => handleVerify(true));
     }
-  }
+  }, [submitResult, domain]);
+
+  // Start first auto-check when entering verify step
+  React.useEffect(() => {
+    if (step === "verify" && submitResult) {
+      handleVerify(true);
+    }
+    return () => stopPolling();
+  }, [step, submitResult?.id]);
 
   function copyText(text: string) {
     navigator.clipboard.writeText(text).then(() => toast.success("已复制"));
@@ -350,55 +396,100 @@ export default function StampPage() {
 
           {step === "verify" && submitResult && (
             <div className="space-y-4">
+              {/* TXT Record card */}
               <div className="glass-panel border border-border rounded-xl p-5">
                 <h2 className="text-base font-bold mb-1 flex items-center gap-2">
                   <RiShieldCheckLine className="w-4 h-4 text-violet-500" />
                   验证域名所有权
                 </h2>
-                <p className="text-xs text-muted-foreground mb-5">
-                  在你的 DNS 控制台中添加以下 TXT 记录，完成后点击"立即验证"
+                <p className="text-xs text-muted-foreground mb-4">
+                  在 DNS 控制台添加以下 TXT 记录，系统每 {AUTO_POLL_SEC} 秒自动检测一次
                 </p>
 
-                <div className="space-y-3 mb-5">
-                  <div className="rounded-lg bg-muted/40 p-3">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">记录主机名</p>
-                    <div className="flex items-center justify-between gap-2">
-                      <code className="text-sm font-mono text-violet-600 dark:text-violet-400 break-all">
-                        {submitResult.txtRecord}
-                      </code>
-                      <button
-                        onClick={() => copyText(submitResult.txtRecord)}
-                        className="shrink-0 p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground"
-                      >
-                        <RiFileCopyLine className="w-3.5 h-3.5" />
-                      </button>
+                <div className="space-y-2 mb-4">
+                  {[
+                    { label: "记录类型", value: "TXT", mono: false },
+                    { label: "主机记录", value: submitResult.txtRecord, mono: true, color: "text-violet-600 dark:text-violet-400", copyable: true },
+                    { label: "记录值", value: submitResult.txtValue, mono: true, color: "text-emerald-600 dark:text-emerald-400", copyable: true },
+                    { label: "TTL", value: "300（或最小值）", mono: false },
+                  ].map((row) => (
+                    <div key={row.label} className="rounded-lg bg-muted/40 px-3 py-2.5 flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-0.5">{row.label}</p>
+                        <p className={cn("text-sm break-all", row.mono ? "font-mono" : "", row.color || "")}>
+                          {row.value}
+                        </p>
+                      </div>
+                      {row.copyable && (
+                        <button
+                          onClick={() => copyText(row.value)}
+                          className="shrink-0 p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground mt-3"
+                        >
+                          <RiFileCopyLine className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                     </div>
-                  </div>
-                  <div className="rounded-lg bg-muted/40 p-3">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">记录值</p>
-                    <div className="flex items-center justify-between gap-2">
-                      <code className="text-sm font-mono text-emerald-600 dark:text-emerald-400 break-all">
-                        {submitResult.txtValue}
-                      </code>
-                      <button
-                        onClick={() => copyText(submitResult.txtValue)}
-                        className="shrink-0 p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground"
-                      >
-                        <RiFileCopyLine className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
+                  ))}
+                </div>
+
+                {/* DNS Propagation Status */}
+                <div className="mb-4">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2 flex items-center gap-1.5">
+                    <RiWifiLine className="w-3 h-3" />
+                    DNS 传播状态
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {verifyState === "loading" && resolvers.length === 0
+                      ? ["Google DNS", "系统DNS"].map((name) => (
+                          <div key={name} className="rounded-lg border border-border bg-muted/20 p-2.5 text-center">
+                            <RiLoader4Line className="w-4 h-4 animate-spin text-muted-foreground mx-auto mb-1" />
+                            <p className="text-[10px] text-muted-foreground">{name}</p>
+                          </div>
+                        ))
+                      : resolvers.map((r) => (
+                          <div
+                            key={r.name}
+                            className={cn(
+                              "rounded-lg border p-2.5 text-center transition-all",
+                              r.found
+                                ? "border-emerald-300/60 bg-emerald-50 dark:bg-emerald-950/30"
+                                : r.error === "timeout"
+                                ? "border-amber-200/50 bg-amber-50/50 dark:bg-amber-950/20"
+                                : "border-border bg-muted/20"
+                            )}
+                          >
+                            {verifyState === "loading" ? (
+                              <RiLoader4Line className="w-4 h-4 animate-spin text-muted-foreground mx-auto mb-1" />
+                            ) : r.found ? (
+                              <RiCheckLine className="w-4 h-4 text-emerald-500 mx-auto mb-1" />
+                            ) : r.error === "timeout" ? (
+                              <RiTimeLine className="w-4 h-4 text-amber-500 mx-auto mb-1" />
+                            ) : (
+                              <div className="w-4 h-4 mx-auto mb-1 flex items-center justify-center">
+                                <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40 block" />
+                              </div>
+                            )}
+                            <p className={cn("text-[10px] font-medium leading-tight",
+                              r.found ? "text-emerald-700 dark:text-emerald-300"
+                              : r.error === "timeout" ? "text-amber-600 dark:text-amber-400"
+                              : "text-muted-foreground"
+                            )}>
+                              {r.name}
+                            </p>
+                            {r.latencyMs > 0 && !r.error && (
+                              <p className="text-[9px] text-muted-foreground/60 mt-0.5">{r.latencyMs}ms</p>
+                            )}
+                          </div>
+                        ))
+                    }
                   </div>
                 </div>
 
-                <div className="text-[11px] text-muted-foreground bg-amber-50 dark:bg-amber-950/30 border border-amber-200/50 dark:border-amber-800/30 rounded-lg p-3 mb-5 flex gap-2">
-                  <RiAlertLine className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
-                  DNS 记录生效通常需要几分钟到几小时，添加后请稍等片刻再验证
-                </div>
-
-                {verifyState === "fail" && (
-                  <div className="text-[11px] text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 border border-red-200/50 rounded-lg p-3 mb-4 flex gap-2">
-                    <RiAlertLine className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-                    未检测到 TXT 记录，请确认已正确添加后重试
+                {/* Status messages */}
+                {verifyState === "fail" && resolvers.length > 0 && (
+                  <div className="text-[11px] text-muted-foreground bg-muted/30 rounded-lg p-3 mb-4 flex gap-2">
+                    <RiAlertLine className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
+                    <span>三个 DNS 服务器均未检测到记录。请确认已正确添加，DNS 生效可能需要几分钟到数小时。</span>
                   </div>
                 )}
                 {verifyState === "dnsError" && (
@@ -408,22 +499,42 @@ export default function StampPage() {
                   </div>
                 )}
 
+                {/* Verify button + countdown */}
                 <Button
-                  onClick={handleVerify}
+                  onClick={() => handleVerify(false)}
                   disabled={verifyState === "loading"}
                   className="w-full gap-2 bg-violet-500 hover:bg-violet-600 text-white border-0"
                 >
                   {verifyState === "loading" ? (
-                    <RiLoader4Line className="w-4 h-4 animate-spin" />
+                    <>
+                      <RiLoader4Line className="w-4 h-4 animate-spin" />
+                      检测中…
+                    </>
                   ) : (
-                    <RiShieldCheckLine className="w-4 h-4" />
+                    <>
+                      <RiRefreshLine className="w-4 h-4" />
+                      立即检测
+                    </>
                   )}
-                  立即验证
                 </Button>
+
+                {countdown > 0 && verifyState !== "loading" && (
+                  <p className="text-[11px] text-muted-foreground text-center mt-2 flex items-center justify-center gap-1">
+                    <RiTimeLine className="w-3 h-3" />
+                    {countdown} 秒后自动检测
+                  </p>
+                )}
+              </div>
+
+              <div className="glass-panel border border-amber-200/50 dark:border-amber-700/30 rounded-xl p-3.5 flex gap-2.5">
+                <RiAlertLine className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
+                <p className="text-[11px] text-muted-foreground">
+                  DNS 记录在全球传播通常需要 <strong>5 分钟到 24 小时</strong>，请耐心等待。此页面会自动检测，关闭后重新打开也不会丢失进度。
+                </p>
               </div>
 
               <button
-                onClick={() => setStep("form")}
+                onClick={() => { stopPolling(); setStep("form"); }}
                 className="text-xs text-muted-foreground hover:text-foreground transition-colors w-full text-center"
               >
                 ← 返回修改表单

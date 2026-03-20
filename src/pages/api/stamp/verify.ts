@@ -3,6 +3,48 @@ import { readData, writeData, StampsDB } from "@/lib/data-store";
 import { getDb } from "@/lib/db";
 import dns from "dns/promises";
 
+const RESOLVERS = [
+  { name: "Google DNS", ip: "8.8.8.8" },
+  { name: "系统DNS", ip: "" },
+];
+
+const QUERY_TIMEOUT_MS = 5000;
+
+async function queryResolver(
+  host: string,
+  resolverIp: string,
+  timeoutMs: number
+): Promise<{ records: string[]; latencyMs: number; error?: string }> {
+  const start = Date.now();
+  try {
+    const result = await Promise.race([
+      (async () => {
+        if (resolverIp) {
+          const resolver = new dns.Resolver();
+          resolver.setServers([resolverIp]);
+          return resolver.resolveTxt(host);
+        } else {
+          return dns.resolveTxt(host);
+        }
+      })(),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("timeout")), timeoutMs)
+      ),
+    ]);
+    return { records: result.flat(), latencyMs: Date.now() - start };
+  } catch (err: any) {
+    return {
+      records: [],
+      latencyMs: Date.now() - start,
+      error: err.code === "ENODATA" || err.code === "ENOTFOUND"
+        ? "no_record"
+        : err.message === "timeout"
+        ? "timeout"
+        : "dns_error",
+    };
+  }
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).end();
 
@@ -33,25 +75,43 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const expectedValue = `next-whois-verify=${verifyToken}`;
   const txtHost = `_next-whois.${cleanDomain}`;
 
-  try {
-    const results = await dns.resolveTxt(txtHost);
-    const flat = results.flat();
-    const matched = flat.some((v) => v === expectedValue);
+  const queryResults = await Promise.all(
+    RESOLVERS.map(async (r) => {
+      const { records, latencyMs, error } = await queryResolver(txtHost, r.ip, QUERY_TIMEOUT_MS);
+      const matched = records.includes(expectedValue);
+      return {
+        name: r.name,
+        ip: r.ip || "system",
+        latencyMs,
+        found: matched,
+        records: records.slice(0, 5),
+        error: error ?? null,
+      };
+    })
+  );
 
-    if (matched) {
-      const verifiedAt = new Date().toISOString();
-      if (db) {
-        await db.query(`UPDATE stamps SET verified=true, verified_at=$1 WHERE id=$2`, [verifiedAt, id]);
-      } else {
-        const fileDb = readData<StampsDB>("stamps.json", {});
-        const record = (fileDb[cleanDomain] || []).find((r) => r.id === id);
-        if (record) { record.verified = true; record.verifiedAt = verifiedAt; }
-        writeData("stamps.json", fileDb);
-      }
-      return res.status(200).json({ verified: true });
+  const verified = queryResults.some((r) => r.found);
+  const allDnsError = queryResults.every((r) => r.error === "dns_error" || r.error === "timeout");
+  const allFound = queryResults.map((r) => r.records).flat();
+
+  if (verified) {
+    const verifiedAt = new Date().toISOString();
+    if (db) {
+      await db.query(`UPDATE stamps SET verified=true, verified_at=$1 WHERE id=$2`, [verifiedAt, id]);
+    } else {
+      const fileDb = readData<StampsDB>("stamps.json", {});
+      const record = (fileDb[cleanDomain] || []).find((r) => r.id === id);
+      if (record) { record.verified = true; record.verifiedAt = verifiedAt; }
+      writeData("stamps.json", fileDb);
     }
-    return res.status(200).json({ verified: false, found: flat });
-  } catch {
-    return res.status(200).json({ verified: false, dnsError: true });
+    return res.status(200).json({ verified: true, resolvers: queryResults });
   }
+
+  return res.status(200).json({
+    verified: false,
+    dnsError: allDnsError,
+    resolvers: queryResults,
+    expected: expectedValue,
+    found: allFound,
+  });
 }
