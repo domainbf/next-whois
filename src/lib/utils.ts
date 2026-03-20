@@ -135,6 +135,65 @@ export function extractDomain(url: string): string | null {
   }
 }
 
+export function stripUrlToHostname(input: string): string {
+  let s = input.trim();
+  s = s.replace(/^[a-zA-Z][a-zA-Z0-9+\-.]*:\/\//, "");
+  const slashIdx = s.indexOf("/");
+  if (slashIdx !== -1) s = s.substring(0, slashIdx);
+  const qIdx = s.indexOf("?");
+  if (qIdx !== -1) s = s.substring(0, qIdx);
+  const atIdx = s.indexOf("@");
+  if (atIdx !== -1) s = s.substring(atIdx + 1);
+  const lastColon = s.lastIndexOf(":");
+  if (lastColon > 0 && s.indexOf(".", lastColon) === -1) {
+    s = s.substring(0, lastColon);
+  }
+  return s;
+}
+
+export function smartCleanDomain(input: string): string {
+  const trimmed = input.trim();
+  const hasProtocol = /^[a-zA-Z][a-zA-Z0-9+\-.]*:\/\//.test(trimmed);
+  const hasPath = !hasProtocol && trimmed.includes("/");
+
+  if (!hasProtocol && !hasPath) {
+    const parsed = parse(trimmed, { allowPrivateDomains: false });
+    if (parsed.domain) return parsed.domain;
+    return trimmed;
+  }
+
+  const hostname = stripUrlToHostname(trimmed);
+  const parsed = parse(hostname, { allowPrivateDomains: false });
+  if (parsed.domain) return parsed.domain;
+  return hostname;
+}
+
+export function isLikelyUrl(input: string): boolean {
+  const s = input.trim();
+  return (
+    /^[a-zA-Z][a-zA-Z0-9+\-.]*:\/\//.test(s) ||
+    /^www\.[a-zA-Z0-9]/.test(s) ||
+    (s.includes("/") && !s.startsWith("AS") && !/^[\d.:]+\//.test(s))
+  );
+}
+
+export function extractDomainTld(domain: string): string {
+  const parts = domain.split(".");
+  return parts.length > 1 ? "." + parts[parts.length - 1] : "";
+}
+
+export function isValidDomainTld(domain: string): boolean {
+  if (!domain.includes(".")) return true;
+  if (/^AS\d+$/i.test(domain)) return true;
+  if (/^[\d.:/]+$/.test(domain)) return true;
+  if (/^([0-9a-fA-F]{0,4}:){1,7}/.test(domain)) return true;
+  const parts = domain.split(".");
+  const tld = parts[parts.length - 1];
+  if (tld.length < 2) return true;
+  const parsed = parse(domain, { allowPrivateDomains: false });
+  return parsed.publicSuffix !== null;
+}
+
 export function cleanDomain(domain: string): string {
   const ipv4CidrMatch = domain.match(/^((\d{1,3}\.){3}\d{1,3})\/(\d{1,2})$/);
   if (ipv4CidrMatch) {
@@ -148,16 +207,28 @@ export function cleanDomain(domain: string): string {
     return ipv6CidrMatch[0];
   }
 
-  const hostname = extractDomain(domain);
-  if (hostname) {
-    return hostname;
-  }
-
   const ipMatch = domain.match(
     /^(https?:\/\/)?((\d{1,3}\.){3}\d{1,3})(:\d+)?(\/.*)?$/,
   );
   if (ipMatch) {
     return ipMatch[2];
+  }
+
+  const hasProtocol = /^[a-zA-Z][a-zA-Z0-9+\-.]*:\/\//.test(domain);
+  const hasPath = !hasProtocol && domain.includes("/");
+
+  if (hasProtocol || hasPath) {
+    const hostname = stripUrlToHostname(domain);
+    const parsed = parse(hostname, { allowPrivateDomains: false });
+    if (parsed.domain) return parsed.domain;
+    const fallback = extractDomain(hostname);
+    if (fallback) return fallback;
+    return hostname;
+  }
+
+  const hostname = extractDomain(domain);
+  if (hostname) {
+    return hostname;
   }
 
   return domain;
