@@ -1730,9 +1730,12 @@ function AvailableDomainCard({ domain, locale }: { domain: string; locale: strin
               const faviconDomain = (() => {
                 try { return new URL(r.registrarweb).hostname; } catch { return null; }
               })();
-              const cheapestPrice = typeof registrars[0].new === "number" ? registrars[0].new : 0;
-              const thisPrice = typeof r.new === "number" ? r.new : 0;
-              const savings = idx > 0 && cheapestPrice > 0 ? thisPrice - cheapestPrice : 0;
+              const ICON_PALETTE = ["#6366f1","#ec4899","#f59e0b","#10b981","#3b82f6","#8b5cf6","#ef4444","#06b6d4","#84cc16","#f97316"];
+              const iconBg = (() => {
+                let h = 0;
+                for (let i = 0; i < r.registrarname.length; i++) h = r.registrarname.charCodeAt(i) + ((h << 5) - h);
+                return ICON_PALETTE[Math.abs(h) % ICON_PALETTE.length];
+              })();
               return (
                 <a
                   key={r.registrar}
@@ -1740,68 +1743,58 @@ function AvailableDomainCard({ domain, locale }: { domain: string; locale: strin
                   target="_blank"
                   rel="noopener noreferrer"
                   className={cn(
-                    "flex items-center gap-3 px-4 sm:px-6 py-3 transition-colors duration-150",
+                    "flex items-center gap-3 px-4 sm:px-6 py-3.5 transition-colors duration-150",
                     "hover:bg-emerald-50/50 dark:hover:bg-emerald-950/25",
                     idx === 0 && "bg-emerald-50/30 dark:bg-emerald-950/15",
                   )}
                 >
-                  <div className="shrink-0 w-8 h-8 rounded-lg overflow-hidden border border-border/40 bg-muted/30 flex items-center justify-center">
+                  <div
+                    className="shrink-0 w-9 h-9 rounded-xl flex items-center justify-center relative overflow-hidden"
+                    style={{ backgroundColor: iconBg }}
+                  >
                     {faviconDomain ? (
                       <img
                         src={`https://www.google.com/s2/favicons?domain=${faviconDomain}&sz=32`}
                         alt={r.registrarname}
                         className="w-5 h-5 object-contain"
                         onError={(e) => {
-                          const t = e.currentTarget;
-                          t.style.display = "none";
-                          const parent = t.parentElement;
-                          if (parent) {
-                            parent.innerHTML = `<span class="text-[11px] font-bold text-muted-foreground">${r.registrarname.charAt(0).toUpperCase()}</span>`;
-                          }
+                          e.currentTarget.style.display = "none";
                         }}
                       />
-                    ) : (
-                      <span className="text-[11px] font-bold text-muted-foreground">
-                        {r.registrarname.charAt(0).toUpperCase()}
-                      </span>
-                    )}
+                    ) : null}
+                    <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-white/80 pointer-events-none select-none" aria-hidden>
+                      {r.registrarname.charAt(0).toUpperCase()}
+                    </span>
                   </div>
 
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <span className="shrink-0 text-[10px] font-semibold text-muted-foreground/50 w-4 text-center">
-                        {idx + 1}
+                  <div className="flex-1 min-w-0 flex items-center gap-2">
+                    <span className="shrink-0 text-xs font-semibold text-muted-foreground/40 w-4 text-center tabular-nums">
+                      {idx + 1}
+                    </span>
+                    <p className={cn(
+                      "text-sm truncate",
+                      idx === 0 ? "font-semibold text-foreground" : "font-medium text-foreground/80",
+                    )}>
+                      {r.registrarname}
+                    </p>
+                    {idx === 0 && (
+                      <span className="shrink-0 text-[10px] font-bold text-white bg-emerald-500 dark:bg-emerald-600 px-1.5 py-0.5 rounded-md uppercase tracking-wide">
+                        {isZh ? "最低价" : "Best"}
                       </span>
-                      <p className={cn(
-                        "text-sm truncate",
-                        idx === 0 ? "font-semibold text-foreground" : "font-medium text-foreground/75",
-                      )}>
-                        {r.registrarname}
-                      </p>
-                      {idx === 0 && (
-                        <span className="shrink-0 text-[9px] font-bold text-white bg-emerald-500 dark:bg-emerald-600 px-1.5 py-0.5 rounded-md uppercase tracking-wide">
-                          {isZh ? "最低价" : "Best"}
-                        </span>
-                      )}
-                    </div>
-                    {savings > 0 && (
-                      <p className="text-[10px] text-muted-foreground/50 mt-0.5 pl-5">
-                        +{formatPrice(savings, r.currency)} {isZh ? "较最低价" : "vs best"}
-                      </p>
                     )}
                   </div>
 
                   <div className="shrink-0 text-right">
                     <div className="flex items-baseline gap-0.5 justify-end">
                       <span className={cn(
-                        "text-sm font-bold",
+                        "font-bold",
                         idx === 0
-                          ? "text-emerald-600 dark:text-emerald-400"
-                          : "text-foreground/80",
+                          ? "text-base text-emerald-600 dark:text-emerald-400"
+                          : "text-sm text-foreground/80",
                       )}>
                         {typeof r.new === "number" ? formatPrice(r.new, r.currency) : "N/A"}
                       </span>
-                      <span className="text-[10px] text-muted-foreground/60">
+                      <span className="text-xs text-muted-foreground/60">
                         /{isZh ? "首年" : "yr"}
                       </span>
                     </div>
