@@ -38,37 +38,84 @@ function TagBadge({ tagName, tagStyle }: { tagName: string; tagStyle: string }) 
 
 type Step = "form" | "verify" | "done";
 
+interface StampSession {
+  step: Step;
+  form: { tagName: string; tagStyle: string; link: string; description: string; nickname: string; email: string };
+  submitResult: { id: string; txtRecord: string; txtValue: string } | null;
+}
+
+function getSessionKey(domain: string) {
+  return `stamp_session_${domain}`;
+}
+
+function loadSession(domain: string): StampSession | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = sessionStorage.getItem(getSessionKey(domain));
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveSession(domain: string, data: StampSession) {
+  if (typeof window === "undefined") return;
+  try {
+    sessionStorage.setItem(getSessionKey(domain), JSON.stringify(data));
+  } catch {}
+}
+
+function clearSession(domain: string) {
+  if (typeof window === "undefined") return;
+  try {
+    sessionStorage.removeItem(getSessionKey(domain));
+  } catch {}
+}
+
 export default function StampPage() {
   const router = useRouter();
   const domain = String(router.query.domain || "");
 
+  const defaultForm = { tagName: "", tagStyle: "personal", link: "", description: "", nickname: "", email: "" };
+
+  // Restore from sessionStorage on first client render
+  const [hydrated, setHydrated] = React.useState(false);
+  const [step, setStep] = React.useState<Step>("form");
+  const [loading, setLoading] = React.useState(false);
+  const [form, setForm] = React.useState(defaultForm);
+  const [submitResult, setSubmitResult] = React.useState<{ id: string; txtRecord: string; txtValue: string } | null>(null);
+  const [verifyState, setVerifyState] = React.useState<"idle" | "loading" | "fail" | "dnsError">("idle");
+
+  // Restore session once domain is available
+  React.useEffect(() => {
+    if (!domain || hydrated) return;
+    const saved = loadSession(domain);
+    if (saved) {
+      setStep(saved.step === "done" ? "form" : saved.step); // don't restore "done"
+      setForm(saved.form || defaultForm);
+      setSubmitResult(saved.submitResult || null);
+    }
+    setHydrated(true);
+  }, [domain]);
+
+  // Persist session on every relevant state change
+  React.useEffect(() => {
+    if (!domain || !hydrated) return;
+    if (step === "done") {
+      clearSession(domain);
+      return;
+    }
+    saveSession(domain, { step, form, submitResult });
+  }, [step, form, submitResult, domain, hydrated]);
+
   function goBack() {
+    clearSession(domain);
     if (window.history.length > 1) {
       router.back();
     } else {
       router.push(domain ? `/${domain}` : "/");
     }
   }
-
-  const [step, setStep] = React.useState<Step>("form");
-  const [loading, setLoading] = React.useState(false);
-
-  const [form, setForm] = React.useState({
-    tagName: "",
-    tagStyle: "personal",
-    link: "",
-    description: "",
-    nickname: "",
-    email: "",
-  });
-
-  const [submitResult, setSubmitResult] = React.useState<{
-    id: string;
-    txtRecord: string;
-    txtValue: string;
-  } | null>(null);
-
-  const [verifyState, setVerifyState] = React.useState<"idle" | "loading" | "fail" | "dnsError">("idle");
 
   function update(field: string, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -143,6 +190,16 @@ export default function StampPage() {
             <span className="text-muted-foreground/40">·</span>
             <span className="text-sm font-medium text-muted-foreground">{domain}</span>
           </div>
+
+          {!hydrated && (
+            <div className="space-y-3 animate-pulse">
+              <div className="h-32 rounded-xl bg-muted/50" />
+              <div className="h-12 rounded-lg bg-muted/40" />
+              <div className="h-12 rounded-lg bg-muted/40" />
+              <div className="h-20 rounded-xl bg-muted/30" />
+            </div>
+          )}
+          {hydrated && <>
 
           {step === "form" && (
             <form onSubmit={handleSubmit} className="space-y-5">
@@ -394,6 +451,8 @@ export default function StampPage() {
               </Button>
             </div>
           )}
+
+          </>}
         </div>
       </div>
     </>
