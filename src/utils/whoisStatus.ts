@@ -1,8 +1,13 @@
+// src/utils/whoisStatus.ts
 export type WhoisDecision = {
   prohibited: boolean;
   reason?: string;
   matched?: string[];
 };
+
+interface TldRule {
+  treatAsProhibit?: string[];
+}
 
 const explicitProhibitPatterns: RegExp[] = [
   /禁止注册/i,
@@ -24,7 +29,8 @@ const statusIgnoreAsProhibit = new Set<string>([
   'serverHold',
 ]);
 
-const tldExceptions: Record<string, { treatAsProhibit?: string[] }> = {
+// 明确把 value 类型标注为可能为 undefined，避免被推断为其它意外类型
+const tldExceptions: Record<string, TldRule | undefined> = {
   // per-TLD overrides, example:
   // 'example': { treatAsProhibit: ['serverHold'] },
 };
@@ -38,18 +44,21 @@ export function decideProhibitedRegistration(
 
   // 1) check raw text for explicit prohibit/reserved keywords
   for (const re of explicitProhibitPatterns) {
-    if (re.test(rawWhois)) {
+    if (re.test(rawWhois || '')) {
       matched.push(`raw:${re.source}`);
     }
   }
 
   // 2) check parsed statuses and tld exception rules
-  const tldRule = tld && tldExceptions[tld.toLowerCase()];
+  const key = tld ? tld.toLowerCase() : '';
+  const tldRule = key ? tldExceptions[key] : undefined; // tldRule 的类型现在是 TldRule | undefined
+
   for (const s of parsedStatuses) {
     if (!s) continue;
     const sNorm = s.trim();
 
-    if (tldRule?.treatAsProhibit?.some(x => x.toLowerCase() === sNorm.toLowerCase())) {
+    // 运行时护栏：先确认 tldRule 存在并且 treatAsProhibit 是数组
+    if (tldRule && Array.isArray(tldRule.treatAsProhibit) && tldRule.treatAsProhibit.some(x => x.toLowerCase() === sNorm.toLowerCase())) {
       matched.push(`status:${sNorm}`);
       continue;
     }
