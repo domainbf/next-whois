@@ -1636,7 +1636,28 @@ function ConfettiPieces() {
   );
 }
 
+function RegistrarIcon({ faviconDomain, name }: { faviconDomain: string | null; name: string }) {
+  const [imgFailed, setImgFailed] = React.useState(false);
+  return (
+    <div className="shrink-0 w-9 h-9 rounded-xl flex items-center justify-center overflow-hidden bg-muted/40 border border-border/30">
+      {faviconDomain && !imgFailed ? (
+        <img
+          src={`https://www.google.com/s2/favicons?domain=${faviconDomain}&sz=64`}
+          alt={name}
+          className="w-6 h-6 object-contain"
+          onError={() => setImgFailed(true)}
+        />
+      ) : (
+        <span className="text-xs font-bold text-muted-foreground select-none">
+          {name.charAt(0).toUpperCase()}
+        </span>
+      )}
+    </div>
+  );
+}
+
 function AvailableDomainCard({ domain, locale }: { domain: string; locale: string }) {
+  const [rawPrices, setRawPrices] = React.useState<DomainPricing[]>([]);
   const [registrars, setRegistrars] = React.useState<DomainPricing[]>([]);
   const [loadingPrices, setLoadingPrices] = React.useState(true);
   const [eurRates, setEurRates] = React.useState<Record<string, number> | null>(null);
@@ -1649,8 +1670,6 @@ function AvailableDomainCard({ domain, locale }: { domain: string; locale: strin
       .then((data) => {
         const prices: DomainPricing[] = (data.price || [])
           .filter((r: any) => typeof r.new === "number")
-          .sort((a: any, b: any) => (a.new as number) - (b.new as number))
-          .slice(0, 5)
           .map((r: any) => ({
             ...r,
             isPremium:
@@ -1659,7 +1678,7 @@ function AvailableDomainCard({ domain, locale }: { domain: string; locale: strin
               ["usd", "eur", "cad"].includes((r.currency || "").toLowerCase()),
             externalLink: `https://www.nazhumi.com/domain/${tld}/new`,
           }));
-        setRegistrars(prices);
+        setRawPrices(prices);
       })
       .catch(() => {})
       .finally(() => setLoadingPrices(false));
@@ -1671,6 +1690,20 @@ function AvailableDomainCard({ domain, locale }: { domain: string; locale: strin
       .then((data) => setEurRates(data.rates))
       .catch(() => {});
   }, []);
+
+  React.useEffect(() => {
+    if (rawPrices.length === 0) return;
+    const toEur = (amount: number, currency: string) => {
+      const cur = currency.toUpperCase();
+      if (!eurRates) return amount;
+      if (cur === "EUR") return amount;
+      return amount / (eurRates[cur] ?? 1);
+    };
+    const sorted = [...rawPrices]
+      .sort((a, b) => toEur(a.new as number, a.currency) - toEur(b.new as number, b.currency))
+      .slice(0, 5);
+    setRegistrars(sorted);
+  }, [rawPrices, eurRates]);
 
   function formatPrice(amount: number, currency: string): string {
     const cur = currency.toUpperCase();
@@ -1730,12 +1763,6 @@ function AvailableDomainCard({ domain, locale }: { domain: string; locale: strin
               const faviconDomain = (() => {
                 try { return new URL(r.registrarweb).hostname; } catch { return null; }
               })();
-              const ICON_PALETTE = ["#6366f1","#ec4899","#f59e0b","#10b981","#3b82f6","#8b5cf6","#ef4444","#06b6d4","#84cc16","#f97316"];
-              const iconBg = (() => {
-                let h = 0;
-                for (let i = 0; i < r.registrarname.length; i++) h = r.registrarname.charCodeAt(i) + ((h << 5) - h);
-                return ICON_PALETTE[Math.abs(h) % ICON_PALETTE.length];
-              })();
               return (
                 <a
                   key={r.registrar}
@@ -1748,24 +1775,7 @@ function AvailableDomainCard({ domain, locale }: { domain: string; locale: strin
                     idx === 0 && "bg-emerald-50/30 dark:bg-emerald-950/15",
                   )}
                 >
-                  <div
-                    className="shrink-0 w-9 h-9 rounded-xl flex items-center justify-center relative overflow-hidden"
-                    style={{ backgroundColor: iconBg }}
-                  >
-                    {faviconDomain ? (
-                      <img
-                        src={`https://www.google.com/s2/favicons?domain=${faviconDomain}&sz=32`}
-                        alt={r.registrarname}
-                        className="w-5 h-5 object-contain"
-                        onError={(e) => {
-                          e.currentTarget.style.display = "none";
-                        }}
-                      />
-                    ) : null}
-                    <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-white/80 pointer-events-none select-none" aria-hidden>
-                      {r.registrarname.charAt(0).toUpperCase()}
-                    </span>
-                  </div>
+                  <RegistrarIcon faviconDomain={faviconDomain} name={r.registrarname} />
 
                   <div className="flex-1 min-w-0 flex items-center gap-2">
                     <span className="shrink-0 text-xs font-semibold text-muted-foreground/40 w-4 text-center tabular-nums">
