@@ -1,0 +1,23 @@
+import type { NextApiRequest, NextApiResponse } from "next";
+import { readData, StampsDB, StampRecord } from "@/lib/data-store";
+
+export default function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (req.method !== "GET") return res.status(405).end();
+
+  const domain = String(req.query.domain || "").toLowerCase().trim();
+  if (!domain) return res.status(400).json({ error: "Missing domain" });
+
+  const db = readData<StampsDB>("stamps.json", {});
+  const records = (db[domain] || []).filter((r: StampRecord) => r.verified);
+
+  return res.status(200).json({
+    stamps: records.map((r) => ({
+      id: r.id,
+      tagName: r.tagName,
+      tagStyle: r.tagStyle,
+      link: r.link,
+      nickname: r.nickname,
+      verifiedAt: r.verifiedAt,
+    })),
+  });
+}

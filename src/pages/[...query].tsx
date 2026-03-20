@@ -46,6 +46,7 @@ import {
   RiStickyNoteLine,
   RiTimerLine,
   RiCalendarEventLine,
+  RiShieldCheckLine,
 } from "@remixicon/react";
 import { getTopRegistrars, DomainPricing } from "@/lib/pricing/client";
 import React, { useEffect, useMemo } from "react";
@@ -1642,126 +1643,9 @@ function ConfettiPieces() {
   );
 }
 
-function DomainStampDialog({
-  domain,
-  open,
-  onOpenChange,
-  isZh,
-}: {
-  domain: string;
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-  isZh: boolean;
-}) {
-  const STAMP_KEY = `yq_stamp_${domain}`;
-  const EMOJIS = ["🌐", "⭐", "🔥", "💡", "🏆", "🎯", "🚀", "💎", "🌟", "🔖"];
-  const [emoji, setEmoji] = React.useState("🌐");
-  const [note, setNote] = React.useState("");
-  const [savedAt, setSavedAt] = React.useState<string | null>(null);
-
-  React.useEffect(() => {
-    if (!open) return;
-    try {
-      const raw = localStorage.getItem(STAMP_KEY);
-      if (raw) {
-        const data = JSON.parse(raw);
-        setEmoji(data.emoji || "🌐");
-        setNote(data.note || "");
-        setSavedAt(data.savedAt || null);
-      } else {
-        setEmoji("🌐");
-        setNote("");
-        setSavedAt(null);
-      }
-    } catch {}
-  }, [open, STAMP_KEY]);
-
-  function save() {
-    const record = { emoji, note, savedAt: new Date().toISOString() };
-    localStorage.setItem(STAMP_KEY, JSON.stringify(record));
-    setSavedAt(record.savedAt);
-    toast.success(isZh ? "域签已保存 ✓" : "Stamp saved ✓");
-    onOpenChange(false);
-  }
-
-  function remove() {
-    localStorage.removeItem(STAMP_KEY);
-    setSavedAt(null);
-    setNote("");
-    setEmoji("🌐");
-    toast(isZh ? "域签已移除" : "Stamp removed");
-    onOpenChange(false);
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <RiBookmarkFill className="w-4 h-4 text-violet-500" />
-            {isZh ? "域签 · 我的标注" : "Domain Stamp"}
-          </DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4 pt-1">
-          <div>
-            <p className="text-xs text-muted-foreground mb-2 font-medium uppercase tracking-wide">
-              {isZh ? "选个表情" : "Pick an emoji"}
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {EMOJIS.map((e) => (
-                <button
-                  key={e}
-                  onClick={() => setEmoji(e)}
-                  className={cn(
-                    "w-9 h-9 rounded-lg text-lg flex items-center justify-center transition-all",
-                    emoji === e
-                      ? "bg-violet-100 dark:bg-violet-900/40 ring-2 ring-violet-400 scale-110"
-                      : "bg-muted/50 hover:bg-muted",
-                  )}
-                >
-                  {e}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground mb-1.5 font-medium uppercase tracking-wide">
-              {isZh ? "备注（选填）" : "Note (optional)"}
-            </p>
-            <textarea
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder={isZh ? "记录你对这个域名的想法..." : "What's special about this domain?"}
-              className="w-full text-sm rounded-lg border border-border bg-background px-3 py-2 resize-none h-20 focus:outline-none focus:ring-2 focus:ring-violet-400/50"
-              maxLength={200}
-            />
-          </div>
-          {savedAt && (
-            <p className="text-[10px] text-muted-foreground">
-              {isZh ? "上次保存：" : "Last saved: "}
-              {new Date(savedAt).toLocaleString()}
-            </p>
-          )}
-          <div className="flex gap-2 pt-1">
-            <Button onClick={save} className="flex-1 bg-violet-500 hover:bg-violet-600 text-white border-0">
-              {isZh ? "保存域签" : "Save stamp"}
-            </Button>
-            {savedAt && (
-              <Button variant="outline" onClick={remove} className="text-destructive hover:text-destructive">
-                {isZh ? "移除" : "Remove"}
-              </Button>
-            )}
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function DomainCountdownDialog({
+function DomainReminderDialog({
   domain,
   expirationDate,
-  creationDate,
   remainingDays,
   open,
   onOpenChange,
@@ -1769,62 +1653,43 @@ function DomainCountdownDialog({
 }: {
   domain: string;
   expirationDate: string | null | undefined;
-  creationDate: string | null | undefined;
   remainingDays: number | null;
   open: boolean;
   onOpenChange: (v: boolean) => void;
   isZh: boolean;
 }) {
-  const hasExpiry = expirationDate && expirationDate !== "Unknown" && remainingDays !== null;
+  const hasExpiry = expirationDate && expirationDate !== "Unknown";
+  const [email, setEmail] = React.useState("");
+  const [daysBefore, setDaysBefore] = React.useState(30);
+  const [submitting, setSubmitting] = React.useState(false);
+  const [done, setDone] = React.useState(false);
 
-  const totalDays = React.useMemo(() => {
-    if (!creationDate || creationDate === "Unknown" || !expirationDate || expirationDate === "Unknown") return null;
+  React.useEffect(() => {
+    if (open) { setEmail(""); setDone(false); }
+  }, [open]);
+
+  async function handleSubmit() {
+    if (!email || !email.includes("@")) {
+      toast.error(isZh ? "请输入有效邮箱" : "Please enter a valid email");
+      return;
+    }
+    setSubmitting(true);
     try {
-      const c = new Date(creationDate).getTime();
-      const e = new Date(expirationDate).getTime();
-      return Math.round((e - c) / 86400000);
-    } catch { return null; }
-  }, [creationDate, expirationDate]);
-
-  const progressPct = React.useMemo(() => {
-    if (totalDays === null || remainingDays === null) return null;
-    const used = totalDays - remainingDays;
-    return Math.min(100, Math.max(0, Math.round((used / totalDays) * 100)));
-  }, [totalDays, remainingDays]);
-
-  function downloadIcs() {
-    if (!expirationDate || expirationDate === "Unknown") return;
-    const dt = new Date(expirationDate);
-    const pad = (n: number) => String(n).padStart(2, "0");
-    const ymd = (d: Date) =>
-      `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}`;
-    const remind = new Date(dt);
-    remind.setDate(remind.getDate() - 30);
-    const content = [
-      "BEGIN:VCALENDAR",
-      "VERSION:2.0",
-      "PRODID:-//NextWhois//DomainCalendar//EN",
-      "BEGIN:VEVENT",
-      `DTSTART;VALUE=DATE:${ymd(dt)}`,
-      `DTEND;VALUE=DATE:${ymd(new Date(dt.getTime() + 86400000))}`,
-      `SUMMARY:${isZh ? "域名到期" : "Domain Expiry"}: ${domain}`,
-      `DESCRIPTION:${isZh ? `域名 ${domain} 将于今日到期，请及时续费。` : `Domain ${domain} expires today. Renew it!`}`,
-      "BEGIN:VALARM",
-      `TRIGGER;VALUE=DATE-TIME:${ymd(remind)}T000000Z`,
-      "ACTION:DISPLAY",
-      `DESCRIPTION:${isZh ? `提醒：${domain} 将在30天后到期！` : `Reminder: ${domain} expires in 30 days!`}`,
-      "END:VALARM",
-      "END:VEVENT",
-      "END:VCALENDAR",
-    ].join("\r\n");
-    const blob = new Blob([content], { type: "text/calendar;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${domain}-expiry.ics`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast.success(isZh ? "日历文件已下载 📅" : "Calendar file downloaded 📅");
+      const res = await fetch("/api/remind/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ domain, email, daysBefore, expirationDate }),
+      });
+      if (res.ok) {
+        setDone(true);
+      } else {
+        toast.error(isZh ? "提交失败，请重试" : "Submission failed");
+      }
+    } catch {
+      toast.error(isZh ? "网络错误" : "Network error");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   const urgencyColor =
@@ -1834,91 +1699,88 @@ function DomainCountdownDialog({
     remainingDays <= 90 ? "text-amber-500" :
     "text-emerald-500";
 
-  const barColor =
-    progressPct === null ? "bg-muted" :
-    progressPct >= 90 ? "bg-red-500" :
-    progressPct >= 70 ? "bg-amber-500" :
-    "bg-emerald-500";
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <RiTimerLine className="w-4 h-4 text-sky-500" />
-            {isZh ? "域历 · 到期倒计时" : "Domain Timeline"}
+            {isZh ? "域历 · 到期提醒" : "Expiry Reminder"}
           </DialogTitle>
         </DialogHeader>
-        <div className="space-y-5 pt-1">
-          {hasExpiry ? (
-            <>
-              <div className="text-center py-3">
-                <p className={cn("text-6xl font-black tabular-nums", urgencyColor)}>
-                  {remainingDays! <= 0 ? "0" : remainingDays}
-                </p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {remainingDays! <= 0
-                    ? (isZh ? "已过期" : "Expired")
-                    : (isZh ? "天后到期" : "days until expiry")}
-                </p>
-                <p className="text-xs text-muted-foreground/60 mt-0.5 font-mono">
-                  {expirationDate}
-                </p>
-              </div>
-              {progressPct !== null && (
+        {done ? (
+          <div className="text-center py-6 space-y-3">
+            <div className="w-12 h-12 bg-sky-100 dark:bg-sky-900/40 rounded-full flex items-center justify-center mx-auto">
+              <RiCheckLine className="w-6 h-6 text-sky-600 dark:text-sky-400" />
+            </div>
+            <p className="font-semibold text-sm">{isZh ? "提醒已设置！" : "Reminder set!"}</p>
+            <p className="text-xs text-muted-foreground">
+              {isZh
+                ? `我们将在 ${domain} 到期前 ${daysBefore} 天向 ${email} 发送提醒`
+                : `We'll remind ${email} ${daysBefore} days before ${domain} expires`}
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-4 pt-1">
+            {hasExpiry && remainingDays !== null && (
+              <div className="flex items-center justify-between p-3 rounded-lg bg-muted/40">
                 <div>
-                  <div className="flex justify-between text-[10px] text-muted-foreground mb-1.5">
-                    <span>{isZh ? "注册" : "Registered"}</span>
-                    <span>{progressPct}% {isZh ? "已用" : "elapsed"}</span>
-                    <span>{isZh ? "到期" : "Expiry"}</span>
-                  </div>
-                  <div className="w-full h-2.5 rounded-full bg-muted overflow-hidden">
-                    <div
-                      className={cn("h-full rounded-full transition-all duration-500", barColor)}
-                      style={{ width: `${progressPct}%` }}
-                    />
-                  </div>
-                  {totalDays !== null && (
-                    <p className="text-[10px] text-muted-foreground/50 text-center mt-1">
-                      {isZh ? `注册周期 ${totalDays} 天` : `${totalDays}-day registration cycle`}
-                    </p>
-                  )}
+                  <p className="text-xs text-muted-foreground mb-0.5">{isZh ? "到期日期" : "Expiry date"}</p>
+                  <p className="text-sm font-mono font-medium">{expirationDate}</p>
                 </div>
-              )}
-              <div className="grid grid-cols-3 gap-2 text-center">
-                {[
-                  { label: isZh ? "30天" : "30d", danger: (remainingDays ?? 999) <= 30 },
-                  { label: isZh ? "60天" : "60d", danger: (remainingDays ?? 999) <= 60 },
-                  { label: isZh ? "90天" : "90d", danger: (remainingDays ?? 999) <= 90 },
-                ].map((m) => (
-                  <div
-                    key={m.label}
+                <div className="text-right">
+                  <p className={cn("text-2xl font-black tabular-nums", urgencyColor)}>{remainingDays <= 0 ? "0" : remainingDays}</p>
+                  <p className="text-[10px] text-muted-foreground">{isZh ? "天后到期" : "days left"}</p>
+                </div>
+              </div>
+            )}
+            {!hasExpiry && (
+              <p className="text-xs text-muted-foreground text-center py-2">
+                {isZh ? "当前域名暂无到期信息，仍可订阅提醒" : "No expiry info, but you can still subscribe"}
+              </p>
+            )}
+            <div>
+              <p className="text-xs font-medium mb-1.5">{isZh ? "邮箱地址" : "Email address"} <span className="text-red-500">*</span></p>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder={isZh ? "your@email.com" : "your@email.com"}
+                className="w-full text-sm rounded-lg border border-border bg-background px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-400/50"
+              />
+            </div>
+            <div>
+              <p className="text-xs font-medium mb-2">{isZh ? "提前提醒时间" : "Remind me before"}</p>
+              <div className="grid grid-cols-3 gap-2">
+                {[30, 60, 90].map((d) => (
+                  <button
+                    key={d}
+                    onClick={() => setDaysBefore(d)}
                     className={cn(
-                      "rounded-lg py-2 px-1 text-xs font-semibold",
-                      m.danger
-                        ? "bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400"
-                        : "bg-muted/40 text-muted-foreground",
+                      "py-2 rounded-lg text-xs font-semibold border transition-all",
+                      daysBefore === d
+                        ? "bg-sky-500 text-white border-sky-500"
+                        : "border-border text-muted-foreground hover:border-sky-400",
                     )}
                   >
-                    {m.danger ? "⚠️ " : "✓ "}{m.label}
-                  </div>
+                    {isZh ? `${d} 天` : `${d}d`}
+                  </button>
                 ))}
               </div>
-              <Button
-                onClick={downloadIcs}
-                className="w-full gap-2 bg-sky-500 hover:bg-sky-600 text-white border-0"
-              >
-                <RiCalendarEventLine className="w-4 h-4" />
-                {isZh ? "导出到日历 (.ics)" : "Add to Calendar (.ics)"}
-              </Button>
-            </>
-          ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              <RiCalendar2Line className="w-10 h-10 mx-auto mb-3 opacity-30" />
-              <p className="text-sm">{isZh ? "暂无到期信息" : "No expiry data available"}</p>
             </div>
-          )}
-        </div>
+            <Button
+              onClick={handleSubmit}
+              disabled={submitting}
+              className="w-full gap-2 bg-sky-500 hover:bg-sky-600 text-white border-0"
+            >
+              <RiCalendarEventLine className="w-4 h-4" />
+              {isZh ? "设置到期提醒" : "Set expiry reminder"}
+            </Button>
+            <p className="text-[10px] text-muted-foreground/60 text-center">
+              {isZh ? "功能持续完善中，提醒邮件将在未来版本启用" : "Email delivery coming in a future update"}
+            </p>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );
@@ -2234,15 +2096,31 @@ export default function LookupPage({
 
   const isChinese = locale === "zh" || locale === "zh-tw";
 
-  const [stampDialogOpen, setStampDialogOpen] = React.useState(false);
-  const [countdownDialogOpen, setCountdownDialogOpen] = React.useState(false);
-  const [isStamped, setIsStamped] = React.useState(false);
+  const [reminderDialogOpen, setReminderDialogOpen] = React.useState(false);
+
+  const [verifiedStamps, setVerifiedStamps] = React.useState<
+    { id: string; tagName: string; tagStyle: string; link: string; nickname: string }[]
+  >([]);
+
+  const STAMP_STYLE_MAP: Record<string, string> = {
+    default: "border border-border text-foreground bg-background",
+    official: "bg-blue-500 text-white border-0",
+    brand: "bg-violet-500 text-white border-0",
+    verified: "bg-emerald-500 text-white border-0",
+    partner: "bg-orange-500 text-white border-0",
+    dev: "bg-sky-500 text-white border-0",
+    warning: "bg-amber-400 text-white border-0",
+    premium: "bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white border-0",
+  };
 
   useEffect(() => {
-    try {
-      setIsStamped(!!localStorage.getItem(`yq_stamp_${data.result?.domain || target}`));
-    } catch {}
-  }, [data.result?.domain, target, stampDialogOpen]);
+    const domainKey = data.result?.domain || target;
+    if (!domainKey) return;
+    fetch(`/api/stamp/check?domain=${encodeURIComponent(domainKey)}`)
+      .then((r) => r.json())
+      .then((d) => setVerifiedStamps(d.stamps || []))
+      .catch(() => {});
+  }, [data.result?.domain, target]);
 
   const [eurRates, setEurRates] = React.useState<Record<string, number> | null>(null);
   useEffect(() => {
@@ -2815,33 +2693,55 @@ export default function LookupPage({
                           </div>
                         )}
                       </div>
-                      <div className="flex items-center gap-2 mt-3">
+                      <div className="flex items-center gap-2 mt-3 flex-wrap">
+                        <Link href={`/stamp?domain=${encodeURIComponent(result.domain || target)}`}>
+                          <button
+                            className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-all bg-muted/50 border-border/50 text-muted-foreground hover:border-violet-400/50 hover:text-violet-500"
+                          >
+                            <RiShieldCheckLine className="w-3 h-3" />
+                            {isChinese ? "域签" : "Stamp"}
+                          </button>
+                        </Link>
                         <button
-                          onClick={() => setStampDialogOpen(true)}
+                          onClick={() => setReminderDialogOpen(true)}
                           className={cn(
                             "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-all",
-                            isStamped
-                              ? "bg-violet-100 dark:bg-violet-900/40 border-violet-400/60 text-violet-600 dark:text-violet-300"
-                              : "bg-muted/50 border-border/50 text-muted-foreground hover:border-violet-400/50 hover:text-violet-500",
+                            (result.remainingDays !== null && result.remainingDays <= 30)
+                              ? "bg-red-100 dark:bg-red-900/30 border-red-400/60 text-red-500"
+                              : "bg-muted/50 border-border/50 text-muted-foreground hover:border-sky-400/50 hover:text-sky-500",
                           )}
                         >
-                          {isStamped ? <RiBookmarkFill className="w-3 h-3" /> : <RiBookmarkLine className="w-3 h-3" />}
-                          {isChinese ? "域签" : "Stamp"}
+                          <RiTimerLine className="w-3 h-3" />
+                          {isChinese ? "域历" : "Remind"}
                         </button>
-                        {(result.expirationDate && result.expirationDate !== "Unknown") && (
-                          <button
-                            onClick={() => setCountdownDialogOpen(true)}
-                            className={cn(
-                              "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-all",
-                              (result.remainingDays !== null && result.remainingDays <= 30)
-                                ? "bg-red-100 dark:bg-red-900/30 border-red-400/60 text-red-500"
-                                : "bg-muted/50 border-border/50 text-muted-foreground hover:border-sky-400/50 hover:text-sky-500",
-                            )}
-                          >
-                            <RiTimerLine className="w-3 h-3" />
-                            {isChinese ? "域历" : "Timeline"}
-                          </button>
-                        )}
+                        {verifiedStamps.map((stamp) => (
+                          stamp.link ? (
+                            <a
+                              key={stamp.id}
+                              href={stamp.link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className={cn(
+                                "flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold transition-opacity hover:opacity-80",
+                                STAMP_STYLE_MAP[stamp.tagStyle] || STAMP_STYLE_MAP.default,
+                              )}
+                            >
+                              <RiShieldCheckLine className="w-3 h-3" />
+                              {stamp.tagName}
+                            </a>
+                          ) : (
+                            <span
+                              key={stamp.id}
+                              className={cn(
+                                "flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold",
+                                STAMP_STYLE_MAP[stamp.tagStyle] || STAMP_STYLE_MAP.default,
+                              )}
+                            >
+                              <RiShieldCheckLine className="w-3 h-3" />
+                              {stamp.tagName}
+                            </span>
+                          )
+                        ))}
                       </div>
                       <span className="text-[10px] text-muted-foreground font-mono mt-2 block">
                         {time.toFixed(2)}s{data.cached && ` · ${t("cached")}`}
@@ -2849,19 +2749,12 @@ export default function LookupPage({
                       </span>
                     </div>
 
-                    <DomainStampDialog
-                      domain={result.domain || target}
-                      open={stampDialogOpen}
-                      onOpenChange={setStampDialogOpen}
-                      isZh={isChinese}
-                    />
-                    <DomainCountdownDialog
+                    <DomainReminderDialog
                       domain={result.domain || target}
                       expirationDate={result.expirationDate}
-                      creationDate={result.creationDate}
                       remainingDays={result.remainingDays}
-                      open={countdownDialogOpen}
-                      onOpenChange={setCountdownDialogOpen}
+                      open={reminderDialogOpen}
+                      onOpenChange={setReminderDialogOpen}
                       isZh={isChinese}
                     />
 
