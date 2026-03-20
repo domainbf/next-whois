@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { readData, writeData, ReminderRecord, RemindersDB } from "@/lib/data-store";
-import { getSupabaseClient } from "@/lib/supabase";
+import { getDb } from "@/lib/db";
 import { randomBytes } from "crypto";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -18,77 +18,59 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const id = randomBytes(8).toString("hex");
   const days = Number(daysBefore) || 30;
 
-  const supabase = getSupabaseClient();
-
-  if (supabase) {
-    const { data: existing } = await supabase
-      .from("reminders")
-      .select("id")
-      .eq("domain", cleanDomain)
-      .eq("email", cleanEmail)
-      .single();
-
-    if (existing) {
-      await supabase
-        .from("reminders")
-        .update({ days_before: days, expiration_date: String(expirationDate) })
-        .eq("id", existing.id);
+  const db = getDb();
+  if (db) {
+    const { rows: existing } = await db.query(
+      `SELECT id FROM reminders WHERE domain=$1 AND email=$2`,
+      [cleanDomain, cleanEmail]
+    );
+    if (existing[0]) {
+      await db.query(
+        `UPDATE reminders SET days_before=$1, expiration_date=$2 WHERE id=$3`,
+        [days, String(expirationDate), existing[0].id]
+      );
       await sendConfirmationEmail(cleanEmail, cleanDomain, String(expirationDate), days);
-      return res.status(200).json({ updated: true, id: existing.id });
+      return res.status(200).json({ updated: true, id: existing[0].id });
     }
-
-    const { error } = await supabase.from("reminders").insert({
-      id,
-      domain: cleanDomain,
-      email: cleanEmail,
-      days_before: days,
-      expiration_date: String(expirationDate),
-    });
-    if (error) return res.status(500).json({ error: error.message });
+    await db.query(
+      `INSERT INTO reminders (id, domain, email, days_before, expiration_date) VALUES ($1,$2,$3,$4,$5)`,
+      [id, cleanDomain, cleanEmail, days, String(expirationDate)]
+    );
     await sendConfirmationEmail(cleanEmail, cleanDomain, String(expirationDate), days);
     return res.status(200).json({ id });
   }
 
-  const db = readData<RemindersDB>("reminders.json", []);
-  const existing = db.find((r) => r.domain === cleanDomain && r.email === cleanEmail);
+  const fileDb = readData<RemindersDB>("reminders.json", []);
+  const existing = fileDb.find((r) => r.domain === cleanDomain && r.email === cleanEmail);
   if (existing) {
     existing.daysBefore = days;
     existing.expirationDate = String(expirationDate);
-    writeData("reminders.json", db);
+    writeData("reminders.json", fileDb);
     return res.status(200).json({ updated: true, id: existing.id });
   }
-
   const record: ReminderRecord = {
     id, domain: cleanDomain, email: cleanEmail,
     daysBefore: days, expirationDate: String(expirationDate),
     createdAt: new Date().toISOString(),
   };
-  db.push(record);
-  writeData("reminders.json", db);
+  fileDb.push(record);
+  writeData("reminders.json", fileDb);
   return res.status(200).json({ id });
 }
 
 async function sendConfirmationEmail(
-  email: string,
-  domain: string,
-  expirationDate: string,
-  daysBefore: number,
+  email: string, domain: string, expirationDate: string, daysBefore: number,
 ) {
   const resendKey = process.env.RESEND_API_KEY;
   if (!resendKey) return;
-
   const fromEmail = process.env.RESEND_FROM_EMAIL || "noreply@nextwhois.app";
   const expiryDate = new Date(expirationDate).toLocaleDateString("zh-CN", {
     year: "numeric", month: "long", day: "numeric",
   });
-
   try {
     await fetch("https://api.resend.com/emails", {
       method: "POST",
-      headers: {
-        "Authorization": `Bearer ${resendKey}`,
-        "Content-Type": "application/json",
-      },
+      headers: { "Authorization": `Bearer ${resendKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         from: fromEmail,
         to: email,
