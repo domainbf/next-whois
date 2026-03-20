@@ -144,5 +144,15 @@
     "download_failed": "ダウンロードに失敗しました",
     "copied_to_clipboard": "クリップボードにコピーしました",
     "copy_to_clipboard_failed": "コピーに失敗しました"
+  },
+  "validation": {
+    "empty": "ドメイン、IPアドレス、またはASNを入力してください",
+    "no_dot": "有効なドメインを入力してください（例：example.com）— http://やパスは不要です",
+    "too_long": "入力が長すぎます — 最大253文字",
+    "label_too_long": "ドメインの各ラベルは63文字以内にしてください",
+    "invalid_chars": "無効な文字が含まれています — 英数字とハイフンのみ使用可能",
+    "invalid_domain": "無効なドメイン形式",
+    "invalid_tld": "TLD '{{tld}}' が短すぎます — 2文字以上必要",
+    "unknown_tld": "不明な拡張子 '{{tld}}' — タイポを確認してください（例：.com、.commではなく）"
   }
 }

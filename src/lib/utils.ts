@@ -137,7 +137,12 @@ export function extractDomain(url: string): string | null {
 
 export function stripUrlToHostname(input: string): string {
   let s = input.trim();
-  s = s.replace(/^[a-zA-Z][a-zA-Z0-9+\-.]*:\/\//, "");
+  // Strip full protocol (scheme://)
+  s = s.replace(/^[a-zA-Z][a-zA-Z0-9+\-.]*:\/\//i, "");
+  // Strip partial protocol artifacts: "https:/" or "https:" left over after single-slash URLs
+  s = s.replace(/^[a-zA-Z][a-zA-Z0-9+\-.]*:\/?/i, "");
+  // Strip any leading slashes remaining
+  s = s.replace(/^\/+/, "");
   const slashIdx = s.indexOf("/");
   if (slashIdx !== -1) s = s.substring(0, slashIdx);
   const qIdx = s.indexOf("?");
@@ -149,6 +154,114 @@ export function stripUrlToHostname(input: string): string {
     s = s.substring(0, lastColon);
   }
   return s;
+}
+
+/**
+ * Sanitise raw search input: strip protocol, path, port, auth — leaving only
+ * the hostname / domain / IP portion. Does NOT validate; call
+ * validateAndSanitizeInput for full validation.
+ */
+export function sanitizeInput(raw: string): string {
+  let s = raw.trim();
+  // 1. Strip full protocol (https://, http://, ftp://, //, …)
+  s = s.replace(/^[a-zA-Z][a-zA-Z0-9+\-.]*:\/\//i, "");
+  s = s.replace(/^\/\//, "");
+  // 2. Strip partial protocol artifacts left by single-slash URLs (https:/X)
+  s = s.replace(/^[a-zA-Z][a-zA-Z0-9+\-.]*:\/?/i, "");
+  // 3. Strip leading slashes
+  s = s.replace(/^\/+/, "");
+  // 4. Truncate at first path / query / fragment separator
+  const sepIdx = s.search(/[/?#]/);
+  if (sepIdx !== -1) s = s.substring(0, sepIdx);
+  // 5. Strip port number (e.g. example.com:8080)
+  const colonIdx = s.lastIndexOf(":");
+  if (colonIdx > 0 && /^\d+$/.test(s.substring(colonIdx + 1))) {
+    s = s.substring(0, colonIdx);
+  }
+  // 6. Strip auth prefix (user:pass@host → host)
+  const atIdx = s.indexOf("@");
+  if (atIdx !== -1 && atIdx < s.length - 1) s = s.substring(atIdx + 1);
+  return s.trim();
+}
+
+export type SearchValidationResult = {
+  valid: boolean;
+  cleaned: string;
+  errorKey?: string;
+  errorArgs?: Record<string, string>;
+};
+
+/**
+ * Clean raw user input then validate it.
+ * Strategy: be lenient — clean first, validate after.
+ * Returns { valid, cleaned } on success or { valid: false, errorKey } on failure.
+ */
+export function validateAndSanitizeInput(raw: string): SearchValidationResult {
+  const cleaned = sanitizeInput(raw);
+
+  if (!cleaned) {
+    return { valid: false, cleaned: "", errorKey: "validation.empty" };
+  }
+
+  // ASN
+  if (/^AS\d+$/i.test(cleaned)) return { valid: true, cleaned };
+
+  // IPv4 CIDR
+  if (/^(\d{1,3}\.){3}\d{1,3}\/\d{1,2}$/.test(cleaned)) return { valid: true, cleaned };
+
+  // IPv6 CIDR
+  if (/^([0-9a-fA-F]{0,4}:){1,7}[0-9a-fA-F]{0,4}\/\d{1,3}$/.test(cleaned)) return { valid: true, cleaned };
+
+  // IPv4
+  if (/^(\d{1,3}\.){3}\d{1,3}$/.test(cleaned)) return { valid: true, cleaned };
+
+  // IPv6
+  if (/^([0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}$/.test(cleaned)) return { valid: true, cleaned };
+
+  // ── Domain validation ──────────────────────────────────────────────────────
+
+  // Must contain at least one dot
+  if (!cleaned.includes(".")) {
+    return { valid: false, cleaned, errorKey: "validation.no_dot" };
+  }
+
+  // Total length limit per RFC 1035
+  if (cleaned.length > 253) {
+    return { valid: false, cleaned, errorKey: "validation.too_long" };
+  }
+
+  const labels = cleaned.split(".");
+
+  for (const label of labels) {
+    if (label.length === 0) {
+      return { valid: false, cleaned, errorKey: "validation.invalid_domain" };
+    }
+    if (label.length > 63) {
+      return { valid: false, cleaned, errorKey: "validation.label_too_long" };
+    }
+    // For ASCII labels, enforce valid characters and hyphen placement
+    const isAscii = !/[^\x00-\x7F]/.test(label);
+    if (isAscii) {
+      if (!/^[a-zA-Z0-9]([a-zA-Z0-9\-]*[a-zA-Z0-9])?$|^[a-zA-Z0-9]$/.test(label)) {
+        return { valid: false, cleaned, errorKey: "validation.invalid_chars" };
+      }
+    }
+    // Non-ASCII labels (IDN/unicode): pass through — lenient for internationalised domains
+  }
+
+  // TLD must be at least 2 characters
+  const tld = labels[labels.length - 1];
+  if (tld.length < 2) {
+    return { valid: false, cleaned, errorKey: "validation.invalid_tld", errorArgs: { tld: `.${tld}` } };
+  }
+
+  // Validate TLD against the Public Suffix List via tldts
+  const parsed = parse(cleaned, { allowPrivateDomains: false });
+  if (!parsed.publicSuffix) {
+    return { valid: false, cleaned, errorKey: "validation.unknown_tld", errorArgs: { tld: `.${tld}` } };
+  }
+
+  return { valid: true, cleaned };
 }
 
 export function smartCleanDomain(input: string): string {

@@ -144,5 +144,15 @@
     "download_failed": "Herunterladen fehlgeschlagen",
     "copied_to_clipboard": "In die Zwischenablage kopiert",
     "copy_to_clipboard_failed": "Kopieren in die Zwischenablage fehlgeschlagen"
+  },
+  "validation": {
+    "empty": "Bitte Domain, IP-Adresse oder ASN eingeben",
+    "no_dot": "Bitte gültige Domain eingeben (z. B. example.com) — kein http:// oder Pfad nötig",
+    "too_long": "Eingabe zu lang — maximal 253 Zeichen",
+    "label_too_long": "Jedes Domain-Segment darf maximal 63 Zeichen lang sein",
+    "invalid_chars": "Ungültige Zeichen — nur Buchstaben, Ziffern und Bindestriche erlaubt",
+    "invalid_domain": "Ungültiges Domain-Format",
+    "invalid_tld": "TLD '{{tld}}' zu kurz — mindestens 2 Buchstaben erforderlich",
+    "unknown_tld": "Unbekannte Endung '{{tld}}' — bitte auf Tippfehler prüfen (z. B. .com statt .comm)"
   }
 }

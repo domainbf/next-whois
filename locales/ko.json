@@ -144,5 +144,15 @@
     "download_failed": "다운로드 실패",
     "copied_to_clipboard": "클립보드에 복사됨",
     "copy_to_clipboard_failed": "복사 실패"
+  },
+  "validation": {
+    "empty": "도메인, IP 주소 또는 ASN을 입력하세요",
+    "no_dot": "유효한 도메인을 입력하세요 (예: example.com) — http:// 또는 경로 불필요",
+    "too_long": "입력이 너무 깁니다 — 최대 253자",
+    "label_too_long": "도메인의 각 세그먼트는 63자 이하여야 합니다",
+    "invalid_chars": "잘못된 문자 — 영문자, 숫자, 하이픈만 사용 가능",
+    "invalid_domain": "잘못된 도메인 형식",
+    "invalid_tld": "TLD '{{tld}}'가 너무 짧습니다 — 최소 2자 이상",
+    "unknown_tld": "알 수 없는 확장자 '{{tld}}' — 오타를 확인하세요 (.com, .comm 아님)"
   }
 }

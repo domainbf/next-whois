@@ -144,5 +144,15 @@
     "download_failed": "Échec du téléchargement",
     "copied_to_clipboard": "Copié dans le presse-papiers",
     "copy_to_clipboard_failed": "Échec de la copie"
+  },
+  "validation": {
+    "empty": "Saisissez un domaine, une adresse IP ou un ASN",
+    "no_dot": "Saisissez un domaine valide (ex. example.com) — sans http:// ni chemin",
+    "too_long": "Requête trop longue — 253 caractères maximum",
+    "label_too_long": "Chaque segment du domaine doit faire 63 caractères maximum",
+    "invalid_chars": "Caractères invalides — utilisez uniquement des lettres, chiffres et tirets",
+    "invalid_domain": "Format de domaine invalide",
+    "invalid_tld": "Le TLD '{{tld}}' est trop court — minimum 2 lettres",
+    "unknown_tld": "Extension inconnue '{{tld}}' — vérifiez les fautes de frappe (ex. .com et non .comm)"
   }
 }

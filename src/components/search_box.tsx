@@ -8,7 +8,8 @@ import {
   RiLinkM,
 } from "@remixicon/react";
 import { motion, AnimatePresence } from "framer-motion";
-import { cn, isEnter } from "@/lib/utils";
+import { cn, isEnter, validateAndSanitizeInput } from "@/lib/utils";
+import { toast } from "sonner";
 import { listHistory, HistoryItem } from "@/lib/history";
 import { Badge } from "@/components/ui/badge";
 import { useTranslation } from "@/lib/i18n";
@@ -452,10 +453,14 @@ export function SearchBox({
   };
 
   const handleSearch = () => {
-    if (inputValue) {
-      onSearch(inputValue);
-      setShowSuggestions(false);
+    if (!inputValue) return;
+    const result = validateAndSanitizeInput(inputValue);
+    if (!result.valid) {
+      toast.error(t(result.errorKey as any, result.errorArgs as any));
+      return;
     }
+    onSearch(result.cleaned);
+    setShowSuggestions(false);
   };
 
   return (

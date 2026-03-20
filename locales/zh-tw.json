@@ -144,5 +144,15 @@
     "download_failed": "下載失敗",
     "copied_to_clipboard": "已複製到剪貼簿",
     "copy_to_clipboard_failed": "複製失敗"
+  },
+  "validation": {
+    "empty": "請輸入域名、IP 位址或 ASN",
+    "no_dot": "請輸入有效域名（如 example.com），無需 http:// 或路徑",
+    "too_long": "查詢內容過長，最多 253 字元",
+    "label_too_long": "域名每段不超過 63 個字元",
+    "invalid_chars": "包含無效字元，僅支援字母、數字和連字號",
+    "invalid_domain": "域名格式無效",
+    "invalid_tld": "頂級域 '{{tld}}' 太短，至少需要 2 個字母",
+    "unknown_tld": "未知域名後綴 '{{tld}}'，請檢查拼字（如 .com 而非 .comm）"
   }
 }
