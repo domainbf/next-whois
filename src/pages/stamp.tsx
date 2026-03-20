@@ -1,6 +1,5 @@
 import React from "react";
 import Head from "next/head";
-import Link from "next/link";
 import { useRouter } from "next/router";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -18,7 +17,7 @@ import {
 import { toast } from "sonner";
 
 const TAG_STYLES: { id: string; label: string; className: string }[] = [
-  { id: "default", label: "默认", className: "border border-border text-foreground bg-background" },
+  { id: "personal", label: "个人持有", className: "border border-border text-foreground bg-background" },
   { id: "official", label: "官方", className: "bg-blue-500 text-white border-0" },
   { id: "brand", label: "品牌", className: "bg-violet-500 text-white border-0" },
   { id: "verified", label: "认证", className: "bg-emerald-500 text-white border-0" },
@@ -43,12 +42,20 @@ export default function StampPage() {
   const router = useRouter();
   const domain = String(router.query.domain || "");
 
+  function goBack() {
+    if (window.history.length > 1) {
+      router.back();
+    } else {
+      router.push(domain ? `/${domain}` : "/");
+    }
+  }
+
   const [step, setStep] = React.useState<Step>("form");
   const [loading, setLoading] = React.useState(false);
 
   const [form, setForm] = React.useState({
     tagName: "",
-    tagStyle: "default",
+    tagStyle: "personal",
     link: "",
     description: "",
     nickname: "",
@@ -126,12 +133,13 @@ export default function StampPage() {
       <div className="min-h-screen bg-background">
         <div className="max-w-lg mx-auto px-4 py-6 pb-16">
           <div className="flex items-center gap-3 mb-6">
-            <Link href={domain ? `/${domain}` : "/"}>
-              <button className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
-                <RiArrowLeftLine className="w-4 h-4" />
-                返回
-              </button>
-            </Link>
+            <button
+              onClick={goBack}
+              className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <RiArrowLeftLine className="w-4 h-4" />
+              返回
+            </button>
             <span className="text-muted-foreground/40">·</span>
             <span className="text-sm font-medium text-muted-foreground">{domain}</span>
           </div>
@@ -380,12 +388,10 @@ export default function StampPage() {
               <div className="py-3">
                 <TagBadge tagName={form.tagName} tagStyle={form.tagStyle} />
               </div>
-              <Link href={`/${domain}`}>
-                <Button className="gap-2">
-                  <RiExternalLinkLine className="w-4 h-4" />
-                  查看域名页面
-                </Button>
-              </Link>
+              <Button className="gap-2" onClick={goBack}>
+                <RiExternalLinkLine className="w-4 h-4" />
+                查看域名页面
+              </Button>
             </div>
           )}
         </div>

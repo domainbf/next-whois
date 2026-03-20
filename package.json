@@ -23,6 +23,7 @@
     "@radix-ui/react-separator": "^1.1.8",
     "@radix-ui/react-slot": "^1.2.4",
     "@remixicon/react": "^4.9.0",
+    "@supabase/supabase-js": "^2.99.3",
     "@tremor/react": "^3.18.7",
     "@types/negotiator": "^0.6.4",
     "class-variance-authority": "^0.7.1",

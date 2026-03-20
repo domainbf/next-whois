@@ -5,9 +5,12 @@ import { Toaster } from "sonner";
 import { ThemeProvider } from "@/components/theme-provider";
 import { siteTitle, siteDescription, siteKeywords } from "@/lib/seo";
 import { Navbar } from "@/components/navbar";
+import { useRouter } from "next/router";
+import { AnimatePresence, motion } from "framer-motion";
 
 export default function App({ Component, pageProps }: AppProps) {
   const origin: string = pageProps.origin || "";
+  const router = useRouter();
 
   return (
     <>
@@ -62,7 +65,17 @@ export default function App({ Component, pageProps }: AppProps) {
         <div className="relative w-full min-h-screen font-sans">
           <Navbar />
           <main className="pt-16">
-            <Component {...pageProps} />
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.div
+                key={router.pathname}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.18, ease: "easeInOut" }}
+              >
+                <Component {...pageProps} />
+              </motion.div>
+            </AnimatePresence>
           </main>
         </div>
       </ThemeProvider>

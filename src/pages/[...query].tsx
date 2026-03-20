@@ -2069,7 +2069,10 @@ export default function LookupPage({
   const [expandStatus, setExpandStatus] = React.useState(false);
 
   useEffect(() => {
-    const handleStart = () => setLoading(true);
+    const handleStart = (url: string) => {
+      if (url.startsWith("/stamp") || url.startsWith("/remind")) return;
+      setLoading(true);
+    };
     const handleComplete = () => setLoading(false);
     router.events.on("routeChangeStart", handleStart);
     router.events.on("routeChangeComplete", handleComplete);
@@ -2103,6 +2106,7 @@ export default function LookupPage({
   >([]);
 
   const STAMP_STYLE_MAP: Record<string, string> = {
+    personal: "border border-border text-foreground bg-background",
     default: "border border-border text-foreground bg-background",
     official: "bg-blue-500 text-white border-0",
     brand: "bg-violet-500 text-white border-0",
