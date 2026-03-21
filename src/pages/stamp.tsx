@@ -27,7 +27,7 @@ import {
   RiCloudLine,
   RiDeleteBinLine,
   RiFileTextLine,
-  RiLinkLine,
+  RiLinksLine,
 } from "@remixicon/react";
 import { toast } from "sonner";
 
@@ -952,7 +952,7 @@ export default function StampPage() {
                                 <div className="px-3 py-2.5 space-y-2">
                                   <div>
                                     <p className="text-[10px] font-bold text-muted-foreground/70 uppercase mb-1 flex items-center gap-1">
-                                      <RiLinkLine className="w-2.5 h-2.5" />
+                                      <RiLinksLine className="w-2.5 h-2.5" />
                                       {isZh ? "文件路径" : "File path"}
                                     </p>
                                     <div className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-background border border-border/50">
@@ -997,7 +997,7 @@ export default function StampPage() {
                                 </div>
                                 <div className="px-3 py-2.5">
                                   <div className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-background border border-border/50">
-                                    <RiLinkLine className="w-3 h-3 text-muted-foreground/50 shrink-0" />
+                                    <RiLinksLine className="w-3 h-3 text-muted-foreground/50 shrink-0" />
                                     <code className="text-[11px] font-mono text-sky-600 dark:text-sky-400 flex-1 break-all">
                                       {`https://${domain}/.well-known/next-whois-verify.txt`}
                                     </code>
