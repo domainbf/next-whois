@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { lookupWhoisWithCache } from "@/lib/whois/lookup";
 import { WhoisAnalyzeResult } from "@/lib/whois/types";
+import { DnsProbeResult } from "@/lib/whois/dns-check";
 
 export const config = {
   maxDuration: 30,
@@ -13,6 +14,7 @@ type Data = {
   source?: "rdap" | "whois";
   result?: WhoisAnalyzeResult;
   error?: string;
+  dnsProbe?: DnsProbeResult;
 };
 
 export default async function handler(
@@ -27,10 +29,10 @@ export default async function handler(
       .json({ time: -1, status: false, error: "Query is required" });
   }
 
-  const { time, status, result, error, cached, source } =
+  const { time, status, result, error, cached, source, dnsProbe } =
     await lookupWhoisWithCache(query);
   if (!status) {
-    return res.status(500).json({ time, status, error });
+    return res.status(500).json({ time, status, error, dnsProbe });
   }
 
   res.setHeader("Cache-Control", "s-maxage=3600, stale-while-revalidate=86400");
