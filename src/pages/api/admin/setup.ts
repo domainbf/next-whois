@@ -1,23 +1,22 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { getDb, runMigrations } from "@/lib/db";
+import { getDb, runMigrations, getConnectionSource, getConnectionHost } from "@/lib/db";
 import { randomBytes } from "crypto";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const steps: { step: string; ok: boolean; detail?: string }[] = [];
 
-  // 1. Detect which env var is being used
-  const urlSource =
-    process.env.DATABASE_URL ? "DATABASE_URL" :
-    process.env.POSTGRES_URL_NON_POOLING ? "POSTGRES_URL_NON_POOLING" :
-    process.env.POSTGRES_URL ? "POSTGRES_URL (pooler)" :
-    null;
+  // 1. Detect which env var is being used and what host it points to
+  const urlSource = getConnectionSource();
+  const host = getConnectionHost();
 
   steps.push({
     step: "Database URL",
-    ok: !!urlSource,
-    detail: urlSource ?? "None found. Add DATABASE_URL or connect Supabase via Vercel integration.",
+    ok: urlSource !== "none",
+    detail: urlSource !== "none"
+      ? `${urlSource} → ${host}`
+      : "None found. Connect Supabase via Vercel integration (POSTGRES_URL_NON_POOLING).",
   });
-  if (!urlSource) return res.status(500).json({ ok: false, steps });
+  if (urlSource === "none") return res.status(500).json({ ok: false, steps });
 
   // 2. Get pool
   const db = getDb();

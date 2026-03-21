@@ -41,28 +41,49 @@ const TABLES = [
 
 /**
  * Resolve the best available connection string.
- * Priority: DATABASE_URL → POSTGRES_URL_NON_POOLING → POSTGRES_URL
  *
- * Vercel's native Supabase integration injects POSTGRES_URL (transaction pooler,
- * port 6543) and POSTGRES_URL_NON_POOLING (direct connection, port 5432).
- * We prefer the direct connection because it supports DDL without restrictions.
- * When only POSTGRES_URL (pooler) is available we append pgbouncer=true so the
- * pg driver disables prepared statements (required by Supabase's PgBouncer).
+ * Priority:
+ *   1. POSTGRES_URL_NON_POOLING  – Vercel/Supabase direct connection (port 5432).
+ *                                   Best for DDL; no pooler restrictions.
+ *   2. DATABASE_URL              – Local dev or manually configured DB.
+ *   3. POSTGRES_URL              – Supabase transaction pooler (port 6543).
+ *                                   Appends pgbouncer=true automatically.
+ *
+ * POSTGRES_URL_NON_POOLING is intentionally preferred over DATABASE_URL so that
+ * Vercel deployments always reach Supabase even when DATABASE_URL happens to be
+ * set to a Replit-internal host (e.g. "helium") that is unreachable externally.
  */
-function getConnectionString(): string | null {
-  const direct =
-    process.env.DATABASE_URL ||
-    process.env.POSTGRES_URL_NON_POOLING;
-  if (direct) return direct;
-
-  const pooler = process.env.POSTGRES_URL;
-  if (pooler) {
-    // Supabase transaction pooler requires pgbouncer=true
-    const sep = pooler.includes("?") ? "&" : "?";
-    return pooler.includes("pgbouncer") ? pooler : `${pooler}${sep}pgbouncer=true`;
+function getConnectionString(): { url: string; source: string } | null {
+  if (process.env.POSTGRES_URL_NON_POOLING) {
+    return { url: process.env.POSTGRES_URL_NON_POOLING, source: "POSTGRES_URL_NON_POOLING" };
   }
-
+  if (process.env.DATABASE_URL) {
+    return { url: process.env.DATABASE_URL, source: "DATABASE_URL" };
+  }
+  if (process.env.POSTGRES_URL) {
+    const raw = process.env.POSTGRES_URL;
+    const sep = raw.includes("?") ? "&" : "?";
+    const url = raw.includes("pgbouncer") ? raw : `${raw}${sep}pgbouncer=true`;
+    return { url, source: "POSTGRES_URL (pooler)" };
+  }
   return null;
+}
+
+/** Extract just the host:port from a connection URL for safe logging (no credentials). */
+export function getConnectionHost(): string {
+  const cs = getConnectionString();
+  if (!cs) return "none";
+  try {
+    const u = new URL(cs.url);
+    return `${u.hostname}:${u.port || 5432}`;
+  } catch {
+    return "unknown";
+  }
+}
+
+/** Which env var is being used for the database connection. */
+export function getConnectionSource(): string {
+  return getConnectionString()?.source ?? "none";
 }
 
 function makePool(connectionString: string): Pool {
@@ -85,10 +106,11 @@ export function getDb(): Pool | null {
   if (pool) return pool;
   const cs = getConnectionString();
   if (!cs) {
-    console.error("[db] No database URL found. Set DATABASE_URL or connect Supabase via Vercel integration (POSTGRES_URL).");
+    console.error("[db] No database URL found. Set DATABASE_URL or connect Supabase via the Vercel integration (POSTGRES_URL / POSTGRES_URL_NON_POOLING).");
     return null;
   }
-  pool = makePool(cs);
+  console.log(`[db] Using ${cs.source} → ${getConnectionHost()}`);
+  pool = makePool(cs.url);
   migrated = false;
   return pool;
 }
