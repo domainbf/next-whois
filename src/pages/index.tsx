@@ -13,7 +13,7 @@ import { useSearchHotkeys } from "@/hooks/useSearchHotkeys";
 
 function XRWDisplay() {
   return (
-    <div className="w-full flex flex-col items-center justify-center py-10 select-none">
+    <div className="w-full flex flex-col items-center justify-center select-none">
       <span className="text-shimmer text-6xl font-bold tracking-[0.2em]">
         X.RW
       </span>
@@ -65,9 +65,11 @@ export default function HomePage() {
         </div>
 
         {/* Mobile: centered X.RW brand display */}
-        <div className="sm:hidden">
-          {!loading && <XRWDisplay />}
-        </div>
+        {!loading && (
+          <div className="sm:hidden flex items-center justify-center" style={{ height: "calc(100vh - 13rem)" }}>
+            <XRWDisplay />
+          </div>
+        )}
 
         {loading && (
           <motion.div
