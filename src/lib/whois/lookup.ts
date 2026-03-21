@@ -15,6 +15,7 @@ import {
 } from "@/lib/whois/custom-servers";
 import { probeDomain } from "@/lib/whois/dns-check";
 import { lookupNicBa } from "@/lib/whois/http-scrapers/nic-ba";
+import { lookupYisi } from "@/lib/whois/yisi-fallback";
 
 class ScraperRequiredError extends Error {
   registryUrl: string;
@@ -506,9 +507,21 @@ export async function lookupWhois(domain: string): Promise<WhoisResult> {
     };
   }
 
+  // Try yisi.yun as a fallback before giving up; only for domain queries.
+  async function tryYisiOrFail(
+    error: string,
+    registryUrl?: string,
+  ): Promise<WhoisResult> {
+    if (isDomainQuery) {
+      const yisiResult = await lookupYisi(domain).catch(() => null);
+      if (yisiResult) return yisiResult;
+    }
+    return failWithDns(error, registryUrl);
+  }
+
   if (whoisRawData) {
     if (isIanaFallback(whoisRawData)) {
-      return failWithDns("No WHOIS/RDAP server available for this TLD");
+      return tryYisiOrFail("No WHOIS/RDAP server available for this TLD");
     }
 
     try {
@@ -516,7 +529,7 @@ export async function lookupWhois(domain: string): Promise<WhoisResult> {
 
       const whoisError = detectWhoisError(whoisRawData);
       if (whoisError || isEmptyResult(result)) {
-        return failWithDns(whoisError || "Empty WHOIS response");
+        return tryYisiOrFail(whoisError || "Empty WHOIS response");
       }
 
       if (whoisData?.server) {
@@ -532,7 +545,7 @@ export async function lookupWhois(domain: string): Promise<WhoisResult> {
         result,
       };
     } catch (parseError: unknown) {
-      return failWithDns(
+      return tryYisiOrFail(
         parseError instanceof Error
           ? parseError.message
           : "Failed to parse WHOIS response",
@@ -557,7 +570,5 @@ export async function lookupWhois(domain: string): Promise<WhoisResult> {
       : isWhoisServerEmpty
         ? `WHOIS server (${whoisData!.server}) connected but returned no data — the server may restrict access by IP or require queries from the registry's country`
         : whoisMsg || rdapMsg || "Unknown error occurred";
-  return {
-    ...(await failWithDns(errMsg, scraperRegistryUrl)),
-  };
+  return tryYisiOrFail(errMsg, scraperRegistryUrl);
 }

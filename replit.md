@@ -22,7 +22,13 @@ A fast, modern WHOIS and RDAP lookup tool supporting domains, IPv4/IPv6, ASN, an
 
 ## Architecture
 
-The lookup flow: API request → try RDAP → fallback to WHOIS → merge results → cache in Redis → return to client.
+The lookup flow: API request → try RDAP → fallback to WHOIS → merge results → if still empty try yisi.yun fallback → cache in Redis → return to client.
+
+### Lookup fallback chain
+
+1. **RDAP** (`node-rdap` + bootstrap) — primary, returns structured JSON
+2. **WHOIS** (`whoiser` + custom servers) — secondary, raw text parsed by `common_parser.ts`
+3. **yisi.yun API** (`src/lib/whois/yisi-fallback.ts`) — tertiary; only invoked when both RDAP and WHOIS fail or return empty/error data for a domain query. Supports unusual TLDs with no public RDAP/WHOIS server. Zero overhead when native lookups succeed.
 
 ## Data Cleaning Enhancements (2026-03)
 
