@@ -197,8 +197,7 @@ export default function StampPage() {
     if (formError) setFormError(null);
   }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleSubmit() {
     setFormError(null);
     if (!form.tagName.trim()) {
       setFormError("请填写标签名称");
@@ -236,7 +235,9 @@ export default function StampPage() {
       setSubmitResult({ id: data.id, txtRecord: data.txtRecord, txtValue: data.txtValue });
       goToStep("verify");
     } catch (err: any) {
-      setFormError(err.message || "提交失败，请稍后重试");
+      const msg = err?.message || "";
+      const isSafeMsg = /[\u4e00-\u9fa5]/.test(msg);
+      setFormError(isSafeMsg ? msg : "提交失败，请检查网络后重试");
     } finally {
       setLoading(false);
     }
@@ -428,7 +429,7 @@ export default function StampPage() {
                       </div>
 
                       {/* Form card */}
-                      <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+                      <div className="space-y-4">
                         <div className="glass-panel border border-border rounded-2xl p-5 space-y-5">
 
                           {/* Domain field */}
@@ -484,9 +485,6 @@ export default function StampPage() {
                                 </div>
                                 <div className="flex items-center gap-2 flex-wrap">
                                   <TagBadge tagName={form.tagName} tagStyle={form.tagStyle} live />
-                                  {form.nickname && (
-                                    <span className="text-xs text-muted-foreground">by <span className="font-medium text-foreground">{form.nickname}</span></span>
-                                  )}
                                 </div>
                                 {form.description && (
                                   <p className="text-[11px] leading-relaxed" style={{
@@ -553,8 +551,6 @@ export default function StampPage() {
                                 onChange={(e) => update("email", e.target.value)}
                                 placeholder="your@email.com"
                                 type="text"
-                                inputMode="email"
-                                autoComplete="email"
                               />
                               <p className="text-[11px] text-muted-foreground mt-1">用于接收验证结果，不会公开展示</p>
                             </div>
@@ -579,7 +575,8 @@ export default function StampPage() {
                           )}
                         </AnimatePresence>
                         <Button
-                          type="submit"
+                          type="button"
+                          onClick={handleSubmit}
                           disabled={loading}
                           className="w-full gap-2 h-12 bg-violet-500 hover:bg-violet-600 active:bg-violet-700 text-white border-0 rounded-xl text-sm font-semibold shadow-md shadow-violet-500/25 transition-all hover:shadow-lg hover:shadow-violet-500/30 hover:-translate-y-px"
                         >
@@ -588,7 +585,7 @@ export default function StampPage() {
                             : <><RiFlashlightLine className="w-4 h-4" />下一步：DNS 验证</>
                           }
                         </Button>
-                      </form>
+                      </div>
                     </div>
                   )}
 
