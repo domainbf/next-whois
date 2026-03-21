@@ -86,6 +86,39 @@ The app is production-ready for Vercel and similar serverless platforms.
 - **Hobby plan (10s limit)**: Set `WHOIS_TIMEOUT_MS=7000`. Some slow registries may still timeout.
 - **Pro plan (300s limit)**: Default 10s is fine; increase to 15000 for best coverage.
 
+## Brand Claim (品牌认领) & Domain Subscription (域名订阅)
+
+### New Pages
+- `src/pages/stamp.tsx` — Brand Claim page with DNS TXT ownership verification (3-step flow: form → verify → done)
+- `src/pages/remind/cancel.tsx` — Subscription cancellation page (reads `?token=` param, calls cancel API)
+
+### New API Routes
+- `src/pages/api/stamp/submit.ts` — Submit a stamp claim; returns `txtRecord` and `txtValue` for DNS TXT verification
+- `src/pages/api/stamp/check.ts` — Query verified stamps for a domain
+- `src/pages/api/remind/submit.ts` — Subscribe to domain expiry reminders
+- `src/pages/api/remind/cancel.ts` — Cancel a subscription via cancel token (returns JSON)
+- `src/pages/api/remind/process.ts` — Cron job: sends reminder emails via Resend, marks sent records
+
+### Libraries
+- `src/lib/db.ts` — PostgreSQL connection pool (max:5, timeouts, error listener)
+- `src/lib/rate-limit.ts` — In-memory IP rate limiter (5 req/min per IP, auto-cleanup)
+
+### Environment Variables Required
+| Variable | Required | Description |
+|---|---|---|
+| `DATABASE_URL` | Yes | Replit PostgreSQL connection string |
+| `RESEND_API_KEY` | Yes | Resend API key for sending reminder emails |
+| `RESEND_FROM_EMAIL` | Yes | Sender address for emails (e.g. `reminders@yourdomain.com`) |
+| `NEXT_PUBLIC_BASE_URL` | Yes | Public URL for cancel links in emails (e.g. `https://yourapp.replit.app`) |
+| `CRON_SECRET` | Recommended | Secret token to protect `POST /api/remind/process` from unauthorized calls |
+
+### Cron Setup
+To trigger reminder emails automatically, set up a cron job (e.g. daily) to call:
+```
+POST /api/remind/process
+Authorization: Bearer <CRON_SECRET>
+```
+
 ## Dev Server
 
 Runs on port 5000 via `pnpm run dev` (next dev -p 5000 -H 0.0.0.0).

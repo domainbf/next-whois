@@ -1,17 +1,22 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { getDb } from "@/lib/db";
 import { randomBytes } from "crypto";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 const REMINDER_THRESHOLDS = [60, 30, 10, 5, 1];
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).end();
 
+  const ip = String(req.headers["x-forwarded-for"] || req.socket?.remoteAddress || "unknown").split(",")[0].trim();
+  const rl = checkRateLimit(ip, 5);
+  if (!rl.ok) return res.status(429).json({ error: "请求过于频繁，请稍后再试" });
+
   const { domain, email, expirationDate } = req.body;
   if (!domain || !email) return res.status(400).json({ error: "Missing required fields" });
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(email)) return res.status(400).json({ error: "Invalid email" });
+  if (!emailRegex.test(email)) return res.status(400).json({ error: "邮箱格式不正确" });
 
   const cleanDomain = String(domain).toLowerCase().trim();
   const cleanEmail = String(email).trim();
@@ -22,33 +27,37 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const db = getDb();
   if (!db) return res.status(500).json({ error: "Database unavailable" });
 
-  const { rows: existing } = await db.query(
-    `SELECT id, cancel_token, active FROM reminders WHERE domain=$1 AND email=$2`,
-    [cleanDomain, cleanEmail]
-  );
-
   let reminderId: string;
   let cancelTok: string;
 
-  if (existing[0]) {
-    reminderId = existing[0].id;
-    cancelTok = existing[0].cancel_token || cancelToken;
-    await db.query(
-      `UPDATE reminders SET expiration_date=$1, active=true, cancelled_at=NULL, cancel_reason=NULL, cancel_token=COALESCE(cancel_token,$2) WHERE id=$3`,
-      [expDate, cancelTok, reminderId]
+  try {
+    const { rows: existing } = await db.query(
+      `SELECT id, cancel_token, active FROM reminders WHERE domain=$1 AND email=$2`,
+      [cleanDomain, cleanEmail]
     );
-    // Reset logs so all thresholds will fire again for updated subscription
-    await db.query(`DELETE FROM reminder_logs WHERE reminder_id=$1`, [reminderId]);
-  } else {
-    reminderId = id;
-    cancelTok = cancelToken;
-    await db.query(
-      `INSERT INTO reminders (id, domain, email, days_before, expiration_date, active, cancel_token) VALUES ($1,$2,$3,30,$4,true,$5)`,
-      [reminderId, cleanDomain, cleanEmail, expDate, cancelTok]
-    );
+
+    if (existing[0]) {
+      reminderId = existing[0].id;
+      cancelTok = existing[0].cancel_token || cancelToken;
+      await db.query(
+        `UPDATE reminders SET expiration_date=$1, active=true, cancelled_at=NULL, cancel_reason=NULL, cancel_token=COALESCE(cancel_token,$2) WHERE id=$3`,
+        [expDate, cancelTok, reminderId]
+      );
+      await db.query(`DELETE FROM reminder_logs WHERE reminder_id=$1`, [reminderId]);
+    } else {
+      reminderId = id;
+      cancelTok = cancelToken;
+      await db.query(
+        // Note: `days_before` column is legacy (always 30, unused by process.ts). Omitted here; DB default handles it.
+        `INSERT INTO reminders (id, domain, email, expiration_date, active, cancel_token) VALUES ($1,$2,$3,$4,true,$5)`,
+        [reminderId, cleanDomain, cleanEmail, expDate, cancelTok]
+      );
+    }
+  } catch (dbErr: any) {
+    console.error("[remind/submit] DB error:", dbErr);
+    return res.status(500).json({ error: "数据库写入失败，请稍后重试" });
   }
 
-  // Send confirmation email
   await sendEmail({
     to: cleanEmail,
     subject: `✅ 域名订阅已设置 · ${cleanDomain}`,
@@ -63,19 +72,25 @@ export async function sendEmail({ to, subject, html }: { to: string; subject: st
   if (!resendKey) return;
   const from = process.env.RESEND_FROM_EMAIL || "noreply@nextwhois.app";
   try {
-    await fetch("https://api.resend.com/emails", {
+    const resp = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({ from, to, subject, html }),
     });
-  } catch {}
+    if (!resp.ok) {
+      const body = await resp.text().catch(() => "");
+      console.error("[sendEmail] Resend error:", resp.status, body);
+    }
+  } catch (err: any) {
+    console.error("[sendEmail] Fetch error:", err.message);
+  }
 }
 
 export function confirmationHtml({
   domain, expirationDate, cancelToken, thresholds,
 }: { domain: string; expirationDate: string | null; cancelToken: string; thresholds: number[] }) {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://nextwhois.app";
-  const cancelUrl = `${baseUrl}/api/remind/cancel?token=${cancelToken}`;
+  const cancelUrl = `${baseUrl}/remind/cancel?token=${cancelToken}`;
   const expiryStr = expirationDate
     ? new Date(expirationDate).toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric" })
     : "未知";

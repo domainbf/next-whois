@@ -8,27 +8,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const domain = String(req.query.domain || "").toLowerCase().trim();
   if (!domain) return res.status(400).json({ error: "Missing domain" });
 
-  const db = getDb();
-  if (db) {
-    const { rows } = await db.query(
-      `SELECT id, tag_name, tag_style, link, nickname, verified_at
-       FROM stamps WHERE domain=$1 AND verified=true ORDER BY verified_at DESC`,
-      [domain]
-    );
+  try {
+    const db = getDb();
+    if (db) {
+      const { rows } = await db.query(
+        `SELECT id, tag_name, tag_style, link, nickname, verified_at
+         FROM stamps WHERE domain=$1 AND verified=true ORDER BY verified_at DESC`,
+        [domain]
+      );
+      return res.status(200).json({
+        stamps: rows.map((r) => ({
+          id: r.id, tagName: r.tag_name, tagStyle: r.tag_style,
+          link: r.link, nickname: r.nickname, verifiedAt: r.verified_at,
+        })),
+      });
+    }
+
+    const fileDb = readData<StampsDB>("stamps.json", {});
+    const records = (fileDb[domain] || []).filter((r: StampRecord) => r.verified);
     return res.status(200).json({
-      stamps: rows.map((r) => ({
-        id: r.id, tagName: r.tag_name, tagStyle: r.tag_style,
-        link: r.link, nickname: r.nickname, verifiedAt: r.verified_at,
+      stamps: records.map((r) => ({
+        id: r.id, tagName: r.tagName, tagStyle: r.tagStyle,
+        link: r.link, nickname: r.nickname, verifiedAt: r.verifiedAt,
       })),
     });
+  } catch (err: any) {
+    console.error("[stamp/check] DB error:", err);
+    return res.status(500).json({ error: "查询失败，请稍后重试", stamps: [] });
   }
-
-  const fileDb = readData<StampsDB>("stamps.json", {});
-  const records = (fileDb[domain] || []).filter((r: StampRecord) => r.verified);
-  return res.status(200).json({
-    stamps: records.map((r) => ({
-      id: r.id, tagName: r.tagName, tagStyle: r.tagStyle,
-      link: r.link, nickname: r.nickname, verifiedAt: r.verifiedAt,
-    })),
-  });
 }

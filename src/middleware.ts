@@ -67,6 +67,11 @@ export function middleware(request: NextRequest) {
     pathWithoutLocale.split("/").length === 2 && pathWithoutLocale !== "/";
   if (isDomainQuery) return;
 
+  const isStaticRoute =
+    pathWithoutLocale.startsWith("/remind/") ||
+    pathWithoutLocale.startsWith("/stamp");
+  if (isStaticRoute) return;
+
   const pathnameHasLocale = locales.some(
     (locale) => pathname.startsWith(`/${locale}/`) || pathname === `/${locale}`,
   );
