@@ -257,6 +257,7 @@
     "cat_backorder": "Backorder Platforms",
     "cat_news": "Industry News",
     "cat_dns": "DNS Resolution",
-    "cat_registrar": "Domain Registrars"
+    "cat_registrar": "Domain Registrars",
+    "cat_pricing": "Domain Pricing"
   }
 }

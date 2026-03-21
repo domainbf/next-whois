@@ -257,6 +257,7 @@
     "cat_backorder": "域名抢注平台",
     "cat_news": "域名资讯平台",
     "cat_dns": "域名解析",
-    "cat_registrar": "域名注册平台"
+    "cat_registrar": "域名注册平台",
+    "cat_pricing": "域名比价平台"
   }
 }

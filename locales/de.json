@@ -164,6 +164,7 @@
     "cat_backorder": "Backorder-Plattformen",
     "cat_news": "Branchen-News",
     "cat_dns": "DNS-Dienste",
-    "cat_registrar": "Domain-Registrare"
+    "cat_registrar": "Domain-Registrare",
+    "cat_pricing": "Domain-Preisvergleich"
   }
 }

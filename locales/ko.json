@@ -164,6 +164,7 @@
     "cat_backorder": "백오더 플랫폼",
     "cat_news": "업계 뉴스",
     "cat_dns": "DNS 서비스",
-    "cat_registrar": "도메인 등록기관"
+    "cat_registrar": "도메인 등록기관",
+    "cat_pricing": "도메인 가격 비교"
   }
 }
