@@ -2364,6 +2364,7 @@ export default function LookupPage({
   const [imgWidth, setImgWidth] = React.useState(1200);
   const [imgHeight, setImgHeight] = React.useState(630);
   const [imgTheme, setImgTheme] = React.useState<"light" | "dark">("light");
+  const [imgActing, setImgActing] = React.useState<"download" | "copy" | null>(null);
   const copy = useClipboard();
   const save = useSaver();
   useSearchHotkeys({});
@@ -2375,6 +2376,7 @@ export default function LookupPage({
   }, []);
 
   const isChinese = locale === "zh" || locale === "zh-tw";
+  const isZh = isChinese;
 
   const [reminderDialogOpen, setReminderDialogOpen] = React.useState(false);
 
@@ -2669,6 +2671,7 @@ export default function LookupPage({
                   <DropdownMenuItem
                     onClick={async () => {
                       const ogUrl = buildOgUrl(target, result);
+                      const tid = toast.loading(isZh ? "正在生成图片…" : "Generating image…");
                       try {
                         const res = await fetch(ogUrl);
                         const blob = await res.blob();
@@ -2678,9 +2681,9 @@ export default function LookupPage({
                         a.download = `whois-${target}.png`;
                         a.click();
                         URL.revokeObjectURL(url);
-                        toast.success(t("toast.downloaded"));
+                        toast.success(t("toast.downloaded"), { id: tid });
                       } catch {
-                        toast.error(t("toast.download_failed"));
+                        toast.error(t("toast.download_failed"), { id: tid });
                       }
                     }}
                   >
@@ -2690,15 +2693,16 @@ export default function LookupPage({
                   <DropdownMenuItem
                     onClick={async () => {
                       const ogUrl = buildOgUrl(target, result);
+                      const tid = toast.loading(isZh ? "正在生成图片…" : "Generating image…");
                       try {
                         const res = await fetch(ogUrl);
                         const blob = await res.blob();
                         await navigator.clipboard.write([
                           new ClipboardItem({ "image/png": blob }),
                         ]);
-                        toast.success(t("toast.copied_to_clipboard"));
+                        toast.success(t("toast.copied_to_clipboard"), { id: tid });
                       } catch {
-                        toast.error(t("toast.copy_to_clipboard_failed"));
+                        toast.error(t("toast.copy_to_clipboard_failed"), { id: tid });
                       }
                     }}
                   >
@@ -3046,7 +3050,7 @@ export default function LookupPage({
                             suppressNextLoad.current = true;
                             router.push(`/stamp?domain=${encodeURIComponent(result.domain || target)}`);
                           }}
-                          className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-all bg-muted/50 border-border/50 text-muted-foreground hover:border-violet-400/50 hover:text-violet-500"
+                          className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-all active:scale-[0.93] bg-muted/50 border-border/50 text-muted-foreground hover:border-violet-400/50 hover:text-violet-500"
                         >
                           <RiShieldCheckLine className="w-3 h-3" />
                           {isChinese ? "品牌认领" : "Claim"}
@@ -3054,7 +3058,7 @@ export default function LookupPage({
                         <button
                           onClick={() => setReminderDialogOpen(true)}
                           className={cn(
-                            "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-all",
+                            "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-all active:scale-[0.93]",
                             (result.remainingDays !== null && result.remainingDays <= 30)
                               ? "bg-red-100 dark:bg-red-900/30 border-red-400/60 text-red-500"
                               : "bg-muted/50 border-border/50 text-muted-foreground hover:border-sky-400/50 hover:text-sky-500",
@@ -3721,12 +3725,14 @@ export default function LookupPage({
             <div className="flex items-center gap-2">
               <Button
                 size="sm"
+                disabled={imgActing !== null}
                 onClick={async () => {
                   const ogUrl = buildOgUrl(target, result, {
                     w: imgWidth,
                     h: imgHeight,
                     theme: imgTheme,
                   });
+                  setImgActing("download");
                   try {
                     const res = await fetch(ogUrl);
                     const blob = await res.blob();
@@ -3739,21 +3745,27 @@ export default function LookupPage({
                     toast.success(t("toast.downloaded"));
                   } catch {
                     toast.error(t("toast.download_failed"));
+                  } finally {
+                    setImgActing(null);
                   }
                 }}
               >
-                <RiDownloadLine className="w-3.5 h-3.5 mr-1.5" />
-                {t("download")}
+                {imgActing === "download"
+                  ? <><RiLoader4Line className="w-3.5 h-3.5 mr-1.5 animate-spin" />{isZh ? "生成中…" : "Generating…"}</>
+                  : <><RiDownloadLine className="w-3.5 h-3.5 mr-1.5" />{t("download")}</>
+                }
               </Button>
               <Button
                 variant="outline"
                 size="sm"
+                disabled={imgActing !== null}
                 onClick={async () => {
                   const ogUrl = buildOgUrl(target, result, {
                     w: imgWidth,
                     h: imgHeight,
                     theme: imgTheme,
                   });
+                  setImgActing("copy");
                   try {
                     const res = await fetch(ogUrl);
                     const blob = await res.blob();
@@ -3763,11 +3775,15 @@ export default function LookupPage({
                     toast.success(t("toast.copied_to_clipboard"));
                   } catch {
                     toast.error(t("toast.copy_to_clipboard_failed"));
+                  } finally {
+                    setImgActing(null);
                   }
                 }}
               >
-                <RiFileCopyLine className="w-3.5 h-3.5 mr-1.5" />
-                {t("copy")}
+                {imgActing === "copy"
+                  ? <><RiLoader4Line className="w-3.5 h-3.5 mr-1.5 animate-spin" />{isZh ? "生成中…" : "Generating…"}</>
+                  : <><RiFileCopyLine className="w-3.5 h-3.5 mr-1.5" />{t("copy")}</>
+                }
               </Button>
               <Button
                 variant="outline"
