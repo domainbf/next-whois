@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { getDbReady } from "@/lib/db";
+import { getSupabase } from "@/lib/supabase";
 import { sendEmail } from "@/pages/api/remind/submit";
 
 export const config = { maxDuration: 15 };
@@ -91,17 +91,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const { id, domain, appUrl } = req.body;
   if (!id || !domain) return res.status(400).json({ error: "Missing id or domain" });
 
-  const db = await getDbReady();
-  if (!db) return res.status(503).json({ error: "Database unavailable" });
+  const supabase = getSupabase();
+  if (!supabase) return res.status(503).json({ error: "Database unavailable" });
 
-  const { rows } = await db.query(
-    `SELECT email, verify_token, verified FROM stamps WHERE id=$1 AND domain=$2`,
-    [id, String(domain).toLowerCase().trim()]
-  );
-  if (!rows[0]) return res.status(404).json({ error: "Stamp not found" });
-  if (rows[0].verified) return res.status(200).json({ skipped: true, reason: "already_verified" });
+  const { data: stamp } = await supabase
+    .from("stamps")
+    .select("email, verify_token, verified")
+    .eq("id", id)
+    .eq("domain", String(domain).toLowerCase().trim())
+    .maybeSingle();
 
-  const { email, verify_token } = rows[0];
+  if (!stamp) return res.status(404).json({ error: "Stamp not found" });
+  if (stamp.verified) return res.status(200).json({ skipped: true, reason: "already_verified" });
+
+  const { email, verify_token } = stamp;
   const fileContent = `next-whois-verify=${verify_token}`;
   const appBase = (appUrl && String(appUrl).startsWith("http")) ? appUrl : (process.env.NEXT_PUBLIC_APP_URL || "https://x.rw");
   const verifyUrl = `${appBase}/stamp?domain=${encodeURIComponent(domain)}`;

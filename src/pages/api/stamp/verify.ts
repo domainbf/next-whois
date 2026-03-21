@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { getDbReady } from "@/lib/db";
+import { getSupabase } from "@/lib/supabase";
 import dns from "dns/promises";
 
 // ─── Resolvers ───────────────────────────────────────────────────────────────
@@ -176,27 +176,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const cleanDomain = String(domain).toLowerCase().trim();
 
+  const supabase = getSupabase();
+  if (!supabase) return res.status(503).json({ error: "数据库未配置，品牌认领功能暂不可用" });
+
   // Admin override: ADMIN_VERIFY_SECRET in env
   if (req.body.adminSecret && process.env.ADMIN_VERIFY_SECRET &&
       req.body.adminSecret === process.env.ADMIN_VERIFY_SECRET) {
-    const db = await getDbReady();
-    if (db) {
-      await db.query(`UPDATE stamps SET verified=true, verified_at=$1 WHERE id=$2`, [new Date().toISOString(), id]);
-    }
+    await supabase.from("stamps").update({ verified: true, verified_at: new Date().toISOString() }).eq("id", id);
     return res.status(200).json({ verified: true, adminOverride: true });
   }
 
-  const db = await getDbReady();
-  if (!db) return res.status(503).json({ error: "数据库未配置，品牌认领功能暂不可用" });
+  const { data: stamp } = await supabase
+    .from("stamps")
+    .select("verify_token, verified")
+    .eq("id", id)
+    .eq("domain", cleanDomain)
+    .maybeSingle();
 
-  const { rows } = await db.query(
-    `SELECT verify_token, verified FROM stamps WHERE id=$1 AND domain=$2`,
-    [id, cleanDomain]
-  );
-  if (!rows[0]) return res.status(404).json({ error: "Stamp not found" });
-  if (rows[0].verified) return res.status(200).json({ verified: true, already: true });
+  if (!stamp) return res.status(404).json({ error: "Stamp not found" });
+  if (stamp.verified) return res.status(200).json({ verified: true, already: true });
 
-  const verifyToken  = rows[0].verify_token;
+  const verifyToken  = stamp.verify_token;
   const expectedValue = `next-whois-verify=${verifyToken}`;
   const txtHost      = `_next-whois.${cleanDomain}`;
 
@@ -242,10 +242,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   );
 
   if (verified) {
-    await db.query(
-      `UPDATE stamps SET verified=true, verified_at=$1 WHERE id=$2`,
-      [new Date().toISOString(), id]
-    );
+    await supabase.from("stamps").update({ verified: true, verified_at: new Date().toISOString() }).eq("id", id);
     return res.status(200).json({
       verified: true,
       resolvers: allResolverResults,

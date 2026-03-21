@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { hash } from "bcryptjs";
-import { getDbReady } from "@/lib/db";
+import { getSupabase } from "@/lib/supabase";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).end();
@@ -13,17 +13,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(400).json({ error: "密码至少 8 位" });
   }
 
-  const db = await getDbReady();
-  if (!db) return res.status(503).json({ error: "数据库暂不可用" });
+  const supabase = getSupabase();
+  if (!supabase) return res.status(503).json({ error: "数据库暂不可用" });
 
-  const { rows } = await db.query(
-    `SELECT id, user_id, expires_at, used
-     FROM password_reset_tokens
-     WHERE token=$1 LIMIT 1`,
-    [token],
-  );
+  const { data: record } = await supabase
+    .from("password_reset_tokens")
+    .select("id, user_id, expires_at, used")
+    .eq("token", token)
+    .maybeSingle();
 
-  const record = rows[0];
   if (!record) {
     return res.status(400).json({ error: "重置链接无效或已过期" });
   }
@@ -36,15 +34,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const newHash = await hash(String(password), 12);
 
-  await db.query(
-    `UPDATE users SET password_hash=$1 WHERE id=$2`,
-    [newHash, record.user_id],
-  );
+  const { error: updateError } = await supabase
+    .from("users")
+    .update({ password_hash: newHash })
+    .eq("id", record.user_id);
 
-  await db.query(
-    `UPDATE password_reset_tokens SET used=true WHERE id=$1`,
-    [record.id],
-  );
+  if (updateError) {
+    console.error("[reset-password] update error:", updateError.message);
+    return res.status(500).json({ error: "重置失败，请稍后重试" });
+  }
+
+  await supabase
+    .from("password_reset_tokens")
+    .update({ used: true })
+    .eq("id", record.id);
 
   return res.status(200).json({ ok: true });
 }

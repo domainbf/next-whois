@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { getDbReady } from "@/lib/db";
+import { getSupabase } from "@/lib/supabase";
 import { randomBytes } from "crypto";
 import { sendEmail, confirmationHtml } from "./submit";
 
@@ -14,17 +14,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const db = await getDbReady();
-    if (!db) return res.status(500).json({ error: "Database unavailable" });
+    const supabase = getSupabase();
+    if (!supabase) return res.status(500).json({ error: "Database unavailable" });
 
-    const { rows: reminders } = await db.query(`
-      SELECT r.id, r.domain, r.email, r.expiration_date, r.cancel_token,
-             COALESCE(json_agg(rl.days_before) FILTER (WHERE rl.days_before IS NOT NULL), '[]') AS sent_thresholds
-      FROM reminders r
-      LEFT JOIN reminder_logs rl ON rl.reminder_id = r.id
-      WHERE r.active = true AND r.expiration_date IS NOT NULL
-      GROUP BY r.id
-    `);
+    const { data: remindersRaw } = await supabase
+      .from("reminders")
+      .select("id, domain, email, expiration_date, cancel_token")
+      .eq("active", true)
+      .not("expiration_date", "is", null);
+
+    const reminderIds = (remindersRaw ?? []).map((r) => r.id);
+    const { data: logsRaw } = reminderIds.length > 0
+      ? await supabase.from("reminder_logs").select("reminder_id, days_before").in("reminder_id", reminderIds)
+      : { data: [] };
+
+    const logsByReminder: Record<string, number[]> = {};
+    for (const log of logsRaw ?? []) {
+      if (!logsByReminder[log.reminder_id]) logsByReminder[log.reminder_id] = [];
+      logsByReminder[log.reminder_id].push(log.days_before);
+    }
+
+    const reminders = (remindersRaw ?? []).map((r) => ({
+      ...r,
+      sent_thresholds: logsByReminder[r.id] ?? [],
+    }));
 
     const results = { sent: 0, expired: 0, skipped: 0 };
 
@@ -34,13 +47,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const now = new Date();
         const msPerDay = 1000 * 60 * 60 * 24;
         const daysLeft = Math.ceil((expiry.getTime() - now.getTime()) / msPerDay);
-        const sentThresholds: number[] = Array.isArray(reminder.sent_thresholds) ? reminder.sent_thresholds : [];
+        const sentThresholds: number[] = reminder.sent_thresholds;
 
         if (daysLeft < -45) {
-          await db.query(
-            `UPDATE reminders SET active=false, cancelled_at=NOW(), cancel_reason='redemption_or_deleted' WHERE id=$1`,
-            [reminder.id]
-          );
+          await supabase.from("reminders").update({
+            active: false,
+            cancelled_at: new Date().toISOString(),
+            cancel_reason: "redemption_or_deleted",
+          }).eq("id", reminder.id);
           results.expired++;
           continue;
         }
@@ -63,9 +77,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               }),
             });
 
-            await db.query(
-              `INSERT INTO reminder_logs (id, reminder_id, days_before) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING`,
-              [logId, reminder.id, threshold]
+            await supabase.from("reminder_logs").upsert(
+              { id: logId, reminder_id: reminder.id, days_before: threshold },
+              { onConflict: "reminder_id,days_before", ignoreDuplicates: true }
             );
 
             results.sent++;
@@ -75,10 +89,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         const allSent = THRESHOLDS.every((t) => sentThresholds.includes(t));
         if (allSent && daysLeft <= 0) {
-          await db.query(
-            `UPDATE reminders SET active=false, cancelled_at=NOW(), cancel_reason='all_reminders_sent_and_expired' WHERE id=$1`,
-            [reminder.id]
-          );
+          await supabase.from("reminders").update({
+            active: false,
+            cancelled_at: new Date().toISOString(),
+            cancel_reason: "all_reminders_sent_and_expired",
+          }).eq("id", reminder.id);
         }
       } catch (reminderErr: any) {
         console.error("[remind/process] Error processing reminder", reminder.id, reminderErr.message);

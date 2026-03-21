@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { hash } from "bcryptjs";
 import { randomBytes } from "crypto";
-import { getDbReady } from "@/lib/db";
+import { getSupabase } from "@/lib/supabase";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).end();
@@ -13,24 +13,34 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (String(password).length < 8)
     return res.status(400).json({ error: "密码至少 8 位" });
 
-  const db = await getDbReady();
-  if (!db) return res.status(503).json({ error: "数据库暂不可用" });
+  const supabase = getSupabase();
+  if (!supabase) return res.status(503).json({ error: "数据库暂不可用，请稍后重试" });
 
   const cleanEmail = String(email).toLowerCase().trim();
-  const { rows: existing } = await db.query(
-    `SELECT id FROM users WHERE email=$1`,
-    [cleanEmail]
-  );
-  if (existing[0]) return res.status(409).json({ error: "该邮箱已注册" });
+
+  const { data: existing } = await supabase
+    .from("users")
+    .select("id")
+    .eq("email", cleanEmail)
+    .maybeSingle();
+
+  if (existing) return res.status(409).json({ error: "该邮箱已注册" });
 
   const id = randomBytes(8).toString("hex");
   const passwordHash = await hash(String(password), 12);
-  const cleanName = name ? String(name).trim().slice(0, 50) : null;
+  const cleanName = name ? String(name).trim().slice(0, 50) || null : null;
 
-  await db.query(
-    `INSERT INTO users (id, email, password_hash, name) VALUES ($1,$2,$3,$4)`,
-    [id, cleanEmail, passwordHash, cleanName]
-  );
+  const { error } = await supabase.from("users").insert({
+    id,
+    email: cleanEmail,
+    password_hash: passwordHash,
+    name: cleanName,
+  });
+
+  if (error) {
+    console.error("[register] insert error:", error.message);
+    return res.status(500).json({ error: "注册失败，请稍后重试" });
+  }
 
   return res.status(201).json({ ok: true });
 }

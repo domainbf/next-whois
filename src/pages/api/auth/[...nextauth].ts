@@ -1,7 +1,7 @@
 import NextAuth, { type NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { compare } from "bcryptjs";
-import { getDbReady } from "@/lib/db";
+import { getSupabase } from "@/lib/supabase";
 
 export const authOptions: NextAuthOptions = {
   session: { strategy: "jwt" },
@@ -19,13 +19,15 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
-        const db = await getDbReady();
-        if (!db) return null;
-        const { rows } = await db.query(
-          `SELECT id, email, name, password_hash FROM users WHERE email=$1 LIMIT 1`,
-          [credentials.email.toLowerCase().trim()]
-        );
-        const user = rows[0];
+        const supabase = getSupabase();
+        if (!supabase) return null;
+
+        const { data: user } = await supabase
+          .from("users")
+          .select("id, email, name, password_hash")
+          .eq("email", credentials.email.toLowerCase().trim())
+          .maybeSingle();
+
         if (!user) return null;
         const valid = await compare(credentials.password, user.password_hash);
         if (!valid) return null;

@@ -1,85 +1,62 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { getDb, runMigrations, getConnectionSource, getConnectionHost } from "@/lib/db";
+import { getSupabase } from "@/lib/supabase";
 import { randomBytes } from "crypto";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const steps: { step: string; ok: boolean; detail?: string }[] = [];
 
-  // 1. Detect which env var is being used and what host it points to
-  const urlSource = getConnectionSource();
-  const host = getConnectionHost();
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_SERVICE_KEY;
 
   steps.push({
-    step: "Database URL",
-    ok: urlSource !== "none",
-    detail: urlSource !== "none"
-      ? `${urlSource} → ${host}`
-      : "None found. Connect Supabase via Vercel integration (POSTGRES_URL_NON_POOLING).",
+    step: "Supabase config",
+    ok: !!(supabaseUrl && supabaseKey),
+    detail: supabaseUrl
+      ? `SUPABASE_URL → ${supabaseUrl}`
+      : "Missing SUPABASE_URL and/or SUPABASE_SERVICE_KEY",
   });
-  if (urlSource === "none") return res.status(500).json({ ok: false, steps });
 
-  // 2. Get pool
-  const db = getDb();
-  steps.push({ step: "Pool created", ok: !!db });
-  if (!db) return res.status(500).json({ ok: false, steps });
+  if (!supabaseUrl || !supabaseKey) return res.status(500).json({ ok: false, steps });
 
-  // 3. Test connectivity
-  try {
-    await db.query("SELECT 1");
-    steps.push({ step: "Database connection", ok: true });
-  } catch (err: any) {
-    steps.push({ step: "Database connection", ok: false, detail: err.message });
-    return res.status(500).json({ ok: false, steps });
-  }
+  const supabase = getSupabase();
+  steps.push({ step: "Client created", ok: !!supabase });
+  if (!supabase) return res.status(500).json({ ok: false, steps });
 
-  // 4. Run migrations
-  try {
-    await runMigrations(db);
-    steps.push({ step: "Schema migration (CREATE TABLE IF NOT EXISTS)", ok: true });
-  } catch (err: any) {
-    steps.push({ step: "Schema migration", ok: false, detail: err.message });
-    return res.status(500).json({ ok: false, steps });
-  }
-
-  // 5. Verify tables exist
   const tables = ["stamps", "reminders", "reminder_logs"];
   for (const table of tables) {
-    try {
-      const { rows } = await db.query(`SELECT to_regclass($1) AS t`, [`public.${table}`]);
-      const exists = !!rows[0]?.t;
-      steps.push({ step: `Table: ${table}`, ok: exists, detail: exists ? "exists" : "not found after migration" });
-    } catch (err: any) {
-      steps.push({ step: `Table: ${table}`, ok: false, detail: err.message });
-    }
+    const { error } = await supabase.from(table).select("*").limit(1);
+    const missing = error?.code === "PGRST205";
+    steps.push({
+      step: `Table: ${table}`,
+      ok: !missing,
+      detail: missing
+        ? `Table not found — run schema SQL in Supabase Dashboard → SQL Editor`
+        : error
+        ? `Error: ${error.message}`
+        : "exists",
+    });
   }
 
-  // 6. Write test — insert a temporary stamp record
   const testId = `test_${randomBytes(4).toString("hex")}`;
-  try {
-    await db.query(
-      `INSERT INTO stamps (id, domain, tag_name, tag_style, nickname, email, verify_token, verified)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, false)`,
-      [testId, "setup-test.example", "Setup Test", "personal", "setup-bot", "setup@test.internal", "test-token"]
-    );
-    steps.push({ step: "Write test (INSERT)", ok: true });
-  } catch (err: any) {
-    steps.push({ step: "Write test (INSERT)", ok: false, detail: err.message });
-  }
+  const { error: insertErr } = await supabase.from("stamps").insert({
+    id: testId,
+    domain: "setup-test.example",
+    tag_name: "Setup Test",
+    tag_style: "personal",
+    nickname: "setup-bot",
+    email: "setup@test.internal",
+    verify_token: "test-token",
+    verified: false,
+  });
+  steps.push({ step: "Write test (INSERT)", ok: !insertErr, detail: insertErr?.message });
 
-  // 7. Read test — select the record we just inserted
-  try {
-    const { rows } = await db.query(`SELECT id FROM stamps WHERE id=$1`, [testId]);
-    steps.push({ step: "Read test (SELECT)", ok: rows.length === 1, detail: rows.length === 1 ? "round-trip OK" : "record not found" });
-  } catch (err: any) {
-    steps.push({ step: "Read test (SELECT)", ok: false, detail: err.message });
-  }
+  if (!insertErr) {
+    const { data: readData, error: readErr } = await supabase
+      .from("stamps").select("id").eq("id", testId).maybeSingle();
+    steps.push({ step: "Read test (SELECT)", ok: !!readData && !readErr, detail: readData ? "round-trip OK" : readErr?.message ?? "record not found" });
 
-  // 8. Cleanup
-  try {
-    await db.query(`DELETE FROM stamps WHERE id=$1`, [testId]);
-    steps.push({ step: "Cleanup (DELETE)", ok: true });
-  } catch (err: any) {
-    steps.push({ step: "Cleanup (DELETE)", ok: false, detail: err.message });
+    const { error: delErr } = await supabase.from("stamps").delete().eq("id", testId);
+    steps.push({ step: "Cleanup (DELETE)", ok: !delErr, detail: delErr?.message });
   }
 
   const allOk = steps.every((s) => s.ok);

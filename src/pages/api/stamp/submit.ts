@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { getDbReady } from "@/lib/db";
+import { getSupabase } from "@/lib/supabase";
 import { randomBytes } from "crypto";
 import { checkRateLimit } from "@/lib/rate-limit";
 
@@ -25,17 +25,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const cleanNickname = String(nickname).trim().slice(0, 30);
   const cleanEmail = String(email).trim();
 
-  try {
-    const db = await getDbReady();
-    if (!db) return res.status(503).json({ error: "数据库未配置，品牌认领功能暂不可用" });
+  const supabase = getSupabase();
+  if (!supabase) return res.status(503).json({ error: "数据库未配置，品牌认领功能暂不可用" });
 
-    await db.query(
-      `INSERT INTO stamps (id, domain, tag_name, tag_style, link, description, nickname, email, verify_token, verified)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,false)`,
-      [id, cleanDomain, cleanTagName, cleanTagStyle, cleanLink, cleanDesc, cleanNickname, cleanEmail, token]
-    );
-  } catch (dbErr: any) {
-    console.error("[stamp/submit] Write error:", dbErr?.message || dbErr);
+  const { error: dbErr } = await supabase.from("stamps").insert({
+    id,
+    domain: cleanDomain,
+    tag_name: cleanTagName,
+    tag_style: cleanTagStyle,
+    link: cleanLink,
+    description: cleanDesc,
+    nickname: cleanNickname,
+    email: cleanEmail,
+    verify_token: token,
+    verified: false,
+  });
+
+  if (dbErr) {
+    console.error("[stamp/submit] Write error:", dbErr.message);
     return res.status(500).json({ error: "数据库写入失败，请稍后重试" });
   }
 

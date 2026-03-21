@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { getDbReady } from "@/lib/db";
+import { getSupabase } from "@/lib/supabase";
 import { randomBytes } from "crypto";
 import { checkRateLimit } from "@/lib/rate-limit";
 
@@ -28,29 +28,38 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   let cancelTok: string;
 
   try {
-    const db = await getDbReady();
-    if (!db) return res.status(500).json({ error: "Database unavailable" });
+    const supabase = getSupabase();
+    if (!supabase) return res.status(500).json({ error: "Database unavailable" });
 
-    const { rows: existing } = await db.query(
-      `SELECT id, cancel_token, active FROM reminders WHERE domain=$1 AND email=$2`,
-      [cleanDomain, cleanEmail]
-    );
+    const { data: existing } = await supabase
+      .from("reminders")
+      .select("id, cancel_token, active")
+      .eq("domain", cleanDomain)
+      .eq("email", cleanEmail)
+      .maybeSingle();
 
-    if (existing[0]) {
-      reminderId = existing[0].id;
-      cancelTok = existing[0].cancel_token || cancelToken;
-      await db.query(
-        `UPDATE reminders SET expiration_date=$1, active=true, cancelled_at=NULL, cancel_reason=NULL, cancel_token=COALESCE(cancel_token,$2) WHERE id=$3`,
-        [expDate, cancelTok, reminderId]
-      );
-      await db.query(`DELETE FROM reminder_logs WHERE reminder_id=$1`, [reminderId]);
+    if (existing) {
+      reminderId = existing.id;
+      cancelTok = existing.cancel_token || cancelToken;
+      await supabase.from("reminders").update({
+        expiration_date: expDate,
+        active: true,
+        cancelled_at: null,
+        cancel_reason: null,
+        cancel_token: cancelTok,
+      }).eq("id", reminderId);
+      await supabase.from("reminder_logs").delete().eq("reminder_id", reminderId);
     } else {
       reminderId = id;
       cancelTok = cancelToken;
-      await db.query(
-        `INSERT INTO reminders (id, domain, email, expiration_date, active, cancel_token) VALUES ($1,$2,$3,$4,true,$5)`,
-        [reminderId, cleanDomain, cleanEmail, expDate, cancelTok]
-      );
+      await supabase.from("reminders").insert({
+        id: reminderId,
+        domain: cleanDomain,
+        email: cleanEmail,
+        expiration_date: expDate,
+        active: true,
+        cancel_token: cancelTok,
+      });
     }
   } catch (dbErr: any) {
     console.error("[remind/submit] DB error:", dbErr);

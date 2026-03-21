@@ -1,9 +1,12 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { randomBytes } from "crypto";
-import { getDbReady } from "@/lib/db";
+import { getSupabase } from "@/lib/supabase";
 
 const RESET_EXPIRES_MINUTES = 60;
-const SITE_URL = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXTAUTH_URL || "http://localhost:5000";
+const SITE_URL =
+  process.env.NEXT_PUBLIC_BASE_URL ||
+  process.env.NEXTAUTH_URL ||
+  "http://localhost:5000";
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || "noreply@x.rw";
 const RESEND_KEY = process.env.RESEND_API_KEY;
 
@@ -59,33 +62,42 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(400).json({ error: "邮箱格式不正确" });
   }
 
-  const db = await getDbReady();
-  if (!db) return res.status(503).json({ error: "数据库暂不可用" });
+  const supabase = getSupabase();
+  if (!supabase) return res.status(503).json({ error: "数据库暂不可用" });
 
-  const { rows } = await db.query(
-    `SELECT id FROM users WHERE email=$1 LIMIT 1`,
-    [cleanEmail],
-  );
+  const { data: user } = await supabase
+    .from("users")
+    .select("id")
+    .eq("email", cleanEmail)
+    .maybeSingle();
 
-  if (!rows[0]) {
+  if (!user) {
     return res.status(200).json({ ok: true });
   }
 
-  const userId = rows[0].id;
-
-  await db.query(
-    `UPDATE password_reset_tokens SET used=true WHERE user_id=$1 AND used=false`,
-    [userId],
-  );
+  await supabase
+    .from("password_reset_tokens")
+    .update({ used: true })
+    .eq("user_id", user.id)
+    .eq("used", false);
 
   const tokenId = randomBytes(8).toString("hex");
   const rawToken = randomBytes(32).toString("hex");
-  const expiresAt = new Date(Date.now() + RESET_EXPIRES_MINUTES * 60 * 1000);
+  const expiresAt = new Date(
+    Date.now() + RESET_EXPIRES_MINUTES * 60 * 1000,
+  ).toISOString();
 
-  await db.query(
-    `INSERT INTO password_reset_tokens (id, user_id, token, expires_at) VALUES ($1,$2,$3,$4)`,
-    [tokenId, userId, rawToken, expiresAt],
-  );
+  const { error } = await supabase.from("password_reset_tokens").insert({
+    id: tokenId,
+    user_id: user.id,
+    token: rawToken,
+    expires_at: expiresAt,
+  });
+
+  if (error) {
+    console.error("[forgot-password] token insert error:", error.message);
+    return res.status(500).json({ error: "操作失败，请稍后重试" });
+  }
 
   const resetUrl = `${SITE_URL}/reset-password?token=${rawToken}`;
 
