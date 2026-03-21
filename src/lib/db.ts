@@ -40,25 +40,18 @@ const TABLES = [
 ];
 
 /**
- * Resolve the best available connection string.
+ * Resolve the Supabase connection string.
  *
- * Priority:
- *   1. POSTGRES_URL_NON_POOLING  – Vercel/Supabase direct connection (port 5432).
- *                                   Best for DDL; no pooler restrictions.
- *   2. DATABASE_URL              – Local dev or manually configured DB.
- *   3. POSTGRES_URL              – Supabase transaction pooler (port 6543).
- *                                   Appends pgbouncer=true automatically.
+ * Only Supabase env vars injected by the Vercel integration are accepted:
+ *   1. POSTGRES_URL_NON_POOLING  – direct connection (port 5432), best for DDL.
+ *   2. POSTGRES_URL              – transaction pooler (port 6543), pgbouncer=true
+ *                                  is appended automatically.
  *
- * POSTGRES_URL_NON_POOLING is intentionally preferred over DATABASE_URL so that
- * Vercel deployments always reach Supabase even when DATABASE_URL happens to be
- * set to a Replit-internal host (e.g. "helium") that is unreachable externally.
+ * DATABASE_URL (Replit internal DB) is intentionally ignored.
  */
 function getConnectionString(): { url: string; source: string } | null {
   if (process.env.POSTGRES_URL_NON_POOLING) {
     return { url: process.env.POSTGRES_URL_NON_POOLING, source: "POSTGRES_URL_NON_POOLING" };
-  }
-  if (process.env.DATABASE_URL) {
-    return { url: process.env.DATABASE_URL, source: "DATABASE_URL" };
   }
   if (process.env.POSTGRES_URL) {
     const raw = process.env.POSTGRES_URL;
@@ -69,7 +62,7 @@ function getConnectionString(): { url: string; source: string } | null {
   return null;
 }
 
-/** Extract just the host:port from a connection URL for safe logging (no credentials). */
+/** Extract just the host:port from the connection URL for safe logging (no credentials). */
 export function getConnectionHost(): string {
   const cs = getConnectionString();
   if (!cs) return "none";
@@ -87,49 +80,26 @@ export function getConnectionSource(): string {
 }
 
 /**
- * Strip `sslmode` from a connection URL's query string so that the `ssl`
- * option we pass to Pool (rejectUnauthorized: false) is the sole SSL authority.
- * When `sslmode=verify-full` is left in the URL, node-postgres respects it and
- * rejects Supabase's certificate chain, even if rejectUnauthorized is false.
+ * Strip `sslmode` from the connection URL so that the ssl option we set on
+ * Pool (rejectUnauthorized: false) is the sole authority. Supabase URLs
+ * sometimes carry sslmode=verify-full which would override our setting and
+ * reject the certificate chain.
  */
-function stripSslMode(connectionString: string): string {
+function stripSslMode(url: string): string {
   try {
-    const u = new URL(connectionString);
+    const u = new URL(url);
     u.searchParams.delete("sslmode");
     return u.toString();
   } catch {
-    return connectionString;
-  }
-}
-
-/**
- * A connection is "local" (no SSL) when:
- *   - host is localhost or 127.0.0.1, OR
- *   - host is a bare name with no dots (e.g. "helium", Replit internal hosts)
- * Everything else (supabase.com, RDS, etc.) gets SSL with rejectUnauthorized:false.
- */
-function isLocalHost(connectionString: string): boolean {
-  try {
-    const { hostname } = new URL(connectionString);
-    return (
-      hostname === "localhost" ||
-      hostname === "127.0.0.1" ||
-      !hostname.includes(".")       // bare hostname → internal network
-    );
-  } catch {
-    return (
-      connectionString.includes("localhost") ||
-      connectionString.includes("127.0.0.1")
-    );
+    return url;
   }
 }
 
 function makePool(connectionString: string): Pool {
-  const isLocal = isLocalHost(connectionString);
-  const cleanUrl = isLocal ? connectionString : stripSslMode(connectionString);
+  const cleanUrl = stripSslMode(connectionString);
   const p = new Pool({
     connectionString: cleanUrl,
-    ssl: isLocal ? false : { rejectUnauthorized: false },
+    ssl: { rejectUnauthorized: false },
     max: 3,
     connectionTimeoutMillis: 10000,
     idleTimeoutMillis: 30000,
@@ -143,10 +113,13 @@ export function getDb(): Pool | null {
   if (pool) return pool;
   const cs = getConnectionString();
   if (!cs) {
-    console.error("[db] No database URL found. Set DATABASE_URL or connect Supabase via the Vercel integration (POSTGRES_URL / POSTGRES_URL_NON_POOLING).");
+    console.error(
+      "[db] No Supabase URL found. Set POSTGRES_URL_NON_POOLING (or POSTGRES_URL) " +
+      "via the Vercel → Supabase integration, or add them manually in environment variables."
+    );
     return null;
   }
-  console.log(`[db] Using ${cs.source} → ${getConnectionHost()}`);
+  console.log(`[db] Connecting via ${cs.source} → ${getConnectionHost()}`);
   pool = makePool(cs.url);
   migrated = false;
   return pool;
@@ -167,8 +140,7 @@ export async function runMigrations(db: Pool): Promise<void> {
 /**
  * Returns the pool after ensuring all tables exist.
  * Call this in every API handler before running queries.
- * Returns null when no database is configured.
- * Throws when the database is reachable but migration fails.
+ * Returns null when no Supabase URL is configured.
  */
 export async function getDbReady(): Promise<Pool | null> {
   const db = getDb();
