@@ -1,17 +1,19 @@
 import React from "react";
 import Head from "next/head";
 import { useRouter } from "next/router";
-import { useTranslation } from "@/lib/i18n";
+import { useTranslation, TranslationKey } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { RiCheckLine, RiAlertLine, RiLoader4Line, RiArrowLeftLine } from "@remixicon/react";
+import en from "../../../locales/en.json";
 
 type State = "loading" | "success" | "not_found" | "error";
+type RemindKey = keyof (typeof en)["remind"];
 
 export default function CancelPage() {
   const router = useRouter();
-  const { locale } = useTranslation();
-  const isZh = locale.startsWith("zh");
-  const s = (zh: string, en: string) => isZh ? zh : en;
+  const { t } = useTranslation();
+  const r = (key: RemindKey, params?: Record<string, string | number>) =>
+    t(`remind.${key}` as TranslationKey, params);
 
   const [state, setState] = React.useState<State>("loading");
   const [domain, setDomain] = React.useState("");
@@ -42,12 +44,10 @@ export default function CancelPage() {
       .catch(() => setState("error"));
   }, [router.isReady, router.query.token, called]);
 
-  const title = s("取消订阅", "Unsubscribe");
-
   return (
     <>
       <Head>
-        <title>{title} — WHOIS</title>
+        <title>{r("cancel_title")} — WHOIS</title>
       </Head>
 
       <div className="min-h-[calc(100vh-64px)] bg-background flex items-center justify-center px-4">
@@ -58,7 +58,7 @@ export default function CancelPage() {
               <div className="w-14 h-14 rounded-full bg-muted/40 flex items-center justify-center">
                 <RiLoader4Line className="w-7 h-7 text-muted-foreground animate-spin" />
               </div>
-              <p className="text-sm text-muted-foreground">{s("处理中…", "Processing…")}</p>
+              <p className="text-sm text-muted-foreground">{r("cancel_loading")}</p>
             </div>
           )}
 
@@ -72,13 +72,12 @@ export default function CancelPage() {
               </div>
               <div className="space-y-2">
                 <h1 className="text-xl font-bold text-emerald-700 dark:text-emerald-300">
-                  {s("已取消订阅", "Unsubscribed")}
+                  {r("cancel_success_title")}
                 </h1>
                 <p className="text-sm text-muted-foreground leading-relaxed">
-                  {isZh
-                    ? <>已成功取消 <strong className="text-foreground font-mono">{domain}</strong> 的到期提醒。<br /><span className="text-xs opacity-70">{email}</span> 将不再收到相关邮件。</>
-                    : <><strong className="text-foreground font-mono">{domain}</strong> expiry reminders have been cancelled.<br /><span className="text-xs opacity-70">{email}</span> will no longer receive emails.</>
-                  }
+                  {r("cancel_success_domain", { domain })}
+                  <br />
+                  <span className="text-xs opacity-70">{r("cancel_success_email", { email })}</span>
                 </p>
               </div>
               <Button
@@ -87,7 +86,7 @@ export default function CancelPage() {
                 onClick={() => router.push(domain ? `/${domain}` : "/")}
               >
                 <RiArrowLeftLine className="w-4 h-4" />
-                {s("返回首页", "Go home")}
+                {r("cancel_go_home")}
               </Button>
             </div>
           )}
@@ -99,10 +98,10 @@ export default function CancelPage() {
               </div>
               <div className="space-y-2">
                 <h1 className="text-xl font-bold text-foreground">
-                  {s("未找到订阅", "Subscription not found")}
+                  {r("cancel_not_found_title")}
                 </h1>
                 <p className="text-sm text-muted-foreground leading-relaxed">
-                  {s("该订阅已取消或不存在。", "This subscription has already been cancelled or does not exist.")}
+                  {r("cancel_not_found_desc")}
                 </p>
               </div>
               <Button
@@ -111,7 +110,7 @@ export default function CancelPage() {
                 onClick={() => router.push("/")}
               >
                 <RiArrowLeftLine className="w-4 h-4" />
-                {s("返回首页", "Go home")}
+                {r("cancel_go_home")}
               </Button>
             </div>
           )}
@@ -123,10 +122,10 @@ export default function CancelPage() {
               </div>
               <div className="space-y-2">
                 <h1 className="text-xl font-bold text-foreground">
-                  {s("取消失败", "Something went wrong")}
+                  {r("cancel_error_title")}
                 </h1>
                 <p className="text-sm text-muted-foreground leading-relaxed">
-                  {s("请稍后重试或联系支持。", "Please try again later or contact support.")}
+                  {r("cancel_error_desc")}
                 </p>
               </div>
               <Button
@@ -135,7 +134,7 @@ export default function CancelPage() {
                 onClick={() => router.push("/")}
               >
                 <RiArrowLeftLine className="w-4 h-4" />
-                {s("返回首页", "Go home")}
+                {r("cancel_go_home")}
               </Button>
             </div>
           )}

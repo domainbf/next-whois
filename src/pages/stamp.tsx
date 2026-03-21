@@ -1,7 +1,8 @@
 import React from "react";
 import Head from "next/head";
 import { useRouter } from "next/router";
-import { useTranslation } from "@/lib/i18n";
+import { useTranslation, TranslationKey } from "@/lib/i18n";
+import en from "../../locales/en.json";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -127,11 +128,22 @@ const stepVariants = {
 
 const AUTO_POLL_SEC = 15;
 
+type StampKey = keyof (typeof en)["stamp"];
+
+const HOW_STEP_TITLE_KEYS: StampKey[] = ["how_step1_title", "how_step2_title", "how_step3_title"];
+const HOW_STEP_DESC_KEYS: StampKey[] = ["how_step1_desc", "how_step2_desc", "how_step3_desc"];
+const TAG_ID_KEY_MAP: Record<string, StampKey> = {
+  personal: "tag_personal", official: "tag_official", brand: "tag_brand",
+  verified: "tag_verified", partner: "tag_partner", dev: "tag_dev",
+  warning: "tag_warning", premium: "tag_premium",
+};
+
 export default function StampPage() {
   const router = useRouter();
   const { t, locale } = useTranslation();
   const isZh = locale.startsWith("zh");
-  const s = (key: string, params?: Record<string, string | number>) => t(`stamp.${key}` as any, params);
+  const s = (key: StampKey, params?: Record<string, string | number>) =>
+    t(`stamp.${key}` as TranslationKey, params);
 
   const domain = String(router.query.domain || "");
   const defaultForm = { tagName: "", tagStyle: "personal", link: "", description: "", nickname: "", email: "" };
@@ -409,15 +421,14 @@ export default function StampPage() {
                         <div className="space-y-3">
                           {HOW_TO_STEPS.map((step, i) => {
                             const Icon = step.icon;
-                            const n = i + 1;
                             return (
                             <div key={i} className="flex gap-3 items-start">
                               <div className={cn("shrink-0 w-7 h-7 rounded-lg flex items-center justify-center", step.bg)}>
                                 <Icon className={cn("w-3.5 h-3.5", step.color)} />
                               </div>
                               <div className="min-w-0 pt-0.5">
-                                <p className="text-xs font-semibold text-foreground leading-none mb-1">{s(`how_step${n}_title`)}</p>
-                                <p className="text-[11px] text-muted-foreground leading-relaxed">{s(`how_step${n}_desc`)}</p>
+                                <p className="text-xs font-semibold text-foreground leading-none mb-1">{s(HOW_STEP_TITLE_KEYS[i])}</p>
+                                <p className="text-[11px] text-muted-foreground leading-relaxed">{s(HOW_STEP_DESC_KEYS[i])}</p>
                               </div>
                               {i < HOW_TO_STEPS.length - 1 && (
                                 <RiArrowRightLine className="shrink-0 w-3.5 h-3.5 text-muted-foreground/30 mt-1.5" />
@@ -487,7 +498,8 @@ export default function StampPage() {
                             <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-2 block">{s("tag_style_label")}</Label>
                             <div className="grid grid-cols-2 gap-2">
                               {TAG_STYLES.map((ts) => {
-                                const tagLabel = s(`tag_${ts.id}`) || ts.label;
+                                const tagKey = TAG_ID_KEY_MAP[ts.id];
+                                const tagLabel = tagKey ? s(tagKey) : ts.label;
                                 return (
                                 <button
                                   key={ts.id}

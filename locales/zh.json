@@ -240,6 +240,8 @@
     "cancel_title": "取消订阅",
     "cancel_loading": "处理中…",
     "cancel_success_title": "已取消订阅",
+    "cancel_success_domain": "已成功取消 {{domain}} 的到期提醒。",
+    "cancel_success_email": "{{email}} 将不再收到相关邮件。",
     "cancel_not_found_title": "未找到订阅",
     "cancel_not_found_desc": "该订阅已取消或不存在。",
     "cancel_error_title": "取消失败",

@@ -240,6 +240,8 @@
     "cancel_title": "Unsubscribe",
     "cancel_loading": "Processing…",
     "cancel_success_title": "Unsubscribed",
+    "cancel_success_domain": "{{domain}} expiry reminders have been cancelled.",
+    "cancel_success_email": "{{email}} will no longer receive emails.",
     "cancel_not_found_title": "Subscription not found",
     "cancel_not_found_desc": "This subscription has already been cancelled or does not exist.",
     "cancel_error_title": "Something went wrong",
