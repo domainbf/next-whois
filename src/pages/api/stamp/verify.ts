@@ -1,5 +1,4 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { readData, writeData, StampsDB } from "@/lib/data-store";
 import { getDbReady } from "@/lib/db";
 import dns from "dns/promises";
 
@@ -111,27 +110,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!id || !domain) return res.status(400).json({ error: "Missing id or domain" });
 
   const cleanDomain = String(domain).toLowerCase().trim();
-  let db;
-  try { db = await getDbReady(); } catch (e: any) { console.error("[stamp/verify] DB not ready:", e.message); db = null; }
 
-  let verifyToken: string | null = null;
+  const db = await getDbReady();
+  if (!db) return res.status(503).json({ error: "数据库未配置，品牌认领功能暂不可用" });
 
-  if (db) {
-    const { rows } = await db.query(
-      `SELECT verify_token, verified FROM stamps WHERE id=$1 AND domain=$2`,
-      [id, cleanDomain]
-    );
-    if (!rows[0]) return res.status(404).json({ error: "Stamp not found" });
-    if (rows[0].verified) return res.status(200).json({ verified: true, already: true });
-    verifyToken = rows[0].verify_token;
-  } else {
-    const fileDb = readData<StampsDB>("stamps.json", {});
-    const record = (fileDb[cleanDomain] || []).find((r) => r.id === id);
-    if (!record) return res.status(404).json({ error: "Stamp not found" });
-    if (record.verified) return res.status(200).json({ verified: true, already: true });
-    verifyToken = record.verifyToken;
-  }
+  const { rows } = await db.query(
+    `SELECT verify_token, verified FROM stamps WHERE id=$1 AND domain=$2`,
+    [id, cleanDomain]
+  );
+  if (!rows[0]) return res.status(404).json({ error: "Stamp not found" });
+  if (rows[0].verified) return res.status(200).json({ verified: true, already: true });
 
+  const verifyToken = rows[0].verify_token;
   const expectedValue = `next-whois-verify=${verifyToken}`;
   const txtHost = `_next-whois.${cleanDomain}`;
 
@@ -171,15 +161,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   );
 
   if (verified) {
-    const verifiedAt = new Date().toISOString();
-    if (db) {
-      await db.query(`UPDATE stamps SET verified=true, verified_at=$1 WHERE id=$2`, [verifiedAt, id]);
-    } else {
-      const fileDb = readData<StampsDB>("stamps.json", {});
-      const record = (fileDb[cleanDomain] || []).find((r) => r.id === id);
-      if (record) { record.verified = true; record.verifiedAt = verifiedAt; }
-      writeData("stamps.json", fileDb);
-    }
+    await db.query(`UPDATE stamps SET verified=true, verified_at=$1 WHERE id=$2`, [new Date().toISOString(), id]);
     return res.status(200).json({
       verified: true,
       resolvers: allResults,

@@ -1,5 +1,4 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { readData, writeData, StampRecord, StampsDB } from "@/lib/data-store";
 import { getDbReady } from "@/lib/db";
 import { randomBytes } from "crypto";
 import { checkRateLimit } from "@/lib/rate-limit";
@@ -28,25 +27,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     const db = await getDbReady();
-    if (db) {
-      await db.query(
-        `INSERT INTO stamps (id, domain, tag_name, tag_style, link, description, nickname, email, verify_token, verified)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,false)`,
-        [id, cleanDomain, cleanTagName, cleanTagStyle, cleanLink, cleanDesc, cleanNickname, cleanEmail, token]
-      );
-    } else {
-      console.error("[stamp/submit] DATABASE_URL not configured — falling back to file store");
-      const record: StampRecord = {
-        id, domain: cleanDomain, tagName: cleanTagName, tagStyle: cleanTagStyle,
-        link: cleanLink || "", description: cleanDesc || "", nickname: cleanNickname,
-        email: cleanEmail, verifyToken: token, verified: false,
-        createdAt: new Date().toISOString(),
-      };
-      const fileDb = readData<StampsDB>("stamps.json", {});
-      if (!fileDb[cleanDomain]) fileDb[cleanDomain] = [];
-      fileDb[cleanDomain].push(record);
-      writeData("stamps.json", fileDb);
-    }
+    if (!db) return res.status(503).json({ error: "数据库未配置，品牌认领功能暂不可用" });
+
+    await db.query(
+      `INSERT INTO stamps (id, domain, tag_name, tag_style, link, description, nickname, email, verify_token, verified)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,false)`,
+      [id, cleanDomain, cleanTagName, cleanTagStyle, cleanLink, cleanDesc, cleanNickname, cleanEmail, token]
+    );
   } catch (dbErr: any) {
     console.error("[stamp/submit] Write error:", dbErr?.message || dbErr);
     return res.status(500).json({ error: "数据库写入失败，请稍后重试" });
