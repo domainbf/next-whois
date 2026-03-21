@@ -167,12 +167,16 @@ export default function StampPage() {
       toast.error("请填写必填项");
       return;
     }
+    let cleanLink = form.link.trim();
+    if (cleanLink && !/^https?:\/\//i.test(cleanLink)) {
+      cleanLink = `https://${cleanLink}`;
+    }
     setLoading(true);
     try {
       const res = await fetch("/api/stamp/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ domain, ...form }),
+        body: JSON.stringify({ domain, ...form, link: cleanLink }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -434,7 +438,8 @@ export default function StampPage() {
                               value={form.link}
                               onChange={(e) => update("link", e.target.value)}
                               placeholder="https://example.com"
-                              type="url"
+                              type="text"
+                              inputMode="url"
                             />
                           </div>
 
