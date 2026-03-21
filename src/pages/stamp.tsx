@@ -167,6 +167,10 @@ export default function StampPage() {
       toast.error("请填写必填项");
       return;
     }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
+      toast.error("请输入有效的邮箱地址");
+      return;
+    }
     let cleanLink = form.link.trim();
     if (cleanLink && !/^https?:\/\//i.test(cleanLink)) {
       cleanLink = `https://${cleanLink}`;
@@ -375,7 +379,7 @@ export default function StampPage() {
                       </div>
 
                       {/* Form card */}
-                      <form onSubmit={handleSubmit} className="space-y-4">
+                      <form onSubmit={handleSubmit} className="space-y-4" noValidate>
                         <div className="glass-panel border border-border rounded-2xl p-5 space-y-5">
 
                           {/* Domain field */}
