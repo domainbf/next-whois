@@ -188,8 +188,8 @@ button {
 }
 
 @keyframes text-shimmer {
-  0% { background-position: -200% center; }
-  100% { background-position: 200% center; }
+  0% { background-position: 100% center; }
+  100% { background-position: 0% center; }
 }
 
 @keyframes text-float {
@@ -201,14 +201,12 @@ button {
   background: linear-gradient(
     90deg,
     hsl(var(--muted-foreground) / 0.5) 0%,
-    hsl(var(--muted-foreground) / 0.5) 25%,
-    hsl(var(--foreground) / 0.9) 45%,
+    hsl(var(--muted-foreground) / 0.5) 30%,
     hsl(var(--foreground)) 50%,
-    hsl(var(--foreground) / 0.9) 55%,
-    hsl(var(--muted-foreground) / 0.5) 75%,
+    hsl(var(--muted-foreground) / 0.5) 70%,
     hsl(var(--muted-foreground) / 0.5) 100%
   );
-  background-size: 200% auto;
+  background-size: 300% auto;
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
