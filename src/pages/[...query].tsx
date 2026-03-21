@@ -825,13 +825,44 @@ function getRegistrarFallbackColor(registrar: string): string {
   return `hsl(${hue}, 65%, 50%)`;
 }
 
+/**
+ * Robustly parse a WHOIS date string into a Date object.
+ * Handles formats like:
+ *   "1996-07-01T02:00:00Z"
+ *   "1996-07-01 02:00:00 U"    ← .ba / some ccTLDs append a TZ letter
+ *   "1996-07-01 02:00:00 UTC"
+ *   "1996-07-01 02:00:00+08:00"
+ *   "2022-11-08 12:31:01"
+ */
+function parseWhoisDate(dateStr: string): Date | null {
+  if (!dateStr || dateStr === "Unknown") return null;
+  // 1. Try as-is first (covers ISO 8601 with Z or offset)
+  let d = new Date(dateStr);
+  if (!isNaN(d.getTime())) return d;
+  // 2. Strip trailing timezone code: single letters (U, Z) or abbreviations (UTC, EST, CET…)
+  //    and numeric offsets (+08:00, -05:00) then retry
+  const stripped = dateStr
+    .replace(/\s+[+-]\d{2}:?\d{2}$/, "")   // remove " +08:00" / " -0500"
+    .replace(/\s+[A-Z]{1,5}$/, "")          // remove " U" / " UTC" / " EST"
+    .replace(/\.\d+$/, "")                  // remove fractional seconds
+    .trim();
+  d = new Date(stripped);
+  if (!isNaN(d.getTime())) return d;
+  // 3. Replace space separator with T for strict ISO parsing
+  const isoLike = stripped.replace(" ", "T") + "Z";
+  d = new Date(isoLike);
+  if (!isNaN(d.getTime())) return d;
+  return null;
+}
+
 function getRelativeTime(
   dateStr: string,
   t: (key: TranslationKey, values?: Record<string, string | number>) => string,
 ): string {
   if (!dateStr || dateStr === "Unknown") return "";
   try {
-    const date = new Date(dateStr);
+    const date = parseWhoisDate(dateStr);
+    if (!date) return "";
     const now = new Date();
     const diffDays = Math.floor(
       (now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24),
@@ -857,11 +888,9 @@ function getRelativeTime(
 
 function formatDate(dateStr: string): string {
   if (!dateStr || dateStr === "Unknown") return "—";
-  try {
-    return dateStr.split("T")[0];
-  } catch {
-    return dateStr;
-  }
+  const d = parseWhoisDate(dateStr);
+  if (!d) return dateStr.slice(0, 10) || dateStr; // best-effort: first 10 chars
+  return d.toISOString().slice(0, 10); // always YYYY-MM-DD
 }
 
 function buildOgUrl(

@@ -58,9 +58,12 @@ function str(v: string | null | undefined, fallback = "Unknown"): string {
 function formatDate(iso: string | null | undefined): string {
   if (!iso) return "Unknown";
   try {
-    return new Date(iso).toISOString().replace("T", " ").replace(".000Z", " UTC");
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return "Unknown";
+    // Return a clean ISO 8601 string (YYYY-MM-DDTHH:mm:ssZ) — always parseable
+    return d.toISOString();
   } catch {
-    return iso;
+    return "Unknown";
   }
 }
 
