@@ -1,5 +1,6 @@
 {
   "framework": "nextjs",
+  "installCommand": "pnpm install --no-frozen-lockfile",
   "functions": {
     "src/pages/api/lookup.ts": {
       "maxDuration": 30
