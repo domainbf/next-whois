@@ -11,6 +11,14 @@ const TABLES = [
     name         TEXT,
     created_at   TIMESTAMPTZ  NOT NULL DEFAULT NOW()
   )`,
+  `CREATE TABLE IF NOT EXISTS password_reset_tokens (
+    id           VARCHAR(16)  PRIMARY KEY,
+    user_id      VARCHAR(16)  NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    token        TEXT         UNIQUE NOT NULL,
+    expires_at   TIMESTAMPTZ  NOT NULL,
+    used         BOOLEAN      NOT NULL DEFAULT false,
+    created_at   TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+  )`,
   `CREATE TABLE IF NOT EXISTS stamps (
     id           VARCHAR(16)  PRIMARY KEY,
     domain       TEXT         NOT NULL,
@@ -49,16 +57,19 @@ const TABLES = [
 /**
  * Resolve the Supabase connection string.
  *
- * Only Supabase env vars injected by the Vercel integration are accepted:
- *   1. POSTGRES_URL_NON_POOLING  – direct connection (port 5432), best for DDL.
- *   2. POSTGRES_URL              – transaction pooler (port 6543), pgbouncer=true
- *                                  is appended automatically.
+ * Priority order:
+ *   1. POSTGRES_URL_NON_POOLING  – direct connection (port 5432), best for DDL / migrations
+ *   2. POSTGRES_URL              – transaction pooler (port 6543), pgbouncer mode
  *
- * DATABASE_URL (Replit internal DB) is intentionally ignored.
+ * Both are injected automatically by the Vercel ↔ Supabase integration,
+ * or can be added manually as secrets in Replit / any other environment.
  */
 function getConnectionString(): { url: string; source: string } | null {
   if (process.env.POSTGRES_URL_NON_POOLING) {
-    return { url: process.env.POSTGRES_URL_NON_POOLING, source: "POSTGRES_URL_NON_POOLING" };
+    return {
+      url: process.env.POSTGRES_URL_NON_POOLING,
+      source: "POSTGRES_URL_NON_POOLING",
+    };
   }
   if (process.env.POSTGRES_URL) {
     const raw = process.env.POSTGRES_URL;
@@ -121,8 +132,9 @@ export function getDb(): Pool | null {
   const cs = getConnectionString();
   if (!cs) {
     console.error(
-      "[db] No Supabase URL found. Set POSTGRES_URL_NON_POOLING (or POSTGRES_URL) " +
-      "via the Vercel → Supabase integration, or add them manually in environment variables."
+      "[db] No Supabase connection URL found. " +
+      "Set POSTGRES_URL_NON_POOLING (recommended) or POSTGRES_URL as a secret. " +
+      "Get these from your Supabase project → Settings → Database → Connection string.",
     );
     return null;
   }

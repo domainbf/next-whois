@@ -106,6 +106,12 @@ export default function LoginPage() {
                 className="w-full h-10 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-sm gap-2">
                 {loading ? <><RiLoader4Line className="w-4 h-4 animate-spin" />登录中…</> : "登录"}
               </Button>
+
+              <div className="text-center">
+                <Link href="/forgot-password" className="text-xs text-muted-foreground hover:text-primary transition-colors">
+                  忘记密码？
+                </Link>
+              </div>
             </div>
           </form>
 
