@@ -147,9 +147,9 @@ const AUTO_POLL_SEC = 15;
 
 export default function StampPage() {
   const router = useRouter();
-  const { locale } = useTranslation();
+  const { t, locale } = useTranslation();
   const isZh = locale.startsWith("zh");
-  const s = (zh: string, en: string) => isZh ? zh : en;
+  const s = (key: string, params?: Record<string, string | number>) => t(`stamp.${key}`, params);
 
   const domain = String(router.query.domain || "");
   const defaultForm = { tagName: "", tagStyle: "personal", link: "", description: "", nickname: "", email: "" };
@@ -215,19 +215,19 @@ export default function StampPage() {
   async function handleSubmit() {
     setFormError(null);
     if (!form.tagName.trim()) {
-      setFormError(s("请填写标签名称", "Please enter a tag name"));
+      setFormError(s("err_tag_name"));
       return;
     }
     if (!form.nickname.trim()) {
-      setFormError(s("请填写昵称", "Please enter your name"));
+      setFormError(s("err_nickname"));
       return;
     }
     if (!form.email.trim()) {
-      setFormError(s("请填写邮箱地址", "Please enter your email"));
+      setFormError(s("err_email_empty"));
       return;
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
-      setFormError(s("邮箱格式不正确，请检查", "Invalid email format"));
+      setFormError(s("err_email_invalid"));
       return;
     }
     let cleanLink = form.link.trim();
@@ -235,7 +235,7 @@ export default function StampPage() {
       cleanLink = `https://${cleanLink}`;
     }
     if (cleanLink && !/^https?:\/\/[^\s]+\.[^\s]+/i.test(cleanLink)) {
-      setFormError(s("跳转链接格式不正确（如 https://example.com）", "Invalid link format (e.g. https://example.com)"));
+      setFormError(s("err_link_invalid"));
       return;
     }
     setLoading(true);
@@ -252,7 +252,7 @@ export default function StampPage() {
     } catch (err: any) {
       const msg = err?.message || "";
       const isSafeMsg = /[\u4e00-\u9fa5]/.test(msg);
-      setFormError(isSafeMsg ? msg : s("提交失败，请检查网络后重试", "Submission failed, please check your network"));
+      setFormError(isSafeMsg ? msg : s("err_submit_failed"));
     } finally {
       setLoading(false);
     }
@@ -316,7 +316,7 @@ export default function StampPage() {
   return (
     <>
       <Head>
-        <title>{s("品牌认领", "Brand Claim")} · {domain}</title>
+        <title>{s("title")} · {domain}</title>
       </Head>
 
       <div className="min-h-[calc(100vh-64px)] bg-background">
@@ -329,7 +329,7 @@ export default function StampPage() {
               className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors group"
             >
               <RiArrowLeftLine className="w-4 h-4 transition-transform group-hover:-translate-x-0.5" />
-              {s("返回", "Back")}
+              {s("back")}
             </button>
             <span className="text-muted-foreground/30">·</span>
             <span className="text-sm font-mono text-muted-foreground/80">{domain}</span>
@@ -355,15 +355,15 @@ export default function StampPage() {
                     <RiShieldCheckLine className="w-6 h-6 text-violet-500" />
                   </div>
                   <div className="min-w-0">
-                    <h1 className="text-base font-bold text-foreground">{s("品牌认领", "Brand Claim")}</h1>
+                    <h1 className="text-base font-bold text-foreground">{s("title")}</h1>
                     <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-                      {s("通过 DNS 所有权验证，为域名添加可信品牌标签", "Verify DNS ownership to add a trusted brand tag")}
+                      {s("subtitle")}
                     </p>
                   </div>
                   {step !== "done" && (
                     <div className="shrink-0 text-right">
                       <span className="text-[10px] font-bold text-violet-500/70 uppercase tracking-widest">
-                        {isZh ? `步骤 ${stepIndex(step) + 1}/2` : `Step ${stepIndex(step) + 1}/2`}
+                        {s("step", { current: stepIndex(step) + 1 })}
                       </span>
                     </div>
                   )}
@@ -392,9 +392,7 @@ export default function StampPage() {
                             "text-xs font-medium transition-colors",
                             isActive ? "text-foreground" : isDone ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"
                           )}>
-                            {isZh
-                              ? (s.key === "form" ? "填写信息" : s.key === "verify" ? "DNS 验证" : "生效")
-                              : (s.key === "form" ? "Fill Info" : s.key === "verify" ? "DNS Verify" : "Done")}
+                            {t(`stamp.step_${s.key}`)}
                           </span>
                         </div>
                         {i < STEP_LABELS.filter(s => s.key !== "done").length - 1 && (
@@ -424,7 +422,7 @@ export default function StampPage() {
                       <div className="glass-panel border border-border rounded-2xl p-4">
                         <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-3 flex items-center gap-1.5">
                           <RiGlobalLine className="w-3.5 h-3.5" />
-                          {s("工作原理", "How it works")}
+                          {s("how_it_works")}
                         </p>
                         <div className="space-y-3">
                           {HOW_TO_STEPS.map((step, i) => {
@@ -447,8 +445,8 @@ export default function StampPage() {
                                 <Icon className={cn("w-3.5 h-3.5", step.color)} />
                               </div>
                               <div className="min-w-0 pt-0.5">
-                                <p className="text-xs font-semibold text-foreground leading-none mb-1">{s(howZhTitle, howEnTitle)}</p>
-                                <p className="text-[11px] text-muted-foreground leading-relaxed">{s(howZhDesc, howEnDesc)}</p>
+                                <p className="text-xs font-semibold text-foreground leading-none mb-1">{isZh ? howZhTitle : howEnTitle}</p>
+                                <p className="text-[11px] text-muted-foreground leading-relaxed">{isZh ? howZhDesc : howEnDesc}</p>
                               </div>
                               {i < HOW_TO_STEPS.length - 1 && (
                                 <RiArrowRightLine className="shrink-0 w-3.5 h-3.5 text-muted-foreground/30 mt-1.5" />
@@ -468,10 +466,10 @@ export default function StampPage() {
                             className="flex items-center justify-between w-full"
                           >
                             <span className="text-xs font-semibold text-amber-700 dark:text-amber-300">
-                              {s(`该域名已有 ${existingStamps.length} 个认领标签`, `${existingStamps.length} existing tag(s) for this domain`)}
+                              {s("existing_count", { count: existingStamps.length })}
                             </span>
                             <span className="text-[10px] text-amber-600/70">
-                              {existingExpanded ? s("收起", "Collapse") : s("查看", "View")}
+                              {existingExpanded ? s("existing_collapse") : s("existing_expand")}
                             </span>
                           </button>
                           {existingExpanded && (
@@ -490,12 +488,12 @@ export default function StampPage() {
 
                           {/* Domain field */}
                           <div>
-                            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-2 block">{s("域名", "Domain")}</Label>
+                            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-2 block">{s("domain_label")}</Label>
                             <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/30 border border-border/60">
                               <RiGlobalLine className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
                               <span className="text-sm font-mono text-foreground">{domain}</span>
                             </div>
-                            <p className="text-[11px] text-muted-foreground mt-1.5">{s("需拥有该域名的 DNS 管理权限", "You must have DNS management access")}</p>
+                            <p className="text-[11px] text-muted-foreground mt-1.5">{s("domain_hint")}</p>
                           </div>
 
                           <div className="h-px bg-border/50" />
@@ -503,25 +501,22 @@ export default function StampPage() {
                           {/* Tag name */}
                           <div>
                             <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-2 block">
-                              {s("标签名称", "Tag Name")} <span className="text-red-500 normal-case tracking-normal font-normal">*</span>
+                              {s("tag_name_label")} <span className="text-red-500 normal-case tracking-normal font-normal">*</span>
                             </Label>
                             <Input
                               value={form.tagName}
                               onChange={(e) => update("tagName", e.target.value)}
-                              placeholder={s("例如：官方、我的品牌、开发者", "e.g. Official, My Brand, Developer")}
+                              placeholder={s("tag_name_placeholder")}
                               maxLength={20}
                             />
                           </div>
 
                           {/* Tag style */}
                           <div>
-                            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-2 block">{s("标签样式", "Tag Style")}</Label>
+                            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-2 block">{s("tag_style_label")}</Label>
                             <div className="grid grid-cols-2 gap-2">
                               {TAG_STYLES.map((ts) => {
-                                const tagLabel = isZh ? ts.label : ({
-                                  personal: "Personal", official: "Official", brand: "Brand", verified: "Verified",
-                                  partner: "Partner", dev: "Developer", warning: "Warning", premium: "Premium"
-                                }[ts.id] || ts.label);
+                                const tagLabel = s(`tag_${ts.id}`) || ts.label;
                                 return (
                                 <button
                                   key={ts.id}
@@ -542,7 +537,7 @@ export default function StampPage() {
                             {form.tagName && (
                               <div className="mt-3 px-4 py-3 rounded-xl bg-gradient-to-br from-violet-50/60 to-fuchsia-50/40 dark:from-violet-950/30 dark:to-fuchsia-950/20 border border-violet-200/50 dark:border-violet-800/30 space-y-2">
                                 <div className="flex items-center gap-2">
-                                  <span className="text-[10px] font-bold uppercase tracking-widest text-violet-400/70">{s("实时预览", "Live Preview")}</span>
+                                  <span className="text-[10px] font-bold uppercase tracking-widest text-violet-400/70">{s("live_preview")}</span>
                                   <div className="flex-1 h-px bg-violet-200/40 dark:bg-violet-800/30" />
                                 </div>
                                 <div className="flex items-center gap-2 flex-wrap">
@@ -566,7 +561,7 @@ export default function StampPage() {
                           {/* Link (optional) */}
                           <div>
                             <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-2 block">
-                              {s("跳转链接", "Link")} <span className="normal-case tracking-normal font-normal text-muted-foreground/60">{s("（可选）", "(optional)")}</span>
+                              {s("link_label")} <span className="normal-case tracking-normal font-normal text-muted-foreground/60">{s("optional")}</span>
                             </Label>
                             <Input
                               value={form.link}
@@ -581,14 +576,14 @@ export default function StampPage() {
                           <div>
                             <div className="flex items-baseline justify-between mb-2">
                               <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">
-                                {s("简介", "Description")} <span className="normal-case tracking-normal font-normal text-muted-foreground/60">{s("（可选）", "(optional)")}</span>
+                                {s("desc_label")} <span className="normal-case tracking-normal font-normal text-muted-foreground/60">{s("optional")}</span>
                               </Label>
-                              <span className="text-[10px] text-muted-foreground/50 tabular-nums">{form.description.length}/300</span>
+                              <span className={cn("text-[10px] tabular-nums", form.description.length >= 270 ? "text-red-500 font-semibold" : "text-muted-foreground/50")}>{form.description.length}/300</span>
                             </div>
                             <textarea
                               value={form.description}
                               onChange={(e) => update("description", e.target.value)}
-                              placeholder={s("简单说明这个标签的用途...", "Briefly describe what this tag is for...")}
+                              placeholder={s("desc_placeholder")}
                               maxLength={300}
                               rows={2}
                               className="w-full text-sm rounded-lg border border-border bg-background px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-violet-400/40 transition-shadow placeholder:text-muted-foreground/50"
@@ -599,21 +594,21 @@ export default function StampPage() {
 
                           {/* Contact */}
                           <div className="space-y-3">
-                            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-widest block">{s("联系信息", "Contact Info")}</Label>
+                            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-widest block">{s("contact_label")}</Label>
                             <div>
                               <Label className="text-xs font-medium mb-1.5 block">
-                                {s("昵称", "Name")} <span className="text-red-500">*</span>
+                                {s("name_label")} <span className="text-red-500">*</span>
                               </Label>
                               <Input
                                 value={form.nickname}
                                 onChange={(e) => update("nickname", e.target.value)}
-                                placeholder={s("您的昵称", "Your name")}
+                                placeholder={s("name_placeholder")}
                                 maxLength={30}
                               />
                             </div>
                             <div>
                               <Label className="text-xs font-medium mb-1.5 block">
-                                {s("邮箱", "Email")} <span className="text-red-500">*</span>
+                                {s("email_label")} <span className="text-red-500">*</span>
                               </Label>
                               <Input
                                 value={form.email}
@@ -621,7 +616,7 @@ export default function StampPage() {
                                 placeholder="your@email.com"
                                 type="text"
                               />
-                              <p className="text-[11px] text-muted-foreground mt-1">{s("用于接收验证结果，不会公开展示", "Used to receive verification results, not shown publicly")}</p>
+                              <p className="text-[11px] text-muted-foreground mt-1">{s("email_hint")}</p>
                             </div>
                           </div>
                         </div>
@@ -650,8 +645,8 @@ export default function StampPage() {
                           className="w-full gap-2 h-12 bg-violet-500 hover:bg-violet-600 active:bg-violet-700 text-white border-0 rounded-xl text-sm font-semibold shadow-md shadow-violet-500/25 transition-all hover:shadow-lg hover:shadow-violet-500/30 hover:-translate-y-px"
                         >
                           {loading
-                            ? <><RiLoader4Line className="w-4 h-4 animate-spin" />{s("提交中…", "Submitting…")}</>
-                            : <><RiFlashlightLine className="w-4 h-4" />{s("下一步：DNS 验证", "Next: DNS Verify")}</>
+                            ? <><RiLoader4Line className="w-4 h-4 animate-spin" />{s("btn_submitting")}</>
+                            : <><RiFlashlightLine className="w-4 h-4" />{s("btn_submit")}</>
                           }
                         </Button>
                       </div>
@@ -665,20 +660,20 @@ export default function StampPage() {
                         <div>
                           <h2 className="text-sm font-bold flex items-center gap-2 mb-1">
                             <RiServerLine className="w-4 h-4 text-sky-500" />
-                            {s("添加 DNS TXT 记录", "Add DNS TXT Record")}
+                            {s("verify_dns_title")}
                           </h2>
                           <p className="text-xs text-muted-foreground">
-                            {s(`登录域名的 DNS 控制台，添加以下记录，系统将每 ${AUTO_POLL_SEC} 秒自动检测一次`, `Log in to your DNS console and add the record below. The system checks every ${AUTO_POLL_SEC}s.`)}
+                            {s("verify_dns_desc", { sec: AUTO_POLL_SEC })}
                           </p>
                         </div>
 
                         {/* DNS record table */}
                         <div className="rounded-xl border border-border/60 overflow-hidden divide-y divide-border/60">
                           {[
-                            { label: s("类型", "Type"), value: "TXT", mono: false, copyable: false },
-                            { label: s("主机记录", "Host"), value: submitResult.txtRecord, mono: true, color: "text-violet-600 dark:text-violet-400", copyable: true },
-                            { label: s("记录值", "Value"), value: submitResult.txtValue, mono: true, color: "text-emerald-600 dark:text-emerald-400", copyable: true },
-                            { label: "TTL", value: s("300（或最小值）", "300 (or minimum)"), mono: false, copyable: false },
+                            { label: s("dns_field_type"), value: "TXT", mono: false, copyable: false },
+                            { label: s("dns_field_host"), value: submitResult.txtRecord, mono: true, color: "text-violet-600 dark:text-violet-400", copyable: true },
+                            { label: s("dns_field_value"), value: submitResult.txtValue, mono: true, color: "text-emerald-600 dark:text-emerald-400", copyable: true },
+                            { label: "TTL", value: s("dns_field_ttl_val"), mono: false, copyable: false },
                           ].map((row) => (
                             <div key={row.label} className="flex items-center justify-between gap-3 px-3 py-2.5 bg-muted/20">
                               <div className="shrink-0 w-20">
@@ -706,7 +701,7 @@ export default function StampPage() {
                           <div className="flex items-center justify-between mb-2">
                             <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
                               <RiWifiLine className="w-3 h-3" />
-                              {s("多路并行检测", "Parallel DNS Check")}
+                              {s("parallel_check")}
                             </p>
                             <div className="flex items-center gap-2 text-[10px] text-muted-foreground/50">
                               <span className="flex items-center gap-0.5"><RiServerLine className="w-2.5 h-2.5" />UDP</span>
@@ -768,11 +763,11 @@ export default function StampPage() {
                                             : "text-muted-foreground"
                                         )}>{item.name}</p>
                                         <p className="text-[10px] text-muted-foreground/50 mt-0.5">
-                                          {isLoading ? s("检测中…", "Checking…")
+                                          {isLoading ? s("checking")
                                             : r?.found ? `${r.latencyMs}ms ✓`
-                                            : r?.error === "timeout" ? s("超时", "Timeout")
-                                            : r?.error ? s("未找到", "Not found")
-                                            : s("等待", "Waiting")}
+                                            : r?.error === "timeout" ? s("timeout")
+                                            : r?.error ? s("not_found_dns")
+                                            : s("waiting")}
                                         </p>
                                       </div>
                                     </div>
@@ -796,7 +791,7 @@ export default function StampPage() {
                             >
                               <RiAlertLine className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
                               <p className="text-[11px] text-muted-foreground leading-relaxed">
-                                {s("未检测到 TXT 记录。请确认已正确添加，DNS 传播可能需要几分钟到数小时。", "TXT record not found. Please confirm it was added correctly — DNS propagation can take minutes to hours.")}
+                                {s("fail_msg")}
                               </p>
                             </motion.div>
                           )}
@@ -811,7 +806,7 @@ export default function StampPage() {
                             >
                               <RiAlertLine className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
                               <p className="text-[11px] text-muted-foreground leading-relaxed">
-                                {s("DNS 查询失败，请确认域名格式正确并稍后重试", "DNS query failed. Please confirm the domain is valid and try again.")}
+                                {s("dns_error_msg")}
                               </p>
                             </motion.div>
                           )}
@@ -824,14 +819,14 @@ export default function StampPage() {
                           className="w-full gap-2 h-11 bg-violet-500 hover:bg-violet-600 active:bg-violet-700 text-white border-0 rounded-xl text-sm font-semibold shadow-sm shadow-violet-500/20 transition-all"
                         >
                           {verifyState === "loading"
-                            ? <><RiLoader4Line className="w-4 h-4 animate-spin" />{s("检测中…", "Checking…")}</>
-                            : <><RiRefreshLine className="w-4 h-4" />{s("立即检测", "Check Now")}</>
+                            ? <><RiLoader4Line className="w-4 h-4 animate-spin" />{s("checking")}</>
+                            : <><RiRefreshLine className="w-4 h-4" />{s("btn_check")}</>
                           }
                         </Button>
                         {countdown > 0 && verifyState !== "loading" && (
                           <p className="text-[11px] text-muted-foreground/70 text-center flex items-center justify-center gap-1">
                             <RiTimeLine className="w-3 h-3" />
-                            {isZh ? `${countdown} 秒后自动检测` : `Auto-check in ${countdown}s`}
+                            {s("auto_check", { sec: countdown })}
                           </p>
                         )}
                       </div>
@@ -842,7 +837,7 @@ export default function StampPage() {
                           <RiAlertLine className="w-3.5 h-3.5 text-amber-500" />
                         </div>
                         <div className="space-y-1">
-                          <p className="text-xs font-semibold text-foreground">{s("关于 DNS 传播", "About DNS Propagation")}</p>
+                          <p className="text-xs font-semibold text-foreground">{s("dns_prop_title")}</p>
                           <p className="text-[11px] text-muted-foreground leading-relaxed">
                             {isZh
                               ? <><strong className="text-foreground">5 分钟到 24 小时</strong>全球生效，取决于你的 DNS 服务商和 TTL 设置。关闭页面不会丢失进度，重新打开后可继续验证。</>
@@ -856,7 +851,7 @@ export default function StampPage() {
                         onClick={() => { stopPolling(); goToStep("form"); }}
                         className="text-xs text-muted-foreground hover:text-foreground transition-colors w-full text-center py-1"
                       >
-                        {s("← 返回修改信息", "← Edit info")}
+                        {s("back_edit")}
                       </button>
                     </div>
                   )}
@@ -871,7 +866,7 @@ export default function StampPage() {
                             <RiCheckLine className="w-8 h-8 text-emerald-500" />
                           </div>
                         </div>
-                        <h2 className="text-xl font-bold text-emerald-700 dark:text-emerald-300 mb-2">{s("验证成功！", "Verified!")}</h2>
+                        <h2 className="text-xl font-bold text-emerald-700 dark:text-emerald-300 mb-2">{s("done_title")}</h2>
                         <p className="text-sm text-muted-foreground mb-4 leading-relaxed">
                           {isZh
                             ? <>品牌认领已生效，查询 <strong className="text-foreground font-mono">{domain}</strong> 时将显示标签：</>
@@ -887,7 +882,7 @@ export default function StampPage() {
                             onClick={goBack}
                           >
                             <RiExternalLinkLine className="w-4 h-4" />
-                            {s("查看域名页面", "View domain page")}
+                            {s("done_view")}
                           </Button>
                         </div>
                       </div>
@@ -900,9 +895,9 @@ export default function StampPage() {
                               <RiDeleteBinLine className="w-4 h-4 text-sky-500" />
                             </div>
                             <div className="min-w-0 flex-1">
-                              <p className="text-xs font-semibold text-sky-700 dark:text-sky-300 mb-1">{s("建议删除验证记录", "Tip: remove the verification record")}</p>
+                              <p className="text-xs font-semibold text-sky-700 dark:text-sky-300 mb-1">{s("done_delete_title")}</p>
                               <p className="text-[11px] text-muted-foreground leading-relaxed mb-2.5">
-                                {s("验证已完成，DNS TXT 记录已不再需要。建议从 DNS 控制台删除以下记录，保持 DNS 整洁：", "Verification is complete — the TXT record is no longer needed. You can delete it from your DNS console to keep things clean:")}
+                                {s("done_delete_body")}
                               </p>
                               <div className="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-background/70 border border-sky-200/50 dark:border-sky-800/30">
                                 <span className="text-[10px] font-bold text-muted-foreground/60 uppercase shrink-0">TXT</span>
@@ -917,7 +912,7 @@ export default function StampPage() {
                                 </button>
                               </div>
                               <p className="text-[10px] text-muted-foreground/50 mt-1.5">
-                                ℹ️ {s("即使保留该记录也不影响标签正常显示，删除只是可选的清理操作", "Keeping the record won't affect tag display — deleting is optional.")}
+                                ℹ️ {s("done_keep_record")}
                               </p>
                             </div>
                           </div>
@@ -926,7 +921,7 @@ export default function StampPage() {
 
                       {/* What happens next */}
                       <div className="glass-panel border border-border rounded-2xl p-4 space-y-3">
-                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">{s("接下来", "What's next")}</p>
+                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">{s("done_next")}</p>
                         {(isZh ? [
                           { icon: RiGlobalLine, text: "所有查询该域名的用户均可看到你的标签" },
                           { icon: RiShieldCheckLine, text: "标签展示在域名详情页顶部显著位置" },
