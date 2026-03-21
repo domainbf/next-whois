@@ -114,7 +114,7 @@ export default function ToolsPage() {
                         initial={{ opacity: 0, scale: 0.97 }}
                         animate={{ opacity: 1, scale: 1 }}
                         transition={{ duration: 0.2, delay: ci * 0.06 + ti * 0.02 }}
-                        whileTap={{ scale: 0.97 }}
+                        whileTap={{ scale: 0.94 }}
                         onClick={() => handleClick(tool.url)}
                         className="group flex flex-col gap-1 p-3 rounded-xl border border-border bg-muted/10 hover:bg-muted/40 hover:border-primary/30 transition-all duration-150 cursor-pointer"
                       >
