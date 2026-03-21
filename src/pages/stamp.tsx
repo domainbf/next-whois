@@ -164,6 +164,7 @@ export default function StampPage() {
   const [verifyState, setVerifyState] = React.useState<"idle" | "loading" | "fail" | "dnsError" | "giveUp">("idle");
   const [pollAttempt, setPollAttempt] = React.useState(0);
   const pollAttemptRef = React.useRef(0);
+  const notifiedRef = React.useRef(false);
   const [resolvers, setResolvers] = React.useState<{ name: string; proto?: string; ip?: string; latencyMs: number; found: boolean; error: string | null }[]>([]);
   const [httpCheck, setHttpCheck] = React.useState<{ found: boolean; latencyMs: number; error: string | null; url: string } | null>(null);
   const [verifyTab, setVerifyTab] = React.useState<"dns" | "http">("dns");
@@ -314,6 +315,15 @@ export default function StampPage() {
       } else {
         setVerifyState("giveUp");
         setCountdown(0);
+        // Send one-time email notification (fire-and-forget, no retry)
+        if (!notifiedRef.current && submitResult) {
+          notifiedRef.current = true;
+          fetch("/api/stamp/giveup-notify", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: submitResult.id, domain, appUrl: typeof window !== "undefined" ? window.location.origin : "" }),
+          }).catch(() => {});
+        }
       }
     }
 
