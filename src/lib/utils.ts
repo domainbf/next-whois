@@ -181,6 +181,15 @@ export function sanitizeInput(raw: string): string {
   // 6. Strip auth prefix (user:pass@host → host)
   const atIdx = s.indexOf("@");
   if (atIdx !== -1 && atIdx < s.length - 1) s = s.substring(atIdx + 1);
+  // 7. Remove characters that are never valid in a domain, IP, or ASN.
+  //    Covers common typos like "w,.com" → "w.com", "w;.com" → "w.com".
+  //    Preserves: letters, digits, dot, hyphen, colon (IPv6), brackets (IPv6
+  //    literal), plus non-ASCII bytes (IDN / unicode domains).
+  s = s.replace(/[,;`'"!$%^&*()+=<>{}|\\~]/g, "");
+  // 8. Collapse consecutive dots and strip leading/trailing dots.
+  //    e.g. "..com" → "com", "w..com" → "w.com", "w.com." → "w.com"
+  s = s.replace(/\.{2,}/g, ".");
+  s = s.replace(/^\.+/, "").replace(/\.+$/, "");
   return s.trim();
 }
 
