@@ -28,7 +28,7 @@ import {
   RiDeleteBinLine,
   RiFileTextLine,
   RiLinksLine,
-  RiCloudCheckLine,
+  RiCheckboxCircleLine,
 } from "@remixicon/react";
 import { toast } from "sonner";
 
@@ -132,6 +132,7 @@ const stepVariants = {
 // Progressive backoff schedule (seconds between each auto-check):
 // 30s → 1m → 2m → 5m → 10m → 15m → 20m  ≈ 53 min total, 7 auto-checks
 const POLL_SCHEDULE = [30, 60, 120, 300, 600, 900, 1200] as const;
+const AUTO_POLL_SEC = POLL_SCHEDULE[0];
 
 type StampKey = keyof (typeof en)["stamp"];
 
@@ -306,7 +307,7 @@ export default function StampPage() {
       const data = await res.json();
       setQuickTxtResult(data);
     } catch {
-      setQuickTxtResult({ found: false, records: [], latencyMs: 0, resolvers: [] });
+      setQuickTxtResult({ found: false, flat: [], records: [], latencyMs: 0, resolvers: [] });
     } finally {
       setQuickTxtLoading(false);
     }
@@ -1349,7 +1350,7 @@ export default function StampPage() {
                                     >
                                       {vercelCheckLoading
                                         ? <RiLoader4Line className="w-3.5 h-3.5 animate-spin shrink-0" />
-                                        : <RiCloudCheckLine className="w-3.5 h-3.5 shrink-0" />}
+                                        : <RiCheckboxCircleLine className="w-3.5 h-3.5 shrink-0" />}
                                       {vercelCountdown > 0 && !vercelCheckLoading
                                         ? (isZh ? `${vercelCountdown}s 后自动检测` : `Auto-checking in ${vercelCountdown}s`)
                                         : vercelCheckLoading
