@@ -6,10 +6,11 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { TOOL_CATEGORIES, Tool } from "@/lib/tools-data";
 import { motion } from "framer-motion";
 import { useTranslation } from "@/lib/i18n";
+import { useSession } from "next-auth/react";
 
 const CLICKS_KEY = "tool_clicks";
 
-function loadClicks(): Record<string, number> {
+function loadLocalClicks(): Record<string, number> {
   if (typeof window === "undefined") return {};
   try {
     return JSON.parse(localStorage.getItem(CLICKS_KEY) || "{}");
@@ -18,7 +19,7 @@ function loadClicks(): Record<string, number> {
   }
 }
 
-function saveClick(url: string, prev: Record<string, number>): Record<string, number> {
+function saveLocalClick(url: string, prev: Record<string, number>): Record<string, number> {
   const next = { ...prev, [url]: (prev[url] || 0) + 1 };
   try {
     localStorage.setItem(CLICKS_KEY, JSON.stringify(next));
@@ -26,19 +27,49 @@ function saveClick(url: string, prev: Record<string, number>): Record<string, nu
   return next;
 }
 
+function mergeClicks(
+  local: Record<string, number>,
+  remote: Record<string, number>
+): Record<string, number> {
+  const merged: Record<string, number> = { ...remote };
+  for (const [url, count] of Object.entries(local)) {
+    merged[url] = Math.max(merged[url] ?? 0, count);
+  }
+  return merged;
+}
+
 export default function ToolsPage() {
   const { t, locale } = useTranslation();
+  const { data: session } = useSession();
   const [clicks, setClicks] = React.useState<Record<string, number>>({});
 
   React.useEffect(() => {
-    setClicks(loadClicks());
-  }, []);
+    const local = loadLocalClicks();
+    setClicks(local);
+
+    fetch("/api/tools/clicks")
+      .then((r) => r.json())
+      .then((json) => {
+        if (json.clicks) {
+          setClicks((prev) => mergeClicks(prev, json.clicks));
+        }
+      })
+      .catch(() => {});
+  }, [session]);
 
   const isChinese = locale === "zh" || locale === "zh-tw";
   const getDesc = (tool: Tool) => (isChinese ? tool.desc : tool.descEn);
 
   const handleClick = (url: string) => {
-    setClicks((prev) => saveClick(url, prev));
+    setClicks((prev) => {
+      const updated = saveLocalClick(url, prev);
+      fetch("/api/tools/click", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      }).catch(() => {});
+      return updated;
+    });
   };
 
   const sortedCategories = TOOL_CATEGORIES.map((cat) => {

@@ -52,6 +52,25 @@ const TABLES = [
     sent_at     TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     UNIQUE (reminder_id, days_before)
   )`,
+  `CREATE TABLE IF NOT EXISTS tool_clicks (
+    url          TEXT         PRIMARY KEY,
+    total_clicks INTEGER      NOT NULL DEFAULT 0,
+    updated_at   TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+  )`,
+  `CREATE TABLE IF NOT EXISTS user_tool_clicks (
+    user_id      VARCHAR(16)  NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    url          TEXT         NOT NULL,
+    click_count  INTEGER      NOT NULL DEFAULT 0,
+    last_clicked_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (user_id, url)
+  )`,
+  `CREATE TABLE IF NOT EXISTS search_history (
+    id           VARCHAR(16)  PRIMARY KEY,
+    user_id      VARCHAR(16)  NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    query        TEXT         NOT NULL,
+    query_type   TEXT         NOT NULL DEFAULT 'domain',
+    created_at   TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+  )`,
 ];
 
 /**

@@ -55,6 +55,7 @@ import {
 import { getTopRegistrars, DomainPricing } from "@/lib/pricing/client";
 import React, { useEffect, useMemo } from "react";
 import { addHistory, detectQueryType } from "@/lib/history";
+import { useSession } from "next-auth/react";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { WhoisAnalyzeResult, WhoisResult } from "@/lib/whois/types";
@@ -2241,13 +2242,24 @@ export default function LookupPage({
   const queryType = detectQueryType(target);
   const { status, result, error, time, dnsProbe, registryUrl } = data as typeof data & { registryUrl?: string };
 
+  const { data: session } = useSession();
+
   const handleSearch = (query: string) => {
     router.push(toSearchURI(query));
   };
 
   useEffect(() => {
-    if (status) addHistory(target);
-  }, []);
+    if (status) {
+      addHistory(target);
+      if (session?.user) {
+        fetch("/api/user/search-history", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query: target, queryType }),
+        }).catch(() => {});
+      }
+    }
+  }, [session]);
 
   const registrarIcon = result
     ? getRegistrarIcon(result.registrar, result.registrarURL)

@@ -122,12 +122,15 @@ All API routes use `@supabase/supabase-js` (HTTP/REST) via `src/lib/supabase.ts`
 This allows the app to connect to Supabase from **any network** (Replit dev, Vercel production) 
 without requiring direct TCP access to PostgreSQL port 5432/6543.
 
-Required Supabase tables (create via Supabase Dashboard → SQL Editor):
+Required Supabase tables — **created automatically by `scripts/migrate.js` on each Vercel build**:
 - `users` — user accounts for auth
 - `password_reset_tokens` — password reset tokens (60-min expiry, single-use)
 - `stamps` — brand claiming records
 - `reminders` — domain expiry reminder subscriptions
 - `reminder_logs` — tracking which reminder thresholds have been sent
+- `tool_clicks` — global aggregate click counts per tool URL
+- `user_tool_clicks` — per-user click counts for personalized sorting
+- `search_history` — per-user search history (last 50 queries)
 
 ### Environment Variables Required
 | Variable | Required | Description |
