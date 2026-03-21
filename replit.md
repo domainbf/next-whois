@@ -113,19 +113,35 @@ The app is production-ready for Vercel and similar serverless platforms.
 - `src/pages/api/remind/process.ts` — Cron job: sends reminder emails via Resend, marks sent records
 
 ### Libraries
-- `src/lib/db.ts` — PostgreSQL connection pool (max:5, timeouts, error listener)
+- `src/lib/supabase.ts` — Supabase JS client singleton (REST-based, works from any network)
+- `src/lib/db.ts` — Retained for pg Pool schema definitions (TABLES array); pg Pool only used on Vercel where TCP is allowed
 - `src/lib/rate-limit.ts` — In-memory IP rate limiter (5 req/min per IP, auto-cleanup)
+
+### Database Architecture
+All API routes use `@supabase/supabase-js` (HTTP/REST) via `src/lib/supabase.ts`.
+This allows the app to connect to Supabase from **any network** (Replit dev, Vercel production) 
+without requiring direct TCP access to PostgreSQL port 5432/6543.
+
+Required Supabase tables (create via Supabase Dashboard → SQL Editor):
+- `users` — user accounts for auth
+- `password_reset_tokens` — password reset tokens (60-min expiry, single-use)
+- `stamps` — brand claiming records
+- `reminders` — domain expiry reminder subscriptions
+- `reminder_logs` — tracking which reminder thresholds have been sent
 
 ### Environment Variables Required
 | Variable | Required | Description |
 |---|---|---|
-| `DATABASE_URL` | Yes | Replit PostgreSQL connection string |
-| `RESEND_API_KEY` | Yes | Resend API key for sending reminder emails |
-| `RESEND_FROM_EMAIL` | Yes | Sender address for emails (e.g. `reminders@yourdomain.com`) |
-| `NEXT_PUBLIC_BASE_URL` | Yes | Public URL for cancel links in emails (e.g. `https://yourapp.replit.app`) |
-| `CRON_SECRET` | Recommended | Secret token to protect `POST /api/remind/process` from unauthorized calls |
-| `VERCEL_API_TOKEN` | Yes (Vercel verify) | Vercel API token for domain verification via Vercel project |
-| `VERCEL_PROJECT_ID` | Yes (Vercel verify) | Vercel project ID (`prj_...`) to register domains against |
+| `SUPABASE_URL` | Yes | Supabase project URL (e.g. `https://xxxx.supabase.co`) |
+| `SUPABASE_SERVICE_KEY` | Yes | Supabase service role key (from project Settings → API) |
+| `NEXTAUTH_SECRET` | Yes | Random secret for NextAuth JWT signing |
+| `RESEND_API_KEY` | Yes | Resend API key for sending reminder/reset emails |
+| `RESEND_FROM_EMAIL` | No | Sender address for emails (defaults to `noreply@x.rw`) |
+| `NEXT_PUBLIC_BASE_URL` | Yes | Public URL for cancel/reset links in emails |
+| `CRON_SECRET` | Recommended | Secret token to protect `POST /api/remind/process` |
+| `VERCEL_API_TOKEN` | Yes (Vercel verify) | Vercel API token for domain verification |
+| `VERCEL_PROJECT_ID` | Yes (Vercel verify) | Vercel project ID (`prj_...`) |
+| `POSTGRES_URL_NON_POOLING` | Vercel only | Direct Supabase connection for pg Pool migrations |
 
 ### Cron Setup
 To trigger reminder emails automatically, set up a cron job (e.g. daily) to call:
