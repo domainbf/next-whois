@@ -51,11 +51,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { error } = await supabase
       .from("stamps")
       .update(updates)
-      .eq("id", id as string);
+      .eq("id", id as string)
+      .eq("email", session.user.email);
 
     if (error) {
       console.error("[stamps] PATCH error:", error.message);
       return res.status(500).json({ error: "更新失败" });
+    }
+    return res.status(200).json({ ok: true });
+  }
+
+  if (req.method === "DELETE") {
+    const { id } = req.query;
+    if (!id) return res.status(400).json({ error: "Missing id" });
+
+    const { error } = await supabase
+      .from("stamps")
+      .delete()
+      .eq("id", id as string)
+      .eq("email", session.user.email);
+
+    if (error) {
+      console.error("[stamps] DELETE error:", error.message);
+      return res.status(500).json({ error: "删除失败" });
     }
     return res.status(200).json({ ok: true });
   }

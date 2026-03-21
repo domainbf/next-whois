@@ -24,6 +24,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(200).json({ subscriptions: data });
   }
 
+  if (req.method === "PATCH") {
+    const { id } = req.query;
+    if (!id) return res.status(400).json({ error: "Missing id" });
+
+    const { expiration_date } = req.body;
+    if (!expiration_date) return res.status(400).json({ error: "expiration_date required" });
+
+    const parsed = new Date(expiration_date);
+    if (isNaN(parsed.getTime())) return res.status(400).json({ error: "Invalid date" });
+
+    const { error } = await supabase
+      .from("reminders")
+      .update({ expiration_date: parsed.toISOString() })
+      .eq("id", id as string)
+      .eq("email", session.user.email);
+
+    if (error) {
+      console.error("[subscriptions] PATCH error:", error.message);
+      return res.status(500).json({ error: "更新失败" });
+    }
+    return res.status(200).json({ ok: true });
+  }
+
   if (req.method === "DELETE") {
     const { id } = req.query;
     if (!id) return res.status(400).json({ error: "Missing id" });
