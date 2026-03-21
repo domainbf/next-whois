@@ -2,8 +2,43 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { getSupabase } from "@/lib/supabase";
 import { randomBytes } from "crypto";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { sendEmail, subscriptionConfirmHtml } from "@/lib/email";
 
 const REMINDER_THRESHOLDS = [60, 30, 10, 5, 1];
+
+const LIFECYCLE_CFG: Record<string, { grace: number; redemption: number; pendingDelete: number }> = {
+  com: { grace: 45, redemption: 30, pendingDelete: 5 },
+  net: { grace: 45, redemption: 30, pendingDelete: 5 },
+  org: { grace: 45, redemption: 30, pendingDelete: 5 },
+  info: { grace: 45, redemption: 30, pendingDelete: 5 },
+  biz: { grace: 45, redemption: 30, pendingDelete: 5 },
+  io:  { grace: 30, redemption: 30, pendingDelete: 5 },
+  co:  { grace: 45, redemption: 30, pendingDelete: 5 },
+  app: { grace: 45, redemption: 30, pendingDelete: 5 },
+  dev: { grace: 45, redemption: 30, pendingDelete: 5 },
+  ai:  { grace: 30, redemption: 30, pendingDelete: 5 },
+};
+
+function getLifecycleInfo(domain: string, expirationDate: string | null) {
+  if (!expirationDate) return undefined;
+  const expiry = new Date(expirationDate);
+  if (isNaN(expiry.getTime())) return undefined;
+  const tld = domain.split(".").pop()?.toLowerCase() ?? "";
+  const cfg = LIFECYCLE_CFG[tld] ?? { grace: 45, redemption: 30, pendingDelete: 5 };
+  const ms = (d: number) => d * 86_400_000;
+  const graceEnd = new Date(expiry.getTime() + ms(cfg.grace));
+  const redemptionEnd = new Date(graceEnd.getTime() + ms(cfg.redemption));
+  const dropDate = new Date(redemptionEnd.getTime() + ms(cfg.pendingDelete));
+  const now = new Date();
+  let phase: string;
+  if (now < expiry) phase = "active";
+  else if (now < graceEnd) phase = "grace";
+  else if (now < redemptionEnd) phase = "redemption";
+  else if (now < dropDate) phase = "pendingDelete";
+  else phase = "dropped";
+  const fmt = (d: Date) => d.toLocaleDateString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit" });
+  return { phase, graceEnd: fmt(graceEnd), redemptionEnd: fmt(redemptionEnd), dropDate: fmt(dropDate) };
+}
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).end();
@@ -66,61 +101,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(500).json({ error: "数据库写入失败，请稍后重试" });
   }
 
+  const lifecycle = getLifecycleInfo(cleanDomain, expDate);
+
   await sendEmail({
     to: cleanEmail,
     subject: `✅ 域名订阅已设置 · ${cleanDomain}`,
-    html: confirmationHtml({ domain: cleanDomain, expirationDate: expDate, cancelToken: cancelTok, thresholds: REMINDER_THRESHOLDS }),
+    html: subscriptionConfirmHtml({
+      domain: cleanDomain,
+      expirationDate: expDate,
+      cancelToken: cancelTok,
+      thresholds: REMINDER_THRESHOLDS,
+      lifecycle,
+    }),
   });
 
   return res.status(200).json({ id: reminderId, thresholds: REMINDER_THRESHOLDS });
 }
 
-export async function sendEmail({ to, subject, html }: { to: string; subject: string; html: string }) {
-  const resendKey = process.env.RESEND_API_KEY;
-  if (!resendKey) return;
-  const from = process.env.RESEND_FROM_EMAIL || "noreply@nextwhois.app";
-  try {
-    const resp = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ from, to, subject, html }),
-    });
-    if (!resp.ok) {
-      const body = await resp.text().catch(() => "");
-      console.error("[sendEmail] Resend error:", resp.status, body);
-    }
-  } catch (err: any) {
-    console.error("[sendEmail] Fetch error:", err.message);
-  }
-}
-
-export function confirmationHtml({
-  domain, expirationDate, cancelToken, thresholds,
-}: { domain: string; expirationDate: string | null; cancelToken: string; thresholds: number[] }) {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://nextwhois.app";
-  const cancelUrl = `${baseUrl}/remind/cancel?token=${cancelToken}`;
-  const expiryStr = expirationDate
-    ? new Date(expirationDate).toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric" })
-    : "未知";
-  return `
-    <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
-      <h2 style="color:#0ea5e9;margin-bottom:4px">域名订阅已设置</h2>
-      <p style="color:#6b7280;font-size:14px;margin-top:0">Next Whois 到期提醒服务</p>
-      <div style="background:#f0f9ff;border-radius:10px;padding:16px;margin:20px 0">
-        <p style="margin:0;font-size:15px;font-weight:600;color:#0369a1">${domain}</p>
-        <p style="margin:6px 0 0;font-size:13px;color:#0369a1">📅 到期日期：${expiryStr}</p>
-      </div>
-      <p style="font-size:13px;color:#374151">我们将在以下时间节点向您发送提醒邮件：</p>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0">
-        ${thresholds.map(d => `<span style="background:#e0f2fe;color:#0369a1;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600">提前 ${d} 天</span>`).join("")}
-      </div>
-      <p style="font-size:12px;color:#6b7280;margin-top:20px">
-        直到域名续费、进入赎回期或您取消订阅后自动停止。
-      </p>
-      <hr style="border:none;border-top:1px solid #e5e7eb;margin:20px 0"/>
-      <p style="font-size:11px;color:#9ca3af">
-        不想再收到此提醒？<a href="${cancelUrl}" style="color:#0ea5e9">一键取消订阅</a>
-      </p>
-    </div>
-  `;
-}
+// Re-export sendEmail so remind/process.ts can still import it from here
+export { sendEmail };

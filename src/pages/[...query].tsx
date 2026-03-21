@@ -1800,12 +1800,47 @@ function DomainReminderDialog({
     }
   }
 
-  const urgencyBg =
-    remainingDays === null ? "bg-muted/40" :
-    remainingDays <= 0 ? "bg-red-50/60 dark:bg-red-950/20 border-red-200/50" :
-    remainingDays <= 30 ? "bg-red-50/60 dark:bg-red-950/20 border-red-200/50" :
-    remainingDays <= 90 ? "bg-amber-50/60 dark:bg-amber-950/20 border-amber-200/50" :
-    "bg-emerald-50/60 dark:bg-emerald-950/20 border-emerald-200/50";
+  // Compute lifecycle intelligence from expiry date
+  const lifecycle = React.useMemo(() => {
+    if (!expirationDate || expirationDate === "Unknown") return null;
+    const expiry = new Date(expirationDate);
+    if (isNaN(expiry.getTime())) return null;
+    const tld = domain.split(".").pop()?.toLowerCase() ?? "";
+    const LC_CFG: Record<string, { grace: number; redemption: number; pendingDelete: number }> = {
+      com: { grace: 45, redemption: 30, pendingDelete: 5 },
+      net: { grace: 45, redemption: 30, pendingDelete: 5 },
+      org: { grace: 45, redemption: 30, pendingDelete: 5 },
+      info: { grace: 45, redemption: 30, pendingDelete: 5 },
+      biz: { grace: 45, redemption: 30, pendingDelete: 5 },
+      io:  { grace: 30, redemption: 30, pendingDelete: 5 },
+      co:  { grace: 45, redemption: 30, pendingDelete: 5 },
+      app: { grace: 45, redemption: 30, pendingDelete: 5 },
+      dev: { grace: 45, redemption: 30, pendingDelete: 5 },
+      ai:  { grace: 30, redemption: 30, pendingDelete: 5 },
+    };
+    const cfg = LC_CFG[tld] ?? { grace: 45, redemption: 30, pendingDelete: 5 };
+    const ms = (d: number) => d * 86_400_000;
+    const graceEnd = new Date(expiry.getTime() + ms(cfg.grace));
+    const redemptionEnd = new Date(graceEnd.getTime() + ms(cfg.redemption));
+    const dropDate = new Date(redemptionEnd.getTime() + ms(cfg.pendingDelete));
+    const now = new Date();
+    let phase: "active" | "grace" | "redemption" | "pendingDelete" | "dropped";
+    if (now < expiry) phase = "active";
+    else if (now < graceEnd) phase = "grace";
+    else if (now < redemptionEnd) phase = "redemption";
+    else if (now < dropDate) phase = "pendingDelete";
+    else phase = "dropped";
+    const fmt = (d: Date) => d.toLocaleDateString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit" });
+    return { phase, expiry, graceEnd, redemptionEnd, dropDate, fmt };
+  }, [expirationDate, domain]);
+
+  const PHASE_META: Record<string, { label: string; labelEn: string; color: string; bg: string; border: string; advice: string; adviceEn: string }> = {
+    active:      { label: "正常有效", labelEn: "Active", color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-50/60 dark:bg-emerald-950/20", border: "border-emerald-200/50 dark:border-emerald-800/40", advice: "域名状态正常，将在到期前自动提醒您续费。", adviceEn: "Domain is active. We'll remind you before expiry." },
+    grace:       { label: "宽限期", labelEn: "Grace Period", color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-50/60 dark:bg-amber-950/20", border: "border-amber-200/50 dark:border-amber-800/40", advice: "域名已过期但仍可按正常价格续费，请尽快操作！", adviceEn: "Expired but still renewable at normal price. Act now!" },
+    redemption:  { label: "赎回期", labelEn: "Redemption", color: "text-orange-600 dark:text-orange-400", bg: "bg-orange-50/60 dark:bg-orange-950/20", border: "border-orange-200/50 dark:border-orange-800/40", advice: "已进入赎回期，续费费用大幅增加，请联系注册商赎回。", adviceEn: "In redemption. Recovery fees are high. Contact your registrar." },
+    pendingDelete: { label: "待删除", labelEn: "Pending Delete", color: "text-red-600 dark:text-red-400", bg: "bg-red-50/60 dark:bg-red-950/20", border: "border-red-200/50 dark:border-red-800/40", advice: "即将被注册局删除，通常无法再续期，请做好准备。", adviceEn: "Pending deletion from registry. Usually cannot be renewed." },
+    dropped:     { label: "已释放", labelEn: "Available", color: "text-sky-600 dark:text-sky-400", bg: "bg-sky-50/60 dark:bg-sky-950/20", border: "border-sky-200/50 dark:border-sky-800/40", advice: "域名已被删除，即将或已可重新注册。", adviceEn: "Domain has been deleted and may be available for registration." },
+  };
 
   const urgencyNum =
     remainingDays === null ? "text-muted-foreground" :
@@ -1873,12 +1908,61 @@ function DomainReminderDialog({
                 transition={{ duration: 0.18, ease: [0.32, 0.72, 0, 1] }}
                 className="space-y-3 pt-4"
               >
-                {/* Expiry info */}
-                {hasExpiry && remainingDays !== null && (
-                  <div className={cn("flex items-center justify-between px-3 py-2.5 rounded-xl border", urgencyBg)}>
+                {/* Expiry + lifecycle info */}
+                {hasExpiry && lifecycle ? (
+                  <div className={cn("rounded-xl border overflow-hidden", PHASE_META[lifecycle.phase]?.border ?? "border-border/50")}>
+                    {/* Expiry header row */}
+                    <div className={cn("flex items-center justify-between px-3 py-2.5", PHASE_META[lifecycle.phase]?.bg ?? "bg-muted/20")}>
+                      <div>
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold mb-0.5">
+                          {isZh ? "过期日期" : "Expiry date"}
+                        </p>
+                        <p className="text-sm font-mono font-semibold">{lifecycle.fmt(lifecycle.expiry)}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className={cn("text-3xl font-black tabular-nums leading-none", urgencyNum)}>
+                          {remainingDays !== null ? (remainingDays <= 0 ? "0" : remainingDays) : "—"}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">
+                          {isZh ? "天后到期" : "days left"}
+                        </p>
+                      </div>
+                    </div>
+                    {/* Phase badge + advice */}
+                    <div className="px-3 py-2 bg-background/60 border-t border-border/30">
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <span className={cn("text-[10px] font-bold uppercase tracking-wider", PHASE_META[lifecycle.phase]?.color)}>
+                          {isZh ? PHASE_META[lifecycle.phase]?.label : PHASE_META[lifecycle.phase]?.labelEn}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground leading-relaxed">
+                        {isZh ? PHASE_META[lifecycle.phase]?.advice : PHASE_META[lifecycle.phase]?.adviceEn}
+                      </p>
+                    </div>
+                    {/* Timeline rows */}
+                    <div className="px-3 py-2 border-t border-border/30 space-y-1 bg-muted/20">
+                      {[
+                        { label: isZh ? "宽限期结束" : "Grace ends", date: lifecycle.graceEnd, phase: "grace" as const },
+                        { label: isZh ? "赎回期结束" : "Redemption ends", date: lifecycle.redemptionEnd, phase: "redemption" as const },
+                        { label: isZh ? "预计释放" : "Est. drop date", date: lifecycle.dropDate, phase: "pendingDelete" as const },
+                      ].map(({ label, date, phase }) => {
+                        const isPast = new Date() > date;
+                        return (
+                          <div key={phase} className="flex items-center justify-between text-[11px]">
+                            <span className={cn("text-muted-foreground", isPast && "line-through opacity-50")}>{label}</span>
+                            <span className={cn("font-mono font-semibold tabular-nums", isPast ? "text-muted-foreground/50" : PHASE_META[phase]?.color)}>
+                              {lifecycle.fmt(date)}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : hasExpiry && remainingDays !== null ? (
+                  <div className="flex items-center justify-between px-3 py-2.5 rounded-xl border border-border/50 bg-muted/20">
                     <div>
                       <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold mb-0.5">
-                        {isZh ? "到期日期" : "Expiry date"}
+                        {isZh ? "过期日期" : "Expiry date"}
                       </p>
                       <p className="text-sm font-mono font-semibold">{expirationDate}</p>
                     </div>
@@ -1891,14 +1975,13 @@ function DomainReminderDialog({
                       </p>
                     </div>
                   </div>
-                )}
-                {!hasExpiry && (
+                ) : !hasExpiry ? (
                   <div className="px-3 py-2.5 rounded-xl border border-border/50 bg-muted/20">
                     <p className="text-xs text-muted-foreground text-center">
                       {isZh ? "暂无到期日期，仍可订阅提醒" : "No expiry info available, but you can still subscribe"}
                     </p>
                   </div>
-                )}
+                ) : null}
 
                 {/* Email input */}
                 <div>
@@ -2144,13 +2227,26 @@ function AvailableDomainCard({ domain, locale }: { domain: string; locale: strin
   );
 }
 
+function QueryingDots() {
+  const [dots, setDots] = React.useState(".");
+  React.useEffect(() => {
+    const id = setInterval(() => setDots(d => d.length >= 3 ? "." : d + "."), 500);
+    return () => clearInterval(id);
+  }, []);
+  return <span className="inline-block w-5 text-left">{dots}</span>;
+}
+
 function ResultSkeleton() {
   return (
     <div className="space-y-6 mt-6">
-      <div className="text-center py-6">
+      <div className="text-center py-6 space-y-2">
         <span className="text-shimmer text-base font-semibold tracking-wide select-none">
           我知道你很急，但请你先别急
         </span>
+        <p className="text-[13px] text-muted-foreground font-mono flex items-center justify-center gap-0.5 select-none">
+          <span>X.RW 正在全力查询中</span>
+          <QueryingDots />
+        </p>
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <div className="lg:col-span-8 space-y-6">
@@ -2425,9 +2521,9 @@ export default function LookupPage({
 
           {!loading && result && (
             <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: 0.1 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.25 }}
               className="flex items-center flex-wrap gap-2 mb-6"
             >
               {result.registerPrice &&
@@ -2608,9 +2704,9 @@ export default function LookupPage({
             const hasErrorRaw = !!(result && (result.rawWhoisContent || result.rawRdapContent));
             return (
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.3 }}
               className="grid grid-cols-1 lg:grid-cols-12 gap-6"
             >
               <div className={cn(hasErrorRaw ? "lg:col-span-8" : "lg:col-span-12", "space-y-6")}>
@@ -2853,9 +2949,9 @@ export default function LookupPage({
           {!loading && status && result && (
             <>
               <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.2 }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.3 }}
                 className="grid grid-cols-1 lg:grid-cols-12 gap-6"
               >
                 {" "}

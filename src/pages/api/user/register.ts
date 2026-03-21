@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { hash } from "bcryptjs";
 import { randomBytes } from "crypto";
 import { getSupabase } from "@/lib/supabase";
+import { sendEmail, welcomeHtml } from "@/lib/email";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).end();
@@ -41,6 +42,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.error("[register] insert error:", error.message);
     return res.status(500).json({ error: "注册失败，请稍后重试" });
   }
+
+  // Send welcome email (non-blocking — don't fail registration if email fails)
+  sendEmail({
+    to: cleanEmail,
+    subject: "欢迎使用 Next Whois 🎉",
+    html: welcomeHtml({ name: cleanName, email: cleanEmail }),
+  }).catch((e) => console.error("[register] welcome email error:", e));
 
   return res.status(201).json({ ok: true });
 }

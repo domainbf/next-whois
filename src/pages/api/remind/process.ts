@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { getSupabase } from "@/lib/supabase";
 import { randomBytes } from "crypto";
-import { sendEmail, confirmationHtml } from "./submit";
+import { sendEmail, reminderHtml } from "@/lib/email";
 
 const THRESHOLDS = [60, 30, 10, 5, 1];
 
@@ -62,7 +62,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         for (const threshold of THRESHOLDS) {
           if (daysLeft <= threshold && !sentThresholds.includes(threshold)) {
             const logId = randomBytes(8).toString("hex");
-            const expiryStr = expiry.toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric" });
             const urgencyLabel = daysLeft <= 0 ? "⚠️ 已到期" : daysLeft <= 5 ? "🔴 紧急" : daysLeft <= 10 ? "🟠 临近" : "📅";
 
             await sendEmail({
@@ -70,9 +69,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               subject: `${urgencyLabel} ${reminder.domain} 将在 ${daysLeft <= 0 ? "今天" : `${daysLeft} 天后`}到期`,
               html: reminderHtml({
                 domain: reminder.domain,
+                expirationDate: reminder.expiration_date,
                 daysLeft,
-                expiryStr,
-                threshold,
                 cancelToken: reminder.cancel_token,
               }),
             });
@@ -106,37 +104,4 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.error("[remind/process] Fatal error:", err);
     return res.status(500).json({ error: "处理失败，请稍后重试" });
   }
-}
-
-function reminderHtml({
-  domain, daysLeft, expiryStr, threshold, cancelToken,
-}: { domain: string; daysLeft: number; expiryStr: string; threshold: number; cancelToken: string }) {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://nextwhois.app";
-  const cancelUrl = `${baseUrl}/remind/cancel?token=${cancelToken}`;
-  const domainUrl = `${baseUrl}/${domain}`;
-  const urgencyBg = daysLeft <= 5 ? "#fef2f2" : daysLeft <= 10 ? "#fff7ed" : "#f0f9ff";
-  const urgencyColor = daysLeft <= 5 ? "#dc2626" : daysLeft <= 10 ? "#ea580c" : "#0369a1";
-  const msg = daysLeft <= 0
-    ? "您的域名已到期，请尽快续费以避免丢失！"
-    : `您的域名将在 <strong>${daysLeft} 天后</strong>（${expiryStr}）到期，请及时续费。`;
-
-  return `
-    <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
-      <h2 style="color:#0ea5e9;margin-bottom:4px">域名到期提醒</h2>
-      <p style="color:#6b7280;font-size:14px;margin-top:0">Next Whois 域名订阅服务</p>
-      <div style="background:${urgencyBg};border-radius:10px;padding:16px;margin:20px 0;border-left:4px solid ${urgencyColor}">
-        <p style="margin:0;font-size:16px;font-weight:700;color:${urgencyColor}">${domain}</p>
-        <p style="margin:8px 0 0;font-size:13px;color:${urgencyColor}">${msg}</p>
-        <p style="margin:6px 0 0;font-size:12px;color:${urgencyColor}">📅 到期日期：${expiryStr}</p>
-      </div>
-      <a href="${domainUrl}" style="display:inline-block;background:#0ea5e9;color:white;padding:10px 20px;border-radius:8px;text-decoration:none;font-size:14px;margin-right:8px">
-        查看域名详情
-      </a>
-      <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0"/>
-      <p style="font-size:11px;color:#9ca3af">
-        这是您在 Next Whois 订阅的第 <strong>${threshold}</strong> 天提醒。<br/>
-        不想再收到提醒？<a href="${cancelUrl}" style="color:#0ea5e9">一键取消订阅</a>
-      </p>
-    </div>
-  `;
 }
