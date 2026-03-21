@@ -47,6 +47,7 @@ import {
   RiTimerLine,
   RiCalendarEventLine,
   RiShieldCheckLine,
+  RiLoader4Line,
 } from "@remixicon/react";
 import { getTopRegistrars, DomainPricing } from "@/lib/pricing/client";
 import React, { useEffect, useMemo } from "react";
