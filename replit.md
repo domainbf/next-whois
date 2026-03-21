@@ -95,6 +95,9 @@ The app is production-ready for Vercel and similar serverless platforms.
 ### New API Routes
 - `src/pages/api/stamp/submit.ts` — Submit a stamp claim; returns `txtRecord` and `txtValue` for DNS TXT verification
 - `src/pages/api/stamp/check.ts` — Query verified stamps for a domain
+- `src/pages/api/stamp/verify.ts` — DNS TXT + HTTP file verification (multi-resolver, DoH fallback, fuzzy match)
+- `src/pages/api/vercel/add-domain.ts` — Register domain with Vercel project; returns `_vercel` TXT record for ownership proof
+- `src/pages/api/vercel/check-domain.ts` — Poll Vercel verify endpoint; updates stamp as verified if DNS propagated
 - `src/pages/api/remind/submit.ts` — Subscribe to domain expiry reminders
 - `src/pages/api/remind/cancel.ts` — Cancel a subscription via cancel token (returns JSON)
 - `src/pages/api/remind/process.ts` — Cron job: sends reminder emails via Resend, marks sent records
@@ -111,6 +114,8 @@ The app is production-ready for Vercel and similar serverless platforms.
 | `RESEND_FROM_EMAIL` | Yes | Sender address for emails (e.g. `reminders@yourdomain.com`) |
 | `NEXT_PUBLIC_BASE_URL` | Yes | Public URL for cancel links in emails (e.g. `https://yourapp.replit.app`) |
 | `CRON_SECRET` | Recommended | Secret token to protect `POST /api/remind/process` from unauthorized calls |
+| `VERCEL_API_TOKEN` | Yes (Vercel verify) | Vercel API token for domain verification via Vercel project |
+| `VERCEL_PROJECT_ID` | Yes (Vercel verify) | Vercel project ID (`prj_...`) to register domains against |
 
 ### Cron Setup
 To trigger reminder emails automatically, set up a cron job (e.g. daily) to call:

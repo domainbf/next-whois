@@ -28,6 +28,7 @@ import {
   RiDeleteBinLine,
   RiFileTextLine,
   RiLinksLine,
+  RiCloudCheckLine,
 } from "@remixicon/react";
 import { toast } from "sonner";
 
@@ -171,12 +172,23 @@ export default function StampPage() {
   const [udpBlocked, setUdpBlocked] = React.useState(false);
   const [expectedVal, setExpectedVal] = React.useState<string | null>(null);
   const [httpCheck, setHttpCheck] = React.useState<{ found: boolean; latencyMs: number; error: string | null; url: string; nearMatch?: boolean } | null>(null);
-  const [verifyTab, setVerifyTab] = React.useState<"dns" | "http">("dns");
+  const [verifyTab, setVerifyTab] = React.useState<"dns" | "http" | "vercel">("dns");
   const [quickTxtLoading, setQuickTxtLoading] = React.useState(false);
   const [quickTxtResult, setQuickTxtResult] = React.useState<{ found: boolean; flat: string[]; records: string[][]; latencyMs: number; resolvers: { name: string; records: string[][]; flat: string[]; latencyMs: number; error?: string }[] } | null>(null);
   const [countdown, setCountdown] = React.useState(0);
   const pollRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const countdownRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // ── Vercel verification state ──
+  const [vercelTxtValue, setVercelTxtValue] = React.useState<string | null>(null);
+  const [vercelTxtFullDomain, setVercelTxtFullDomain] = React.useState<string | null>(null);
+  const [vercelApiError, setVercelApiError] = React.useState<string | null>(null);
+  const [vercelInitLoading, setVercelInitLoading] = React.useState(false);
+  const [vercelCheckLoading, setVercelCheckLoading] = React.useState(false);
+  const [vercelCheckAttempt, setVercelCheckAttempt] = React.useState(0);
+  const [vercelCountdown, setVercelCountdown] = React.useState(0);
+  const vercelPollRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const vercelCountdownRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
 
   function goToStep(next: Step) {
     setDirection(stepIndex(next) > stepIndex(step) ? 1 : -1);
@@ -370,6 +382,89 @@ export default function StampPage() {
   function copyText(text: string) {
     navigator.clipboard.writeText(text).then(() => toast.success(s("copied")));
   }
+
+  // ── Vercel verification helpers ──────────────────────────────────────────
+
+  function stopVercelPolling() {
+    if (vercelPollRef.current) { clearTimeout(vercelPollRef.current); vercelPollRef.current = null; }
+    if (vercelCountdownRef.current) { clearInterval(vercelCountdownRef.current); vercelCountdownRef.current = null; }
+    setVercelCountdown(0);
+  }
+
+  function startVercelCountdown(sec: number, onDone: () => void) {
+    stopVercelPolling();
+    setVercelCountdown(sec);
+    vercelCountdownRef.current = setInterval(() => {
+      setVercelCountdown(c => {
+        if (c <= 1) { clearInterval(vercelCountdownRef.current!); vercelCountdownRef.current = null; return 0; }
+        return c - 1;
+      });
+    }, 1000);
+    vercelPollRef.current = setTimeout(onDone, sec * 1000);
+  }
+
+  const VERCEL_POLL_SCHEDULE = [30, 60, 120, 300, 600] as const;
+
+  async function initVercelVerify() {
+    if (!submitResult) return;
+    setVercelInitLoading(true);
+    setVercelApiError(null);
+    setVercelTxtValue(null);
+    setVercelTxtFullDomain(null);
+    try {
+      const res = await fetch("/api/vercel/add-domain", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ domain, stampId: submitResult.id }),
+      });
+      const data = await res.json();
+      if (data.verified) { goToStep("done"); return; }
+      if (data.apiError) { setVercelApiError(data.apiError); return; }
+      setVercelTxtValue(data.txtValue ?? null);
+      setVercelTxtFullDomain(data.txtFullDomain ?? `_vercel.${domain}`);
+    } catch {
+      setVercelApiError("网络错误，请重试");
+    } finally {
+      setVercelInitLoading(false);
+    }
+  }
+
+  const handleVercelCheck = React.useCallback(async (silent = false) => {
+    if (!submitResult) return;
+    setVercelCheckLoading(true);
+    stopVercelPolling();
+    try {
+      const res = await fetch("/api/vercel/check-domain", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ domain, stampId: submitResult.id }),
+      });
+      const data = await res.json();
+      if (data.verified) { goToStep("done"); return; }
+      // Schedule next auto-check
+      const attempt = vercelCheckAttempt;
+      if (!silent) { setVercelCheckAttempt(0); }
+      const nextAttempt = silent ? attempt + 1 : 1;
+      setVercelCheckAttempt(nextAttempt);
+      if (nextAttempt < VERCEL_POLL_SCHEDULE.length) {
+        startVercelCountdown(VERCEL_POLL_SCHEDULE[nextAttempt - 1 < VERCEL_POLL_SCHEDULE.length ? nextAttempt - 1 : VERCEL_POLL_SCHEDULE.length - 1], () => handleVercelCheck(true));
+      }
+    } catch {
+      // silently fail, let user retry manually
+    } finally {
+      setVercelCheckLoading(false);
+    }
+  }, [submitResult, domain, vercelCheckAttempt]);
+
+  // Auto-init when switching to Vercel tab
+  React.useEffect(() => {
+    if (verifyTab === "vercel" && submitResult && !vercelTxtValue && !vercelInitLoading && !vercelApiError) {
+      initVercelVerify();
+    }
+    if (verifyTab !== "vercel") {
+      stopVercelPolling();
+    }
+  }, [verifyTab, submitResult?.id]);
 
   return (
     <>
@@ -711,27 +806,45 @@ export default function StampPage() {
                             type="button"
                             onClick={() => setVerifyTab("dns")}
                             className={cn(
-                              "flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-semibold transition-all",
+                              "flex-1 flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg text-xs font-semibold transition-all",
                               verifyTab === "dns"
                                 ? "bg-background shadow-sm text-foreground border border-border/60"
                                 : "text-muted-foreground hover:text-foreground"
                             )}
                           >
-                            <RiServerLine className="w-3.5 h-3.5" />
-                            DNS TXT
+                            <RiServerLine className="w-3.5 h-3.5 shrink-0" />
+                            <span className="hidden sm:inline">DNS TXT</span>
+                            <span className="sm:hidden">DNS</span>
                           </button>
                           <button
                             type="button"
                             onClick={() => setVerifyTab("http")}
                             className={cn(
-                              "flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-semibold transition-all",
+                              "flex-1 flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg text-xs font-semibold transition-all",
                               verifyTab === "http"
                                 ? "bg-background shadow-sm text-foreground border border-border/60"
                                 : "text-muted-foreground hover:text-foreground"
                             )}
                           >
-                            <RiFlashlightLine className="w-3.5 h-3.5 text-sky-500" />
-                            {isZh ? "文件验证（快速）" : "File Verify (Fast)"}
+                            <RiFlashlightLine className="w-3.5 h-3.5 text-sky-500 shrink-0" />
+                            <span className="hidden sm:inline">{isZh ? "文件验证" : "File Verify"}</span>
+                            <span className="sm:hidden">{isZh ? "文件" : "File"}</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setVerifyTab("vercel")}
+                            className={cn(
+                              "flex-1 flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg text-xs font-semibold transition-all",
+                              verifyTab === "vercel"
+                                ? "bg-background shadow-sm text-foreground border border-border/60"
+                                : "text-muted-foreground hover:text-foreground"
+                            )}
+                          >
+                            <span className={cn(
+                              "shrink-0 text-[11px] font-black leading-none",
+                              verifyTab === "vercel" ? "text-foreground" : "text-muted-foreground"
+                            )}>▲</span>
+                            Vercel
                           </button>
                         </div>
 
@@ -1115,6 +1228,136 @@ export default function StampPage() {
                               <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-border/50 bg-muted/20">
                                 <RiLoader4Line className="w-4 h-4 animate-spin text-muted-foreground/60 shrink-0" />
                                 <p className="text-xs text-muted-foreground">{isZh ? "正在检测文件…" : "Checking file…"}</p>
+                              </div>
+                            )}
+                          </>
+                        )}
+
+                        {/* ── Vercel tab ── */}
+                        {verifyTab === "vercel" && (
+                          <>
+                            <div>
+                              <h2 className="text-sm font-bold flex items-center gap-2 mb-1">
+                                <span className="text-sm font-black">▲</span>
+                                {isZh ? "Vercel 域名验证" : "Vercel Domain Verification"}
+                              </h2>
+                              <p className="text-xs text-muted-foreground leading-relaxed">
+                                {isZh
+                                  ? "通过在 DNS 添加 Vercel 官方 TXT 记录，完成域名归属认证。"
+                                  : "Verify domain ownership by adding a Vercel-issued DNS TXT record to your domain."}
+                              </p>
+                            </div>
+
+                            {/* Loading state while fetching TXT from Vercel */}
+                            {vercelInitLoading && (
+                              <div className="flex items-center gap-2 px-3 py-3 rounded-xl border border-border/50 bg-muted/20">
+                                <RiLoader4Line className="w-4 h-4 animate-spin text-muted-foreground/60 shrink-0" />
+                                <p className="text-xs text-muted-foreground">{isZh ? "正在获取验证记录…" : "Fetching verification record…"}</p>
+                              </div>
+                            )}
+
+                            {/* API error */}
+                            {vercelApiError && !vercelInitLoading && (
+                              <div className="rounded-xl border border-red-300/50 bg-red-50/40 dark:bg-red-950/20 p-3 space-y-2">
+                                <p className="text-xs font-semibold text-red-700 dark:text-red-400 flex items-center gap-1.5">
+                                  <RiAlertLine className="w-3.5 h-3.5 shrink-0" />
+                                  {isZh ? "无法获取 Vercel 验证记录" : "Could not get Vercel verification record"}
+                                </p>
+                                <p className="text-[10px] text-red-600/70 dark:text-red-400/60 font-mono break-all">{vercelApiError}</p>
+                                <button
+                                  type="button"
+                                  onClick={initVercelVerify}
+                                  className="text-[11px] font-semibold text-red-700 dark:text-red-400 hover:underline flex items-center gap-1"
+                                >
+                                  <RiRefreshLine className="w-3 h-3" />
+                                  {isZh ? "重试" : "Retry"}
+                                </button>
+                              </div>
+                            )}
+
+                            {/* TXT record instructions */}
+                            {vercelTxtValue && !vercelInitLoading && (
+                              <div className="space-y-2.5">
+                                <div className="rounded-xl border border-border/60 bg-muted/15 overflow-hidden">
+                                  <div className="px-3 py-2 border-b border-border/40 flex items-center gap-2">
+                                    <span className="w-4 h-4 rounded-full bg-foreground text-background text-[9px] font-bold flex items-center justify-center shrink-0">1</span>
+                                    <p className="text-[11px] font-semibold text-foreground">
+                                      {isZh ? "在 DNS 管理面板添加以下 TXT 记录" : "Add this TXT record in your DNS panel"}
+                                    </p>
+                                  </div>
+                                  <div className="px-3 py-2.5 space-y-2">
+                                    <div>
+                                      <p className="text-[10px] font-bold text-muted-foreground/70 uppercase mb-1 flex items-center gap-1">
+                                        <RiServerLine className="w-2.5 h-2.5" />
+                                        {isZh ? "记录名称（Name）" : "Name"}
+                                      </p>
+                                      <div className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-background border border-border/50">
+                                        <code className="text-[11px] font-mono text-violet-600 dark:text-violet-400 flex-1 break-all">
+                                          {vercelTxtFullDomain ?? `_vercel.${domain}`}
+                                        </code>
+                                        <button
+                                          onClick={() => copyText(vercelTxtFullDomain ?? `_vercel.${domain}`)}
+                                          className="shrink-0 p-1 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                                        >
+                                          <RiFileCopyLine className="w-3 h-3" />
+                                        </button>
+                                      </div>
+                                    </div>
+                                    <div>
+                                      <p className="text-[10px] font-bold text-muted-foreground/70 uppercase mb-1 flex items-center gap-1">
+                                        <RiFileTextLine className="w-2.5 h-2.5" />
+                                        {isZh ? "记录值（Value）" : "Value"}
+                                      </p>
+                                      <div className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-background border border-border/50">
+                                        <code className="text-[11px] font-mono text-emerald-600 dark:text-emerald-400 flex-1 break-all">
+                                          {vercelTxtValue}
+                                        </code>
+                                        <button
+                                          onClick={() => copyText(vercelTxtValue!)}
+                                          className="shrink-0 p-1 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                                        >
+                                          <RiFileCopyLine className="w-3 h-3" />
+                                        </button>
+                                      </div>
+                                    </div>
+                                    <p className="text-[10px] text-muted-foreground/50 pt-0.5">
+                                      {isZh
+                                        ? "记录类型：TXT · 生效时间因服务商而异，通常几分钟内即可"
+                                        : "Record type: TXT · Propagation time varies by provider, usually within minutes"}
+                                    </p>
+                                  </div>
+                                </div>
+
+                                <div className="rounded-xl border border-border/60 bg-muted/15 overflow-hidden">
+                                  <div className="px-3 py-2 border-b border-border/40 flex items-center gap-2">
+                                    <span className="w-4 h-4 rounded-full bg-foreground text-background text-[9px] font-bold flex items-center justify-center shrink-0">2</span>
+                                    <p className="text-[11px] font-semibold text-foreground">
+                                      {isZh ? "添加完成后，点击下方按钮验证" : "Click verify once the record is added"}
+                                    </p>
+                                  </div>
+                                  <div className="px-3 py-2.5">
+                                    <button
+                                      type="button"
+                                      disabled={vercelCheckLoading}
+                                      onClick={() => { setVercelCheckAttempt(0); handleVercelCheck(false); }}
+                                      className={cn(
+                                        "w-full flex items-center justify-center gap-2 py-2 px-4 rounded-lg text-xs font-semibold transition-all border",
+                                        vercelCheckLoading
+                                          ? "bg-muted/40 text-muted-foreground border-border/40 cursor-not-allowed"
+                                          : "bg-foreground text-background border-transparent hover:opacity-90 active:scale-[0.98]"
+                                      )}
+                                    >
+                                      {vercelCheckLoading
+                                        ? <RiLoader4Line className="w-3.5 h-3.5 animate-spin shrink-0" />
+                                        : <RiCloudCheckLine className="w-3.5 h-3.5 shrink-0" />}
+                                      {vercelCountdown > 0 && !vercelCheckLoading
+                                        ? (isZh ? `${vercelCountdown}s 后自动检测` : `Auto-checking in ${vercelCountdown}s`)
+                                        : vercelCheckLoading
+                                        ? (isZh ? "检测中…" : "Checking…")
+                                        : (isZh ? "立即验证" : "Verify Now")}
+                                    </button>
+                                  </div>
+                                </div>
                               </div>
                             )}
                           </>
