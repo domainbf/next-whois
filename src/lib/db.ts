@@ -39,6 +39,60 @@ const TABLES = [
   )`,
 ];
 
+/**
+ * Resolve the best available connection string.
+ * Priority: DATABASE_URL → POSTGRES_URL_NON_POOLING → POSTGRES_URL
+ *
+ * Vercel's native Supabase integration injects POSTGRES_URL (transaction pooler,
+ * port 6543) and POSTGRES_URL_NON_POOLING (direct connection, port 5432).
+ * We prefer the direct connection because it supports DDL without restrictions.
+ * When only POSTGRES_URL (pooler) is available we append pgbouncer=true so the
+ * pg driver disables prepared statements (required by Supabase's PgBouncer).
+ */
+function getConnectionString(): string | null {
+  const direct =
+    process.env.DATABASE_URL ||
+    process.env.POSTGRES_URL_NON_POOLING;
+  if (direct) return direct;
+
+  const pooler = process.env.POSTGRES_URL;
+  if (pooler) {
+    // Supabase transaction pooler requires pgbouncer=true
+    const sep = pooler.includes("?") ? "&" : "?";
+    return pooler.includes("pgbouncer") ? pooler : `${pooler}${sep}pgbouncer=true`;
+  }
+
+  return null;
+}
+
+function makePool(connectionString: string): Pool {
+  const isLocal =
+    connectionString.includes("localhost") ||
+    connectionString.includes("127.0.0.1");
+  const p = new Pool({
+    connectionString,
+    ssl: isLocal ? false : { rejectUnauthorized: false },
+    max: 3,
+    connectionTimeoutMillis: 10000,
+    idleTimeoutMillis: 30000,
+    allowExitOnIdle: false,
+  });
+  p.on("error", (err) => console.error("[db] pool error:", err.message));
+  return p;
+}
+
+export function getDb(): Pool | null {
+  if (pool) return pool;
+  const cs = getConnectionString();
+  if (!cs) {
+    console.error("[db] No database URL found. Set DATABASE_URL or connect Supabase via Vercel integration (POSTGRES_URL).");
+    return null;
+  }
+  pool = makePool(cs);
+  migrated = false;
+  return pool;
+}
+
 export async function runMigrations(db: Pool): Promise<void> {
   const client = await db.connect();
   try {
@@ -51,35 +105,11 @@ export async function runMigrations(db: Pool): Promise<void> {
   }
 }
 
-function makePool(): Pool {
-  const url = process.env.DATABASE_URL!;
-  const isLocal = url.includes("localhost") || url.includes("127.0.0.1");
-  const p = new Pool({
-    connectionString: url,
-    ssl: isLocal ? false : { rejectUnauthorized: false },
-    max: 3,
-    connectionTimeoutMillis: 10000,
-    idleTimeoutMillis: 30000,
-    allowExitOnIdle: false,
-  });
-  p.on("error", (err) => console.error("[db] pool error:", err.message));
-  return p;
-}
-
-export function getDb(): Pool | null {
-  if (!process.env.DATABASE_URL) return null;
-  if (!pool) {
-    pool = makePool();
-    migrated = false;
-  }
-  return pool;
-}
-
 /**
  * Returns the pool after ensuring all tables exist.
- * Runs migration once per process lifetime; retries if it previously failed.
- * Returns null if DATABASE_URL is missing.
- * Throws if migration itself fails — callers' try/catch handles it.
+ * Call this in every API handler before running queries.
+ * Returns null when no database is configured.
+ * Throws when the database is reachable but migration fails.
  */
 export async function getDbReady(): Promise<Pool | null> {
   const db = getDb();
