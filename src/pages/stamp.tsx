@@ -131,7 +131,7 @@ export default function StampPage() {
   const router = useRouter();
   const { t, locale } = useTranslation();
   const isZh = locale.startsWith("zh");
-  const s = (key: string, params?: Record<string, string | number>) => t(`stamp.${key}`, params);
+  const s = (key: string, params?: Record<string, string | number>) => t(`stamp.${key}` as any, params);
 
   const domain = String(router.query.domain || "");
   const defaultForm = { tagName: "", tagStyle: "personal", link: "", description: "", nickname: "", email: "" };
