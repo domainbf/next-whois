@@ -41,3 +41,7 @@ RESEND_FROM_EMAIL = "noreply@x.rw"
 NEXT_PUBLIC_APP_URL = "https://x.rw"
 NEXTAUTH_SECRET = "3878ffd6c3e0ce5cf4b9d0fc239d41ae50c0cd8bbdc3a249a1d9a7ba1354a953"
 VERCEL_PROJECT_ID = "prj_iUBe5v2wht9SYe1SuFKyj0vMgyLR"
+
+[postMerge]
+path = "scripts/post-merge.sh"
+timeoutMs = 60000
