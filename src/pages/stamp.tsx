@@ -25,22 +25,54 @@ import {
 } from "@remixicon/react";
 import { toast } from "sonner";
 
-const TAG_STYLES: { id: string; label: string; className: string }[] = [
+const TAG_STYLES: { id: string; label: string; className: string; glow?: string }[] = [
   { id: "personal", label: "个人持有", className: "bg-violet-50 border border-violet-200 text-violet-700 dark:bg-violet-950/40 dark:border-violet-700/60 dark:text-violet-300" },
-  { id: "official", label: "官方", className: "bg-blue-500 text-white border-0" },
-  { id: "brand", label: "品牌", className: "bg-violet-500 text-white border-0" },
-  { id: "verified", label: "认证", className: "bg-emerald-500 text-white border-0" },
-  { id: "partner", label: "合作", className: "bg-orange-500 text-white border-0" },
-  { id: "dev", label: "开发者", className: "bg-sky-500 text-white border-0" },
-  { id: "warning", label: "提醒", className: "bg-amber-400 text-white border-0" },
-  { id: "premium", label: "高级", className: "bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white border-0" },
+  { id: "official", label: "官方", className: "bg-blue-500 text-white border-0", glow: "shadow-blue-500/40" },
+  { id: "brand", label: "品牌", className: "bg-violet-500 text-white border-0", glow: "shadow-violet-500/40" },
+  { id: "verified", label: "认证", className: "bg-emerald-500 text-white border-0", glow: "shadow-emerald-500/40" },
+  { id: "partner", label: "合作", className: "bg-orange-500 text-white border-0", glow: "shadow-orange-500/40" },
+  { id: "dev", label: "开发者", className: "bg-sky-500 text-white border-0", glow: "shadow-sky-500/40" },
+  { id: "warning", label: "提醒", className: "bg-amber-400 text-white border-0", glow: "shadow-amber-400/40" },
+  { id: "premium", label: "高级", className: "bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white border-0", glow: "shadow-fuchsia-500/40" },
 ];
 
-function TagBadge({ tagName, tagStyle }: { tagName: string; tagStyle: string }) {
+function TagBadge({ tagName, tagStyle, live = false }: { tagName: string; tagStyle: string; live?: boolean }) {
   const style = TAG_STYLES.find((s) => s.id === tagStyle) || TAG_STYLES[0];
+  const isColored = style.id !== "personal";
   return (
-    <span className={cn("inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold", style.className)}>
-      {tagName || style.label}
+    <span className={cn(
+      "relative inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md text-xs font-semibold overflow-hidden select-none",
+      style.className,
+      live && style.glow && `shadow-md ${style.glow}`,
+    )}>
+      {live && (
+        <motion.span
+          className={cn("shrink-0", isColored ? "text-white/80" : "text-violet-500")}
+          animate={{ opacity: [0.3, 1, 0.3], scale: [0.85, 1.15, 0.85] }}
+          transition={{ duration: 1.6, repeat: Infinity, delay: 0 }}
+        >
+          <RiFlashlightLine className="w-2.5 h-2.5" />
+        </motion.span>
+      )}
+      <span>{tagName || style.label}</span>
+      {live && (
+        <motion.span
+          className={cn("shrink-0", isColored ? "text-white/80" : "text-violet-500")}
+          animate={{ opacity: [0.3, 1, 0.3], scale: [0.85, 1.15, 0.85] }}
+          transition={{ duration: 1.6, repeat: Infinity, delay: 0.8 }}
+        >
+          <RiFlashlightLine className="w-2.5 h-2.5" />
+        </motion.span>
+      )}
+      {live && isColored && (
+        <motion.span
+          className="absolute inset-0 pointer-events-none"
+          style={{ background: "linear-gradient(105deg, transparent 20%, rgba(255,255,255,0.28) 50%, transparent 80%)" }}
+          initial={{ x: "-120%" }}
+          animate={{ x: "220%" }}
+          transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut", repeatDelay: 2.2 }}
+        />
+      )}
     </span>
   );
 }
@@ -121,6 +153,7 @@ export default function StampPage() {
   const [loading, setLoading] = React.useState(false);
   const [form, setForm] = React.useState(defaultForm);
   const [submitResult, setSubmitResult] = React.useState<{ id: string; txtRecord: string; txtValue: string } | null>(null);
+  const [formError, setFormError] = React.useState<string | null>(null);
   const [verifyState, setVerifyState] = React.useState<"idle" | "loading" | "fail" | "dnsError">("idle");
   const [resolvers, setResolvers] = React.useState<{ name: string; ip: string; latencyMs: number; found: boolean; error: string | null }[]>([]);
   const [countdown, setCountdown] = React.useState(0);
@@ -159,21 +192,35 @@ export default function StampPage() {
 
   function update(field: string, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }));
+    if (formError) setFormError(null);
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.tagName || !form.nickname || !form.email) {
-      toast.error("请填写必填项");
+    setFormError(null);
+    if (!form.tagName.trim()) {
+      setFormError("请填写标签名称");
+      return;
+    }
+    if (!form.nickname.trim()) {
+      setFormError("请填写昵称");
+      return;
+    }
+    if (!form.email.trim()) {
+      setFormError("请填写邮箱地址");
       return;
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
-      toast.error("请输入有效的邮箱地址");
+      setFormError("邮箱格式不正确，请检查");
       return;
     }
     let cleanLink = form.link.trim();
     if (cleanLink && !/^https?:\/\//i.test(cleanLink)) {
       cleanLink = `https://${cleanLink}`;
+    }
+    if (cleanLink && !/^https?:\/\/[^\s]+\.[^\s]+/i.test(cleanLink)) {
+      setFormError("跳转链接格式不正确（如 https://example.com）");
+      return;
     }
     setLoading(true);
     try {
@@ -187,7 +234,7 @@ export default function StampPage() {
       setSubmitResult({ id: data.id, txtRecord: data.txtRecord, txtValue: data.txtValue });
       goToStep("verify");
     } catch (err: any) {
-      toast.error(err.message || "提交失败，请重试");
+      setFormError(err.message || "提交失败，请稍后重试");
     } finally {
       setLoading(false);
     }
@@ -428,9 +475,28 @@ export default function StampPage() {
                               ))}
                             </div>
                             {form.tagName && (
-                              <div className="mt-2.5 px-3 py-2 rounded-lg bg-muted/30 border border-border/50 flex items-center gap-2">
-                                <span className="text-[11px] text-muted-foreground">预览</span>
-                                <TagBadge tagName={form.tagName} tagStyle={form.tagStyle} />
+                              <div className="mt-3 px-4 py-3 rounded-xl bg-gradient-to-br from-violet-50/60 to-fuchsia-50/40 dark:from-violet-950/30 dark:to-fuchsia-950/20 border border-violet-200/50 dark:border-violet-800/30 space-y-2">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[10px] font-bold uppercase tracking-widest text-violet-400/70">实时预览</span>
+                                  <div className="flex-1 h-px bg-violet-200/40 dark:bg-violet-800/30" />
+                                </div>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <TagBadge tagName={form.tagName} tagStyle={form.tagStyle} live />
+                                  {form.nickname && (
+                                    <span className="text-xs text-muted-foreground">by <span className="font-medium text-foreground">{form.nickname}</span></span>
+                                  )}
+                                </div>
+                                {form.description && (
+                                  <p className="text-[11px] leading-relaxed" style={{
+                                    background: "linear-gradient(135deg, #7c3aed 0%, #a855f7 40%, #ec4899 70%, #f59e0b 100%)",
+                                    WebkitBackgroundClip: "text",
+                                    WebkitTextFillColor: "transparent",
+                                    backgroundClip: "text",
+                                    fontStyle: "italic",
+                                  }}>
+                                    &ldquo;{form.description}&rdquo;
+                                  </p>
+                                )}
                               </div>
                             )}
                           </div>
@@ -484,21 +550,40 @@ export default function StampPage() {
                                 value={form.email}
                                 onChange={(e) => update("email", e.target.value)}
                                 placeholder="your@email.com"
-                                type="email"
+                                type="text"
+                                inputMode="email"
+                                autoComplete="email"
                               />
                               <p className="text-[11px] text-muted-foreground mt-1">用于接收验证结果，不会公开展示</p>
                             </div>
                           </div>
                         </div>
 
+                        <AnimatePresence>
+                          {formError && (
+                            <motion.div
+                              key="form-error"
+                              initial={{ opacity: 0, y: -6, height: 0 }}
+                              animate={{ opacity: 1, y: 0, height: "auto" }}
+                              exit={{ opacity: 0, y: -4, height: 0 }}
+                              transition={{ duration: 0.18 }}
+                              className="overflow-hidden"
+                            >
+                              <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-red-50/80 dark:bg-red-950/30 border border-red-200/60 dark:border-red-800/40 text-red-600 dark:text-red-400">
+                                <RiAlertLine className="w-4 h-4 shrink-0" />
+                                <span className="text-sm">{formError}</span>
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                         <Button
                           type="submit"
                           disabled={loading}
-                          className="w-full gap-2 h-11 bg-violet-500 hover:bg-violet-600 active:bg-violet-700 text-white border-0 rounded-xl text-sm font-semibold shadow-sm shadow-violet-500/20 transition-all"
+                          className="w-full gap-2 h-12 bg-violet-500 hover:bg-violet-600 active:bg-violet-700 text-white border-0 rounded-xl text-sm font-semibold shadow-md shadow-violet-500/25 transition-all hover:shadow-lg hover:shadow-violet-500/30 hover:-translate-y-px"
                         >
                           {loading
                             ? <><RiLoader4Line className="w-4 h-4 animate-spin" />提交中…</>
-                            : <><RiArrowRightLine className="w-4 h-4" />下一步：DNS 验证</>
+                            : <><RiFlashlightLine className="w-4 h-4" />下一步：DNS 验证</>
                           }
                         </Button>
                       </form>
@@ -691,8 +776,8 @@ export default function StampPage() {
                         <p className="text-sm text-muted-foreground mb-4 leading-relaxed">
                           品牌认领已生效，查询 <strong className="text-foreground font-mono">{domain}</strong> 时将显示标签：
                         </p>
-                        <div className="inline-flex items-center justify-center py-3 px-5 rounded-xl bg-muted/30 border border-border/50 mb-6">
-                          <TagBadge tagName={form.tagName} tagStyle={form.tagStyle} />
+                        <div className="inline-flex items-center justify-center py-3 px-5 rounded-xl bg-gradient-to-br from-violet-50/60 to-fuchsia-50/40 dark:from-violet-950/30 dark:to-fuchsia-950/20 border border-violet-200/40 dark:border-violet-800/30 mb-6">
+                          <TagBadge tagName={form.tagName} tagStyle={form.tagStyle} live />
                         </div>
                         <div className="space-y-2.5">
                           <Button

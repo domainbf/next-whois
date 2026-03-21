@@ -5,10 +5,11 @@ import dns from "dns/promises";
 
 const RESOLVERS = [
   { name: "Google DNS", ip: "8.8.8.8" },
+  { name: "Cloudflare", ip: "1.1.1.1" },
   { name: "系统DNS", ip: "" },
 ];
 
-const QUERY_TIMEOUT_MS = 5000;
+const QUERY_TIMEOUT_MS = 4000;
 
 async function queryResolver(
   host: string,
