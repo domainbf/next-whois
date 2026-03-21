@@ -1,0 +1,95 @@
+import React from "react";
+import Head from "next/head";
+import Link from "next/link";
+import { RiArrowLeftSLine, RiExternalLinkLine, RiToolsLine } from "@remixicon/react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { TOOL_CATEGORIES } from "@/lib/tools-data";
+import { motion } from "framer-motion";
+
+export default function ToolsPage() {
+  return (
+    <>
+      <Head>
+        <title>域名工具箱 — NEXT WHOIS</title>
+      </Head>
+      <ScrollArea className="w-full h-[calc(100vh-4rem)]">
+        <main className="w-full max-w-3xl mx-auto px-4 sm:px-6 py-6">
+          {/* Header */}
+          <div className="flex items-center gap-3 mb-6">
+            <Link
+              href="/"
+              className="p-1.5 rounded-lg hover:bg-muted/60 transition-colors text-muted-foreground hover:text-foreground"
+            >
+              <RiArrowLeftSLine className="w-5 h-5" />
+            </Link>
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 rounded-lg bg-primary/10 text-primary">
+                <RiToolsLine className="w-5 h-5" />
+              </div>
+              <div>
+                <h1 className="text-lg font-bold leading-none">域名工具箱</h1>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  精选域名行业常用工具与平台
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Categories */}
+          <div className="space-y-8">
+            {TOOL_CATEGORIES.map((cat, ci) => (
+              <motion.section
+                key={cat.id}
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.25, delay: ci * 0.06 }}
+              >
+                <div className="flex items-center gap-3 mb-3">
+                  <h2 className="text-base font-bold tracking-tight">
+                    {cat.title}
+                  </h2>
+                  <div className="h-px flex-1 bg-border" />
+                  <span className="text-[10px] text-muted-foreground tabular-nums">
+                    {cat.tools.length}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2.5">
+                  {cat.tools.map((tool, ti) => (
+                    <motion.a
+                      key={`${tool.name}-${ti}`}
+                      href={tool.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      initial={{ opacity: 0, scale: 0.97 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ duration: 0.2, delay: ci * 0.06 + ti * 0.02 }}
+                      whileTap={{ scale: 0.97 }}
+                      className="group flex flex-col gap-1 p-3 rounded-xl border border-border bg-muted/10 hover:bg-muted/40 hover:border-primary/30 transition-all duration-150 cursor-pointer"
+                    >
+                      <div className="flex items-start justify-between gap-1">
+                        <span className="text-sm font-semibold leading-tight truncate">
+                          {tool.name}
+                        </span>
+                        <RiExternalLinkLine className="w-3 h-3 text-muted-foreground/40 group-hover:text-primary/60 shrink-0 mt-0.5 transition-colors" />
+                      </div>
+                      <span className="text-[11px] text-muted-foreground leading-snug line-clamp-2">
+                        {tool.desc}
+                      </span>
+                    </motion.a>
+                  ))}
+                </div>
+              </motion.section>
+            ))}
+          </div>
+
+          <div className="mt-10 pt-6 border-t border-border/40 text-center">
+            <p className="text-[11px] text-muted-foreground/50">
+              NiC.RW 提供技术支持 · 仅供参考，请自行判断工具的适用性
+            </p>
+          </div>
+        </main>
+      </ScrollArea>
+    </>
+  );
+}

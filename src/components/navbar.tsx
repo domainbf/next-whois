@@ -12,6 +12,7 @@ import {
   RiServerLine,
   RiHistoryLine,
   RiDeleteBinLine,
+  RiToolsLine,
 } from "@remixicon/react";
 import { useTheme } from "next-themes";
 import { motion, AnimatePresence } from "framer-motion";
@@ -389,6 +390,11 @@ export function Navbar() {
         <div className="flex items-center gap-3">
           <ThemeToggle />
           <LanguageSwitcher />
+          <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }} transition={{ type: "spring", stiffness: 400, damping: 17 }}>
+            <Link href="/tools" className="p-2 pr-0 inline-flex items-center justify-center" aria-label="域名工具箱">
+              <RiToolsLine className="h-[1rem] w-[1rem]" />
+            </Link>
+          </motion.div>
           <HistoryDrawer />
           <NavDrawer />
         </div>
