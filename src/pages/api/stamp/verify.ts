@@ -23,6 +23,29 @@ const DOH_RESOLVERS = [
 ];
 
 const QUERY_TIMEOUT_MS = 5000;
+const HTTP_TIMEOUT_MS = 6000;
+
+async function checkHttpFile(
+  domain: string,
+  expectedValue: string
+): Promise<{ found: boolean; latencyMs: number; error: string | null; url: string }> {
+  const url = `https://${domain}/.well-known/next-whois-verify.txt`;
+  const start = Date.now();
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), HTTP_TIMEOUT_MS);
+  try {
+    const res = await fetch(url, { signal: ctrl.signal, redirect: "follow" });
+    clearTimeout(timer);
+    if (!res.ok) return { found: false, latencyMs: Date.now() - start, error: `HTTP ${res.status}`, url };
+    const body = await res.text();
+    const found = body.trim().includes(expectedValue);
+    return { found, latencyMs: Date.now() - start, error: null, url };
+  } catch (err: any) {
+    clearTimeout(timer);
+    const isTimeout = err.name === "AbortError";
+    return { found: false, latencyMs: Date.now() - start, error: isTimeout ? "timeout" : "fetch_error", url };
+  }
+}
 
 async function queryUDP(
   host: string,
@@ -125,7 +148,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const expectedValue = `next-whois-verify=${verifyToken}`;
   const txtHost = `_next-whois.${cleanDomain}`;
 
-  const [udpResults, dohResults] = await Promise.all([
+  const [udpResults, dohResults, httpResult] = await Promise.all([
     Promise.all(
       UDP_RESOLVERS.map(async (r): Promise<ResolverResult> => {
         const { records, latencyMs, error } = await queryUDP(txtHost, r.ip, QUERY_TIMEOUT_MS);
@@ -152,10 +175,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         };
       })
     ),
+    checkHttpFile(cleanDomain, expectedValue),
   ]);
 
   const allResults = [...udpResults, ...dohResults];
-  const verified = allResults.some((r) => r.found);
+  const dnsVerified = allResults.some((r) => r.found);
+  const verified = dnsVerified || httpResult.found;
   const allDnsError = allResults.every(
     (r) => r.error === "dns_error" || r.error === "timeout"
   );
@@ -165,6 +190,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(200).json({
       verified: true,
       resolvers: allResults,
+      httpCheck: httpResult,
       txtRecord: txtHost,
     });
   }
@@ -173,6 +199,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     verified: false,
     dnsError: allDnsError,
     resolvers: allResults,
+    httpCheck: httpResult,
     expected: expectedValue,
   });
 }

@@ -26,6 +26,8 @@ import {
   RiArrowRightLine,
   RiCloudLine,
   RiDeleteBinLine,
+  RiFileTextLine,
+  RiLinkLine,
 } from "@remixicon/react";
 import { toast } from "sonner";
 
@@ -159,6 +161,8 @@ export default function StampPage() {
   const [formError, setFormError] = React.useState<string | null>(null);
   const [verifyState, setVerifyState] = React.useState<"idle" | "loading" | "fail" | "dnsError">("idle");
   const [resolvers, setResolvers] = React.useState<{ name: string; proto?: string; ip?: string; latencyMs: number; found: boolean; error: string | null }[]>([]);
+  const [httpCheck, setHttpCheck] = React.useState<{ found: boolean; latencyMs: number; error: string | null; url: string } | null>(null);
+  const [verifyTab, setVerifyTab] = React.useState<"dns" | "http">("dns");
   const [countdown, setCountdown] = React.useState(0);
   const pollRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const countdownRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
@@ -282,6 +286,7 @@ export default function StampPage() {
       });
       const data = await res.json();
       if (data.resolvers) setResolvers(data.resolvers);
+      if (data.httpCheck) setHttpCheck(data.httpCheck);
       if (data.verified) {
         goToStep("done");
         setVerifyState("idle");
@@ -640,130 +645,309 @@ export default function StampPage() {
                   {step === "verify" && submitResult && (
                     <div className="space-y-4">
                       <div className="glass-panel border border-border rounded-2xl p-5 space-y-4">
-                        <div>
-                          <h2 className="text-sm font-bold flex items-center gap-2 mb-1">
-                            <RiServerLine className="w-4 h-4 text-sky-500" />
-                            {s("verify_dns_title")}
-                          </h2>
-                          <p className="text-xs text-muted-foreground">
-                            {s("verify_dns_desc", { sec: AUTO_POLL_SEC })}
-                          </p>
+
+                        {/* Method tab switcher */}
+                        <div className="flex rounded-xl bg-muted/40 border border-border/50 p-1 gap-1">
+                          <button
+                            type="button"
+                            onClick={() => setVerifyTab("dns")}
+                            className={cn(
+                              "flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-semibold transition-all",
+                              verifyTab === "dns"
+                                ? "bg-background shadow-sm text-foreground border border-border/60"
+                                : "text-muted-foreground hover:text-foreground"
+                            )}
+                          >
+                            <RiServerLine className="w-3.5 h-3.5" />
+                            DNS TXT
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setVerifyTab("http")}
+                            className={cn(
+                              "flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-semibold transition-all",
+                              verifyTab === "http"
+                                ? "bg-background shadow-sm text-foreground border border-border/60"
+                                : "text-muted-foreground hover:text-foreground"
+                            )}
+                          >
+                            <RiFlashlightLine className="w-3.5 h-3.5 text-sky-500" />
+                            {isZh ? "文件验证（快速）" : "File Verify (Fast)"}
+                          </button>
                         </div>
 
-                        {/* DNS record table */}
-                        <div className="rounded-xl border border-border/60 overflow-hidden divide-y divide-border/60">
-                          {[
-                            { label: s("dns_field_type"), value: "TXT", mono: false, copyable: false },
-                            { label: s("dns_field_host"), value: submitResult.txtRecord, mono: true, color: "text-violet-600 dark:text-violet-400", copyable: true },
-                            { label: s("dns_field_value"), value: submitResult.txtValue, mono: true, color: "text-emerald-600 dark:text-emerald-400", copyable: true },
-                            { label: "TTL", value: s("dns_field_ttl_val"), mono: false, copyable: false },
-                          ].map((row) => (
-                            <div key={row.label} className="flex items-center justify-between gap-3 px-3 py-2.5 bg-muted/20">
-                              <div className="shrink-0 w-20">
-                                <p className="text-[10px] font-bold text-muted-foreground/70 uppercase tracking-wider">{row.label}</p>
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className={cn("text-xs break-all leading-relaxed", row.mono ? "font-mono" : "", row.color || "text-foreground")}>
-                                  {row.value}
-                                </p>
-                              </div>
-                              {row.copyable && (
-                                <button
-                                  onClick={() => copyText(row.value)}
-                                  className="shrink-0 p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-                                >
-                                  <RiFileCopyLine className="w-3.5 h-3.5" />
-                                </button>
-                              )}
+                        {/* ── DNS tab ── */}
+                        {verifyTab === "dns" && (
+                          <>
+                            <div>
+                              <h2 className="text-sm font-bold flex items-center gap-2 mb-1">
+                                <RiServerLine className="w-4 h-4 text-sky-500" />
+                                {s("verify_dns_title")}
+                              </h2>
+                              <p className="text-xs text-muted-foreground">
+                                {s("verify_dns_desc", { sec: AUTO_POLL_SEC })}
+                              </p>
                             </div>
-                          ))}
-                        </div>
 
-                        {/* DNS status */}
-                        <div>
-                          <div className="flex items-center justify-between mb-2">
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
-                              <RiWifiLine className="w-3 h-3" />
-                              {s("parallel_check")}
-                            </p>
-                            <div className="flex items-center gap-2 text-[10px] text-muted-foreground/50">
-                              <span className="flex items-center gap-0.5"><RiServerLine className="w-2.5 h-2.5" />UDP</span>
-                              <span className="flex items-center gap-0.5"><RiCloudLine className="w-2.5 h-2.5" />DoH</span>
-                            </div>
-                          </div>
-                          {(() => {
-                            const PLACEHOLDER_RESOLVERS = [
-                              { name: "Google DNS", proto: "udp" },
-                              { name: "Cloudflare", proto: "udp" },
-                              { name: "Quad9", proto: "udp" },
-                              { name: "System DNS", proto: "udp" },
-                              { name: "Google DoH", proto: "doh" },
-                              { name: "Cloudflare DoH", proto: "doh" },
-                            ];
-                            const isLoading = verifyState === "loading";
-                            const displayList = isLoading && resolvers.length === 0
-                              ? PLACEHOLDER_RESOLVERS
-                              : resolvers;
-                            return (
-                              <div className="grid grid-cols-2 gap-1.5">
-                                {displayList.map((item, i) => {
-                                  const r = resolvers[i];
-                                  const isDoh = (item as any).proto === "doh";
-                                  return (
-                                    <div
-                                      key={item.name}
-                                      className={cn(
-                                        "rounded-lg border px-2.5 py-2 flex items-center gap-2 transition-all",
-                                        r?.found
-                                          ? "border-emerald-300/60 bg-emerald-50/50 dark:bg-emerald-950/25"
-                                          : r?.error === "timeout"
-                                          ? "border-amber-200/50 bg-amber-50/30 dark:bg-amber-950/15"
-                                          : "border-border/50 bg-muted/15"
-                                      )}
+                            {/* DNS record table */}
+                            <div className="rounded-xl border border-border/60 overflow-hidden divide-y divide-border/60">
+                              {[
+                                { label: s("dns_field_type"), value: "TXT", mono: false, copyable: false },
+                                { label: s("dns_field_host"), value: submitResult.txtRecord, mono: true, color: "text-violet-600 dark:text-violet-400", copyable: true },
+                                { label: s("dns_field_value"), value: submitResult.txtValue, mono: true, color: "text-emerald-600 dark:text-emerald-400", copyable: true },
+                                { label: "TTL", value: s("dns_field_ttl_val"), mono: false, copyable: false },
+                              ].map((row) => (
+                                <div key={row.label} className="flex items-center justify-between gap-3 px-3 py-2.5 bg-muted/20">
+                                  <div className="shrink-0 w-20">
+                                    <p className="text-[10px] font-bold text-muted-foreground/70 uppercase tracking-wider">{row.label}</p>
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className={cn("text-xs break-all leading-relaxed", row.mono ? "font-mono" : "", row.color || "text-foreground")}>
+                                      {row.value}
+                                    </p>
+                                  </div>
+                                  {row.copyable && (
+                                    <button
+                                      onClick={() => copyText(row.value)}
+                                      className="shrink-0 p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
                                     >
-                                      <div className={cn(
-                                        "shrink-0 w-6 h-6 rounded-md flex items-center justify-center",
-                                        r?.found ? "bg-emerald-500/10"
-                                          : r?.error === "timeout" ? "bg-amber-500/10"
-                                          : "bg-muted/40"
-                                      )}>
-                                        {isLoading
-                                          ? <RiLoader4Line className="w-3 h-3 animate-spin text-muted-foreground/60" />
-                                          : r?.found
-                                          ? <RiCheckLine className="w-3 h-3 text-emerald-500" />
-                                          : r?.error === "timeout"
-                                          ? <RiTimeLine className="w-3 h-3 text-amber-500" />
-                                          : isDoh
-                                          ? <RiCloudLine className="w-3 h-3 text-muted-foreground/30" />
-                                          : <RiWifiLine className="w-3 h-3 text-muted-foreground/30" />
-                                        }
-                                      </div>
-                                      <div className="min-w-0 flex-1">
-                                        <p className={cn(
-                                          "text-[11px] font-semibold leading-none truncate",
-                                          r?.found ? "text-emerald-700 dark:text-emerald-300"
-                                            : r?.error === "timeout" ? "text-amber-600 dark:text-amber-400"
-                                            : "text-muted-foreground"
-                                        )}>{item.name}</p>
-                                        <p className="text-[10px] text-muted-foreground/50 mt-0.5">
-                                          {isLoading ? s("checking")
-                                            : r?.found ? `${r.latencyMs}ms ✓`
-                                            : r?.error === "timeout" ? s("timeout")
-                                            : r?.error ? s("not_found_dns")
-                                            : s("waiting")}
-                                        </p>
-                                      </div>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            );
-                          })()}
-                        </div>
+                                      <RiFileCopyLine className="w-3.5 h-3.5" />
+                                    </button>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
 
-                        {/* Status messages */}
+                            {/* DNS status grid */}
+                            <div>
+                              <div className="flex items-center justify-between mb-2">
+                                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
+                                  <RiWifiLine className="w-3 h-3" />
+                                  {s("parallel_check")}
+                                </p>
+                                <div className="flex items-center gap-2 text-[10px] text-muted-foreground/50">
+                                  <span className="flex items-center gap-0.5"><RiServerLine className="w-2.5 h-2.5" />UDP</span>
+                                  <span className="flex items-center gap-0.5"><RiCloudLine className="w-2.5 h-2.5" />DoH</span>
+                                </div>
+                              </div>
+                              {(() => {
+                                const PLACEHOLDER_RESOLVERS = [
+                                  { name: "Google DNS", proto: "udp" },
+                                  { name: "Cloudflare", proto: "udp" },
+                                  { name: "Quad9", proto: "udp" },
+                                  { name: "System DNS", proto: "udp" },
+                                  { name: "Google DoH", proto: "doh" },
+                                  { name: "Cloudflare DoH", proto: "doh" },
+                                ];
+                                const isLoading = verifyState === "loading";
+                                const displayList = isLoading && resolvers.length === 0
+                                  ? PLACEHOLDER_RESOLVERS
+                                  : resolvers;
+                                return (
+                                  <div className="grid grid-cols-2 gap-1.5">
+                                    {displayList.map((item, i) => {
+                                      const r = resolvers[i];
+                                      const isDoh = (item as any).proto === "doh";
+                                      return (
+                                        <div
+                                          key={item.name}
+                                          className={cn(
+                                            "rounded-lg border px-2.5 py-2 flex items-center gap-2 transition-all",
+                                            r?.found
+                                              ? "border-emerald-300/60 bg-emerald-50/50 dark:bg-emerald-950/25"
+                                              : r?.error === "timeout"
+                                              ? "border-amber-200/50 bg-amber-50/30 dark:bg-amber-950/15"
+                                              : "border-border/50 bg-muted/15"
+                                          )}
+                                        >
+                                          <div className={cn(
+                                            "shrink-0 w-6 h-6 rounded-md flex items-center justify-center",
+                                            r?.found ? "bg-emerald-500/10"
+                                              : r?.error === "timeout" ? "bg-amber-500/10"
+                                              : "bg-muted/40"
+                                          )}>
+                                            {isLoading
+                                              ? <RiLoader4Line className="w-3 h-3 animate-spin text-muted-foreground/60" />
+                                              : r?.found
+                                              ? <RiCheckLine className="w-3 h-3 text-emerald-500" />
+                                              : r?.error === "timeout"
+                                              ? <RiTimeLine className="w-3 h-3 text-amber-500" />
+                                              : isDoh
+                                              ? <RiCloudLine className="w-3 h-3 text-muted-foreground/30" />
+                                              : <RiWifiLine className="w-3 h-3 text-muted-foreground/30" />
+                                            }
+                                          </div>
+                                          <div className="min-w-0 flex-1">
+                                            <p className={cn(
+                                              "text-[11px] font-semibold leading-none truncate",
+                                              r?.found ? "text-emerald-700 dark:text-emerald-300"
+                                                : r?.error === "timeout" ? "text-amber-600 dark:text-amber-400"
+                                                : "text-muted-foreground"
+                                            )}>{item.name}</p>
+                                            <p className="text-[10px] text-muted-foreground/50 mt-0.5">
+                                              {isLoading ? s("checking")
+                                                : r?.found ? `${r.latencyMs}ms ✓`
+                                                : r?.error === "timeout" ? s("timeout")
+                                                : r?.error ? s("not_found_dns")
+                                                : s("waiting")}
+                                            </p>
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                );
+                              })()}
+                            </div>
+                          </>
+                        )}
+
+                        {/* ── HTTP File tab ── */}
+                        {verifyTab === "http" && (
+                          <>
+                            <div>
+                              <h2 className="text-sm font-bold flex items-center gap-2 mb-1">
+                                <RiFileTextLine className="w-4 h-4 text-sky-500" />
+                                {isZh ? "文件验证（无需等待 DNS 传播）" : "File Verification (No DNS wait)"}
+                              </h2>
+                              <p className="text-xs text-muted-foreground leading-relaxed">
+                                {isZh
+                                  ? "在你的网站根目录放一个文件，系统立即检测，通常几秒内完成验证。"
+                                  : "Place a file on your website's root. Verification completes in seconds — no DNS propagation needed."}
+                              </p>
+                            </div>
+
+                            {/* Step-by-step instructions */}
+                            <div className="space-y-2.5">
+                              {/* Step 1: Create file */}
+                              <div className="rounded-xl border border-border/60 bg-muted/15 overflow-hidden">
+                                <div className="px-3 py-2 border-b border-border/40 flex items-center gap-2">
+                                  <span className="w-4 h-4 rounded-full bg-sky-500 text-white text-[9px] font-bold flex items-center justify-center shrink-0">1</span>
+                                  <p className="text-[11px] font-semibold text-foreground">
+                                    {isZh ? "创建验证文件" : "Create verification file"}
+                                  </p>
+                                </div>
+                                <div className="px-3 py-2.5 space-y-2">
+                                  <div>
+                                    <p className="text-[10px] font-bold text-muted-foreground/70 uppercase mb-1 flex items-center gap-1">
+                                      <RiLinkLine className="w-2.5 h-2.5" />
+                                      {isZh ? "文件路径" : "File path"}
+                                    </p>
+                                    <div className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-background border border-border/50">
+                                      <code className="text-[11px] font-mono text-violet-600 dark:text-violet-400 flex-1 break-all">
+                                        {`/.well-known/next-whois-verify.txt`}
+                                      </code>
+                                      <button
+                                        onClick={() => copyText(`/.well-known/next-whois-verify.txt`)}
+                                        className="shrink-0 p-1 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                                      >
+                                        <RiFileCopyLine className="w-3 h-3" />
+                                      </button>
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <p className="text-[10px] font-bold text-muted-foreground/70 uppercase mb-1 flex items-center gap-1">
+                                      <RiFileTextLine className="w-2.5 h-2.5" />
+                                      {isZh ? "文件内容" : "File content"}
+                                    </p>
+                                    <div className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-background border border-border/50">
+                                      <code className="text-[11px] font-mono text-emerald-600 dark:text-emerald-400 flex-1 break-all">
+                                        {submitResult.txtValue}
+                                      </code>
+                                      <button
+                                        onClick={() => copyText(submitResult.txtValue)}
+                                        className="shrink-0 p-1 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                                      >
+                                        <RiFileCopyLine className="w-3 h-3" />
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Step 2: Verify access URL */}
+                              <div className="rounded-xl border border-border/60 bg-muted/15 overflow-hidden">
+                                <div className="px-3 py-2 border-b border-border/40 flex items-center gap-2">
+                                  <span className="w-4 h-4 rounded-full bg-sky-500 text-white text-[9px] font-bold flex items-center justify-center shrink-0">2</span>
+                                  <p className="text-[11px] font-semibold text-foreground">
+                                    {isZh ? "确认文件可公开访问" : "Confirm the file is publicly accessible"}
+                                  </p>
+                                </div>
+                                <div className="px-3 py-2.5">
+                                  <div className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-background border border-border/50">
+                                    <RiLinkLine className="w-3 h-3 text-muted-foreground/50 shrink-0" />
+                                    <code className="text-[11px] font-mono text-sky-600 dark:text-sky-400 flex-1 break-all">
+                                      {`https://${domain}/.well-known/next-whois-verify.txt`}
+                                    </code>
+                                    <button
+                                      onClick={() => copyText(`https://${domain}/.well-known/next-whois-verify.txt`)}
+                                      className="shrink-0 p-1 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                                    >
+                                      <RiFileCopyLine className="w-3 h-3" />
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* HTTP check result */}
+                            {httpCheck && (
+                              <div className={cn(
+                                "flex items-center gap-3 px-3 py-3 rounded-xl border transition-all",
+                                httpCheck.found
+                                  ? "border-emerald-300/60 bg-emerald-50/50 dark:bg-emerald-950/25"
+                                  : httpCheck.error === "timeout"
+                                  ? "border-amber-200/50 bg-amber-50/30 dark:bg-amber-950/15"
+                                  : "border-border/50 bg-muted/20"
+                              )}>
+                                <div className={cn(
+                                  "shrink-0 w-8 h-8 rounded-lg flex items-center justify-center",
+                                  httpCheck.found ? "bg-emerald-500/10"
+                                    : httpCheck.error === "timeout" ? "bg-amber-500/10"
+                                    : "bg-muted/40"
+                                )}>
+                                  {verifyState === "loading"
+                                    ? <RiLoader4Line className="w-4 h-4 animate-spin text-muted-foreground/60" />
+                                    : httpCheck.found
+                                    ? <RiCheckLine className="w-4 h-4 text-emerald-500" />
+                                    : httpCheck.error === "timeout"
+                                    ? <RiTimeLine className="w-4 h-4 text-amber-500" />
+                                    : <RiFileTextLine className="w-4 h-4 text-muted-foreground/40" />
+                                  }
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <p className={cn(
+                                    "text-xs font-semibold",
+                                    httpCheck.found ? "text-emerald-700 dark:text-emerald-300"
+                                      : httpCheck.error === "timeout" ? "text-amber-600 dark:text-amber-400"
+                                      : "text-muted-foreground"
+                                  )}>
+                                    {httpCheck.found
+                                      ? (isZh ? "文件已找到，验证成功！" : "File found — verified!")
+                                      : httpCheck.error === "timeout"
+                                      ? (isZh ? "请求超时" : "Request timed out")
+                                      : httpCheck.error
+                                      ? (isZh ? `文件未找到 (${httpCheck.error})` : `File not found (${httpCheck.error})`)
+                                      : (isZh ? "文件未找到" : "File not found")}
+                                  </p>
+                                  <p className="text-[10px] text-muted-foreground/50 mt-0.5">
+                                    {isZh ? "HTTP 检测" : "HTTP check"} · {httpCheck.latencyMs}ms
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+                            {!httpCheck && verifyState === "loading" && (
+                              <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-border/50 bg-muted/20">
+                                <RiLoader4Line className="w-4 h-4 animate-spin text-muted-foreground/60 shrink-0" />
+                                <p className="text-xs text-muted-foreground">{isZh ? "正在检测文件…" : "Checking file…"}</p>
+                              </div>
+                            )}
+                          </>
+                        )}
+
+                        {/* Status messages (shared) */}
                         <AnimatePresence mode="wait">
-                          {verifyState === "fail" && resolvers.length > 0 && (
+                          {verifyState === "fail" && resolvers.length > 0 && verifyTab === "dns" && (
                             <motion.div
                               key="fail"
                               initial={{ opacity: 0, y: 6 }}
@@ -778,7 +962,7 @@ export default function StampPage() {
                               </p>
                             </motion.div>
                           )}
-                          {verifyState === "dnsError" && (
+                          {verifyState === "dnsError" && verifyTab === "dns" && (
                             <motion.div
                               key="dnsError"
                               initial={{ opacity: 0, y: 6 }}
@@ -795,7 +979,7 @@ export default function StampPage() {
                           )}
                         </AnimatePresence>
 
-                        {/* Button + countdown */}
+                        {/* Verify button + countdown */}
                         <Button
                           onClick={() => handleVerify(false)}
                           disabled={verifyState === "loading"}
@@ -814,18 +998,20 @@ export default function StampPage() {
                         )}
                       </div>
 
-                      {/* Tips card */}
-                      <div className="rounded-2xl border border-border/50 bg-muted/20 p-4 flex gap-3">
-                        <div className="shrink-0 w-7 h-7 rounded-lg bg-amber-500/10 flex items-center justify-center mt-0.5">
-                          <RiAlertLine className="w-3.5 h-3.5 text-amber-500" />
+                      {/* Tips card — only DNS tab */}
+                      {verifyTab === "dns" && (
+                        <div className="rounded-2xl border border-border/50 bg-muted/20 p-4 flex gap-3">
+                          <div className="shrink-0 w-7 h-7 rounded-lg bg-amber-500/10 flex items-center justify-center mt-0.5">
+                            <RiAlertLine className="w-3.5 h-3.5 text-amber-500" />
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-xs font-semibold text-foreground">{s("dns_prop_title")}</p>
+                            <p className="text-[11px] text-muted-foreground leading-relaxed">
+                              {s("dns_prop_prefix")}<strong className="text-foreground">{s("dns_prop_highlight")}</strong>{s("dns_prop_suffix")}
+                            </p>
+                          </div>
                         </div>
-                        <div className="space-y-1">
-                          <p className="text-xs font-semibold text-foreground">{s("dns_prop_title")}</p>
-                          <p className="text-[11px] text-muted-foreground leading-relaxed">
-                            {s("dns_prop_prefix")}<strong className="text-foreground">{s("dns_prop_highlight")}</strong>{s("dns_prop_suffix")}
-                          </p>
-                        </div>
-                      </div>
+                      )}
 
                       <button
                         onClick={() => { stopPolling(); goToStep("form"); }}
