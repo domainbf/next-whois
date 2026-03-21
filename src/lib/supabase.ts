@@ -7,19 +7,22 @@ let _client: SupabaseClient | null = null;
  * Uses REST/HTTP under the hood — works from any environment including Replit,
  * where direct TCP connections to Supabase are blocked.
  *
- * Required secrets:
- *   SUPABASE_URL         – e.g. https://xxxx.supabase.co
- *   SUPABASE_SERVICE_KEY – service_role key from Supabase project settings
+ * Required secrets (any one of the key names is accepted):
+ *   SUPABASE_URL              – e.g. https://xxxx.supabase.co
+ *   SUPABASE_SERVICE_KEY      – service_role key (Replit naming)
+ *   SUPABASE_SERVICE_ROLE_KEY – service_role key (Vercel/Supabase standard naming)
  */
 export function getSupabase(): SupabaseClient | null {
   if (_client) return _client;
 
   const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_KEY;
+  const key =
+    process.env.SUPABASE_SERVICE_KEY ||
+    process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!url || !key) {
     console.error(
-      "[supabase] Missing SUPABASE_URL or SUPABASE_SERVICE_KEY. " +
+      "[supabase] Missing SUPABASE_URL or SUPABASE_SERVICE_KEY / SUPABASE_SERVICE_ROLE_KEY. " +
         "Add them as secrets in your project settings.",
     );
     return null;
