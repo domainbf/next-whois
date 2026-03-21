@@ -2062,10 +2062,10 @@ function AvailableDomainCard({ domain, locale }: { domain: string; locale: strin
 function ResultSkeleton() {
   return (
     <div className="space-y-6 mt-6">
-      <div className="text-center py-4">
-        <p className="text-sm text-muted-foreground font-medium animate-pulse">
+      <div className="text-center py-6">
+        <span className="text-shimmer text-base font-semibold tracking-wide select-none">
           我知道你很急，但请你先别急
-        </p>
+        </span>
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <div className="lg:col-span-8 space-y-6">

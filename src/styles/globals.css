@@ -178,3 +178,33 @@ button {
   -webkit-user-select: none;
   user-select: none;
 }
+
+@keyframes text-shimmer {
+  0% { background-position: -300% center; }
+  100% { background-position: 300% center; }
+}
+
+@keyframes text-float {
+  0%, 100% { transform: translateY(0px); opacity: 0.85; }
+  50% { transform: translateY(-3px); opacity: 1; }
+}
+
+.text-shimmer {
+  background: linear-gradient(
+    90deg,
+    hsl(var(--muted-foreground) / 0.6) 0%,
+    hsl(var(--muted-foreground) / 0.6) 20%,
+    hsl(var(--foreground)) 40%,
+    #ffffff 50%,
+    hsl(var(--foreground)) 60%,
+    hsl(var(--muted-foreground) / 0.6) 80%,
+    hsl(var(--muted-foreground) / 0.6) 100%
+  );
+  background-size: 300% auto;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: text-shimmer 2.8s linear infinite, text-float 3.5s ease-in-out infinite;
+  display: inline-block;
+}

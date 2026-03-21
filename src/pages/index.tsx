@@ -177,6 +177,11 @@ export default function HomePage() {
             transition={{ duration: 0.2 }}
             className="space-y-6 mt-2"
           >
+            <div className="text-center py-4">
+              <span className="text-shimmer text-base font-semibold tracking-wide select-none">
+                我知道你很急，但请你先别急
+              </span>
+            </div>
             <div className="glass-panel border border-border rounded-xl p-6 sm:p-8">
               <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                 <div className="space-y-3 flex-1">
