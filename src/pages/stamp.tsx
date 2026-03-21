@@ -128,7 +128,9 @@ const stepVariants = {
   exit: (dir: number) => ({ opacity: 0, x: dir > 0 ? -32 : 32, filter: "blur(3px)" }),
 };
 
-const AUTO_POLL_SEC = 15;
+// Progressive backoff schedule (seconds between each auto-check):
+// 30s → 1m → 2m → 5m → 10m → 15m → 20m  ≈ 53 min total, 7 auto-checks
+const POLL_SCHEDULE = [30, 60, 120, 300, 600, 900, 1200] as const;
 
 type StampKey = keyof (typeof en)["stamp"];
 
@@ -159,7 +161,9 @@ export default function StampPage() {
   const [form, setForm] = React.useState(defaultForm);
   const [submitResult, setSubmitResult] = React.useState<{ id: string; txtRecord: string; txtValue: string } | null>(null);
   const [formError, setFormError] = React.useState<string | null>(null);
-  const [verifyState, setVerifyState] = React.useState<"idle" | "loading" | "fail" | "dnsError">("idle");
+  const [verifyState, setVerifyState] = React.useState<"idle" | "loading" | "fail" | "dnsError" | "giveUp">("idle");
+  const [pollAttempt, setPollAttempt] = React.useState(0);
+  const pollAttemptRef = React.useRef(0);
   const [resolvers, setResolvers] = React.useState<{ name: string; proto?: string; ip?: string; latencyMs: number; found: boolean; error: string | null }[]>([]);
   const [httpCheck, setHttpCheck] = React.useState<{ found: boolean; latencyMs: number; error: string | null; url: string } | null>(null);
   const [verifyTab, setVerifyTab] = React.useState<"dns" | "http">("dns");
@@ -293,8 +297,26 @@ export default function StampPage() {
 
   const handleVerify = React.useCallback(async (silent = false) => {
     if (!submitResult) return;
+    // Manual trigger resets the backoff counter
+    if (!silent) {
+      pollAttemptRef.current = 0;
+      setPollAttempt(0);
+    }
     setVerifyState("loading");
     stopPolling();
+
+    function scheduleNext() {
+      const attempt = pollAttemptRef.current;
+      if (attempt < POLL_SCHEDULE.length) {
+        pollAttemptRef.current = attempt + 1;
+        setPollAttempt(attempt + 1);
+        startCountdown(POLL_SCHEDULE[attempt], () => handleVerify(true));
+      } else {
+        setVerifyState("giveUp");
+        setCountdown(0);
+      }
+    }
+
     try {
       const res = await fetch("/api/stamp/verify", {
         method: "POST",
@@ -313,10 +335,10 @@ export default function StampPage() {
       } else {
         setVerifyState("fail");
       }
-      startCountdown(AUTO_POLL_SEC, () => handleVerify(true));
+      scheduleNext();
     } catch {
       setVerifyState("fail");
-      startCountdown(AUTO_POLL_SEC, () => handleVerify(true));
+      scheduleNext();
     }
   }, [submitResult, domain]);
 
@@ -1099,25 +1121,89 @@ export default function StampPage() {
                               </p>
                             </motion.div>
                           )}
+                          {verifyState === "giveUp" && (
+                            <motion.div
+                              key="giveUp"
+                              initial={{ opacity: 0, y: 6 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: -4 }}
+                              transition={{ duration: 0.2 }}
+                              className="rounded-xl border border-orange-200/60 bg-orange-50/50 dark:bg-orange-950/20 overflow-hidden"
+                            >
+                              <div className="flex gap-2.5 p-3">
+                                <div className="shrink-0 w-7 h-7 rounded-lg bg-orange-500/10 flex items-center justify-center mt-0.5">
+                                  <RiAlertLine className="w-3.5 h-3.5 text-orange-500" />
+                                </div>
+                                <div className="space-y-1 flex-1 min-w-0">
+                                  <p className="text-xs font-semibold text-orange-700 dark:text-orange-400">
+                                    {isZh
+                                      ? `已自动检测 ${POLL_SCHEDULE.length} 次，未检测到 TXT 记录`
+                                      : `Checked ${POLL_SCHEDULE.length} times — TXT record not found`}
+                                  </p>
+                                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                                    {isZh
+                                      ? "你的域名后缀可能不支持标准 DNS TXT 查询，建议改用文件验证，无需等待 DNS 传播，几秒内完成。"
+                                      : "Your TLD may not support standard DNS TXT queries. Try file verification instead — it's instant, no DNS wait required."}
+                                  </p>
+                                  <button
+                                    type="button"
+                                    onClick={() => setVerifyTab("http")}
+                                    className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-orange-600 dark:text-orange-400 hover:underline"
+                                  >
+                                    <RiFlashlightLine className="w-3.5 h-3.5" />
+                                    {isZh ? "切换到文件验证 →" : "Switch to file verification →"}
+                                  </button>
+                                </div>
+                              </div>
+                            </motion.div>
+                          )}
                         </AnimatePresence>
 
-                        {/* Verify button + countdown */}
-                        <Button
-                          onClick={() => handleVerify(false)}
-                          disabled={verifyState === "loading"}
-                          className="w-full gap-2 h-11 bg-violet-500 hover:bg-violet-600 active:bg-violet-700 text-white border-0 rounded-xl text-sm font-semibold shadow-sm shadow-violet-500/20 transition-all"
-                        >
-                          {verifyState === "loading"
-                            ? <><RiLoader4Line className="w-4 h-4 animate-spin" />{s("checking")}</>
-                            : <><RiRefreshLine className="w-4 h-4" />{s("btn_check")}</>
-                          }
-                        </Button>
-                        {countdown > 0 && verifyState !== "loading" && (
-                          <p className="text-[11px] text-muted-foreground/70 text-center flex items-center justify-center gap-1">
-                            <RiTimeLine className="w-3 h-3" />
-                            {s("auto_check", { sec: countdown })}
-                          </p>
-                        )}
+                        {/* Verify button + progress + countdown */}
+                        <div className="space-y-2">
+                          <Button
+                            onClick={() => handleVerify(false)}
+                            disabled={verifyState === "loading"}
+                            className="w-full gap-2 h-11 bg-violet-500 hover:bg-violet-600 active:bg-violet-700 text-white border-0 rounded-xl text-sm font-semibold shadow-sm shadow-violet-500/20 transition-all"
+                          >
+                            {verifyState === "loading"
+                              ? <><RiLoader4Line className="w-4 h-4 animate-spin" />{s("checking")}</>
+                              : <><RiRefreshLine className="w-4 h-4" />{s("btn_check")}</>
+                            }
+                          </Button>
+                          {/* Attempt progress bar */}
+                          {pollAttempt > 0 && verifyState !== "giveUp" && (
+                            <div className="space-y-1">
+                              <div className="flex justify-between items-center text-[10px] text-muted-foreground/60">
+                                <span className="flex items-center gap-1">
+                                  <RiTimeLine className="w-3 h-3" />
+                                  {isZh ? `已检测 ${pollAttempt}/${POLL_SCHEDULE.length} 次` : `Attempt ${pollAttempt}/${POLL_SCHEDULE.length}`}
+                                </span>
+                                {countdown > 0 && verifyState !== "loading" && (
+                                  <span>
+                                    {countdown >= 60
+                                      ? (isZh ? `${Math.ceil(countdown / 60)} 分钟后自动检测` : `next check in ${Math.ceil(countdown / 60)}m`)
+                                      : (isZh ? `${countdown} 秒后自动检测` : `next check in ${countdown}s`)}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="w-full h-1 rounded-full bg-muted/40 overflow-hidden">
+                                <div
+                                  className="h-full rounded-full bg-violet-400/60 transition-all duration-500"
+                                  style={{ width: `${(pollAttempt / POLL_SCHEDULE.length) * 100}%` }}
+                                />
+                              </div>
+                            </div>
+                          )}
+                          {pollAttempt === 0 && countdown > 0 && verifyState !== "loading" && (
+                            <p className="text-[11px] text-muted-foreground/70 text-center flex items-center justify-center gap-1">
+                              <RiTimeLine className="w-3 h-3" />
+                              {countdown >= 60
+                                ? (isZh ? `${Math.ceil(countdown / 60)} 分钟后自动检测` : `next check in ${Math.ceil(countdown / 60)}m`)
+                                : (isZh ? `${countdown} 秒后自动检测` : `next check in ${countdown}s`)}
+                            </p>
+                          )}
+                        </div>
                       </div>
 
                       {/* Tips card — only DNS tab */}
