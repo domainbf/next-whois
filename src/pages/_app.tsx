@@ -7,6 +7,7 @@ import { siteTitle, siteDescription, siteKeywords } from "@/lib/seo";
 import { Navbar } from "@/components/navbar";
 import { useRouter } from "next/router";
 import { AnimatePresence, motion } from "framer-motion";
+import { SessionProvider } from "next-auth/react";
 
 const pageVariants = {
   initial: { opacity: 0, y: 8, scale: 0.995 },
@@ -19,11 +20,12 @@ const pageTransition = {
   ease: [0.25, 0.46, 0.45, 0.94],
 };
 
-export default function App({ Component, pageProps }: AppProps) {
+export default function App({ Component, pageProps: { session, ...pageProps } }: AppProps) {
   const origin: string = pageProps.origin || "";
   const router = useRouter();
 
   return (
+    <SessionProvider session={session}>
     <>
       <Head>
         <title>{siteTitle}</title>
@@ -92,5 +94,6 @@ export default function App({ Component, pageProps }: AppProps) {
         </div>
       </ThemeProvider>
     </>
+    </SessionProvider>
   );
 }

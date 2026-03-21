@@ -39,3 +39,4 @@ externalPort = 80
 SUPABASE_URL = "https://zyhyufxaccjvmkbyivxz.supabase.co"
 RESEND_FROM_EMAIL = "noreply@x.rw"
 NEXT_PUBLIC_APP_URL = "https://x.rw"
+NEXTAUTH_SECRET = "3878ffd6c3e0ce5cf4b9d0fc239d41ae50c0cd8bbdc3a249a1d9a7ba1354a953"

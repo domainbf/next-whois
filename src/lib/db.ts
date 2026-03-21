@@ -4,6 +4,13 @@ let pool: Pool | null = null;
 let migrated = false;
 
 const TABLES = [
+  `CREATE TABLE IF NOT EXISTS users (
+    id           VARCHAR(16)  PRIMARY KEY,
+    email        TEXT         UNIQUE NOT NULL,
+    password_hash TEXT        NOT NULL,
+    name         TEXT,
+    created_at   TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+  )`,
   `CREATE TABLE IF NOT EXISTS stamps (
     id           VARCHAR(16)  PRIMARY KEY,
     domain       TEXT         NOT NULL,

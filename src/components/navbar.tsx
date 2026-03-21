@@ -13,6 +13,9 @@ import {
   RiHistoryLine,
   RiDeleteBinLine,
   RiToolsLine,
+  RiUserLine,
+  RiLogoutBoxLine,
+  RiDashboardLine,
 } from "@remixicon/react";
 import { useTheme } from "next-themes";
 import { motion, AnimatePresence } from "framer-motion";
@@ -31,6 +34,7 @@ import {
 import { listHistory, removeHistory } from "@/lib/history";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
+import { useSession, signOut } from "next-auth/react";
 
 function HistoryTypeIcon({ type }: { type: string }) {
   const config: Record<string, { label: string; color: string }> = {
@@ -365,6 +369,72 @@ export function NavDrawer() {
   );
 }
 
+function UserButton() {
+  const { data: session, status } = useSession();
+  const [open, setOpen] = React.useState(false);
+  const ref = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  if (status === "loading") return null;
+
+  if (status === "unauthenticated") {
+    return (
+      <motion.div whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.88 }} transition={{ type: "spring", stiffness: 500, damping: 22 }} style={{ display: "inline-flex" }}>
+        <Link href="/login" className="p-2 inline-flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors" aria-label="登录">
+          <RiUserLine className="h-[1rem] w-[1rem]" />
+        </Link>
+      </motion.div>
+    );
+  }
+
+  const name = session?.user?.name || session?.user?.email || "U";
+  const initials = name.slice(0, 1).toUpperCase();
+
+  return (
+    <div ref={ref} className="relative inline-flex">
+      <motion.button
+        whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.88 }}
+        transition={{ type: "spring", stiffness: 500, damping: 22 }}
+        onClick={() => setOpen(v => !v)}
+        className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center"
+        aria-label="用户菜单"
+      >
+        {initials}
+      </motion.button>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.92, y: -4 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.92, y: -4 }}
+            transition={{ duration: 0.14 }}
+            className="absolute right-0 top-8 w-44 bg-background border border-border rounded-xl shadow-lg overflow-hidden z-50"
+          >
+            <div className="px-3 py-2 border-b border-border/50">
+              <p className="text-[10px] text-muted-foreground truncate">{session?.user?.email}</p>
+            </div>
+            <Link href="/dashboard" onClick={() => setOpen(false)}
+              className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-muted transition-colors">
+              <RiDashboardLine className="w-3.5 h-3.5 text-muted-foreground" />用户中心
+            </Link>
+            <button onClick={() => { setOpen(false); signOut({ callbackUrl: "/" }); }}
+              className="w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-muted transition-colors text-red-500">
+              <RiLogoutBoxLine className="w-3.5 h-3.5" />退出登录
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 export function Navbar() {
   const isVisible = useScrollDirection();
 
@@ -398,6 +468,7 @@ export function Navbar() {
               <RiToolsLine className="h-[1rem] w-[1rem]" />
             </Link>
           </motion.div>
+          <UserButton />
           <HistoryDrawer />
           <NavDrawer />
         </div>
