@@ -10,10 +10,12 @@ import {
   RiCloseLine,
   RiGlobalLine,
   RiServerLine,
+  RiHistoryLine,
+  RiDeleteBinLine,
 } from "@remixicon/react";
 import { useTheme } from "next-themes";
 import { motion, AnimatePresence } from "framer-motion";
-import { cn } from "@/lib/utils";
+import { cn, toSearchURI } from "@/lib/utils";
 import { VERSION } from "@/lib/env";
 import Link from "next/link";
 import { useScrollDirection } from "@/hooks/useScrollDirection";
@@ -23,7 +25,167 @@ import {
   DrawerContent,
   DrawerTrigger,
   DrawerClose,
+  DrawerTitle,
 } from "@/components/ui/drawer";
+import { listHistory, removeHistory } from "@/lib/history";
+import { Badge } from "@/components/ui/badge";
+import { format } from "date-fns";
+
+function HistoryTypeIcon({ type }: { type: string }) {
+  const config: Record<string, { label: string; color: string }> = {
+    domain: { label: "🌐", color: "text-blue-500" },
+    ipv4: { label: "4", color: "text-emerald-600" },
+    ipv6: { label: "6", color: "text-purple-500" },
+    asn: { label: "AS", color: "text-orange-500" },
+    cidr: { label: "/", color: "text-pink-500" },
+  };
+  const c = config[type] || { label: "?", color: "text-gray-500" };
+  if (type === "domain") {
+    return <RiGlobalLine className={cn("w-3.5 h-3.5", c.color)} />;
+  }
+  return <span className={cn("text-[9px] font-bold", c.color)}>{c.label}</span>;
+}
+
+function HistoryDrawer() {
+  const [open, setOpen] = React.useState(false);
+  const [mounted, setMounted] = React.useState(false);
+  const [refreshTick, setRefreshTick] = React.useState(0);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const allHistory = React.useMemo(() => {
+    if (!mounted) return [];
+    return listHistory().sort((a, b) => b.timestamp - a.timestamp);
+  }, [mounted, refreshTick, open]);
+
+  const grouped = React.useMemo(() => {
+    const groups: { label: string; items: typeof allHistory }[] = [];
+    if (!allHistory.length) return groups;
+    let curLabel = "";
+    let curItems: typeof allHistory = [];
+    for (const item of allHistory) {
+      const date = new Date(item.timestamp);
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const yesterday = new Date(today.getTime() - 86400000);
+      const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+      let label =
+        d.getTime() === today.getTime()
+          ? "今天"
+          : d.getTime() === yesterday.getTime()
+            ? "昨天"
+            : date.getFullYear() === now.getFullYear()
+              ? format(date, "M月d日")
+              : format(date, "yyyy年M月d日");
+      if (label !== curLabel) {
+        if (curItems.length) groups.push({ label: curLabel, items: curItems });
+        curLabel = label;
+        curItems = [item];
+      } else {
+        curItems.push(item);
+      }
+    }
+    if (curItems.length) groups.push({ label: curLabel, items: curItems });
+    return groups;
+  }, [allHistory]);
+
+  const handleDelete = React.useCallback(
+    (e: React.MouseEvent, query: string) => {
+      e.preventDefault();
+      e.stopPropagation();
+      removeHistory(query);
+      setRefreshTick((t) => t + 1);
+    },
+    [],
+  );
+
+  return (
+    <Drawer open={open} onOpenChange={setOpen}>
+      <DrawerTrigger asChild>
+        <motion.button
+          className="p-2 pr-0 inline-flex items-center justify-center"
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.95 }}
+          transition={{ type: "spring", stiffness: 400, damping: 17 }}
+          aria-label="搜索记录"
+        >
+          <RiHistoryLine className="h-[1rem] w-[1rem]" />
+        </motion.button>
+      </DrawerTrigger>
+
+      <DrawerContent className="max-h-[82vh]">
+        <div className="flex items-center justify-between px-4 pt-4 pb-2">
+          <DrawerTitle className="text-sm font-semibold">搜索记录</DrawerTitle>
+          <DrawerClose asChild>
+            <button className="p-1.5 rounded-lg hover:bg-muted/50 transition-colors">
+              <RiCloseLine className="w-4 h-4 text-muted-foreground" />
+            </button>
+          </DrawerClose>
+        </div>
+        <div className="overflow-y-auto px-2 pb-8">
+          {allHistory.length > 0 ? (
+            <div className="space-y-1">
+              {grouped.map((group) => (
+                <div key={group.label}>
+                  <div className="flex items-center gap-3 py-2 px-1">
+                    <div className="h-px flex-1 bg-border" />
+                    <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider shrink-0">
+                      {group.label}
+                    </span>
+                    <div className="h-px flex-1 bg-border" />
+                  </div>
+                  {group.items.map((item) => (
+                    <DrawerClose
+                      asChild
+                      key={`${item.query}-${item.timestamp}`}
+                    >
+                      <Link
+                        href={toSearchURI(item.query)}
+                        className="group flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-muted/50 transition-colors"
+                      >
+                        <div className="w-7 h-7 rounded-md grid place-items-center border border-border bg-muted/20 shrink-0">
+                          <HistoryTypeIcon type={item.queryType} />
+                        </div>
+                        <span className="text-sm font-medium truncate flex-1 min-w-0">
+                          {item.query}
+                        </span>
+                        <Badge
+                          variant="outline"
+                          className="text-[8px] px-1.5 py-0 uppercase tracking-wider shrink-0"
+                        >
+                          {item.queryType}
+                        </Badge>
+                        <span className="text-[11px] text-muted-foreground tabular-nums shrink-0">
+                          {format(item.timestamp, "h:mm a")}
+                        </span>
+                        <button
+                          className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-destructive/10 shrink-0"
+                          onClick={(e) => handleDelete(e, item.query)}
+                        >
+                          <RiDeleteBinLine className="w-3.5 h-3.5 text-muted-foreground hover:text-destructive" />
+                        </button>
+                      </Link>
+                    </DrawerClose>
+                  ))}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <RiHistoryLine className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
+              <p className="text-sm text-muted-foreground">暂无搜索记录</p>
+              <p className="text-xs text-muted-foreground/60 mt-1">
+                搜索域名、IP、ASN 后将显示在这里
+              </p>
+            </div>
+          )}
+        </div>
+      </DrawerContent>
+    </Drawer>
+  );
+}
 
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme();
@@ -227,6 +389,7 @@ export function Navbar() {
         <div className="flex items-center gap-3">
           <ThemeToggle />
           <LanguageSwitcher />
+          <HistoryDrawer />
           <NavDrawer />
         </div>
       </nav>
