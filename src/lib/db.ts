@@ -86,12 +86,49 @@ export function getConnectionSource(): string {
   return getConnectionString()?.source ?? "none";
 }
 
+/**
+ * Strip `sslmode` from a connection URL's query string so that the `ssl`
+ * option we pass to Pool (rejectUnauthorized: false) is the sole SSL authority.
+ * When `sslmode=verify-full` is left in the URL, node-postgres respects it and
+ * rejects Supabase's certificate chain, even if rejectUnauthorized is false.
+ */
+function stripSslMode(connectionString: string): string {
+  try {
+    const u = new URL(connectionString);
+    u.searchParams.delete("sslmode");
+    return u.toString();
+  } catch {
+    return connectionString;
+  }
+}
+
+/**
+ * A connection is "local" (no SSL) when:
+ *   - host is localhost or 127.0.0.1, OR
+ *   - host is a bare name with no dots (e.g. "helium", Replit internal hosts)
+ * Everything else (supabase.com, RDS, etc.) gets SSL with rejectUnauthorized:false.
+ */
+function isLocalHost(connectionString: string): boolean {
+  try {
+    const { hostname } = new URL(connectionString);
+    return (
+      hostname === "localhost" ||
+      hostname === "127.0.0.1" ||
+      !hostname.includes(".")       // bare hostname → internal network
+    );
+  } catch {
+    return (
+      connectionString.includes("localhost") ||
+      connectionString.includes("127.0.0.1")
+    );
+  }
+}
+
 function makePool(connectionString: string): Pool {
-  const isLocal =
-    connectionString.includes("localhost") ||
-    connectionString.includes("127.0.0.1");
+  const isLocal = isLocalHost(connectionString);
+  const cleanUrl = isLocal ? connectionString : stripSslMode(connectionString);
   const p = new Pool({
-    connectionString,
+    connectionString: cleanUrl,
     ssl: isLocal ? false : { rejectUnauthorized: false },
     max: 3,
     connectionTimeoutMillis: 10000,
