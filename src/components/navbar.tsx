@@ -36,6 +36,8 @@ import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { useSession, signOut } from "next-auth/react";
 
+const TAP = { whileTap: { scale: 0.88 }, transition: { type: "spring" as const, stiffness: 500, damping: 22 } };
+
 function HistoryTypeIcon({ type }: { type: string }) {
   const config: Record<string, { label: string; color: string }> = {
     domain: { label: "🌐", color: "text-blue-500" },
@@ -111,10 +113,8 @@ function HistoryDrawer() {
       <DrawerTrigger asChild>
         <motion.button
           type="button"
-          className="p-2 pr-0 inline-flex items-center justify-center"
-          whileHover={{ scale: 1.08 }}
-          whileTap={{ scale: 0.88 }}
-          transition={{ type: "spring", stiffness: 500, damping: 22 }}
+          className="p-2 pr-0 inline-flex items-center justify-center touch-manipulation"
+          {...TAP}
           aria-label="搜索记录"
         >
           <RiHistoryLine className="h-[1rem] w-[1rem]" />
@@ -125,7 +125,7 @@ function HistoryDrawer() {
         <div className="flex items-center justify-between px-4 pt-4 pb-2">
           <DrawerTitle className="text-sm font-semibold">搜索记录</DrawerTitle>
           <DrawerClose asChild>
-            <button className="p-1.5 rounded-lg hover:bg-muted/50 transition-colors">
+            <button className="p-1.5 rounded-lg hover:bg-muted/50 transition-colors touch-manipulation">
               <RiCloseLine className="w-4 h-4 text-muted-foreground" />
             </button>
           </DrawerClose>
@@ -149,7 +149,7 @@ function HistoryDrawer() {
                     >
                       <Link
                         href={toSearchURI(item.query)}
-                        className="group flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-muted/50 transition-colors"
+                        className="group flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-muted/50 active:bg-muted transition-colors touch-manipulation"
                       >
                         <div className="w-7 h-7 rounded-md grid place-items-center border border-border bg-muted/20 shrink-0">
                           <HistoryTypeIcon type={item.queryType} />
@@ -167,7 +167,7 @@ function HistoryDrawer() {
                           {format(item.timestamp, "h:mm a")}
                         </span>
                         <button
-                          className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-destructive/10 shrink-0"
+                          className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-destructive/10 shrink-0 touch-manipulation"
                           onClick={(e) => handleDelete(e, item.query)}
                         >
                           <RiDeleteBinLine className="w-3.5 h-3.5 text-muted-foreground hover:text-destructive" />
@@ -218,11 +218,9 @@ export function ThemeToggle() {
   return (
     <motion.button
       type="button"
-      className={`p-2 pr-0`}
+      className="p-2 pr-0 touch-manipulation"
       onClick={toggleTheme}
-      whileHover={{ scale: 1.08 }}
-      whileTap={{ scale: 0.88 }}
-      transition={{ type: "spring", stiffness: 500, damping: 22 }}
+      {...TAP}
     >
       <AnimatePresence mode="wait">
         <motion.div
@@ -285,10 +283,8 @@ export function NavDrawer() {
       <DrawerTrigger asChild>
         <motion.button
           type="button"
-          className="p-2 pr-0 inline-flex items-center justify-center"
-          whileHover={{ scale: 1.08 }}
-          whileTap={{ scale: 0.88 }}
-          transition={{ type: "spring", stiffness: 500, damping: 22 }}
+          className="p-2 pr-0 inline-flex items-center justify-center touch-manipulation"
+          {...TAP}
         >
           <AnimatePresence mode="wait">
             <motion.div
@@ -321,7 +317,7 @@ export function NavDrawer() {
               </p>
             </div>
             <DrawerClose asChild>
-              <button className="rounded-full p-1.5 hover:bg-muted transition-colors">
+              <button className="rounded-full p-1.5 hover:bg-muted transition-colors touch-manipulation">
                 <RiCloseLine className="h-4 w-4 text-muted-foreground" />
               </button>
             </DrawerClose>
@@ -330,7 +326,7 @@ export function NavDrawer() {
           <div className="grid grid-cols-3 gap-3">
             {navItems.map((item) => (
               <DrawerClose key={item.href} asChild>
-                <Link href={item.href}>
+                <Link href={item.href} className="touch-manipulation">
                   <motion.div
                     className={cn(
                       "flex flex-col items-center gap-2.5 p-4 rounded-2xl",
@@ -386,8 +382,12 @@ function UserButton() {
 
   if (status === "unauthenticated") {
     return (
-      <motion.div whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.88 }} transition={{ type: "spring", stiffness: 500, damping: 22 }} style={{ display: "inline-flex" }}>
-        <Link href="/login" className="p-2 inline-flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors" aria-label="登录">
+      <motion.div {...TAP} style={{ display: "inline-flex" }}>
+        <Link
+          href="/login"
+          className="p-2 inline-flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors touch-manipulation"
+          aria-label="登录"
+        >
           <RiUserLine className="h-[1rem] w-[1rem]" />
         </Link>
       </motion.div>
@@ -400,10 +400,9 @@ function UserButton() {
   return (
     <div ref={ref} className="relative inline-flex">
       <motion.button
-        whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.88 }}
-        transition={{ type: "spring", stiffness: 500, damping: 22 }}
+        {...TAP}
         onClick={() => setOpen(v => !v)}
-        className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center"
+        className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center touch-manipulation"
         aria-label="用户菜单"
       >
         {initials}
@@ -420,12 +419,17 @@ function UserButton() {
             <div className="px-3 py-2 border-b border-border/50">
               <p className="text-[10px] text-muted-foreground truncate">{session?.user?.email}</p>
             </div>
-            <Link href="/dashboard" onClick={() => setOpen(false)}
-              className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-muted transition-colors">
+            <Link
+              href="/dashboard"
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-muted active:bg-muted/70 transition-colors touch-manipulation"
+            >
               <RiDashboardLine className="w-3.5 h-3.5 text-muted-foreground" />用户中心
             </Link>
-            <button onClick={() => { setOpen(false); signOut({ callbackUrl: "/" }); }}
-              className="w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-muted transition-colors text-red-500">
+            <button
+              onClick={() => { setOpen(false); signOut({ callbackUrl: "/" }); }}
+              className="w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-muted active:bg-muted/70 transition-colors text-red-500 touch-manipulation"
+            >
               <RiLogoutBoxLine className="w-3.5 h-3.5" />退出登录
             </button>
           </motion.div>
@@ -450,21 +454,27 @@ export function Navbar() {
           isVisible ? "translate-y-0 opacity-100" : "-translate-y-4 opacity-0",
         )}
       >
-        <Link
-          href="/"
-          className="text-xs ml-2 font-medium tracking-wide hover:text-primary/80 transition-colors flex items-center"
-        >
-          NEXT WHOIS
-          <p className="text-xs text-muted-foreground ml-1.5">{VERSION}</p>
-        </Link>
+        <motion.div {...TAP}>
+          <Link
+            href="/"
+            className="text-xs ml-2 font-medium tracking-wide hover:text-primary/80 transition-colors flex items-center touch-manipulation select-none"
+          >
+            NEXT WHOIS
+            <p className="text-xs text-muted-foreground ml-1.5">{VERSION}</p>
+          </Link>
+        </motion.div>
 
         <div className="h-4 w-[1px] bg-primary/10" />
 
         <div className="flex items-center gap-3">
           <ThemeToggle />
           <LanguageSwitcher />
-          <motion.div whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.88 }} transition={{ type: "spring", stiffness: 500, damping: 22 }} style={{ display: "inline-flex" }}>
-            <Link href="/tools" className="p-2 pr-0 inline-flex items-center justify-center" aria-label="域名工具箱">
+          <motion.div {...TAP} style={{ display: "inline-flex" }}>
+            <Link
+              href="/tools"
+              className="p-2 pr-0 inline-flex items-center justify-center touch-manipulation"
+              aria-label="域名工具箱"
+            >
               <RiToolsLine className="h-[1rem] w-[1rem]" />
             </Link>
           </motion.div>
