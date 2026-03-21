@@ -1,6 +1,6 @@
 import { cn, toSearchURI } from "@/lib/utils";
 import Link from "next/link";
-import { RiDeleteBinLine, RiHistoryLine, RiGlobalLine } from "@remixicon/react";
+import { RiDeleteBinLine, RiHistoryLine, RiGlobalLine, RiCloseLine } from "@remixicon/react";
 import React, { useEffect, useMemo, useCallback } from "react";
 import { useRouter } from "next/router";
 import { detectQueryType, listHistory, removeHistory } from "@/lib/history";
@@ -11,10 +11,59 @@ import {
   KeyboardShortcut,
   SearchHotkeysText,
 } from "@/components/search_shortcuts";
+import {
+  Drawer,
+  DrawerTrigger,
+  DrawerContent,
+  DrawerTitle,
+  DrawerClose,
+} from "@/components/ui/drawer";
 import { useTranslation, TranslationKey } from "@/lib/i18n";
 import { motion } from "framer-motion";
 import { useSearchHotkeys } from "@/hooks/useSearchHotkeys";
 import { format } from "date-fns";
+
+function XRWDisplay() {
+  return (
+    <div className="relative flex items-center justify-center h-14 flex-1 min-w-0">
+      <svg
+        viewBox="0 0 240 56"
+        className="absolute inset-0 w-full h-full"
+        xmlns="http://www.w3.org/2000/svg"
+        aria-hidden
+      >
+        <rect
+          x="1.5" y="1.5" width="237" height="53"
+          rx="13" ry="13"
+          fill="none"
+          stroke="currentColor"
+          strokeOpacity="0.18"
+          strokeWidth="1.5"
+          strokeDasharray="8 5"
+          className="text-muted-foreground animate-dash-march"
+        />
+        <rect
+          x="5" y="5" width="230" height="46"
+          rx="10" ry="10"
+          fill="none"
+          stroke="currentColor"
+          strokeOpacity="0.08"
+          strokeWidth="1"
+          strokeDasharray="4 8"
+          className="text-muted-foreground animate-[dash-march_5s_linear_infinite_reverse]"
+        />
+      </svg>
+      <div className="flex flex-col items-center gap-0.5 z-10 select-none">
+        <span className="text-shimmer text-2xl font-bold tracking-[0.25em]">
+          X.RW
+        </span>
+        <span className="text-[8px] text-muted-foreground/40 uppercase tracking-[0.4em]">
+          next whois
+        </span>
+      </div>
+    </div>
+  );
+}
 
 function QueryTypeIcon({
   type,
@@ -167,7 +216,79 @@ export default function HomePage() {
               <KeyboardShortcut k="/" />
             </div>
           </div>
-          <SearchHotkeysText className="mt-2 px-1 justify-end" />
+          <SearchHotkeysText className="hidden sm:flex mt-2 px-1 justify-end" />
+
+          {/* Mobile only: animated X.RW brand + history drawer */}
+          <div className="sm:hidden mt-3 flex items-center gap-2">
+            <XRWDisplay />
+            <Drawer>
+              <DrawerTrigger asChild>
+                <button
+                  className="flex-shrink-0 w-11 h-11 rounded-xl border border-border bg-muted/20 active:bg-muted/60 transition-colors flex items-center justify-center"
+                  aria-label="搜索记录"
+                >
+                  <RiHistoryLine className="w-5 h-5 text-muted-foreground" />
+                </button>
+              </DrawerTrigger>
+              <DrawerContent className="max-h-[82vh]">
+                <div className="flex items-center justify-between px-4 pt-4 pb-2">
+                  <DrawerTitle className="text-sm font-semibold">搜索记录</DrawerTitle>
+                  <DrawerClose asChild>
+                    <button className="p-1.5 rounded-lg hover:bg-muted/50 transition-colors">
+                      <RiCloseLine className="w-4 h-4 text-muted-foreground" />
+                    </button>
+                  </DrawerClose>
+                </div>
+                <div className="overflow-y-auto px-2 pb-8">
+                  {allHistory.length > 0 ? (
+                    <div className="space-y-1">
+                      {groupedHistory.map((group) => (
+                        <div key={group.label}>
+                          <div className="flex items-center gap-3 py-2 px-1">
+                            <div className="h-px flex-1 bg-border" />
+                            <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider shrink-0">
+                              {group.label}
+                            </span>
+                            <div className="h-px flex-1 bg-border" />
+                          </div>
+                          {group.items.map((item) => (
+                            <DrawerClose asChild key={`m-${item.query}-${item.timestamp}`}>
+                              <Link
+                                href={toSearchURI(item.query)}
+                                onClick={() => handleSearch(item.query)}
+                                className="group flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-muted/50 transition-colors"
+                              >
+                                <div className="w-7 h-7 rounded-md grid place-items-center border border-border bg-muted/20 shrink-0">
+                                  <QueryTypeIcon type={item.queryType} />
+                                </div>
+                                <span className="text-sm font-medium truncate flex-1 min-w-0">
+                                  {item.query}
+                                </span>
+                                <Badge
+                                  variant="outline"
+                                  className="text-[8px] px-1.5 py-0 uppercase tracking-wider shrink-0"
+                                >
+                                  {item.queryType}
+                                </Badge>
+                                <span className="text-[11px] text-muted-foreground tabular-nums shrink-0">
+                                  {format(item.timestamp, "h:mm a")}
+                                </span>
+                              </Link>
+                            </DrawerClose>
+                          ))}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-12">
+                      <RiHistoryLine className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
+                      <p className="text-sm text-muted-foreground">{t("no_history_title")}</p>
+                    </div>
+                  )}
+                </div>
+              </DrawerContent>
+            </Drawer>
+          </div>
         </div>
 
         {loading && (
@@ -222,6 +343,7 @@ export default function HomePage() {
           initial={{ opacity: 0, y: 20 }}
           animate={loading ? { opacity: 0, y: -10 } : { opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
+          className="hidden sm:block"
         >
           {allHistory.length > 0 ? (
             <div className="space-y-1">

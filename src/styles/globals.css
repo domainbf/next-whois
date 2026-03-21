@@ -179,6 +179,14 @@ button {
   user-select: none;
 }
 
+@keyframes dash-march {
+  to { stroke-dashoffset: -26; }
+}
+
+.animate-dash-march {
+  animation: dash-march 3s linear infinite;
+}
+
 @keyframes text-shimmer {
   0% { background-position: -200% center; }
   100% { background-position: 200% center; }
