@@ -5,12 +5,13 @@ import type { GetServerSidePropsContext, NextApiRequest, NextApiResponse } from 
 export { authOptions };
 
 export async function getSession(
-  ...args:
-    | [GetServerSidePropsContext["req"], GetServerSidePropsContext["res"]]
-    | [NextApiRequest, NextApiResponse]
-    | []
+  req?: NextApiRequest | GetServerSidePropsContext["req"],
+  res?: NextApiResponse | GetServerSidePropsContext["res"]
 ) {
-  return getServerSession(...(args as Parameters<typeof getServerSession>), authOptions);
+  if (req && res) {
+    return getServerSession(req as NextApiRequest, res as NextApiResponse, authOptions);
+  }
+  return getServerSession(authOptions);
 }
 
 export type AuthUser = {
