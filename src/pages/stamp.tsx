@@ -161,15 +161,19 @@ export default function StampPage() {
   const [form, setForm] = React.useState(defaultForm);
   const [submitResult, setSubmitResult] = React.useState<{ id: string; txtRecord: string; txtValue: string } | null>(null);
   const [formError, setFormError] = React.useState<string | null>(null);
-  const [verifyState, setVerifyState] = React.useState<"idle" | "loading" | "fail" | "dnsError" | "giveUp">("idle");
+  const [verifyState, setVerifyState] = React.useState<"idle" | "loading" | "fail" | "dnsError" | "nearMatch" | "giveUp">("idle");
   const [pollAttempt, setPollAttempt] = React.useState(0);
   const pollAttemptRef = React.useRef(0);
   const notifiedRef = React.useRef(false);
-  const [resolvers, setResolvers] = React.useState<{ name: string; proto?: string; ip?: string; latencyMs: number; found: boolean; error: string | null }[]>([]);
-  const [httpCheck, setHttpCheck] = React.useState<{ found: boolean; latencyMs: number; error: string | null; url: string } | null>(null);
+  const [resolvers, setResolvers] = React.useState<{ name: string; proto?: string; latencyMs: number; found: boolean; nearMatch?: boolean; records: string[]; error: string | null }[]>([]);
+  const [anyNearMatch, setAnyNearMatch] = React.useState(false);
+  const [anyRecordFound, setAnyRecordFound] = React.useState(false);
+  const [udpBlocked, setUdpBlocked] = React.useState(false);
+  const [expectedVal, setExpectedVal] = React.useState<string | null>(null);
+  const [httpCheck, setHttpCheck] = React.useState<{ found: boolean; latencyMs: number; error: string | null; url: string; nearMatch?: boolean } | null>(null);
   const [verifyTab, setVerifyTab] = React.useState<"dns" | "http">("dns");
   const [quickTxtLoading, setQuickTxtLoading] = React.useState(false);
-  const [quickTxtResult, setQuickTxtResult] = React.useState<{ found: boolean; records: string[][]; latencyMs: number; resolvers: { name: string; records: string[][]; latencyMs: number; error?: string }[] } | null>(null);
+  const [quickTxtResult, setQuickTxtResult] = React.useState<{ found: boolean; flat: string[]; records: string[][]; latencyMs: number; resolvers: { name: string; records: string[][]; flat: string[]; latencyMs: number; error?: string }[] } | null>(null);
   const [countdown, setCountdown] = React.useState(0);
   const pollRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const countdownRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
@@ -336,10 +340,16 @@ export default function StampPage() {
       const data = await res.json();
       if (data.resolvers) setResolvers(data.resolvers);
       if (data.httpCheck) setHttpCheck(data.httpCheck);
+      if (data.anyNearMatch !== undefined) setAnyNearMatch(data.anyNearMatch);
+      if (data.anyRecordFound !== undefined) setAnyRecordFound(data.anyRecordFound);
+      if (data.udpBlocked !== undefined) setUdpBlocked(data.udpBlocked);
+      if (data.expected) setExpectedVal(data.expected);
       if (data.verified) {
         goToStep("done");
         setVerifyState("idle");
         return;
+      } else if (data.anyNearMatch) {
+        setVerifyState("nearMatch");
       } else if (data.dnsError) {
         setVerifyState("dnsError");
       } else {
@@ -806,65 +816,64 @@ export default function StampPage() {
                                   <div className="space-y-2">
                                     {/* Per-resolver results */}
                                     <div className="grid grid-cols-2 gap-1.5">
-                                      {quickTxtResult.resolvers.map((r) => (
-                                        <div
-                                          key={r.name}
-                                          className={cn(
+                                      {quickTxtResult.resolvers.map((r) => {
+                                        const hasRecords = (r.flat || r.records || []).length > 0;
+                                        return (
+                                          <div key={r.name} className={cn(
                                             "rounded-lg border px-2.5 py-2 flex items-center gap-2",
-                                            r.records.length > 0
-                                              ? "border-emerald-300/60 bg-emerald-50/50 dark:bg-emerald-950/25"
-                                              : r.error === "timeout"
-                                              ? "border-amber-200/50 bg-amber-50/30 dark:bg-amber-950/15"
+                                            hasRecords ? "border-emerald-300/60 bg-emerald-50/50 dark:bg-emerald-950/25"
+                                              : r.error === "timeout" || r.error === "udp_blocked" ? "border-amber-200/50 bg-amber-50/30 dark:bg-amber-950/15"
                                               : "border-border/50 bg-muted/10"
-                                          )}
-                                        >
-                                          <div className={cn(
-                                            "shrink-0 w-5 h-5 rounded-md flex items-center justify-center",
-                                            r.records.length > 0 ? "bg-emerald-500/10"
-                                              : r.error === "timeout" ? "bg-amber-500/10"
-                                              : "bg-muted/30"
                                           )}>
-                                            {r.records.length > 0
-                                              ? <RiCheckLine className="w-3 h-3 text-emerald-500" />
-                                              : r.error === "timeout"
-                                              ? <RiTimeLine className="w-3 h-3 text-amber-500" />
-                                              : <RiWifiLine className="w-3 h-3 text-muted-foreground/30" />
-                                            }
+                                            <div className={cn("shrink-0 w-5 h-5 rounded-md flex items-center justify-center",
+                                              hasRecords ? "bg-emerald-500/10" : r.error ? "bg-amber-500/10" : "bg-muted/30"
+                                            )}>
+                                              {hasRecords ? <RiCheckLine className="w-3 h-3 text-emerald-500" />
+                                                : r.error ? <RiTimeLine className="w-3 h-3 text-amber-500" />
+                                                : <RiWifiLine className="w-3 h-3 text-muted-foreground/30" />}
+                                            </div>
+                                            <div className="min-w-0 flex-1">
+                                              <p className={cn("text-[10px] font-semibold truncate",
+                                                hasRecords ? "text-emerald-700 dark:text-emerald-300"
+                                                  : r.error ? "text-amber-600 dark:text-amber-400"
+                                                  : "text-muted-foreground"
+                                              )}>{r.name}</p>
+                                              <p className="text-[10px] text-muted-foreground/50 mt-0.5">
+                                                {hasRecords ? `${r.latencyMs}ms · ${(r.flat || []).length} 条`
+                                                  : r.error === "timeout" ? (isZh ? "超时" : "timeout")
+                                                  : r.error === "udp_blocked" ? (isZh ? "UDP被阻" : "UDP blocked")
+                                                  : r.error === "no_record" ? (isZh ? "无记录" : "no record")
+                                                  : r.error ? r.error
+                                                  : (isZh ? "未找到" : "not found")}
+                                              </p>
+                                            </div>
                                           </div>
-                                          <div className="min-w-0 flex-1">
-                                            <p className={cn(
-                                              "text-[10px] font-semibold truncate",
-                                              r.records.length > 0 ? "text-emerald-700 dark:text-emerald-300"
-                                                : r.error === "timeout" ? "text-amber-600 dark:text-amber-400"
-                                                : "text-muted-foreground"
-                                            )}>{r.name}</p>
-                                            <p className="text-[10px] text-muted-foreground/50 mt-0.5">
-                                              {r.records.length > 0
-                                                ? `${r.latencyMs}ms ✓`
-                                                : r.error === "timeout" ? (isZh ? "超时" : "timeout")
-                                                : (isZh ? "未找到" : "not found")}
-                                            </p>
-                                          </div>
-                                        </div>
-                                      ))}
+                                        );
+                                      })}
                                     </div>
-                                    {/* Found records */}
-                                    {quickTxtResult.found && quickTxtResult.records.length > 0 && (
-                                      <div className="rounded-lg border border-emerald-300/50 bg-emerald-50/30 dark:bg-emerald-950/20 px-2.5 py-2">
-                                        <p className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 mb-1 flex items-center gap-1">
+                                    {/* Found records (raw content display) */}
+                                    {(quickTxtResult.flat || []).length > 0 && (
+                                      <div className="rounded-lg border border-emerald-300/50 bg-emerald-50/30 dark:bg-emerald-950/20 px-2.5 py-2 space-y-1">
+                                        <p className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
                                           <RiCheckLine className="w-3 h-3" />
-                                          {isZh ? "已找到 TXT 记录" : "TXT record found"}
+                                          {isZh ? `已找到 ${quickTxtResult.flat.length} 条 TXT 记录` : `Found ${quickTxtResult.flat.length} TXT record(s)`}
                                         </p>
-                                        {quickTxtResult.records.slice(0, 3).map((rr, i) => (
-                                          <p key={i} className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 break-all leading-relaxed">
-                                            {rr.join(" ")}
-                                          </p>
+                                        {quickTxtResult.flat.slice(0, 5).map((record, i) => (
+                                          <div key={i} className="flex items-start gap-1.5">
+                                            <code className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 break-all leading-relaxed flex-1 bg-emerald-500/5 rounded px-1.5 py-0.5">
+                                              {record}
+                                            </code>
+                                            <button onClick={() => navigator.clipboard.writeText(record).then(() => toast.success(s("copied")))}
+                                              className="shrink-0 p-1 rounded hover:bg-muted transition-colors text-muted-foreground/50 hover:text-foreground mt-0.5">
+                                              <RiFileCopyLine className="w-2.5 h-2.5" />
+                                            </button>
+                                          </div>
                                         ))}
                                       </div>
                                     )}
-                                    {!quickTxtResult.found && (
+                                    {(quickTxtResult.flat || []).length === 0 && (
                                       <p className="text-[11px] text-muted-foreground/70 text-center py-0.5">
-                                        {isZh ? "TXT 记录尚未传播，请稍后再查" : "TXT record not yet propagated — try again later"}
+                                        {isZh ? "该主机名下暂无 TXT 记录，请确认已正确添加后稍候再查" : "No TXT records found at this hostname — verify the record was added, then try again"}
                                       </p>
                                     )}
                                   </div>
@@ -886,12 +895,15 @@ export default function StampPage() {
                               </div>
                               {(() => {
                                 const PLACEHOLDER_RESOLVERS = [
-                                  { name: "Google DNS", proto: "udp" },
-                                  { name: "Cloudflare", proto: "udp" },
-                                  { name: "Quad9", proto: "udp" },
-                                  { name: "System DNS", proto: "udp" },
-                                  { name: "Google DoH", proto: "doh" },
+                                  { name: "Google DNS",    proto: "udp" },
+                                  { name: "Cloudflare",    proto: "udp" },
+                                  { name: "Quad9",         proto: "udp" },
+                                  { name: "OpenDNS",       proto: "udp" },
+                                  { name: "System DNS",    proto: "udp" },
+                                  { name: "Google DoH",    proto: "doh" },
                                   { name: "Cloudflare DoH", proto: "doh" },
+                                  { name: "Quad9 DoH",     proto: "doh" },
+                                  { name: "NextDNS DoH",   proto: "doh" },
                                 ];
                                 const isLoading = verifyState === "loading";
                                 const displayList = isLoading && resolvers.length === 0
@@ -909,7 +921,9 @@ export default function StampPage() {
                                             "rounded-lg border px-2.5 py-2 flex items-center gap-2 transition-all",
                                             r?.found
                                               ? "border-emerald-300/60 bg-emerald-50/50 dark:bg-emerald-950/25"
-                                              : r?.error === "timeout"
+                                              : r?.nearMatch
+                                              ? "border-orange-300/60 bg-orange-50/40 dark:bg-orange-950/20"
+                                              : r?.error === "timeout" || r?.error === "udp_blocked"
                                               ? "border-amber-200/50 bg-amber-50/30 dark:bg-amber-950/15"
                                               : "border-border/50 bg-muted/15"
                                           )}
@@ -917,14 +931,17 @@ export default function StampPage() {
                                           <div className={cn(
                                             "shrink-0 w-6 h-6 rounded-md flex items-center justify-center",
                                             r?.found ? "bg-emerald-500/10"
-                                              : r?.error === "timeout" ? "bg-amber-500/10"
+                                              : r?.nearMatch ? "bg-orange-500/10"
+                                              : r?.error === "timeout" || r?.error === "udp_blocked" ? "bg-amber-500/10"
                                               : "bg-muted/40"
                                           )}>
                                             {isLoading
                                               ? <RiLoader4Line className="w-3 h-3 animate-spin text-muted-foreground/60" />
                                               : r?.found
                                               ? <RiCheckLine className="w-3 h-3 text-emerald-500" />
-                                              : r?.error === "timeout"
+                                              : r?.nearMatch
+                                              ? <RiAlertLine className="w-3 h-3 text-orange-500" />
+                                              : r?.error === "timeout" || r?.error === "udp_blocked"
                                               ? <RiTimeLine className="w-3 h-3 text-amber-500" />
                                               : isDoh
                                               ? <RiCloudLine className="w-3 h-3 text-muted-foreground/30" />
@@ -935,13 +952,17 @@ export default function StampPage() {
                                             <p className={cn(
                                               "text-[11px] font-semibold leading-none truncate",
                                               r?.found ? "text-emerald-700 dark:text-emerald-300"
-                                                : r?.error === "timeout" ? "text-amber-600 dark:text-amber-400"
+                                                : r?.nearMatch ? "text-orange-600 dark:text-orange-400"
+                                                : r?.error === "timeout" || r?.error === "udp_blocked" ? "text-amber-600 dark:text-amber-400"
                                                 : "text-muted-foreground"
                                             )}>{item.name}</p>
                                             <p className="text-[10px] text-muted-foreground/50 mt-0.5">
                                               {isLoading ? s("checking")
                                                 : r?.found ? `${r.latencyMs}ms ✓`
+                                                : r?.nearMatch ? (isZh ? "记录不匹配" : "wrong token")
                                                 : r?.error === "timeout" ? s("timeout")
+                                                : r?.error === "udp_blocked" ? (isZh ? "UDP阻断" : "UDP blocked")
+                                                : r?.error === "servfail" ? (isZh ? "DNS拒绝" : "SERVFAIL")
                                                 : r?.error ? s("not_found_dns")
                                                 : s("waiting")}
                                             </p>
@@ -1099,8 +1120,52 @@ export default function StampPage() {
                           </>
                         )}
 
+                        {/* Raw records found panel — shows actual found content when nearMatch */}
+                        {anyNearMatch && resolvers.some(r => r.nearMatch && r.records.length > 0) && verifyTab === "dns" && (
+                          <div className="rounded-xl border border-orange-300/50 bg-orange-50/50 dark:bg-orange-950/20 p-3 space-y-2">
+                            <p className="text-[11px] font-semibold text-orange-700 dark:text-orange-400 flex items-center gap-1.5">
+                              <RiAlertLine className="w-3.5 h-3.5 shrink-0" />
+                              {isZh ? "找到 TXT 记录但内容不匹配" : "TXT record found but token doesn't match"}
+                            </p>
+                            {resolvers.filter(r => r.nearMatch && r.records.length > 0).slice(0, 2).flatMap(r => r.records).slice(0, 3).map((record, i) => (
+                              <div key={i} className="flex items-start gap-1.5">
+                                <span className="text-[10px] font-bold text-orange-500/70 shrink-0 mt-0.5">找到</span>
+                                <code className="text-[10px] font-mono text-orange-600 dark:text-orange-400 break-all leading-relaxed flex-1 bg-orange-500/5 rounded px-1.5 py-0.5">{record}</code>
+                              </div>
+                            ))}
+                            {expectedVal && (
+                              <div className="flex items-start gap-1.5">
+                                <span className="text-[10px] font-bold text-emerald-600/70 shrink-0 mt-0.5">期望</span>
+                                <code className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 break-all leading-relaxed flex-1 bg-emerald-500/5 rounded px-1.5 py-0.5">{expectedVal}</code>
+                              </div>
+                            )}
+                            <p className="text-[10px] text-muted-foreground leading-relaxed">
+                              {isZh
+                                ? "请删除旧记录并重新添加上方表格中显示的正确 Token 值，然后等待 DNS 传播后重试。"
+                                : "Please delete the old record and add the correct Token value shown in the table above, then retry after DNS propagates."}
+                            </p>
+                          </div>
+                        )}
+
                         {/* Status messages (shared) */}
                         <AnimatePresence mode="wait">
+                          {verifyState === "nearMatch" && verifyTab === "dns" && (
+                            <motion.div
+                              key="nearMatch"
+                              initial={{ opacity: 0, y: 6 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: -4 }}
+                              transition={{ duration: 0.18 }}
+                              className="flex gap-2.5 p-3 rounded-xl bg-orange-50/60 dark:bg-orange-950/20 border border-orange-300/50"
+                            >
+                              <RiAlertLine className="w-4 h-4 text-orange-500 shrink-0 mt-0.5" />
+                              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                                {isZh
+                                  ? "DNS 已传播到验证节点，但 Token 值与期望不符，请检查记录内容是否完整复制。"
+                                  : "DNS is propagated but the token value doesn't match — check that you copied the exact value."}
+                              </p>
+                            </motion.div>
+                          )}
                           {verifyState === "fail" && resolvers.length > 0 && verifyTab === "dns" && (
                             <motion.div
                               key="fail"
@@ -1111,9 +1176,16 @@ export default function StampPage() {
                               className="flex gap-2.5 p-3 rounded-xl bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200/50"
                             >
                               <RiAlertLine className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                              <p className="text-[11px] text-muted-foreground leading-relaxed">
-                                {s("fail_msg")}
-                              </p>
+                              <div className="space-y-1 flex-1">
+                                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                                  {s("fail_msg")}
+                                </p>
+                                {udpBlocked && (
+                                  <p className="text-[10px] text-amber-600 dark:text-amber-400">
+                                    {isZh ? "⚠ UDP DNS 被防火墙阻断，仅依赖 DoH 查询（正常现象，不影响验证）" : "⚠ UDP DNS blocked by firewall; using DoH only — normal in serverless environments"}
+                                  </p>
+                                )}
+                              </div>
                             </motion.div>
                           )}
                           {verifyState === "dnsError" && verifyTab === "dns" && (
