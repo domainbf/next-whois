@@ -16,8 +16,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   const cleanDomain = String(domain).toLowerCase().trim().replace(/^https?:\/\//, "").replace(/\/$/, "");
-  const token = randomBytes(16).toString("hex");
-  const id = randomBytes(8).toString("hex");
   const cleanTagName = String(tagName).trim().slice(0, 30);
   const cleanTagStyle = String(tagStyle || "personal");
   const cleanLink = String(link || "").trim() || null;
@@ -27,6 +25,46 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const supabase = getSupabase();
   if (!supabase) return res.status(503).json({ error: "数据库未配置，品牌认领功能暂不可用" });
+
+  // Check if an unverified stamp already exists for this domain + email.
+  // If so, reuse it (update tag info but keep the same token) so refreshing
+  // the page never generates a new verification token.
+  const { data: existing } = await supabase
+    .from("stamps")
+    .select("id, verify_token, domain")
+    .eq("domain", cleanDomain)
+    .eq("email", cleanEmail)
+    .eq("verified", false)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (existing) {
+    // Update the mutable fields but preserve the token and id.
+    await supabase
+      .from("stamps")
+      .update({
+        tag_name: cleanTagName,
+        tag_style: cleanTagStyle,
+        link: cleanLink,
+        description: cleanDesc,
+        nickname: cleanNickname,
+      })
+      .eq("id", existing.id);
+
+    return res.status(200).json({
+      id: existing.id,
+      domain: cleanDomain,
+      verifyToken: existing.verify_token,
+      txtRecord: `_next-whois.${cleanDomain}`,
+      txtValue: `next-whois-verify=${existing.verify_token}`,
+      reused: true,
+    });
+  }
+
+  // No existing pending stamp — create a fresh one.
+  const token = randomBytes(16).toString("hex");
+  const id = randomBytes(8).toString("hex");
 
   const { error: dbErr } = await supabase.from("stamps").insert({
     id,

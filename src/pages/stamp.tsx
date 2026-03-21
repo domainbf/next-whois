@@ -96,17 +96,17 @@ function getSessionKey(domain: string) { return `stamp_session_${domain}`; }
 
 function loadSession(domain: string): StampSession | null {
   if (typeof window === "undefined") return null;
-  try { const raw = sessionStorage.getItem(getSessionKey(domain)); return raw ? JSON.parse(raw) : null; } catch { return null; }
+  try { const raw = localStorage.getItem(getSessionKey(domain)); return raw ? JSON.parse(raw) : null; } catch { return null; }
 }
 
 function saveSession(domain: string, data: StampSession) {
   if (typeof window === "undefined") return;
-  try { sessionStorage.setItem(getSessionKey(domain), JSON.stringify(data)); } catch {}
+  try { localStorage.setItem(getSessionKey(domain), JSON.stringify(data)); } catch {}
 }
 
 function clearSession(domain: string) {
   if (typeof window === "undefined") return;
-  try { sessionStorage.removeItem(getSessionKey(domain)); } catch {}
+  try { localStorage.removeItem(getSessionKey(domain)); } catch {}
 }
 
 const STEP_LABELS: { key: Step }[] = [
