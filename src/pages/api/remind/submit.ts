@@ -24,13 +24,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const cancelToken = randomBytes(20).toString("hex");
   const id = randomBytes(8).toString("hex");
 
-  const db = await getDbReady();
-  if (!db) return res.status(500).json({ error: "Database unavailable" });
-
   let reminderId: string;
   let cancelTok: string;
 
   try {
+    const db = await getDbReady();
+    if (!db) return res.status(500).json({ error: "Database unavailable" });
+
     const { rows: existing } = await db.query(
       `SELECT id, cancel_token, active FROM reminders WHERE domain=$1 AND email=$2`,
       [cleanDomain, cleanEmail]
@@ -48,7 +48,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       reminderId = id;
       cancelTok = cancelToken;
       await db.query(
-        // Note: `days_before` column is legacy (always 30, unused by process.ts). Omitted here; DB default handles it.
         `INSERT INTO reminders (id, domain, email, expiration_date, active, cancel_token) VALUES ($1,$2,$3,$4,true,$5)`,
         [reminderId, cleanDomain, cleanEmail, expDate, cancelTok]
       );

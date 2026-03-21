@@ -13,10 +13,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(401).json({ error: "Unauthorized" });
   }
 
-  const db = await getDbReady();
-  if (!db) return res.status(500).json({ error: "Database unavailable" });
-
   try {
+    const db = await getDbReady();
+    if (!db) return res.status(500).json({ error: "Database unavailable" });
+
     const { rows: reminders } = await db.query(`
       SELECT r.id, r.domain, r.email, r.expiration_date, r.cancel_token,
              COALESCE(json_agg(rl.days_before) FILTER (WHERE rl.days_before IS NOT NULL), '[]') AS sent_thresholds

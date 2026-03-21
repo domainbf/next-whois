@@ -111,7 +111,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!id || !domain) return res.status(400).json({ error: "Missing id or domain" });
 
   const cleanDomain = String(domain).toLowerCase().trim();
-  const db = await getDbReady();
+  let db;
+  try { db = await getDbReady(); } catch (e: any) { console.error("[stamp/verify] DB not ready:", e.message); db = null; }
 
   let verifyToken: string | null = null;
 
