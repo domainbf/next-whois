@@ -146,13 +146,13 @@
     "copy_to_clipboard_failed": "复制失败"
   },
   "validation": {
-    "empty": "请输入域名、IP 地址或 ASN",
-    "no_dot": "请输入有效域名（如 example.com），无需 http:// 或路径",
-    "too_long": "查询内容过长，最多 253 字符",
-    "label_too_long": "域名每段不超过 63 个字符",
-    "invalid_chars": "包含无效字符，仅支持字母、数字和连字符",
-    "invalid_domain": "域名格式无效",
-    "invalid_tld": "顶级域 '{{tld}}' 太短，至少需要 2 个字母",
-    "unknown_tld": "未知域名后缀 '{{tld}}'，请检查拼写（如 .com 而非 .comm）"
+    "empty": "输个域名、IP 或 ASN 才能开始查询",
+    "no_dot": "域名必须包含点号（.）— 试试 example.com 这样的格式",
+    "too_long": "这也太长了，WHOIS 服务器会罢工的（最多 253 个字符）",
+    "label_too_long": "域名每段最多 63 个字符，太长了没有注册商会接受",
+    "invalid_chars": "域名里有奇怪的字符，只能用字母、数字和连字符（-）",
+    "invalid_domain": "域名格式不对，两端不能用连字符",
+    "invalid_tld": "'{{tld}}' 太短了 — 真实的域名后缀至少 2 个字母",
+    "unknown_tld": "'{{tld}}' 不在 ICANN 后缀列表里，可能打错了？（如 .com、.net、.io）"
   }
 }

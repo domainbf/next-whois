@@ -146,13 +146,13 @@
     "copy_to_clipboard_failed": "Failed to copy"
   },
   "validation": {
-    "empty": "Enter a domain, IP address, or ASN to search",
-    "no_dot": "Enter a valid domain (e.g. example.com) — no http:// or paths needed",
-    "too_long": "Query too long — max 253 characters",
-    "label_too_long": "Each domain segment must be 63 characters or fewer",
-    "invalid_chars": "Invalid characters — use only letters, digits, and hyphens",
-    "invalid_domain": "Invalid domain format",
-    "invalid_tld": "TLD '{{tld}}' is too short — must be at least 2 letters",
-    "unknown_tld": "Unknown extension '{{tld}}' — check for typos (e.g. .com not .comm)"
+    "empty": "Type a domain, IP address, or ASN to get started",
+    "no_dot": "Domains need a dot — try something like example.com",
+    "too_long": "That's way too long — WHOIS servers won't handle more than 253 characters",
+    "label_too_long": "Each domain segment can be at most 63 characters",
+    "invalid_chars": "Odd characters detected — stick to letters, digits, and hyphens",
+    "invalid_domain": "Invalid format — labels can't start or end with a hyphen",
+    "invalid_tld": "'{{tld}}' is too short to be a real TLD — must be at least 2 letters",
+    "unknown_tld": "'{{tld}}' isn't in the ICANN TLD registry — typo? (try .com, .net, .io)"
   }
 }

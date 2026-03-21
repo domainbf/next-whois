@@ -255,9 +255,11 @@ export function validateAndSanitizeInput(raw: string): SearchValidationResult {
     return { valid: false, cleaned, errorKey: "validation.invalid_tld", errorArgs: { tld: `.${tld}` } };
   }
 
-  // Validate TLD against the Public Suffix List via tldts
+  // Validate TLD against the ICANN Public Suffix List via tldts
+  // tldts always returns a publicSuffix, must check isIcann for real TLD
   const parsed = parse(cleaned, { allowPrivateDomains: false });
-  if (!parsed.publicSuffix) {
+  const hasNonAsciiTld = /[^\x00-\x7F]/.test(tld); // IDN TLD — be lenient
+  if (!parsed.isIcann && !hasNonAsciiTld) {
     return { valid: false, cleaned, errorKey: "validation.unknown_tld", errorArgs: { tld: `.${tld}` } };
   }
 
@@ -303,8 +305,10 @@ export function isValidDomainTld(domain: string): boolean {
   const parts = domain.split(".");
   const tld = parts[parts.length - 1];
   if (tld.length < 2) return true;
+  const hasNonAsciiTld = /[^\x00-\x7F]/.test(tld); // IDN TLD — be lenient
+  if (hasNonAsciiTld) return true;
   const parsed = parse(domain, { allowPrivateDomains: false });
-  return parsed.publicSuffix !== null;
+  return parsed.isIcann === true;
 }
 
 export function cleanDomain(domain: string): string {

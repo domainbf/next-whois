@@ -3,6 +3,7 @@ import {
   cleanDomain,
   cn,
   getWindowHref,
+  isValidDomainTld,
   toSearchURI,
   useClipboard,
   useSaver,
@@ -48,6 +49,8 @@ import {
   RiCalendarEventLine,
   RiShieldCheckLine,
   RiLoader4Line,
+  RiErrorWarningLine,
+  RiSearchLine,
 } from "@remixicon/react";
 import { getTopRegistrars, DomainPricing } from "@/lib/pricing/client";
 import React, { useEffect, useMemo } from "react";
@@ -1191,6 +1194,24 @@ export async function getServerSideProps(context: GetServerSidePropsContext) {
   const origin = getOrigin(context.req);
   const target = cleanDomain(querySegments.join("/"));
   const displayTarget = targetToDisplayName(target);
+
+  // Server-side TLD validation — reject clearly invalid domains before lookup
+  if (!isValidDomainTld(target)) {
+    return {
+      props: {
+        data: {
+          time: 0,
+          status: false,
+          cached: false,
+          error: "INVALID_DOMAIN_TLD",
+        } as WhoisResult,
+        target,
+        displayTarget,
+        origin,
+      },
+    };
+  }
+
   try {
     const data = await lookupWhoisWithCache(target);
     return {
@@ -2492,7 +2513,37 @@ export default function LookupPage({
               className="grid grid-cols-1 lg:grid-cols-12 gap-6"
             >
               <div className={cn(hasErrorRaw ? "lg:col-span-8" : "lg:col-span-12", "space-y-6")}>
-                {dnsProbe?.registrationStatus === "registered" ? (
+                {error === "INVALID_DOMAIN_TLD" ? (
+                  <div className="glass-panel border border-amber-300/50 dark:border-amber-700/40 rounded-xl p-8 sm:p-12 text-center">
+                    <div className="w-16 h-16 bg-amber-50 dark:bg-amber-950/30 rounded-full flex items-center justify-center mx-auto mb-5">
+                      <RiErrorWarningLine className="w-8 h-8 text-amber-500" />
+                    </div>
+                    <Badge variant="outline" className="mb-4 font-mono text-[10px] font-bold uppercase tracking-wider text-amber-600 border-amber-400/50">
+                      INVALID TLD
+                    </Badge>
+                    <h2 className="text-2xl font-bold mb-2">
+                      {isChinese ? `".${target.split(".").pop()}" 不是真实的域名后缀` : `".${target.split(".").pop()}" isn't a real TLD`}
+                    </h2>
+                    <p className="text-muted-foreground max-w-md mx-auto text-sm leading-relaxed mb-2">
+                      {isChinese
+                        ? `我们查遍了 ICANN 的所有顶级域名列表，没找到 `
+                        : `We searched the entire ICANN TLD registry and couldn't find `}
+                      <span className="font-mono font-semibold text-foreground">{`.${target.split(".").pop()}`}</span>
+                      {isChinese ? `。请检查拼写，常见的有 .com .net .org .io .cn` : `. Check for typos — try .com .net .org .io`}
+                    </p>
+                    <p className="text-xs text-muted-foreground/60 mb-8">
+                      {isChinese ? "WHOIS 查询不支持不存在的后缀，这不是 bug，是常识。" : "WHOIS doesn't work for non-existent TLDs. Not a bug — just how the internet works."}
+                    </p>
+                    <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                      <Link href="/">
+                        <Button className="gap-2">
+                          <RiSearchLine className="w-4 h-4" />
+                          {isChinese ? "重新搜索" : "Search Again"}
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
+                ) : dnsProbe?.registrationStatus === "registered" ? (
                   <>
                     <div className="glass-panel border border-emerald-400/40 bg-emerald-50/30 dark:bg-emerald-950/20 rounded-xl p-6 sm:p-8 relative overflow-hidden">
                       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
