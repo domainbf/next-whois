@@ -8,6 +8,7 @@ import { Navbar } from "@/components/navbar";
 import { useRouter } from "next/router";
 import { AnimatePresence, motion } from "framer-motion";
 import { SessionProvider } from "next-auth/react";
+import { LocaleProvider } from "@/lib/locale-context";
 
 const pageVariants = {
   initial: { opacity: 0, y: 8, scale: 0.995 },
@@ -26,6 +27,7 @@ export default function App({ Component, pageProps: { session, ...pageProps } }:
 
   return (
     <SessionProvider session={session}>
+    <LocaleProvider initialLocale={router.locale}>
     <>
       <Head>
         <title>{siteTitle}</title>
@@ -94,6 +96,7 @@ export default function App({ Component, pageProps: { session, ...pageProps } }:
         </div>
       </ThemeProvider>
     </>
+    </LocaleProvider>
     </SessionProvider>
   );
 }

@@ -41,7 +41,7 @@
     "registrant_phone": "注册人电话",
     "registrant_email": "注册人邮箱",
     "name_servers": "域名服务器",
-    "dnssec": "DNSSEC",
+    "dnssec": "DNS 安全扩展",
     "origin_as": "源 AS",
     "moz_stats": "MOZ 统计",
     "network_info": "网络信息",

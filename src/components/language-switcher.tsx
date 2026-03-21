@@ -1,5 +1,4 @@
-import { useRouter } from "next/router";
-import { useTranslation } from "@/lib/i18n";
+import { useLocale, type Locale } from "@/lib/locale-context";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -8,7 +7,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { RiEarthFill } from "@remixicon/react";
 
-const languageNames = {
+const languageNames: Record<Locale, string> = {
   en: "English",
   zh: "简体中文",
   "zh-tw": "繁體中文",
@@ -17,17 +16,10 @@ const languageNames = {
   ja: "日本語",
   fr: "Français",
   ko: "한국어",
-} as const;
+};
 
 export function LanguageSwitcher() {
-  const router = useRouter();
-  const { locale } = useTranslation();
-
-  const switchLanguage = (newLocale: string) => {
-    document.cookie = `NEXT_LOCALE=${newLocale};path=/;max-age=${60 * 60 * 24 * 365}`;
-    const { pathname, asPath, query } = router;
-    router.push({ pathname, query }, asPath, { locale: newLocale });
-  };
+  const { locale, setLocale } = useLocale();
 
   return (
     <DropdownMenu>
@@ -38,11 +30,11 @@ export function LanguageSwitcher() {
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-32">
-        {Object.entries(languageNames).map(([key, name]) => (
+        {(Object.entries(languageNames) as [Locale, string][]).map(([key, name]) => (
           <DropdownMenuItem
             key={key}
             className={`text-xs ${key === locale ? "font-medium" : ""}`}
-            onClick={() => switchLanguage(key)}
+            onClick={() => setLocale(key)}
           >
             {name}
           </DropdownMenuItem>

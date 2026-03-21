@@ -41,7 +41,7 @@
     "registrant_phone": "註冊電話",
     "registrant_email": "註冊電子郵件",
     "name_servers": "名稱伺服器",
-    "dnssec": "DNSSEC",
+    "dnssec": "DNS 安全延伸",
     "origin_as": "源 AS",
     "moz_stats": "MOZ 統計",
     "network_info": "網路資訊",

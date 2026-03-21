@@ -893,6 +893,61 @@ function formatDate(dateStr: string): string {
   return d.toISOString().slice(0, 10); // always YYYY-MM-DD
 }
 
+/**
+ * Translate DNSSEC field values and embedded technical terms.
+ * For zh/zh-tw locales, known DNSSEC terms are replaced with Chinese equivalents.
+ * For all other locales the original value is returned unchanged.
+ */
+function translateDnssecValue(value: string, locale: string): string {
+  if (!locale.startsWith("zh")) return value;
+  const isTraditional = locale === "zh-tw";
+
+  // Simple whole-value mapping for common RDAP/WHOIS values
+  const WHOLE: Record<string, string> = {
+    unsigned: "未签名",
+    signed: "已签名",
+    signeddelegation: "已签名",
+    yes: "已签名",
+    no: "未签名",
+  };
+  const key = value.toLowerCase().replace(/[\s\-_]/g, "");
+  if (WHOLE[key]) {
+    const v = WHOLE[key];
+    return isTraditional ? v.replace("签", "簽") : v;
+  }
+
+  // Substring replacement for values that contain multiple terms
+  const SUBS: [RegExp, string, string][] = [
+    // [pattern, simplified, traditional]
+    [/\bZone Signing Key\b/gi, "区域签名密钥", "區域簽名金鑰"],
+    [/\bZSK\b/g, "ZSK", "ZSK"],
+    [/\bKey Signing Key\b/gi, "密钥签名密钥", "金鑰簽名金鑰"],
+    [/\bKSK\b/g, "KSK", "KSK"],
+    [/\bDS Record\b/gi, "委托签名记录", "委託簽名記錄"],
+    [/\bRRSIG\b/g, "资源记录签名", "資源記錄簽名"],
+    [/\bDNSKEY\b/g, "DNS 密钥记录", "DNS 金鑰記錄"],
+    [/\bNSEC3\b/g, "下一安全记录3", "下一安全記錄3"],
+    [/\bNSEC\b/g, "下一安全记录", "下一安全記錄"],
+    [/\bValidating Resolver\b/gi, "验证解析器", "驗證解析器"],
+    [/\bValidation\b/gi, "验证", "驗證"],
+    [/\bTrust Anchor\b/gi, "信任锚", "信任錨"],
+    [/\bChain of Trust\b/gi, "信任链", "信任鏈"],
+    [/\bKey Rollover\b/gi, "密钥滚动", "金鑰滾動"],
+    [/\bDenial of Existence\b/gi, "存在否定", "存在否定"],
+    [/\bAlgorithm\b/gi, "算法", "演算法"],
+    [/\bsignedDelegation\b/gi, "已签名", "已簽名"],
+    [/\bsigned\b/gi, "已签名", "已簽名"],
+    [/\bunsigned\b/gi, "未签名", "未簽名"],
+    [/\bDNSSEC\b/g, "DNS 安全扩展", "DNS 安全延伸"],
+  ];
+
+  let result = value;
+  for (const [pattern, simplified, traditional] of SUBS) {
+    result = result.replace(pattern, isTraditional ? traditional : simplified);
+  }
+  return result;
+}
+
 function buildOgUrl(
   target: string,
   _result?: WhoisAnalyzeResult | undefined,
@@ -3207,10 +3262,10 @@ export default function LookupPage({
                         {result.dnssec && (
                           <div className="mt-auto pt-4 border-t border-border/50 flex justify-between items-center">
                             <span className="text-[10px] text-muted-foreground font-medium uppercase">
-                              DNSSEC
+                              {t("whois_fields.dnssec")}
                             </span>
                             <span className="text-xs font-mono text-muted-foreground">
-                              {result.dnssec}
+                              {translateDnssecValue(result.dnssec, locale)}
                             </span>
                           </div>
                         )}
