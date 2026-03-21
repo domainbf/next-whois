@@ -43,8 +43,8 @@ NEXTAUTH_SECRET = "3878ffd6c3e0ce5cf4b9d0fc239d41ae50c0cd8bbdc3a249a1d9a7ba1354a
 VERCEL_PROJECT_ID = "prj_iUBe5v2wht9SYe1SuFKyj0vMgyLR"
 
 [userenv.development]
-NEXTAUTH_URL = "http://localhost:5000"
-NEXT_PUBLIC_BASE_URL = "http://localhost:5000"
+NEXTAUTH_URL = "https://a24d36aa-663d-4845-8cdb-bf3886fa0ea6-00-2udkc72x46j2m.worf.replit.dev"
+NEXT_PUBLIC_BASE_URL = "https://a24d36aa-663d-4845-8cdb-bf3886fa0ea6-00-2udkc72x46j2m.worf.replit.dev"
 
 [postMerge]
 path = "scripts/post-merge.sh"
