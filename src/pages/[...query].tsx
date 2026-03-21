@@ -2190,24 +2190,25 @@ export default function LookupPage({
       .catch(() => {});
   }, [data.result?.domain, target]);
 
-  const [eurRates, setEurRates] = React.useState<Record<string, number> | null>(null);
+  const FALLBACK_EUR_RATES: Record<string, number> = {
+    AUD: 1.65, CAD: 1.49, CHF: 0.94, CNY: 7.82, DKK: 7.46,
+    GBP: 0.85, HKD: 8.50, JPY: 162, KRW: 1520, NOK: 11.7,
+    NZD: 1.80, SEK: 11.3, SGD: 1.46, TWD: 34.8, USD: 1.09,
+  };
+  const [eurRates, setEurRates] = React.useState<Record<string, number>>(FALLBACK_EUR_RATES);
   useEffect(() => {
     if (!isChinese) return;
     fetch("https://api.frankfurter.app/latest")
       .then((r) => r.json())
-      .then((data) => setEurRates(data.rates))
+      .then((d) => { if (d?.rates) setEurRates(d.rates); })
       .catch(() => {});
   }, [isChinese]);
 
   function toCNY(amount: number, currency: string): string {
     const cur = currency.toUpperCase();
-    if (eurRates) {
-      const cnyRate = eurRates["CNY"] ?? 7.8;
-      const eurAmount =
-        cur === "EUR" ? amount : amount / (eurRates[cur] ?? 1);
-      return `¥${(eurAmount * cnyRate).toFixed(2)}`;
-    }
-    return `${amount} ${cur}`;
+    const cnyRate = eurRates["CNY"] ?? 7.82;
+    const eurAmount = cur === "EUR" ? amount : amount / (eurRates[cur] ?? 1);
+    return `¥${(eurAmount * cnyRate).toFixed(2)}`;
   }
 
   const current = getWindowHref();

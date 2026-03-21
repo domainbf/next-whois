@@ -3,8 +3,16 @@ import type { NextRequest } from "next/server";
 import { match } from "@formatjs/intl-localematcher";
 import Negotiator from "negotiator";
 
-let locales = ["en", "zh", "zh-tw", "de", "ru", "ja", "fr", "ko"];
-let defaultLocale = "en";
+const locales = ["en", "zh", "zh-tw", "de", "ru", "ja", "fr", "ko"];
+const defaultLocale = "en";
+
+const COUNTRY_LOCALE_MAP: Record<string, string> = {
+  CN: "zh", HK: "zh-tw", TW: "zh-tw", MO: "zh-tw", SG: "zh",
+  JP: "ja", KR: "ko",
+  DE: "de", AT: "de", CH: "de", LI: "de",
+  RU: "ru", BY: "ru", KZ: "ru",
+  FR: "fr", BE: "fr", LU: "fr", MC: "fr",
+};
 
 function getLocale(request: NextRequest): string {
   const storedLocale = request.cookies.get("NEXT_LOCALE")?.value;
@@ -12,35 +20,34 @@ function getLocale(request: NextRequest): string {
     return storedLocale;
   }
 
-  let headers = {
-    "accept-language": request.headers.get("accept-language") || defaultLocale,
+  const country =
+    request.headers.get("cf-ipcountry") ||
+    request.headers.get("x-vercel-ip-country") ||
+    request.headers.get("x-country-code") ||
+    "";
+  if (country && COUNTRY_LOCALE_MAP[country.toUpperCase()]) {
+    return COUNTRY_LOCALE_MAP[country.toUpperCase()];
+  }
+
+  const acceptLanguage = request.headers.get("accept-language") || "";
+  if (!acceptLanguage) return defaultLocale;
+
+  const languageMap: Record<string, string> = {
+    "zh-tw": "zh-tw", "zh-hk": "zh-tw", "zh-mo": "zh-tw",
+    "zh-cn": "zh", "zh-sg": "zh", "zh": "zh",
   };
 
+  let headers = { "accept-language": acceptLanguage };
   let languages = new Negotiator({ headers }).languages();
 
-  // Map browser language codes to our locale codes
-  const languageMap: { [key: string]: string } = {
-    "zh-tw": "zh-tw",
-    "zh-HK": "zh-tw",
-    "zh-MO": "zh-tw",
-    "zh-CN": "zh",
-    "zh-SG": "zh",
-  };
-
-  // Transform languages array based on our mapping
   const mappedLanguages = languages.map((lang) => {
-    const baseLang = lang.toLowerCase().split("-")[0];
-    const fullLang = lang.replace("_", "-"); // normalize underscore to hyphen
-    return (
-      languageMap[fullLang] ||
-      languageMap[`${baseLang}-${baseLang.toUpperCase()}`] ||
-      baseLang
-    );
+    const lower = lang.toLowerCase();
+    return languageMap[lower] || lower.split("-")[0];
   });
 
   try {
     return match(mappedLanguages, locales, defaultLocale);
-  } catch (error) {
+  } catch {
     return defaultLocale;
   }
 }

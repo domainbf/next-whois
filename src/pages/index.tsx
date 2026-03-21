@@ -170,10 +170,53 @@ export default function HomePage() {
           <SearchHotkeysText className="mt-2 px-1 justify-end" />
         </div>
 
+        {loading && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.2 }}
+            className="space-y-6 mt-2"
+          >
+            <div className="glass-panel border border-border rounded-xl p-6 sm:p-8">
+              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                <div className="space-y-3 flex-1">
+                  <div className="h-4 w-14 rounded-md bg-muted animate-pulse" />
+                  <div className="h-8 w-40 rounded-md bg-muted animate-pulse" />
+                  <div className="h-3 w-52 rounded-md bg-muted/70 animate-pulse" />
+                </div>
+                <div className="flex flex-col items-start sm:items-end gap-2">
+                  <div className="h-6 w-20 rounded-full bg-muted animate-pulse" />
+                  <div className="h-3 w-24 rounded-md bg-muted/60 animate-pulse" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-6 mt-8 pt-8 border-t border-border/50">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="space-y-1.5">
+                    <div className="h-3 w-16 rounded bg-muted/60 animate-pulse" />
+                    <div className="h-4 w-24 rounded bg-muted animate-pulse" />
+                    <div className="h-3 w-12 rounded bg-muted/50 animate-pulse" />
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="glass-panel border border-border rounded-xl p-6">
+              <div className="h-4 w-20 rounded bg-muted/70 animate-pulse mb-4" />
+              <div className="space-y-3">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="flex items-center gap-3">
+                    <div className="w-2 h-2 rounded-full bg-muted animate-pulse shrink-0" />
+                    <div className="h-4 w-36 rounded bg-muted animate-pulse" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        )}
+
         <motion.div
           initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.1 }}
+          animate={loading ? { opacity: 0, y: -10 } : { opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
         >
           {allHistory.length > 0 ? (
             <div className="space-y-1">
