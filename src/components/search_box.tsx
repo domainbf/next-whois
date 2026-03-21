@@ -6,10 +6,10 @@ import {
   RiSendPlaneLine,
   RiHistoryLine,
   RiLinkM,
+  RiErrorWarningLine,
 } from "@remixicon/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn, isEnter, validateAndSanitizeInput } from "@/lib/utils";
-import { toast } from "sonner";
 import { listHistory, HistoryItem } from "@/lib/history";
 import { Badge } from "@/components/ui/badge";
 import { useTranslation } from "@/lib/i18n";
@@ -155,6 +155,7 @@ export function SearchBox({
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const [selectedGroup, setSelectedGroup] = useState(-1);
   const [isEnterPressed, setIsEnterPressed] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
 
@@ -387,6 +388,7 @@ export function SearchBox({
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setInputValue(value);
+    if (validationError) setValidationError(null);
     const newSuggestions = generateSuggestions(value);
     setShowSuggestions(newSuggestions.length > 0);
     setSelectedIndex(-1);
@@ -456,9 +458,10 @@ export function SearchBox({
     if (!inputValue) return;
     const result = validateAndSanitizeInput(inputValue);
     if (!result.valid) {
-      toast.error(t(result.errorKey as any, result.errorArgs as any));
+      setValidationError(t(result.errorKey as any, result.errorArgs as any));
       return;
     }
+    setValidationError(null);
     onSearch(result.cleaned);
     setShowSuggestions(false);
   };
@@ -493,6 +496,24 @@ export function SearchBox({
           )}
         </Button>
       </div>
+
+      <AnimatePresence>
+        {validationError && (
+          <motion.div
+            key="validation-error"
+            initial={{ opacity: 0, y: -6, height: 0 }}
+            animate={{ opacity: 1, y: 0, height: "auto" }}
+            exit={{ opacity: 0, y: -4, height: 0 }}
+            transition={{ duration: 0.18, ease: "easeOut" }}
+            className="overflow-hidden"
+          >
+            <div className="flex items-start gap-2 mt-2 px-3 py-2 rounded-lg bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200/70 dark:border-amber-800/40 text-amber-700 dark:text-amber-400">
+              <RiErrorWarningLine className="w-4 h-4 mt-0.5 shrink-0" />
+              <span className="text-sm leading-snug">{validationError}</span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence mode="wait">
         {showSuggestions && suggestions.length > 0 && (
