@@ -35,6 +35,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         [id, cleanDomain, cleanTagName, cleanTagStyle, cleanLink, cleanDesc, cleanNickname, cleanEmail, token]
       );
     } else {
+      console.error("[stamp/submit] DATABASE_URL not configured — falling back to file store");
       const record: StampRecord = {
         id, domain: cleanDomain, tagName: cleanTagName, tagStyle: cleanTagStyle,
         link: cleanLink || "", description: cleanDesc || "", nickname: cleanNickname,
@@ -47,7 +48,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       writeData("stamps.json", fileDb);
     }
   } catch (dbErr: any) {
-    console.error("[stamp/submit] DB error:", dbErr);
+    console.error("[stamp/submit] Write error:", dbErr?.message || dbErr);
     return res.status(500).json({ error: "数据库写入失败，请稍后重试" });
   }
 
