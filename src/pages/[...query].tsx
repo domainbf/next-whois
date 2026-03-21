@@ -2109,9 +2109,15 @@ function AvailableDomainCard({ domain, locale }: { domain: string; locale: strin
     if (isZh && eurRates) {
       const cnyRate = eurRates["CNY"] ?? 7.8;
       const eurAmount = cur === "EUR" ? amount : amount / (eurRates[cur] ?? 1);
-      return `¥${(eurAmount * cnyRate).toFixed(2)}`;
+      return `CNY ${(eurAmount * cnyRate).toFixed(2)}`;
     }
-    return `${cur} ${amount.toFixed(2)}`;
+    if (eurRates) {
+      if (cur === "USD") return `USD ${amount.toFixed(2)}`;
+      const usdRate = eurRates["USD"] ?? 1.09;
+      const eurAmount = cur === "EUR" ? amount : amount / (eurRates[cur] ?? 1);
+      return `USD ${(eurAmount * usdRate).toFixed(2)}`;
+    }
+    return `USD ${amount.toFixed(2)}`;
   }
 
   return (
@@ -2418,6 +2424,14 @@ export default function LookupPage({
     return `¥${(eurAmount * cnyRate).toFixed(2)}`;
   }
 
+  function toUSD(amount: number, currency: string): string {
+    const cur = currency.toUpperCase();
+    if (cur === "USD") return `$${amount.toFixed(2)}`;
+    const usdRate = eurRates["USD"] ?? 1.09;
+    const eurAmount = cur === "EUR" ? amount : amount / (eurRates[cur] ?? 1);
+    return `$${(eurAmount * usdRate).toFixed(2)}`;
+  }
+
   const current = getWindowHref();
   const queryType = detectQueryType(target);
   const { status, result, error, time, dnsProbe, registryUrl } = data as typeof data & { registryUrl?: string };
@@ -2514,7 +2528,7 @@ export default function LookupPage({
                 <KeyboardShortcut k="/" />
               </div>
             </div>
-            <SearchHotkeysText className="mt-2 px-1 justify-end" />
+            <SearchHotkeysText className="hidden sm:flex mt-2 px-1 justify-end" />
           </div>
 
           {loading && <ResultSkeleton />}
@@ -2544,7 +2558,7 @@ export default function LookupPage({
                       {t("register_price")}
                       {isChinese
                         ? toCNY(result.registerPrice.new as number, result.registerPrice.currency)
-                        : `${result.registerPrice.new} ${result.registerPrice.currency.toUpperCase()}`}
+                        : toUSD(result.registerPrice.new as number, result.registerPrice.currency)}
                     </span>
                   </Link>
                 )}
@@ -2561,7 +2575,7 @@ export default function LookupPage({
                       {t("renew_price")}
                       {isChinese
                         ? toCNY(result.renewPrice.renew as number, result.renewPrice.currency)
-                        : `${result.renewPrice.renew} ${result.renewPrice.currency.toUpperCase()}`}
+                        : toUSD(result.renewPrice.renew as number, result.renewPrice.currency)}
                     </span>
                   </Link>
                 )}
@@ -2578,7 +2592,7 @@ export default function LookupPage({
                       {t("transfer_price")}
                       {isChinese
                         ? toCNY(result.transferPrice.transfer as number, result.transferPrice.currency)
-                        : `${result.transferPrice.transfer} ${result.transferPrice.currency.toUpperCase()}`}
+                        : toUSD(result.transferPrice.transfer as number, result.transferPrice.currency)}
                     </span>
                   </Link>
                 )}
