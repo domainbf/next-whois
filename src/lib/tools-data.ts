@@ -25,7 +25,7 @@ export const TOOL_CATEGORIES: ToolCategory[] = [
       { name: "ExpiredDomains", desc: "过期域名查询", descEn: "Search expired and deleted domain names", url: "https://expireddomains.net" },
       { name: "Alter", desc: "品牌域名交易平台", descEn: "Brandable domain name marketplace", url: "https://alter.com" },
       { name: "Dnpric", desc: "域名交易价格查询", descEn: "Domain transaction price lookup tool", url: "https://dnpric.es" },
-      { name: "可备案后缀", desc: "国内可备案后缀查询", descEn: "ICP-eligible TLD list for China", url: "https://beian.miit.gov.cn" },
+      { name: "可备案后缀", desc: "国内可备案后缀查询", descEn: "ICP-eligible TLD list for China", url: "https://domain.miit.gov.cn/" },
       { name: "Deepl", desc: "高精度AI翻译工具", descEn: "High-accuracy AI-powered translation", url: "https://deepl.com" },
       { name: "玩米网", desc: "域名行情走势与交易社区", descEn: "Chinese domain market trends & trading community", url: "https://www.wanmi.cc" },
       { name: "笨米网", desc: "域名综合查询工具", descEn: "Multi-function domain research tool", url: "https://www.benmi.com" },
