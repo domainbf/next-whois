@@ -2046,8 +2046,8 @@ function AvailableDomainCard({ domain, locale }: { domain: string; locale: strin
             })}
             <p className="text-[10px] text-muted-foreground/40 px-4 sm:px-6 pt-2 pb-2">
               {isZh
-                ? "数据来源：nazhumi.com · 价格仅供参考"
-                : "Data from nazhumi.com · Prices for reference only"}
+                ? "数据来源：nazhumi.com & miqingju.com · 取最低价 · 价格仅供参考"
+                : "Data from nazhumi.com & miqingju.com · Lowest price shown · For reference only"}
             </p>
           </div>
         ) : (
