@@ -3,15 +3,29 @@ import { readData, writeData, StampsDB } from "@/lib/data-store";
 import { getDb } from "@/lib/db";
 import dns from "dns/promises";
 
-const RESOLVERS = [
-  { name: "Google DNS", ip: "8.8.8.8" },
-  { name: "Cloudflare", ip: "1.1.1.1" },
-  { name: "系统DNS", ip: "" },
+const UDP_RESOLVERS = [
+  { name: "Google DNS", ip: "8.8.8.8", proto: "udp" as const },
+  { name: "Cloudflare", ip: "1.1.1.1", proto: "udp" as const },
+  { name: "Quad9", ip: "9.9.9.9", proto: "udp" as const },
+  { name: "系统DNS", ip: "", proto: "udp" as const },
 ];
 
-const QUERY_TIMEOUT_MS = 4000;
+const DOH_RESOLVERS = [
+  {
+    name: "Google DoH",
+    proto: "doh" as const,
+    url: (host: string) => `https://dns.google/resolve?name=${encodeURIComponent(host)}&type=TXT`,
+  },
+  {
+    name: "Cloudflare DoH",
+    proto: "doh" as const,
+    url: (host: string) => `https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(host)}&type=TXT`,
+  },
+];
 
-async function queryResolver(
+const QUERY_TIMEOUT_MS = 5000;
+
+async function queryUDP(
   host: string,
   resolverIp: string,
   timeoutMs: number
@@ -24,9 +38,8 @@ async function queryResolver(
           const resolver = new dns.Resolver();
           resolver.setServers([resolverIp]);
           return resolver.resolveTxt(host);
-        } else {
-          return dns.resolveTxt(host);
         }
+        return dns.resolveTxt(host);
       })(),
       new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error("timeout")), timeoutMs)
@@ -37,13 +50,58 @@ async function queryResolver(
     return {
       records: [],
       latencyMs: Date.now() - start,
-      error: err.code === "ENODATA" || err.code === "ENOTFOUND"
-        ? "no_record"
-        : err.message === "timeout"
-        ? "timeout"
-        : "dns_error",
+      error:
+        err.code === "ENODATA" || err.code === "ENOTFOUND" || err.code === "ESERVFAIL"
+          ? "no_record"
+          : err.message === "timeout"
+          ? "timeout"
+          : "dns_error",
     };
   }
+}
+
+async function queryDoH(
+  urlFn: (host: string) => string,
+  host: string,
+  timeoutMs: number
+): Promise<{ records: string[]; latencyMs: number; error?: string }> {
+  const start = Date.now();
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const res = await fetch(urlFn(host), {
+      headers: { Accept: "application/dns-json" },
+      signal: ctrl.signal,
+    });
+    clearTimeout(timer);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    const records: string[] = ((data.Answer as any[]) || [])
+      .filter((a) => a.type === 16)
+      .map((a) =>
+        String(a.data)
+          .replace(/^"+|"+$/g, "")
+          .replace(/" "/g, "")
+      );
+    return { records, latencyMs: Date.now() - start };
+  } catch (err: any) {
+    clearTimeout(timer);
+    const isTimeout = err.name === "AbortError" || err.message === "timeout";
+    return {
+      records: [],
+      latencyMs: Date.now() - start,
+      error: isTimeout ? "timeout" : "dns_error",
+    };
+  }
+}
+
+interface ResolverResult {
+  name: string;
+  proto: string;
+  latencyMs: number;
+  found: boolean;
+  records: string[];
+  error: string | null;
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -76,24 +134,40 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const expectedValue = `next-whois-verify=${verifyToken}`;
   const txtHost = `_next-whois.${cleanDomain}`;
 
-  const queryResults = await Promise.all(
-    RESOLVERS.map(async (r) => {
-      const { records, latencyMs, error } = await queryResolver(txtHost, r.ip, QUERY_TIMEOUT_MS);
-      const matched = records.includes(expectedValue);
-      return {
-        name: r.name,
-        ip: r.ip || "system",
-        latencyMs,
-        found: matched,
-        records: records.slice(0, 5),
-        error: error ?? null,
-      };
-    })
-  );
+  const [udpResults, dohResults] = await Promise.all([
+    Promise.all(
+      UDP_RESOLVERS.map(async (r): Promise<ResolverResult> => {
+        const { records, latencyMs, error } = await queryUDP(txtHost, r.ip, QUERY_TIMEOUT_MS);
+        return {
+          name: r.name,
+          proto: r.proto,
+          latencyMs,
+          found: records.includes(expectedValue),
+          records: records.slice(0, 5),
+          error: error ?? null,
+        };
+      })
+    ),
+    Promise.all(
+      DOH_RESOLVERS.map(async (r): Promise<ResolverResult> => {
+        const { records, latencyMs, error } = await queryDoH(r.url, txtHost, QUERY_TIMEOUT_MS);
+        return {
+          name: r.name,
+          proto: r.proto,
+          latencyMs,
+          found: records.includes(expectedValue),
+          records: records.slice(0, 5),
+          error: error ?? null,
+        };
+      })
+    ),
+  ]);
 
-  const verified = queryResults.some((r) => r.found);
-  const allDnsError = queryResults.every((r) => r.error === "dns_error" || r.error === "timeout");
-  const allFound = queryResults.map((r) => r.records).flat();
+  const allResults = [...udpResults, ...dohResults];
+  const verified = allResults.some((r) => r.found);
+  const allDnsError = allResults.every(
+    (r) => r.error === "dns_error" || r.error === "timeout"
+  );
 
   if (verified) {
     const verifiedAt = new Date().toISOString();
@@ -105,14 +179,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (record) { record.verified = true; record.verifiedAt = verifiedAt; }
       writeData("stamps.json", fileDb);
     }
-    return res.status(200).json({ verified: true, resolvers: queryResults });
+    return res.status(200).json({
+      verified: true,
+      resolvers: allResults,
+      txtRecord: txtHost,
+    });
   }
 
   return res.status(200).json({
     verified: false,
     dnsError: allDnsError,
-    resolvers: queryResults,
+    resolvers: allResults,
     expected: expectedValue,
-    found: allFound,
   });
 }

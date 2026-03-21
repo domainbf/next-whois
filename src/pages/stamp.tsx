@@ -22,6 +22,8 @@ import {
   RiFlashlightLine,
   RiGlobalLine,
   RiArrowRightLine,
+  RiCloudLine,
+  RiDeleteBinLine,
 } from "@remixicon/react";
 import { toast } from "sonner";
 
@@ -155,7 +157,7 @@ export default function StampPage() {
   const [submitResult, setSubmitResult] = React.useState<{ id: string; txtRecord: string; txtValue: string } | null>(null);
   const [formError, setFormError] = React.useState<string | null>(null);
   const [verifyState, setVerifyState] = React.useState<"idle" | "loading" | "fail" | "dnsError">("idle");
-  const [resolvers, setResolvers] = React.useState<{ name: string; ip: string; latencyMs: number; found: boolean; error: string | null }[]>([]);
+  const [resolvers, setResolvers] = React.useState<{ name: string; proto?: string; ip?: string; latencyMs: number; found: boolean; error: string | null }[]>([]);
   const [countdown, setCountdown] = React.useState(0);
   const pollRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const countdownRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
@@ -635,56 +637,84 @@ export default function StampPage() {
 
                         {/* DNS status */}
                         <div>
-                          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2 flex items-center gap-1.5">
-                            <RiWifiLine className="w-3 h-3" />
-                            传播检测
-                          </p>
-                          <div className="grid grid-cols-2 gap-2">
-                            {(verifyState === "loading" && resolvers.length === 0
-                              ? ["Google DNS", "系统DNS"]
-                              : resolvers.map(r => r.name)
-                            ).map((name, i) => {
-                              const r = resolvers[i];
-                              const isLoading = verifyState === "loading";
-                              return (
-                                <div
-                                  key={name}
-                                  className={cn(
-                                    "rounded-xl border p-3 flex items-center gap-2.5 transition-all",
-                                    r?.found ? "border-emerald-300/60 bg-emerald-50/60 dark:bg-emerald-950/30"
-                                      : r?.error === "timeout" ? "border-amber-200/50 bg-amber-50/40 dark:bg-amber-950/20"
-                                      : "border-border/60 bg-muted/20"
-                                  )}
-                                >
-                                  <div className={cn(
-                                    "shrink-0 w-7 h-7 rounded-lg flex items-center justify-center",
-                                    r?.found ? "bg-emerald-500/10" : r?.error === "timeout" ? "bg-amber-500/10" : "bg-muted/50"
-                                  )}>
-                                    {isLoading
-                                      ? <RiLoader4Line className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
-                                      : r?.found ? <RiCheckLine className="w-3.5 h-3.5 text-emerald-500" />
-                                      : r?.error === "timeout" ? <RiTimeLine className="w-3.5 h-3.5 text-amber-500" />
-                                      : <RiWifiLine className="w-3.5 h-3.5 text-muted-foreground/40" />
-                                    }
-                                  </div>
-                                  <div>
-                                    <p className={cn("text-xs font-semibold leading-none",
-                                      r?.found ? "text-emerald-700 dark:text-emerald-300"
-                                        : r?.error === "timeout" ? "text-amber-600 dark:text-amber-400"
-                                        : "text-muted-foreground"
-                                    )}>{name}</p>
-                                    <p className="text-[10px] text-muted-foreground/60 mt-0.5">
-                                      {isLoading ? "检测中…"
-                                        : r?.found ? `已检测到 · ${r.latencyMs}ms`
-                                        : r?.error === "timeout" ? "超时"
-                                        : r?.error ? "未找到记录"
-                                        : "等待 DNS 传播"}
-                                    </p>
-                                  </div>
-                                </div>
-                              );
-                            })}
+                          <div className="flex items-center justify-between mb-2">
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
+                              <RiWifiLine className="w-3 h-3" />
+                              多路并行检测
+                            </p>
+                            <div className="flex items-center gap-2 text-[10px] text-muted-foreground/50">
+                              <span className="flex items-center gap-0.5"><RiServerLine className="w-2.5 h-2.5" />UDP</span>
+                              <span className="flex items-center gap-0.5"><RiCloudLine className="w-2.5 h-2.5" />DoH</span>
+                            </div>
                           </div>
+                          {(() => {
+                            const PLACEHOLDER_RESOLVERS = [
+                              { name: "Google DNS", proto: "udp" },
+                              { name: "Cloudflare", proto: "udp" },
+                              { name: "Quad9", proto: "udp" },
+                              { name: "系统DNS", proto: "udp" },
+                              { name: "Google DoH", proto: "doh" },
+                              { name: "Cloudflare DoH", proto: "doh" },
+                            ];
+                            const isLoading = verifyState === "loading";
+                            const displayList = isLoading && resolvers.length === 0
+                              ? PLACEHOLDER_RESOLVERS
+                              : resolvers;
+                            return (
+                              <div className="grid grid-cols-2 gap-1.5">
+                                {displayList.map((item, i) => {
+                                  const r = resolvers[i];
+                                  const isDoh = (item as any).proto === "doh";
+                                  return (
+                                    <div
+                                      key={item.name}
+                                      className={cn(
+                                        "rounded-lg border px-2.5 py-2 flex items-center gap-2 transition-all",
+                                        r?.found
+                                          ? "border-emerald-300/60 bg-emerald-50/50 dark:bg-emerald-950/25"
+                                          : r?.error === "timeout"
+                                          ? "border-amber-200/50 bg-amber-50/30 dark:bg-amber-950/15"
+                                          : "border-border/50 bg-muted/15"
+                                      )}
+                                    >
+                                      <div className={cn(
+                                        "shrink-0 w-6 h-6 rounded-md flex items-center justify-center",
+                                        r?.found ? "bg-emerald-500/10"
+                                          : r?.error === "timeout" ? "bg-amber-500/10"
+                                          : "bg-muted/40"
+                                      )}>
+                                        {isLoading
+                                          ? <RiLoader4Line className="w-3 h-3 animate-spin text-muted-foreground/60" />
+                                          : r?.found
+                                          ? <RiCheckLine className="w-3 h-3 text-emerald-500" />
+                                          : r?.error === "timeout"
+                                          ? <RiTimeLine className="w-3 h-3 text-amber-500" />
+                                          : isDoh
+                                          ? <RiCloudLine className="w-3 h-3 text-muted-foreground/30" />
+                                          : <RiWifiLine className="w-3 h-3 text-muted-foreground/30" />
+                                        }
+                                      </div>
+                                      <div className="min-w-0 flex-1">
+                                        <p className={cn(
+                                          "text-[11px] font-semibold leading-none truncate",
+                                          r?.found ? "text-emerald-700 dark:text-emerald-300"
+                                            : r?.error === "timeout" ? "text-amber-600 dark:text-amber-400"
+                                            : "text-muted-foreground"
+                                        )}>{item.name}</p>
+                                        <p className="text-[10px] text-muted-foreground/50 mt-0.5">
+                                          {isLoading ? "检测中…"
+                                            : r?.found ? `${r.latencyMs}ms ✓`
+                                            : r?.error === "timeout" ? "超时"
+                                            : r?.error ? "未找到"
+                                            : "等待"}
+                                        </p>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            );
+                          })()}
                         </div>
 
                         {/* Status messages */}
@@ -789,6 +819,38 @@ export default function StampPage() {
                           </Button>
                         </div>
                       </div>
+
+                      {/* Delete verification record reminder */}
+                      {submitResult && (
+                        <div className="rounded-2xl border border-sky-200/60 dark:border-sky-800/40 bg-sky-50/60 dark:bg-sky-950/20 p-4">
+                          <div className="flex gap-3">
+                            <div className="shrink-0 w-8 h-8 rounded-lg bg-sky-500/10 flex items-center justify-center mt-0.5">
+                              <RiDeleteBinLine className="w-4 h-4 text-sky-500" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs font-semibold text-sky-700 dark:text-sky-300 mb-1">建议删除验证记录</p>
+                              <p className="text-[11px] text-muted-foreground leading-relaxed mb-2.5">
+                                验证已完成，DNS TXT 记录已不再需要。建议从 DNS 控制台删除以下记录，保持 DNS 整洁：
+                              </p>
+                              <div className="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-background/70 border border-sky-200/50 dark:border-sky-800/30">
+                                <span className="text-[10px] font-bold text-muted-foreground/60 uppercase shrink-0">TXT</span>
+                                <code className="text-[11px] font-mono text-sky-700 dark:text-sky-300 flex-1 break-all">
+                                  {submitResult.txtRecord}
+                                </code>
+                                <button
+                                  onClick={() => copyText(submitResult!.txtRecord)}
+                                  className="shrink-0 p-1 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                                >
+                                  <RiFileCopyLine className="w-3 h-3" />
+                                </button>
+                              </div>
+                              <p className="text-[10px] text-muted-foreground/50 mt-1.5">
+                                ℹ️ 即使保留该记录也不影响标签正常显示，删除只是可选的清理操作
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
 
                       {/* What happens next */}
                       <div className="glass-panel border border-border rounded-2xl p-4 space-y-3">
