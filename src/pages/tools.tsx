@@ -5,16 +5,22 @@ import { RiArrowLeftSLine, RiExternalLinkLine, RiToolsLine } from "@remixicon/re
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { TOOL_CATEGORIES } from "@/lib/tools-data";
 import { motion } from "framer-motion";
+import { useTranslation } from "@/lib/i18n";
 
 export default function ToolsPage() {
+  const { t, locale } = useTranslation();
+
+  const isChinese = locale === "zh" || locale === "zh-tw";
+  const getDesc = (tool: { desc: string; descEn: string }) =>
+    isChinese ? tool.desc : tool.descEn;
+
   return (
     <>
       <Head>
-        <title>域名工具箱 — NEXT WHOIS</title>
+        <title>{t("tools.page_title")} — NEXT WHOIS</title>
       </Head>
       <ScrollArea className="w-full h-[calc(100vh-4rem)]">
         <main className="w-full max-w-3xl mx-auto px-4 sm:px-6 py-6">
-          {/* Header */}
           <div className="flex items-center gap-3 mb-6">
             <Link
               href="/"
@@ -27,15 +33,16 @@ export default function ToolsPage() {
                 <RiToolsLine className="w-5 h-5" />
               </div>
               <div>
-                <h1 className="text-lg font-bold leading-none">域名工具箱</h1>
+                <h1 className="text-lg font-bold leading-none">
+                  {t("tools.page_title")}
+                </h1>
                 <p className="text-[11px] text-muted-foreground mt-0.5">
-                  精选域名行业常用工具与平台
+                  {t("tools.page_subtitle")}
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Categories */}
           <div className="space-y-8">
             {TOOL_CATEGORIES.map((cat, ci) => (
               <motion.section
@@ -46,7 +53,7 @@ export default function ToolsPage() {
               >
                 <div className="flex items-center gap-3 mb-3">
                   <h2 className="text-base font-bold tracking-tight">
-                    {cat.title}
+                    {t(cat.titleKey as Parameters<typeof t>[0])}
                   </h2>
                   <div className="h-px flex-1 bg-border" />
                   <span className="text-[10px] text-muted-foreground tabular-nums">
@@ -74,7 +81,7 @@ export default function ToolsPage() {
                         <RiExternalLinkLine className="w-3 h-3 text-muted-foreground/40 group-hover:text-primary/60 shrink-0 mt-0.5 transition-colors" />
                       </div>
                       <span className="text-[11px] text-muted-foreground leading-snug line-clamp-2">
-                        {tool.desc}
+                        {getDesc(tool)}
                       </span>
                     </motion.a>
                   ))}
@@ -85,7 +92,7 @@ export default function ToolsPage() {
 
           <div className="mt-10 pt-6 border-t border-border/40 text-center">
             <p className="text-[11px] text-muted-foreground/50">
-              NiC.RW 提供技术支持 · 仅供参考，请自行判断工具的适用性
+              {t("tools.footer")}
             </p>
           </div>
         </main>

@@ -247,5 +247,16 @@
     "cancel_error_title": "取消失败",
     "cancel_error_desc": "请稍后重试或联系支持。",
     "cancel_go_home": "返回首页"
+  },
+  "tools": {
+    "page_title": "域名工具箱",
+    "page_subtitle": "精选域名行业常用工具与平台",
+    "footer": "NiC.RW 提供技术支持 · 仅供参考，请自行判断工具的适用性",
+    "cat_common": "常用工具",
+    "cat_parking": "域名停放",
+    "cat_backorder": "域名抢注平台",
+    "cat_news": "域名资讯平台",
+    "cat_dns": "域名解析",
+    "cat_registrar": "域名注册平台"
   }
 }

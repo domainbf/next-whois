@@ -247,5 +247,16 @@
     "cancel_error_title": "Something went wrong",
     "cancel_error_desc": "Please try again later or contact support.",
     "cancel_go_home": "Go home"
+  },
+  "tools": {
+    "page_title": "Domain Toolbox",
+    "page_subtitle": "Curated tools and platforms for the domain industry",
+    "footer": "Powered by NiC.RW · For reference only — evaluate each tool's suitability yourself",
+    "cat_common": "Common Tools",
+    "cat_parking": "Domain Parking",
+    "cat_backorder": "Backorder Platforms",
+    "cat_news": "Industry News",
+    "cat_dns": "DNS Resolution",
+    "cat_registrar": "Domain Registrars"
   }
 }

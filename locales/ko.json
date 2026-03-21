@@ -154,5 +154,16 @@
     "invalid_domain": "잘못된 도메인 형식",
     "invalid_tld": "TLD '{{tld}}'가 너무 짧습니다 — 최소 2자 이상",
     "unknown_tld": "알 수 없는 확장자 '{{tld}}' — 오타를 확인하세요 (.com, .comm 아님)"
+  },
+  "tools": {
+    "page_title": "도메인 도구 상자",
+    "page_subtitle": "도메인 업계를 위한 엄선된 도구 및 플랫폼",
+    "footer": "NiC.RW 제공 · 참고 목적으로만 사용하세요",
+    "cat_common": "일반 도구",
+    "cat_parking": "도메인 파킹",
+    "cat_backorder": "백오더 플랫폼",
+    "cat_news": "업계 뉴스",
+    "cat_dns": "DNS 서비스",
+    "cat_registrar": "도메인 등록기관"
   }
 }

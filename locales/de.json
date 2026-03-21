@@ -154,5 +154,16 @@
     "invalid_domain": "Ungültiges Domain-Format",
     "invalid_tld": "TLD '{{tld}}' zu kurz — mindestens 2 Buchstaben erforderlich",
     "unknown_tld": "Unbekannte Endung '{{tld}}' — bitte auf Tippfehler prüfen (z. B. .com statt .comm)"
+  },
+  "tools": {
+    "page_title": "Domain-Werkzeugkasten",
+    "page_subtitle": "Kuratierte Tools und Plattformen für die Domain-Branche",
+    "footer": "Bereitgestellt von NiC.RW · Nur zur Orientierung — bitte selbst prüfen",
+    "cat_common": "Allgemeine Tools",
+    "cat_parking": "Domain-Parking",
+    "cat_backorder": "Backorder-Plattformen",
+    "cat_news": "Branchen-News",
+    "cat_dns": "DNS-Dienste",
+    "cat_registrar": "Domain-Registrare"
   }
 }

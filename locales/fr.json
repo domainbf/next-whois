@@ -154,5 +154,16 @@
     "invalid_domain": "Format de domaine invalide",
     "invalid_tld": "Le TLD '{{tld}}' est trop court — minimum 2 lettres",
     "unknown_tld": "Extension inconnue '{{tld}}' — vérifiez les fautes de frappe (ex. .com et non .comm)"
+  },
+  "tools": {
+    "page_title": "Boîte à outils domaines",
+    "page_subtitle": "Outils et plateformes sélectionnés pour l'industrie des noms de domaine",
+    "footer": "Propulsé par NiC.RW · À titre indicatif uniquement — évaluez l'adéquation de chaque outil",
+    "cat_common": "Outils courants",
+    "cat_parking": "Parking de domaines",
+    "cat_backorder": "Plateformes de backorder",
+    "cat_news": "Actualités du secteur",
+    "cat_dns": "Résolution DNS",
+    "cat_registrar": "Bureaux d'enregistrement"
   }
 }

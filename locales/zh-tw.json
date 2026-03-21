@@ -154,5 +154,16 @@
     "invalid_domain": "域名格式無效",
     "invalid_tld": "頂級域 '{{tld}}' 太短，至少需要 2 個字母",
     "unknown_tld": "未知域名後綴 '{{tld}}'，請檢查拼字（如 .com 而非 .comm）"
+  },
+  "tools": {
+    "page_title": "網域工具箱",
+    "page_subtitle": "精選網域行業常用工具與平台",
+    "footer": "NiC.RW 提供技術支援 · 僅供參考，請自行判斷工具的適用性",
+    "cat_common": "常用工具",
+    "cat_parking": "網域停放",
+    "cat_backorder": "網域搶注平台",
+    "cat_news": "網域資訊平台",
+    "cat_dns": "網域解析",
+    "cat_registrar": "網域註冊平台"
   }
 }
