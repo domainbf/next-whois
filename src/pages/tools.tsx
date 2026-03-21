@@ -79,13 +79,8 @@ export default function ToolsPage() {
           </div>
 
           <div className="space-y-8">
-            {sortedCategories.map((cat, ci) => (
-              <motion.section
-                key={cat.id}
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.25, delay: ci * 0.06 }}
-              >
+            {sortedCategories.map((cat) => (
+              <section key={cat.id}>
                 <div className="flex items-center gap-3 mb-3">
                   <h2 className="text-base font-bold tracking-tight">
                     {t(cat.titleKey as Parameters<typeof t>[0])}
@@ -111,9 +106,6 @@ export default function ToolsPage() {
                         href={tool.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        initial={{ opacity: 0, scale: 0.97 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ duration: 0.2, delay: ci * 0.06 + ti * 0.02 }}
                         whileTap={{ scale: 0.94 }}
                         onClick={() => handleClick(tool.url)}
                         className="group flex flex-col gap-1 p-3 rounded-xl border border-border bg-muted/10 hover:bg-muted/40 hover:border-primary/30 transition-all duration-150 cursor-pointer"
@@ -138,7 +130,7 @@ export default function ToolsPage() {
                     );
                   })}
                 </div>
-              </motion.section>
+              </section>
             ))}
           </div>
 
