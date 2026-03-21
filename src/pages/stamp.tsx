@@ -163,6 +163,8 @@ export default function StampPage() {
   const [resolvers, setResolvers] = React.useState<{ name: string; proto?: string; ip?: string; latencyMs: number; found: boolean; error: string | null }[]>([]);
   const [httpCheck, setHttpCheck] = React.useState<{ found: boolean; latencyMs: number; error: string | null; url: string } | null>(null);
   const [verifyTab, setVerifyTab] = React.useState<"dns" | "http">("dns");
+  const [quickTxtLoading, setQuickTxtLoading] = React.useState(false);
+  const [quickTxtResult, setQuickTxtResult] = React.useState<{ found: boolean; records: string[][]; latencyMs: number; resolvers: { name: string; records: string[][]; latencyMs: number; error?: string }[] } | null>(null);
   const [countdown, setCountdown] = React.useState(0);
   const pollRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const countdownRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
@@ -272,6 +274,21 @@ export default function StampPage() {
       });
     }, 1000);
     pollRef.current = setTimeout(onDone, sec * 1000);
+  }
+
+  async function handleQuickTxt() {
+    if (!submitResult) return;
+    setQuickTxtLoading(true);
+    setQuickTxtResult(null);
+    try {
+      const res = await fetch(`/api/dns/txt?name=${encodeURIComponent(submitResult.txtRecord)}`);
+      const data = await res.json();
+      setQuickTxtResult(data);
+    } catch {
+      setQuickTxtResult({ found: false, records: [], latencyMs: 0, resolvers: [] });
+    } finally {
+      setQuickTxtLoading(false);
+    }
   }
 
   const handleVerify = React.useCallback(async (silent = false) => {
@@ -716,6 +733,111 @@ export default function StampPage() {
                                   )}
                                 </div>
                               ))}
+                            </div>
+
+                            {/* Quick TXT check */}
+                            <div className="rounded-xl border border-border/60 bg-muted/15 overflow-hidden">
+                              <div className="px-3 py-2 border-b border-border/40 flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-2">
+                                  <RiFlashlightLine className="w-3.5 h-3.5 text-sky-500 shrink-0" />
+                                  <p className="text-[11px] font-semibold text-foreground">
+                                    {isZh ? "快速查询 TXT 记录" : "Quick TXT lookup"}
+                                  </p>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={handleQuickTxt}
+                                  disabled={quickTxtLoading}
+                                  className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-sky-500 hover:bg-sky-600 text-white text-[11px] font-semibold transition-colors disabled:opacity-60"
+                                >
+                                  {quickTxtLoading
+                                    ? <><RiLoader4Line className="w-3 h-3 animate-spin" />{isZh ? "查询中…" : "Querying…"}</>
+                                    : <><RiRefreshLine className="w-3 h-3" />{isZh ? "立即查询" : "Check Now"}</>
+                                  }
+                                </button>
+                              </div>
+                              <div className="px-3 py-2.5">
+                                {!quickTxtResult && !quickTxtLoading && (
+                                  <p className="text-[11px] text-muted-foreground/60 text-center py-1">
+                                    {isZh
+                                      ? "直接用 Google/Cloudflare DNS 查询 TXT 记录，无需等待页面轮询"
+                                      : "Query TXT records directly via Google/Cloudflare DNS — instant result"}
+                                  </p>
+                                )}
+                                {quickTxtLoading && (
+                                  <div className="flex items-center gap-2 py-1">
+                                    <RiLoader4Line className="w-3.5 h-3.5 animate-spin text-muted-foreground/60" />
+                                    <p className="text-[11px] text-muted-foreground">{isZh ? "正在查询…" : "Querying…"}</p>
+                                  </div>
+                                )}
+                                {quickTxtResult && !quickTxtLoading && (
+                                  <div className="space-y-2">
+                                    {/* Per-resolver results */}
+                                    <div className="grid grid-cols-2 gap-1.5">
+                                      {quickTxtResult.resolvers.map((r) => (
+                                        <div
+                                          key={r.name}
+                                          className={cn(
+                                            "rounded-lg border px-2.5 py-2 flex items-center gap-2",
+                                            r.records.length > 0
+                                              ? "border-emerald-300/60 bg-emerald-50/50 dark:bg-emerald-950/25"
+                                              : r.error === "timeout"
+                                              ? "border-amber-200/50 bg-amber-50/30 dark:bg-amber-950/15"
+                                              : "border-border/50 bg-muted/10"
+                                          )}
+                                        >
+                                          <div className={cn(
+                                            "shrink-0 w-5 h-5 rounded-md flex items-center justify-center",
+                                            r.records.length > 0 ? "bg-emerald-500/10"
+                                              : r.error === "timeout" ? "bg-amber-500/10"
+                                              : "bg-muted/30"
+                                          )}>
+                                            {r.records.length > 0
+                                              ? <RiCheckLine className="w-3 h-3 text-emerald-500" />
+                                              : r.error === "timeout"
+                                              ? <RiTimeLine className="w-3 h-3 text-amber-500" />
+                                              : <RiWifiLine className="w-3 h-3 text-muted-foreground/30" />
+                                            }
+                                          </div>
+                                          <div className="min-w-0 flex-1">
+                                            <p className={cn(
+                                              "text-[10px] font-semibold truncate",
+                                              r.records.length > 0 ? "text-emerald-700 dark:text-emerald-300"
+                                                : r.error === "timeout" ? "text-amber-600 dark:text-amber-400"
+                                                : "text-muted-foreground"
+                                            )}>{r.name}</p>
+                                            <p className="text-[10px] text-muted-foreground/50 mt-0.5">
+                                              {r.records.length > 0
+                                                ? `${r.latencyMs}ms ✓`
+                                                : r.error === "timeout" ? (isZh ? "超时" : "timeout")
+                                                : (isZh ? "未找到" : "not found")}
+                                            </p>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                    {/* Found records */}
+                                    {quickTxtResult.found && quickTxtResult.records.length > 0 && (
+                                      <div className="rounded-lg border border-emerald-300/50 bg-emerald-50/30 dark:bg-emerald-950/20 px-2.5 py-2">
+                                        <p className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 mb-1 flex items-center gap-1">
+                                          <RiCheckLine className="w-3 h-3" />
+                                          {isZh ? "已找到 TXT 记录" : "TXT record found"}
+                                        </p>
+                                        {quickTxtResult.records.slice(0, 3).map((rr, i) => (
+                                          <p key={i} className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 break-all leading-relaxed">
+                                            {rr.join(" ")}
+                                          </p>
+                                        ))}
+                                      </div>
+                                    )}
+                                    {!quickTxtResult.found && (
+                                      <p className="text-[11px] text-muted-foreground/70 text-center py-0.5">
+                                        {isZh ? "TXT 记录尚未传播，请稍后再查" : "TXT record not yet propagated — try again later"}
+                                      </p>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
                             </div>
 
                             {/* DNS status grid */}

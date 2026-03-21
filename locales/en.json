@@ -209,7 +209,7 @@
     "dns_field_type": "Type",
     "dns_field_host": "Host",
     "dns_field_value": "Value",
-    "dns_field_ttl_val": "300 (or minimum)",
+    "dns_field_ttl_val": "600 (recommended)",
     "parallel_check": "Parallel DNS Check",
     "checking": "Checking…",
     "timeout": "Timeout",
