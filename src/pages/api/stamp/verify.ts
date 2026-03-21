@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { readData, writeData, StampsDB } from "@/lib/data-store";
-import { getDb } from "@/lib/db";
+import { getDbReady } from "@/lib/db";
 import dns from "dns/promises";
 
 const UDP_RESOLVERS = [
@@ -111,7 +111,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!id || !domain) return res.status(400).json({ error: "Missing id or domain" });
 
   const cleanDomain = String(domain).toLowerCase().trim();
-  const db = getDb();
+  const db = await getDbReady();
 
   let verifyToken: string | null = null;
 

@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { readData, StampsDB, StampRecord } from "@/lib/data-store";
-import { getDb } from "@/lib/db";
+import { getDbReady } from "@/lib/db";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "GET") return res.status(405).end();
@@ -9,7 +9,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!domain) return res.status(400).json({ error: "Missing domain" });
 
   try {
-    const db = getDb();
+    const db = await getDbReady();
     if (db) {
       const { rows } = await db.query(
         `SELECT id, tag_name, tag_style, link, nickname, verified_at

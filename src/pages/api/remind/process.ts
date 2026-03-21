@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { getDb } from "@/lib/db";
+import { getDbReady } from "@/lib/db";
 import { randomBytes } from "crypto";
 import { sendEmail, confirmationHtml } from "./submit";
 
@@ -13,7 +13,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(401).json({ error: "Unauthorized" });
   }
 
-  const db = getDb();
+  const db = await getDbReady();
   if (!db) return res.status(500).json({ error: "Database unavailable" });
 
   try {

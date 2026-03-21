@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { readData, writeData, StampRecord, StampsDB } from "@/lib/data-store";
-import { getDb } from "@/lib/db";
+import { getDbReady } from "@/lib/db";
 import { randomBytes } from "crypto";
 import { checkRateLimit } from "@/lib/rate-limit";
 
@@ -27,7 +27,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const cleanEmail = String(email).trim();
 
   try {
-    const db = getDb();
+    const db = await getDbReady();
     if (db) {
       await db.query(
         `INSERT INTO stamps (id, domain, tag_name, tag_style, link, description, nickname, email, verify_token, verified)

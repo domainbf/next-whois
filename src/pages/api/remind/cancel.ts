@@ -1,11 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { getDb } from "@/lib/db";
+import { getDbReady } from "@/lib/db";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const token = String(req.query.token || "").trim();
   if (!token) return res.status(400).json({ error: "Missing token" });
 
-  const db = getDb();
+  const db = await getDbReady();
   if (!db) return res.status(500).json({ error: "Database unavailable" });
 
   try {

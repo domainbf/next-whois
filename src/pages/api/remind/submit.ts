@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { getDb } from "@/lib/db";
+import { getDbReady } from "@/lib/db";
 import { randomBytes } from "crypto";
 import { checkRateLimit } from "@/lib/rate-limit";
 
@@ -24,7 +24,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const cancelToken = randomBytes(20).toString("hex");
   const id = randomBytes(8).toString("hex");
 
-  const db = getDb();
+  const db = await getDbReady();
   if (!db) return res.status(500).json({ error: "Database unavailable" });
 
   let reminderId: string;
