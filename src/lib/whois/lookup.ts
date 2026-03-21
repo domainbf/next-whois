@@ -8,11 +8,24 @@ import { whoisDomain, whoisIp, whoisAsn, whoisQuery } from "whoiser";
 import {
   getCustomServerEntry,
   isHttpEntry,
+  isScraperEntry,
   getTcpHost,
   isUserManagedServer,
   HttpServerEntry,
 } from "@/lib/whois/custom-servers";
 import { probeDomain } from "@/lib/whois/dns-check";
+import { lookupNicBa } from "@/lib/whois/http-scrapers/nic-ba";
+
+class ScraperRequiredError extends Error {
+  registryUrl: string;
+  blocked: boolean;
+  constructor(message: string, registryUrl: string, blocked = false) {
+    super(message);
+    this.name = "ScraperRequiredError";
+    this.registryUrl = registryUrl;
+    this.blocked = blocked;
+  }
+}
 
 const WHOIS_ERROR_PATTERNS = [
   /no match/i,
@@ -113,6 +126,7 @@ interface WhoisRawResult {
   raw: string;
   structured: Record<string, any>;
   server: string;
+  registryUrl?: string;
 }
 
 function isIPAddress(query: string): boolean {
@@ -241,7 +255,31 @@ async function getLookupWhois(domain: string): Promise<WhoisRawResult> {
     (await isUserManagedServer(tld)) || (await isUserManagedServer(tldSuffix));
 
   if (customEntry) {
-    if (isHttpEntry(customEntry)) {
+    if (isScraperEntry(customEntry)) {
+      const { name: scraperName, registryUrl } = customEntry;
+      if (scraperName === "nic-ba") {
+        const result = await lookupNicBa(domainToQuery, LOOKUP_TIMEOUT);
+        if (result.success) {
+          return {
+            raw: result.raw,
+            structured: {},
+            server: "nic.ba",
+            registryUrl,
+          };
+        }
+        throw new ScraperRequiredError(
+          result.blocked
+            ? "nic.ba requires CAPTCHA verification — automated WHOIS lookup is not available for .ba domains"
+            : `nic.ba scraper error: ${result.reason}`,
+          registryUrl,
+          result.blocked,
+        );
+      }
+      throw new ScraperRequiredError(
+        `No scraper implementation for "${scraperName}"`,
+        registryUrl,
+      );
+    } else if (isHttpEntry(customEntry)) {
       const raw = await queryWhoisHttp(
         customEntry,
         domainToQuery,
@@ -444,11 +482,28 @@ export async function lookupWhois(domain: string): Promise<WhoisResult> {
 
   const isDomainQuery = !isIPAddress(domain) && !isASNumber(domain);
 
-  async function failWithDns(error: string): Promise<WhoisResult> {
+  const whoisError =
+    whoisSettled.status === "rejected" ? whoisSettled.reason : null;
+  const scraperRegistryUrl =
+    whoisError instanceof ScraperRequiredError
+      ? whoisError.registryUrl
+      : undefined;
+
+  async function failWithDns(
+    error: string,
+    registryUrl?: string,
+  ): Promise<WhoisResult> {
     const dnsProbe = isDomainQuery
       ? await probeDomain(domain).catch(() => undefined)
       : undefined;
-    return { time: elapsed(), status: false, cached: false, error, dnsProbe };
+    return {
+      time: elapsed(),
+      status: false,
+      cached: false,
+      error,
+      dnsProbe,
+      registryUrl,
+    };
   }
 
   if (whoisRawData) {
@@ -487,8 +542,6 @@ export async function lookupWhois(domain: string): Promise<WhoisResult> {
 
   const rdapError =
     rdapSettled.status === "rejected" ? rdapSettled.reason : null;
-  const whoisError =
-    whoisSettled.status === "rejected" ? whoisSettled.reason : null;
   const whoisMsg = whoisError?.message || "";
   const rdapMsg = rdapError?.message || "";
   const isTldUnsupported = /not supported/i.test(whoisMsg);
@@ -505,6 +558,6 @@ export async function lookupWhois(domain: string): Promise<WhoisResult> {
         ? `WHOIS server (${whoisData!.server}) connected but returned no data — the server may restrict access by IP or require queries from the registry's country`
         : whoisMsg || rdapMsg || "Unknown error occurred";
   return {
-    ...(await failWithDns(errMsg)),
+    ...(await failWithDns(errMsg, scraperRegistryUrl)),
   };
 }

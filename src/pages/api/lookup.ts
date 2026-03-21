@@ -15,6 +15,7 @@ type Data = {
   result?: WhoisAnalyzeResult;
   error?: string;
   dnsProbe?: DnsProbeResult;
+  registryUrl?: string;
 };
 
 export default async function handler(
@@ -29,10 +30,10 @@ export default async function handler(
       .json({ time: -1, status: false, error: "Query is required" });
   }
 
-  const { time, status, result, error, cached, source, dnsProbe } =
+  const { time, status, result, error, cached, source, dnsProbe, registryUrl } =
     await lookupWhoisWithCache(query);
   if (!status) {
-    return res.status(500).json({ time, status, error, dnsProbe });
+    return res.status(500).json({ time, status, error, dnsProbe, registryUrl });
   }
 
   res.setHeader("Cache-Control", "s-maxage=3600, stale-while-revalidate=86400");

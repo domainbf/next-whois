@@ -2239,7 +2239,7 @@ export default function LookupPage({
 
   const current = getWindowHref();
   const queryType = detectQueryType(target);
-  const { status, result, error, time, dnsProbe } = data;
+  const { status, result, error, time, dnsProbe, registryUrl } = data as typeof data & { registryUrl?: string };
 
   const handleSearch = (query: string) => {
     router.push(toSearchURI(query));
@@ -2583,10 +2583,18 @@ export default function LookupPage({
                       </div>
                     </div>
 
-                    <div className="flex gap-3">
+                    <div className="flex flex-wrap gap-3">
                       <Button variant="outline" size="sm" onClick={() => handleSearch(target)}>
                         重新查询
                       </Button>
+                      {registryUrl && (
+                        <a href={registryUrl} target="_blank" rel="noopener noreferrer">
+                          <Button variant="outline" size="sm" className="gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                            {isChinese ? "在注册局查询" : "Look up at Registry"}
+                          </Button>
+                        </a>
+                      )}
                       <Link href="/">
                         <Button variant="outline" size="sm">{t("new_search")}</Button>
                       </Link>
@@ -2627,10 +2635,18 @@ export default function LookupPage({
                         {". "}
                         {error || t("lookup_failed_fallback")}
                       </p>
-                      <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                      <div className="flex flex-col sm:flex-row items-center justify-center gap-3 flex-wrap">
                         <Button onClick={() => handleSearch(target)}>
                           {t("try_again")}
                         </Button>
+                        {registryUrl && (
+                          <a href={registryUrl} target="_blank" rel="noopener noreferrer">
+                            <Button variant="outline" className="gap-2">
+                              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                              {isChinese ? "在注册局查询" : "Look up at Registry"}
+                            </Button>
+                          </a>
+                        )}
                         <Link href="/">
                           <Button variant="outline">{t("new_search")}</Button>
                         </Link>

@@ -9,6 +9,7 @@ export type WhoisResult = {
   result?: WhoisAnalyzeResult;
   error?: string;
   dnsProbe?: DnsProbeResult;
+  registryUrl?: string;
 };
 
 export type WhoisAnalyzeResult = {

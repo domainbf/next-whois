@@ -30,12 +30,14 @@ interface ServerRow {
 
 function getProtocol(entry: CustomServerEntry): Protocol {
   if (typeof entry === "object" && entry.type === "http") return "http";
+  if (typeof entry === "object" && entry.type === "scraper") return "http";
   return "tcp";
 }
 
 function getDisplayHost(entry: CustomServerEntry): string {
   if (typeof entry === "string") return entry;
   if (entry.type === "tcp") return entry.host + (entry.port && entry.port !== 43 ? `:${entry.port}` : "");
+  if (entry.type === "scraper") return entry.registryUrl;
   return entry.url;
 }
 

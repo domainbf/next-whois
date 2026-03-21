@@ -19,7 +19,18 @@ export type HttpServerEntry = {
   body?: string;
 };
 
-export type CustomServerEntry = string | TcpServerEntry | HttpServerEntry;
+/**
+ * Scraper entry: a TLD handled by a custom scraper function (e.g. nic.ba).
+ * The scraper name maps to a dedicated module in src/lib/whois/http-scrapers/.
+ * registryUrl is shown to users when automated lookup is unavailable.
+ */
+export type ScraperEntry = {
+  type: "scraper";
+  name: string;
+  registryUrl: string;
+};
+
+export type CustomServerEntry = string | TcpServerEntry | HttpServerEntry | ScraperEntry;
 
 export type CustomServerMap = Record<string, CustomServerEntry>;
 
@@ -31,10 +42,10 @@ const CCTLD_FILE = path.join(
   "src/data/cctld-whois-servers.json",
 );
 
-function readCctldServers(): Record<string, string> {
+function readCctldServers(): Record<string, string | null> {
   try {
     const raw = fs.readFileSync(CCTLD_FILE, "utf-8");
-    return JSON.parse(raw) as Record<string, string>;
+    return JSON.parse(raw) as Record<string, string | null>;
   } catch {
     return {};
   }
@@ -42,6 +53,41 @@ function readCctldServers(): Record<string, string> {
 
 const BUILTIN_SERVERS: CustomServerMap = {
   bn: "whois.bnnic.bn",
+  ba: {
+    type: "scraper",
+    name: "nic-ba",
+    registryUrl: "https://www.nic.ba/?culture=en&handler=DomainSearch",
+  },
+  "com.ba": {
+    type: "scraper",
+    name: "nic-ba",
+    registryUrl: "https://www.nic.ba/?culture=en&handler=DomainSearch",
+  },
+  "org.ba": {
+    type: "scraper",
+    name: "nic-ba",
+    registryUrl: "https://www.nic.ba/?culture=en&handler=DomainSearch",
+  },
+  "net.ba": {
+    type: "scraper",
+    name: "nic-ba",
+    registryUrl: "https://www.nic.ba/?culture=en&handler=DomainSearch",
+  },
+  "gov.ba": {
+    type: "scraper",
+    name: "nic-ba",
+    registryUrl: "https://www.nic.ba/?culture=en&handler=DomainSearch",
+  },
+  "edu.ba": {
+    type: "scraper",
+    name: "nic-ba",
+    registryUrl: "https://www.nic.ba/?culture=en&handler=DomainSearch",
+  },
+  "mil.ba": {
+    type: "scraper",
+    name: "nic-ba",
+    registryUrl: "https://www.nic.ba/?culture=en&handler=DomainSearch",
+  },
 };
 
 function readCustomServersFromFile(): CustomServerMap {
@@ -78,7 +124,11 @@ async function writeUserManagedServers(servers: CustomServerMap): Promise<void> 
 export async function getAllCustomServers(): Promise<CustomServerMap> {
   const cctld = readCctldServers();
   const user = await readUserManagedServers();
-  return { ...BUILTIN_SERVERS, ...cctld, ...user };
+  // Filter out null values from cctld so BUILTIN_SERVERS entries take precedence
+  const cctldFiltered = Object.fromEntries(
+    Object.entries(cctld).filter(([, v]) => v !== null)
+  ) as CustomServerMap;
+  return { ...BUILTIN_SERVERS, ...cctldFiltered, ...user };
 }
 
 export async function getUserManagedServers(): Promise<CustomServerMap> {
@@ -130,6 +180,10 @@ export async function isUserManagedServer(tld: string): Promise<boolean> {
 
 export function isHttpEntry(entry: CustomServerEntry): entry is HttpServerEntry {
   return typeof entry === "object" && entry.type === "http";
+}
+
+export function isScraperEntry(entry: CustomServerEntry): entry is ScraperEntry {
+  return typeof entry === "object" && entry.type === "scraper";
 }
 
 export function isTcpEntry(
