@@ -29,14 +29,14 @@ import {
 import { toast } from "sonner";
 
 const TAG_STYLES: { id: string; label: string; className: string; glow?: string }[] = [
-  { id: "personal", label: "个人持有", className: "bg-violet-50 border border-violet-200 text-violet-700 dark:bg-violet-950/40 dark:border-violet-700/60 dark:text-violet-300" },
-  { id: "official", label: "官方", className: "bg-blue-500 text-white border-0", glow: "shadow-blue-500/40" },
-  { id: "brand", label: "品牌", className: "bg-violet-500 text-white border-0", glow: "shadow-violet-500/40" },
-  { id: "verified", label: "认证", className: "bg-emerald-500 text-white border-0", glow: "shadow-emerald-500/40" },
-  { id: "partner", label: "合作", className: "bg-orange-500 text-white border-0", glow: "shadow-orange-500/40" },
-  { id: "dev", label: "开发者", className: "bg-sky-500 text-white border-0", glow: "shadow-sky-500/40" },
-  { id: "warning", label: "提醒", className: "bg-amber-400 text-white border-0", glow: "shadow-amber-400/40" },
-  { id: "premium", label: "高级", className: "bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white border-0", glow: "shadow-fuchsia-500/40" },
+  { id: "personal", label: "Personal", className: "bg-violet-50 border border-violet-200 text-violet-700 dark:bg-violet-950/40 dark:border-violet-700/60 dark:text-violet-300" },
+  { id: "official", label: "Official", className: "bg-blue-500 text-white border-0", glow: "shadow-blue-500/40" },
+  { id: "brand", label: "Brand", className: "bg-violet-500 text-white border-0", glow: "shadow-violet-500/40" },
+  { id: "verified", label: "Verified", className: "bg-emerald-500 text-white border-0", glow: "shadow-emerald-500/40" },
+  { id: "partner", label: "Partner", className: "bg-orange-500 text-white border-0", glow: "shadow-orange-500/40" },
+  { id: "dev", label: "Developer", className: "bg-sky-500 text-white border-0", glow: "shadow-sky-500/40" },
+  { id: "warning", label: "Warning", className: "bg-amber-400 text-white border-0", glow: "shadow-amber-400/40" },
+  { id: "premium", label: "Premium", className: "bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white border-0", glow: "shadow-fuchsia-500/40" },
 ];
 
 function TagBadge({ tagName, tagStyle, live = false }: { tagName: string; tagStyle: string; live?: boolean }) {
@@ -105,36 +105,18 @@ function clearSession(domain: string) {
   try { sessionStorage.removeItem(getSessionKey(domain)); } catch {}
 }
 
-const STEP_LABELS: { key: Step; label: string }[] = [
-  { key: "form", label: "填写信息" },
-  { key: "verify", label: "DNS 验证" },
-  { key: "done", label: "生效" },
+const STEP_LABELS: { key: Step }[] = [
+  { key: "form" },
+  { key: "verify" },
+  { key: "done" },
 ];
 
 const stepIndex = (step: Step) => STEP_LABELS.findIndex((s) => s.key === step);
 
 const HOW_TO_STEPS = [
-  {
-    icon: RiPencilLine,
-    color: "text-violet-500",
-    bg: "bg-violet-500/10",
-    title: "填写标签信息",
-    desc: "选择标签样式，输入标签名称和联系方式。标签会显示在所有用户的查询结果中。",
-  },
-  {
-    icon: RiServerLine,
-    color: "text-sky-500",
-    bg: "bg-sky-500/10",
-    title: "添加 DNS 验证记录",
-    desc: "在你的 DNS 控制台添加一条 TXT 记录，用于证明你对该域名拥有管理权限。",
-  },
-  {
-    icon: RiFlashlightLine,
-    color: "text-emerald-500",
-    bg: "bg-emerald-500/10",
-    title: "即时自动验证生效",
-    desc: "系统自动检测 DNS 记录，通过后标签立即对全网生效，无需人工审核。",
-  },
+  { icon: RiPencilLine, color: "text-violet-500", bg: "bg-violet-500/10" },
+  { icon: RiServerLine, color: "text-sky-500", bg: "bg-sky-500/10" },
+  { icon: RiFlashlightLine, color: "text-emerald-500", bg: "bg-emerald-500/10" },
 ];
 
 const stepVariants = {
@@ -310,7 +292,7 @@ export default function StampPage() {
   }, [step, submitResult?.id]);
 
   function copyText(text: string) {
-    navigator.clipboard.writeText(text).then(() => toast.success("已复制"));
+    navigator.clipboard.writeText(text).then(() => toast.success(s("copied")));
   }
 
   return (
@@ -427,26 +409,15 @@ export default function StampPage() {
                         <div className="space-y-3">
                           {HOW_TO_STEPS.map((step, i) => {
                             const Icon = step.icon;
-                            const howZhTitle = ["填写标签信息", "添加 DNS 验证记录", "即时自动验证生效"][i];
-                            const howEnTitle = ["Fill in tag info", "Add a DNS TXT record", "Instant auto-verification"][i];
-                            const howZhDesc = [
-                              "选择标签样式，输入标签名称和联系方式。标签会显示在所有用户的查询结果中。",
-                              "在你的 DNS 控制台添加一条 TXT 记录，用于证明你对该域名拥有管理权限。",
-                              "系统自动检测 DNS 记录，通过后标签立即对全网生效，无需人工审核。",
-                            ][i];
-                            const howEnDesc = [
-                              "Choose a tag style and enter a name and contact info. The tag will appear in everyone's lookup results.",
-                              "Add one TXT record in your DNS console to prove you manage this domain.",
-                              "The system checks your DNS record automatically. Once verified, the tag is live globally — no manual review.",
-                            ][i];
+                            const n = i + 1;
                             return (
                             <div key={i} className="flex gap-3 items-start">
                               <div className={cn("shrink-0 w-7 h-7 rounded-lg flex items-center justify-center", step.bg)}>
                                 <Icon className={cn("w-3.5 h-3.5", step.color)} />
                               </div>
                               <div className="min-w-0 pt-0.5">
-                                <p className="text-xs font-semibold text-foreground leading-none mb-1">{isZh ? howZhTitle : howEnTitle}</p>
-                                <p className="text-[11px] text-muted-foreground leading-relaxed">{isZh ? howZhDesc : howEnDesc}</p>
+                                <p className="text-xs font-semibold text-foreground leading-none mb-1">{s(`how_step${n}_title`)}</p>
+                                <p className="text-[11px] text-muted-foreground leading-relaxed">{s(`how_step${n}_desc`)}</p>
                               </div>
                               {i < HOW_TO_STEPS.length - 1 && (
                                 <RiArrowRightLine className="shrink-0 w-3.5 h-3.5 text-muted-foreground/30 mt-1.5" />
@@ -713,7 +684,7 @@ export default function StampPage() {
                               { name: "Google DNS", proto: "udp" },
                               { name: "Cloudflare", proto: "udp" },
                               { name: "Quad9", proto: "udp" },
-                              { name: "系统DNS", proto: "udp" },
+                              { name: "System DNS", proto: "udp" },
                               { name: "Google DoH", proto: "doh" },
                               { name: "Cloudflare DoH", proto: "doh" },
                             ];
@@ -839,10 +810,7 @@ export default function StampPage() {
                         <div className="space-y-1">
                           <p className="text-xs font-semibold text-foreground">{s("dns_prop_title")}</p>
                           <p className="text-[11px] text-muted-foreground leading-relaxed">
-                            {isZh
-                              ? <><strong className="text-foreground">5 分钟到 24 小时</strong>全球生效，取决于你的 DNS 服务商和 TTL 设置。关闭页面不会丢失进度，重新打开后可继续验证。</>
-                              : <>DNS records typically take <strong className="text-foreground">5 minutes to 24 hours</strong> to propagate globally. Closing this page won&apos;t lose your progress.</>
-                            }
+                            {s("dns_prop_prefix")}<strong className="text-foreground">{s("dns_prop_highlight")}</strong>{s("dns_prop_suffix")}
                           </p>
                         </div>
                       </div>
@@ -868,10 +836,7 @@ export default function StampPage() {
                         </div>
                         <h2 className="text-xl font-bold text-emerald-700 dark:text-emerald-300 mb-2">{s("done_title")}</h2>
                         <p className="text-sm text-muted-foreground mb-4 leading-relaxed">
-                          {isZh
-                            ? <>品牌认领已生效，查询 <strong className="text-foreground font-mono">{domain}</strong> 时将显示标签：</>
-                            : <>Brand claim is live. Lookups for <strong className="text-foreground font-mono">{domain}</strong> will now show:</>
-                          }
+                          {s("done_claim_body", { domain })}
                         </p>
                         <div className="inline-flex items-center justify-center py-3 px-5 rounded-xl bg-gradient-to-br from-violet-50/60 to-fuchsia-50/40 dark:from-violet-950/30 dark:to-fuchsia-950/20 border border-violet-200/40 dark:border-violet-800/30 mb-6">
                           <TagBadge tagName={form.tagName} tagStyle={form.tagStyle} live />
@@ -922,15 +887,11 @@ export default function StampPage() {
                       {/* What happens next */}
                       <div className="glass-panel border border-border rounded-2xl p-4 space-y-3">
                         <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">{s("done_next")}</p>
-                        {(isZh ? [
-                          { icon: RiGlobalLine, text: "所有查询该域名的用户均可看到你的标签" },
-                          { icon: RiShieldCheckLine, text: "标签展示在域名详情页顶部显著位置" },
-                          { icon: RiCheckLine, text: "可随时重新提交以更新标签内容" },
-                        ] : [
-                          { icon: RiGlobalLine, text: "All users who look up this domain will see your tag" },
-                          { icon: RiShieldCheckLine, text: "The tag is displayed prominently at the top of the domain detail page" },
-                          { icon: RiCheckLine, text: "You can resubmit at any time to update the tag" },
-                        ]).map((item, i) => {
+                        {[
+                          { icon: RiGlobalLine, text: s("done_next_all_users") },
+                          { icon: RiShieldCheckLine, text: s("done_next_prominent") },
+                          { icon: RiCheckLine, text: s("done_next_resubmit") },
+                        ].map((item, i) => {
                           const ItemIcon = item.icon;
                           return (
                           <div key={i} className="flex items-start gap-2.5">

@@ -115,8 +115,12 @@ The app is production-ready for Vercel and similar serverless platforms.
 ### Cron Setup
 To trigger reminder emails automatically, set up a cron job (e.g. daily) to call:
 ```
-POST /api/remind/process
-Authorization: Bearer <CRON_SECRET>
+GET /api/remind/process?secret=<CRON_SECRET>
+```
+Or with a header:
+```
+GET /api/remind/process
+x-cron-secret: <CRON_SECRET>
 ```
 
 ## Dev Server
