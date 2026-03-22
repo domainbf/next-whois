@@ -82,6 +82,7 @@ export default function AdminIndexPage() {
   }, []);
 
   const QUICK_ACTIONS = [
+    { href: "/admin/search-records", label: "查询记录", desc: "查看统计、分类、清理记录" },
     { href: "/admin/settings", label: "网站设置", desc: "标题、OG标签、公告" },
     { href: "/admin/users", label: "用户管理", desc: "编辑、停用、删除用户" },
     { href: "/admin/stamps", label: "品牌审核", desc: "审核品牌认领申请" },
@@ -123,7 +124,7 @@ export default function AdminIndexPage() {
           />
           <StatCard
             icon={RiSearchLine} label="查询记录" value={stats?.searches}
-            href="/admin/users"
+            href="/admin/search-records"
             color="bg-orange-100 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400"
           />
           <StatCard

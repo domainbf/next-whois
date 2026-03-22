@@ -34,7 +34,7 @@ import {
   DrawerClose,
   DrawerTitle,
 } from "@/components/ui/drawer";
-import { listHistory, removeHistory } from "@/lib/history";
+import { listHistory, removeHistory, syncLocalHistoryToServer } from "@/lib/history";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { useSession, signOut } from "next-auth/react";
@@ -417,6 +417,7 @@ function UserButton() {
   const [open, setOpen] = React.useState(false);
   const ref = React.useRef<HTMLDivElement>(null);
   const email = (session?.user as any)?.email as string | undefined;
+  const userId = (session?.user as any)?.id as string | undefined;
   const isAdminUser = !!email && email.toLowerCase().trim() === ADMIN_EMAIL;
 
   React.useEffect(() => {
@@ -426,6 +427,12 @@ function UserButton() {
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
+
+  React.useEffect(() => {
+    if (status === "authenticated" && userId) {
+      syncLocalHistoryToServer(userId).catch(() => {});
+    }
+  }, [status, userId]);
 
   if (status === "loading") return null;
 
