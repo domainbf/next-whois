@@ -1,5 +1,4 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import dns from "dns/promises";
 
 export const config = { maxDuration: 20 };
 
@@ -8,16 +7,26 @@ const IPV6_RE = /^[0-9a-fA-F:]+:[0-9a-fA-F:]+$/;
 const ASN_RE = /^as?(\d+)$/i;
 
 async function resolveHostname(host: string): Promise<string | null> {
+  // Use DoH to avoid UDP port 53 blocks in serverless environments
+  const url = `https://dns.google/resolve?name=${encodeURIComponent(host)}&type=A`;
   try {
-    const addrs = await dns.resolve4(host);
-    return addrs[0] ?? null;
+    const r = await fetch(url, {
+      headers: { Accept: "application/dns-json" },
+      signal: AbortSignal.timeout(6000),
+    });
+    if (!r.ok) return null;
+    const data = await r.json();
+    const answer = (data.Answer as any[] | undefined)?.find((a: any) => a.type === 1);
+    if (answer?.data) return answer.data as string;
+    // fallback: try AAAA
+    const url6 = `https://dns.google/resolve?name=${encodeURIComponent(host)}&type=AAAA`;
+    const r6 = await fetch(url6, { headers: { Accept: "application/dns-json" }, signal: AbortSignal.timeout(4000) });
+    if (!r6.ok) return null;
+    const data6 = await r6.json();
+    const answer6 = (data6.Answer as any[] | undefined)?.find((a: any) => a.type === 28);
+    return answer6?.data ?? null;
   } catch {
-    try {
-      const addrs = await dns.resolve6(host);
-      return addrs[0] ?? null;
-    } catch {
-      return null;
-    }
+    return null;
   }
 }
 

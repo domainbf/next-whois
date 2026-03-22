@@ -2304,12 +2304,18 @@ function AvailableDomainCard({ domain, locale }: { domain: string; locale: strin
   const [rawPrices, setRawPrices] = React.useState<DomainPricing[]>([]);
   const [registrars, setRegistrars] = React.useState<DomainPricing[]>([]);
   const [loadingPrices, setLoadingPrices] = React.useState(true);
-  const [eurRates, setEurRates] = React.useState<Record<string, number> | null>(null);
+  const CARD_FALLBACK_RATES: Record<string, number> = {
+    AUD: 1.65, CAD: 1.49, CHF: 0.94, CNY: 7.82, DKK: 7.46,
+    GBP: 0.85, HKD: 8.50, JPY: 162, KRW: 1520, NOK: 11.7,
+    NZD: 1.80, SEK: 11.3, SGD: 1.46, TWD: 34.8, USD: 1.09,
+  };
+  const [eurRates, setEurRates] = React.useState<Record<string, number>>(CARD_FALLBACK_RATES);
   const isZh = locale.startsWith("zh");
 
   React.useEffect(() => {
     const tld = domain.substring(domain.lastIndexOf(".") + 1).toLowerCase();
-    fetch(`/api/pricing?tld=${encodeURIComponent(tld)}&type=new`)
+    const ctrl = new AbortController();
+    fetch(`/api/pricing?tld=${encodeURIComponent(tld)}&type=new`, { signal: ctrl.signal })
       .then((r) => r.json())
       .then((data) => {
         const prices: DomainPricing[] = (data.price || [])
@@ -2326,12 +2332,13 @@ function AvailableDomainCard({ domain, locale }: { domain: string; locale: strin
       })
       .catch(() => {})
       .finally(() => setLoadingPrices(false));
+    return () => ctrl.abort();
   }, [domain]);
 
   React.useEffect(() => {
     fetch("https://api.frankfurter.app/latest")
       .then((r) => r.json())
-      .then((data) => setEurRates(data.rates))
+      .then((data) => { if (data?.rates) setEurRates(data.rates); })
       .catch(() => {});
   }, []);
 
@@ -2339,7 +2346,6 @@ function AvailableDomainCard({ domain, locale }: { domain: string; locale: strin
     if (rawPrices.length === 0) return;
     const toEur = (amount: number, currency: string) => {
       const cur = currency.toUpperCase();
-      if (!eurRates) return amount;
       if (cur === "EUR") return amount;
       return amount / (eurRates[cur] ?? 1);
     };
@@ -2351,18 +2357,15 @@ function AvailableDomainCard({ domain, locale }: { domain: string; locale: strin
 
   function formatPrice(amount: number, currency: string): string {
     const cur = currency.toUpperCase();
-    if (isZh && eurRates) {
-      const cnyRate = eurRates["CNY"] ?? 7.8;
+    if (isZh) {
+      const cnyRate = eurRates["CNY"] ?? 7.82;
       const eurAmount = cur === "EUR" ? amount : amount / (eurRates[cur] ?? 1);
       return `CNY ${(eurAmount * cnyRate).toFixed(2)}`;
     }
-    if (eurRates) {
-      if (cur === "USD") return `USD ${amount.toFixed(2)}`;
-      const usdRate = eurRates["USD"] ?? 1.09;
-      const eurAmount = cur === "EUR" ? amount : amount / (eurRates[cur] ?? 1);
-      return `USD ${(eurAmount * usdRate).toFixed(2)}`;
-    }
-    return `USD ${amount.toFixed(2)}`;
+    if (cur === "USD") return `USD ${amount.toFixed(2)}`;
+    const usdRate = eurRates["USD"] ?? 1.09;
+    const eurAmount = cur === "EUR" ? amount : amount / (eurRates[cur] ?? 1);
+    return `USD ${(eurAmount * usdRate).toFixed(2)}`;
   }
 
   const tldForDisplay = domain.substring(domain.lastIndexOf(".")).toLowerCase();
@@ -2714,10 +2717,12 @@ export default function LookupPage({
   useEffect(() => {
     const domainKey = data.result?.domain || target;
     if (!domainKey) return;
-    fetch(`/api/stamp/check?domain=${encodeURIComponent(domainKey)}`)
+    const ctrl = new AbortController();
+    fetch(`/api/stamp/check?domain=${encodeURIComponent(domainKey)}`, { signal: ctrl.signal })
       .then((r) => r.json())
       .then((d) => setVerifiedStamps(d.stamps || []))
       .catch(() => {});
+    return () => ctrl.abort();
   }, [data.result?.domain, target]);
 
   const FALLBACK_EUR_RATES: Record<string, number> = {
@@ -2776,25 +2781,24 @@ export default function LookupPage({
   };
 
   useEffect(() => {
-    if (status) {
-      // Determine registration status from available signals
-      const regStatus =
-        status && result ? "registered" :
-        dnsProbe?.registrationStatus === "unregistered" ? "unregistered" :
-        dnsProbe?.registrationStatus === "registered" ? "registered" :
-        !status ? "error" : "unknown";
+    if (!status) return;
+    const regStatus =
+      status && result ? "registered" :
+      dnsProbe?.registrationStatus === "unregistered" ? "unregistered" :
+      dnsProbe?.registrationStatus === "registered" ? "registered" :
+      "unknown";
 
-      addHistory(target, regStatus as any);
+    addHistory(target, regStatus as any);
 
-      if (session?.user) {
-        fetch("/api/user/search-history", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ query: target, queryType, regStatus }),
-        }).catch(() => {});
-      }
+    if (session?.user) {
+      fetch("/api/user/search-history", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: target, queryType, regStatus }),
+      }).catch(() => {});
     }
-  }, [session]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status, target]);
 
   const registrarIcon = result
     ? getRegistrarIcon(result.registrar, result.registrarURL)
