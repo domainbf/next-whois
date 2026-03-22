@@ -28,6 +28,7 @@ import {
   RiBrainLine,
   RiHeartLine,
   RiExternalLinkLine,
+  RiUserLine,
 } from "@remixicon/react";
 
 const FEATURES = [
@@ -129,26 +130,26 @@ const SUB_PAGES = [
 
 const THANKS = [
   {
-    name: "nazhumi",
+    name: "nazhumi.com",
     url: "https://www.nazhumi.com",
     desc: "WHOIS 数据源支持",
     descEn: "WHOIS data source",
   },
   {
-    name: "tianhu",
-    url: "https://www.tianhu.org",
+    name: "tian.hu",
+    url: "https://tian.hu",
     desc: "域名工具推荐",
     descEn: "Domain tools reference",
   },
   {
-    name: "miqingju",
+    name: "miqingju.com",
     url: "https://www.miqingju.com",
     desc: "资源与推荐支持",
     descEn: "Resources & recommendations",
   },
   {
-    name: "yisiyun",
-    url: "https://www.yisiyun.com",
+    name: "yisi.yun",
+    url: "https://yisi.yun",
     desc: "API 数据服务支持",
     descEn: "API data service",
   },
@@ -324,16 +325,16 @@ export default function AboutPage() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold mb-1">
-                  {isChinese ? "开源 · 免费使用" : "Open Source · Free to Use"}
+                  {isChinese ? "本站基于 · Next Whois 二次创作" : "Based on · Next Whois"}
                 </p>
                 <p className="text-[11px] text-muted-foreground leading-relaxed mb-3">
                   {isChinese
-                    ? "本项目基于 MIT 协议开源，欢迎贡献代码、提交 Issue 或 Star 支持。"
-                    : "This project is open source under MIT license. Contributions, issues, and stars are welcome."}
+                    ? "感谢原作者的开源贡献，本站在 Next Whois 基础上进行二次开发，遵循 MIT 协议。"
+                    : "Thanks to the original author's open source contribution. This site is built upon Next Whois under the MIT license."}
                 </p>
                 <div className="flex flex-wrap gap-2">
                   <a
-                    href="https://github.com/zmzimpl/next-whois-ui"
+                    href="https://github.com/zmh-program/next-whois"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1.5 text-[11px] font-medium px-3 py-1.5 rounded-lg bg-muted/60 hover:bg-muted border border-border transition-colors"
@@ -341,13 +342,15 @@ export default function AboutPage() {
                     <RiGithubLine className="w-3.5 h-3.5" />
                     GitHub
                   </a>
-                  <Link
-                    href="/docs"
+                  <a
+                    href="https://zmh.me"
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="inline-flex items-center gap-1.5 text-[11px] font-medium px-3 py-1.5 rounded-lg bg-muted/60 hover:bg-muted border border-border transition-colors"
                   >
-                    <RiCodeSSlashLine className="w-3.5 h-3.5" />
-                    API Docs
-                  </Link>
+                    <RiUserLine className="w-3.5 h-3.5" />
+                    {isChinese ? "作者" : "Author"}
+                  </a>
                 </div>
               </div>
             </motion.div>
