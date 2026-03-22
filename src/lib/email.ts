@@ -120,12 +120,15 @@ export interface SubscriptionEmailParams {
   expirationDate: string | null;
   cancelToken: string;
   thresholds: number[];
-  /** Optional lifecycle intelligence */
   lifecycle?: {
     phase: string;
     graceEnd: string;
     redemptionEnd: string;
     dropDate: string;
+    hasGrace?: boolean;
+    hasRedemption?: boolean;
+    hasPendingDelete?: boolean;
+    registry?: string;
   };
 }
 
@@ -193,11 +196,19 @@ export function subscriptionConfirmHtml(p: SubscriptionEmailParams): string {
     ${divider()}
 
     ${section(`
-      <p style="margin:0 0 12px;font-size:13px;font-weight:600;color:#1e293b">📅 提醒节点</p>
-      <p style="margin:0 0 12px;font-size:12px;color:#64748b;line-height:1.6">我们将在以下时间向您发送到期提醒邮件：</p>
+      <p style="margin:0 0 8px;font-size:13px;font-weight:600;color:#1e293b">📅 到期前提醒节点</p>
+      <p style="margin:0 0 10px;font-size:12px;color:#64748b;line-height:1.6">在以下时间节点自动发送邮件提醒：</p>
       <div>${p.thresholds.map(d => pill(`提前 ${d} 天`)).join("")}</div>
+      ${lc && (lc.hasGrace || lc.hasRedemption || lc.hasPendingDelete) ? `
+      <p style="margin:16px 0 8px;font-size:13px;font-weight:600;color:#1e293b">🔔 生命周期阶段提醒</p>
+      <p style="margin:0 0 10px;font-size:12px;color:#64748b;line-height:1.6">当域名进入以下阶段时，额外发送提醒：</p>
+      <div>
+        ${lc.hasGrace ? pill("进入宽限期", "#fffbeb", "#d97706") : ""}
+        ${lc.hasRedemption ? pill("进入赎回期", "#fff7ed", "#ea580c") : ""}
+        ${lc.hasPendingDelete ? pill("进入待删除期", "#fef2f2", "#dc2626") : ""}
+      </div>` : ""}
       <p style="margin:16px 0 0;font-size:11px;color:#94a3b8;line-height:1.6">
-        提醒将持续发送，直到域名续费成功、进入赎回期或您手动取消订阅。
+        提醒将持续发送，直到域名续费成功或您手动取消订阅。
       </p>
     `)}
 
@@ -271,6 +282,131 @@ export function reminderHtml({
       <a href="${cancelUrl}" style="font-size:11px;color:#94a3b8;text-decoration:underline">
         取消订阅
       </a>
+    </div>
+  `);
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Phase event reminder email (grace / redemption / pending-delete entered)
+// ──────────────────────────────────────────────────────────────────────────────
+export interface PhaseEventEmailParams {
+  domain: string;
+  phase: "grace" | "redemption" | "pendingDelete";
+  expirationDate: string | null;
+  graceEnd?: string;
+  redemptionEnd?: string;
+  dropDate?: string;
+  cancelToken: string;
+}
+
+export function phaseEventHtml(p: PhaseEventEmailParams): string {
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://x.rw";
+  const cancelUrl = `${baseUrl}/remind/cancel?token=${p.cancelToken}`;
+  const expiryStr = p.expirationDate
+    ? new Date(p.expirationDate).toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric" })
+    : "未知";
+
+  const phaseConfig = {
+    grace: {
+      headerBg: "linear-gradient(135deg,#f59e0b 0%,#d97706 100%)",
+      icon: "⏰",
+      label: "宽限期提醒",
+      labelEn: "Grace Period Alert",
+      badge: "宽限期",
+      badgeColor: "#d97706",
+      badgeBg: "#fffbeb",
+      heading: `${p.domain} 已进入宽限期`,
+      body: "域名已过期，但目前仍处于宽限期内，您可以按正常续费价格续期。请尽快联系您的注册商完成续费，以免进入赎回期产生额外费用。",
+      urgency: "⚠️ 请尽快操作",
+      nextLabel: "宽限期结束",
+      nextDate: p.graceEnd,
+      nextColor: "#d97706",
+    },
+    redemption: {
+      headerBg: "linear-gradient(135deg,#f97316 0%,#ea580c 100%)",
+      icon: "🚨",
+      label: "赎回期提醒",
+      labelEn: "Redemption Period Alert",
+      badge: "赎回期",
+      badgeColor: "#ea580c",
+      badgeBg: "#fff7ed",
+      heading: `${p.domain} 已进入赎回期`,
+      body: "域名宽限期已结束，现处于赎回期。赎回费用通常为正常续费价格的 5–10 倍。请立即联系您的注册商申请赎回，否则域名将进入待删除状态并最终被释放。",
+      urgency: "🚨 赎回费用较高，请立即操作",
+      nextLabel: "赎回期结束",
+      nextDate: p.redemptionEnd,
+      nextColor: "#ea580c",
+    },
+    pendingDelete: {
+      headerBg: "linear-gradient(135deg,#ef4444 0%,#dc2626 100%)",
+      icon: "❌",
+      label: "待删除提醒",
+      labelEn: "Pending Delete Alert",
+      badge: "待删除",
+      badgeColor: "#dc2626",
+      badgeBg: "#fef2f2",
+      heading: `${p.domain} 即将被删除`,
+      body: "域名已进入待删除状态，通常无法通过注册商续费或赎回。删除后域名将重新向公众开放注册。如有需要可在删除后抢注，或联系专业抢注服务。",
+      urgency: "❌ 通常已无法续费",
+      nextLabel: "预计释放时间",
+      nextDate: p.dropDate,
+      nextColor: "#dc2626",
+    },
+  }[p.phase];
+
+  return emailLayout(`
+    <div style="background:${phaseConfig.headerBg};padding:28px 32px 24px">
+      <p style="margin:0;font-size:11px;font-weight:700;letter-spacing:2px;color:rgba(255,255,255,.75);text-transform:uppercase">
+        ${phaseConfig.icon} ${phaseConfig.label}
+      </p>
+      <h1 style="margin:8px 0 4px;font-size:20px;font-weight:800;color:#fff;font-family:monospace">${p.domain}</h1>
+      <p style="margin:0;font-size:12px;color:rgba(255,255,255,.85)">域名生命周期状态变更通知</p>
+    </div>
+
+    ${section(`
+      <table cellpadding="0" cellspacing="0" style="width:100%;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden">
+        <tr>
+          <td style="padding:14px 20px;border-bottom:1px solid #e2e8f0">
+            <p style="margin:0;font-size:11px;font-weight:700;letter-spacing:1.5px;color:#94a3b8;text-transform:uppercase">原过期日期</p>
+            <p style="margin:6px 0 0;font-size:16px;font-weight:700;color:#1e293b;font-family:monospace">${expiryStr}</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:14px 20px;background:${phaseConfig.badgeBg}">
+            <p style="margin:0;font-size:11px;font-weight:700;letter-spacing:1.5px;color:${phaseConfig.badgeColor};text-transform:uppercase">
+              当前状态 · ${phaseConfig.badge}
+            </p>
+            <p style="margin:6px 0 0;font-size:13px;font-weight:600;color:#1e293b">${phaseConfig.heading}</p>
+          </td>
+        </tr>
+        ${phaseConfig.nextDate ? `
+        <tr>
+          <td style="padding:12px 20px;border-top:1px solid #e2e8f0">
+            <p style="margin:0;font-size:11px;font-weight:700;letter-spacing:1.5px;color:#94a3b8;text-transform:uppercase">
+              ${phaseConfig.nextLabel}
+            </p>
+            <p style="margin:6px 0 0;font-size:16px;font-weight:700;color:${phaseConfig.nextColor};font-family:monospace">
+              ${phaseConfig.nextDate}
+            </p>
+          </td>
+        </tr>` : ""}
+      </table>
+
+      <p style="margin:20px 0 0;font-size:13px;color:#475569;line-height:1.75">${phaseConfig.body}</p>
+
+      <div style="margin:16px 0 0;padding:12px 16px;background:#fafafa;border:1px solid #e2e8f0;border-radius:8px">
+        <p style="margin:0;font-size:12px;font-weight:700;color:#64748b">${phaseConfig.urgency}</p>
+      </div>
+    `)}
+
+    ${divider()}
+
+    <div style="padding:20px 32px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+      <a href="${baseUrl}/${p.domain}"
+        style="display:inline-block;background:${PRIMARY};color:#fff;font-size:12px;font-weight:700;padding:10px 22px;border-radius:8px;text-decoration:none">
+        查看域名详情 →
+      </a>
+      <a href="${cancelUrl}" style="font-size:11px;color:#94a3b8;text-decoration:underline">取消订阅</a>
     </div>
   `);
 }

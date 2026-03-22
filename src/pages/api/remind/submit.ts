@@ -3,42 +3,9 @@ import { getSupabase } from "@/lib/supabase";
 import { randomBytes } from "crypto";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { sendEmail, subscriptionConfirmHtml } from "@/lib/email";
+import { computeLifecycle, fmtDate } from "@/lib/lifecycle";
 
 const REMINDER_THRESHOLDS = [60, 30, 10, 5, 1];
-
-const LIFECYCLE_CFG: Record<string, { grace: number; redemption: number; pendingDelete: number }> = {
-  com: { grace: 45, redemption: 30, pendingDelete: 5 },
-  net: { grace: 45, redemption: 30, pendingDelete: 5 },
-  org: { grace: 45, redemption: 30, pendingDelete: 5 },
-  info: { grace: 45, redemption: 30, pendingDelete: 5 },
-  biz: { grace: 45, redemption: 30, pendingDelete: 5 },
-  io:  { grace: 30, redemption: 30, pendingDelete: 5 },
-  co:  { grace: 45, redemption: 30, pendingDelete: 5 },
-  app: { grace: 45, redemption: 30, pendingDelete: 5 },
-  dev: { grace: 45, redemption: 30, pendingDelete: 5 },
-  ai:  { grace: 30, redemption: 30, pendingDelete: 5 },
-};
-
-function getLifecycleInfo(domain: string, expirationDate: string | null) {
-  if (!expirationDate) return undefined;
-  const expiry = new Date(expirationDate);
-  if (isNaN(expiry.getTime())) return undefined;
-  const tld = domain.split(".").pop()?.toLowerCase() ?? "";
-  const cfg = LIFECYCLE_CFG[tld] ?? { grace: 45, redemption: 30, pendingDelete: 5 };
-  const ms = (d: number) => d * 86_400_000;
-  const graceEnd = new Date(expiry.getTime() + ms(cfg.grace));
-  const redemptionEnd = new Date(graceEnd.getTime() + ms(cfg.redemption));
-  const dropDate = new Date(redemptionEnd.getTime() + ms(cfg.pendingDelete));
-  const now = new Date();
-  let phase: string;
-  if (now < expiry) phase = "active";
-  else if (now < graceEnd) phase = "grace";
-  else if (now < redemptionEnd) phase = "redemption";
-  else if (now < dropDate) phase = "pendingDelete";
-  else phase = "dropped";
-  const fmt = (d: Date) => d.toLocaleDateString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit" });
-  return { phase, graceEnd: fmt(graceEnd), redemptionEnd: fmt(redemptionEnd), dropDate: fmt(dropDate) };
-}
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).end();
@@ -83,6 +50,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         cancel_reason: null,
         cancel_token: cancelTok,
       }).eq("id", reminderId);
+      // Clear existing logs so reminders restart fresh
       await supabase.from("reminder_logs").delete().eq("reminder_id", reminderId);
     } else {
       reminderId = id;
@@ -101,7 +69,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(500).json({ error: "数据库写入失败，请稍后重试" });
   }
 
-  const lifecycle = getLifecycleInfo(cleanDomain, expDate);
+  // Compute lifecycle for confirmation email
+  const lc = computeLifecycle(cleanDomain, expDate);
+  const lifecycleInfo = lc ? {
+    phase: lc.phase,
+    graceEnd: fmtDate(lc.graceEnd),
+    redemptionEnd: fmtDate(lc.redemptionEnd),
+    dropDate: fmtDate(lc.dropDate),
+    hasGrace: lc.cfg.grace > 0,
+    hasRedemption: lc.cfg.redemption > 0,
+    hasPendingDelete: lc.cfg.pendingDelete > 0,
+    registry: lc.cfg.registry,
+  } : undefined;
 
   await sendEmail({
     to: cleanEmail,
@@ -111,12 +90,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       expirationDate: expDate,
       cancelToken: cancelTok,
       thresholds: REMINDER_THRESHOLDS,
-      lifecycle,
+      lifecycle: lifecycleInfo,
     }),
   });
 
   return res.status(200).json({ id: reminderId, thresholds: REMINDER_THRESHOLDS });
 }
 
-// Re-export sendEmail so remind/process.ts can still import it from here
 export { sendEmail };

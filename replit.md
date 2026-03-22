@@ -19,6 +19,10 @@ A fast, modern WHOIS and RDAP lookup tool supporting domains, IPv4/IPv6, ASN, an
 - `src/lib/whois/rdap_client.ts` — RDAP query client
 - `src/pages/api/lookup.ts` — API endpoint
 - `src/pages/[...query].tsx` — Result display page
+- `src/lib/lifecycle.ts` — Shared TLD lifecycle table (65+ gTLD/ccTLD); used by both frontend and backend for grace/redemption/pendingDelete period computation
+- `src/pages/api/remind/submit.ts` — Subscription submission API
+- `src/pages/api/remind/process.ts` — Cron processor that fires pre-expiry AND phase-event reminders
+- `src/lib/email.ts` — All email templates (welcome, subscription confirm, pre-expiry reminder, phase event)
 
 ## Architecture
 

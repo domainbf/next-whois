@@ -53,6 +53,7 @@ import {
   RiSearchLine,
 } from "@remixicon/react";
 import { getTopRegistrars, DomainPricing } from "@/lib/pricing/client";
+import { computeLifecycle, fmtDate } from "@/lib/lifecycle";
 import React, { useEffect, useMemo } from "react";
 import { addHistory, detectQueryType } from "@/lib/history";
 import { useSession } from "next-auth/react";
@@ -1759,6 +1760,7 @@ function DomainReminderDialog({
   open,
   onOpenChange,
   isZh,
+  userEmail,
 }: {
   domain: string;
   expirationDate: string | null | undefined;
@@ -1766,15 +1768,16 @@ function DomainReminderDialog({
   open: boolean;
   onOpenChange: (v: boolean) => void;
   isZh: boolean;
+  userEmail?: string;
 }) {
-  const hasExpiry = expirationDate && expirationDate !== "Unknown";
+  const hasExpiry = !!(expirationDate && expirationDate !== "Unknown");
   const [email, setEmail] = React.useState("");
   const [submitting, setSubmitting] = React.useState(false);
   const [done, setDone] = React.useState(false);
 
   React.useEffect(() => {
-    if (open) { setEmail(""); setDone(false); }
-  }, [open]);
+    if (open) { setEmail(userEmail || ""); setDone(false); }
+  }, [open, userEmail]);
 
   async function handleSubmit() {
     if (!email || !email.includes("@")) {
@@ -1800,193 +1803,257 @@ function DomainReminderDialog({
     }
   }
 
-  // Compute lifecycle intelligence from expiry date
-  const lifecycle = React.useMemo(() => {
-    if (!expirationDate || expirationDate === "Unknown") return null;
-    const expiry = new Date(expirationDate);
-    if (isNaN(expiry.getTime())) return null;
-    const tld = domain.split(".").pop()?.toLowerCase() ?? "";
-    const LC_CFG: Record<string, { grace: number; redemption: number; pendingDelete: number }> = {
-      com: { grace: 45, redemption: 30, pendingDelete: 5 },
-      net: { grace: 45, redemption: 30, pendingDelete: 5 },
-      org: { grace: 45, redemption: 30, pendingDelete: 5 },
-      info: { grace: 45, redemption: 30, pendingDelete: 5 },
-      biz: { grace: 45, redemption: 30, pendingDelete: 5 },
-      io:  { grace: 30, redemption: 30, pendingDelete: 5 },
-      co:  { grace: 45, redemption: 30, pendingDelete: 5 },
-      app: { grace: 45, redemption: 30, pendingDelete: 5 },
-      dev: { grace: 45, redemption: 30, pendingDelete: 5 },
-      ai:  { grace: 30, redemption: 30, pendingDelete: 5 },
-    };
-    const cfg = LC_CFG[tld] ?? { grace: 45, redemption: 30, pendingDelete: 5 };
-    const ms = (d: number) => d * 86_400_000;
-    const graceEnd = new Date(expiry.getTime() + ms(cfg.grace));
-    const redemptionEnd = new Date(graceEnd.getTime() + ms(cfg.redemption));
-    const dropDate = new Date(redemptionEnd.getTime() + ms(cfg.pendingDelete));
-    const now = new Date();
-    let phase: "active" | "grace" | "redemption" | "pendingDelete" | "dropped";
-    if (now < expiry) phase = "active";
-    else if (now < graceEnd) phase = "grace";
-    else if (now < redemptionEnd) phase = "redemption";
-    else if (now < dropDate) phase = "pendingDelete";
-    else phase = "dropped";
-    const fmt = (d: Date) => d.toLocaleDateString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit" });
-    return { phase, expiry, graceEnd, redemptionEnd, dropDate, fmt };
-  }, [expirationDate, domain]);
+  const lc = React.useMemo(
+    () => computeLifecycle(domain, expirationDate ?? null),
+    [domain, expirationDate]
+  );
+  const tldUpper = domain.split(".").pop()?.toUpperCase() ?? "";
 
-  const PHASE_META: Record<string, { label: string; labelEn: string; color: string; bg: string; border: string; advice: string; adviceEn: string }> = {
-    active:      { label: "正常有效", labelEn: "Active", color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-50/60 dark:bg-emerald-950/20", border: "border-emerald-200/50 dark:border-emerald-800/40", advice: "域名状态正常，将在到期前自动提醒您续费。", adviceEn: "Domain is active. We'll remind you before expiry." },
-    grace:       { label: "宽限期", labelEn: "Grace Period", color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-50/60 dark:bg-amber-950/20", border: "border-amber-200/50 dark:border-amber-800/40", advice: "域名已过期但仍可按正常价格续费，请尽快操作！", adviceEn: "Expired but still renewable at normal price. Act now!" },
-    redemption:  { label: "赎回期", labelEn: "Redemption", color: "text-orange-600 dark:text-orange-400", bg: "bg-orange-50/60 dark:bg-orange-950/20", border: "border-orange-200/50 dark:border-orange-800/40", advice: "已进入赎回期，续费费用大幅增加，请联系注册商赎回。", adviceEn: "In redemption. Recovery fees are high. Contact your registrar." },
-    pendingDelete: { label: "待删除", labelEn: "Pending Delete", color: "text-red-600 dark:text-red-400", bg: "bg-red-50/60 dark:bg-red-950/20", border: "border-red-200/50 dark:border-red-800/40", advice: "即将被注册局删除，通常无法再续期，请做好准备。", adviceEn: "Pending deletion from registry. Usually cannot be renewed." },
-    dropped:     { label: "已释放", labelEn: "Available", color: "text-sky-600 dark:text-sky-400", bg: "bg-sky-50/60 dark:bg-sky-950/20", border: "border-sky-200/50 dark:border-sky-800/40", advice: "域名已被删除，即将或已可重新注册。", adviceEn: "Domain has been deleted and may be available for registration." },
+  const PHASE_UI = {
+    active:        { label: isZh ? "正常有效" : "Active",        colorClass: "text-emerald-600 dark:text-emerald-400", bgClass: "bg-emerald-50/70 dark:bg-emerald-950/25", borderClass: "border-emerald-200/60 dark:border-emerald-800/40", dotClass: "bg-emerald-500" },
+    grace:         { label: isZh ? "宽限期"   : "Grace Period",  colorClass: "text-amber-600 dark:text-amber-400",    bgClass: "bg-amber-50/70 dark:bg-amber-950/25",    borderClass: "border-amber-200/60 dark:border-amber-800/40",    dotClass: "bg-amber-500" },
+    redemption:    { label: isZh ? "赎回期"   : "Redemption",    colorClass: "text-orange-600 dark:text-orange-400",  bgClass: "bg-orange-50/70 dark:bg-orange-950/25",  borderClass: "border-orange-200/60 dark:border-orange-800/40",  dotClass: "bg-orange-500" },
+    pendingDelete: { label: isZh ? "待删除"   : "Pending Delete", colorClass: "text-red-600 dark:text-red-400",        bgClass: "bg-red-50/70 dark:bg-red-950/25",        borderClass: "border-red-200/60 dark:border-red-800/40",        dotClass: "bg-red-500" },
+    dropped:       { label: isZh ? "已释放"   : "Available",     colorClass: "text-sky-600 dark:text-sky-400",        bgClass: "bg-sky-50/70 dark:bg-sky-950/25",        borderClass: "border-sky-200/60 dark:border-sky-800/40",        dotClass: "bg-sky-400" },
+  };
+
+  const PHASE_ADVICE: Record<string, { zh: string; en: string }> = {
+    active:        { zh: "域名状态正常，我们将在到期前自动发送提醒邮件。", en: "Domain is active. We'll alert you before expiry." },
+    grace:         { zh: "域名已过期，仍处于宽限期内，可按正常价格续费，请尽快操作！", en: "Expired but renewable at normal price during grace — act now!" },
+    redemption:    { zh: "已进入赎回期，续费费用大幅增加，请立即联系注册商赎回。", en: "In redemption. Recovery fees are much higher — contact your registrar." },
+    pendingDelete: { zh: "即将被注册局删除，通常无法再续期，请提前做好准备。", en: "Pending deletion. Usually cannot be renewed anymore." },
+    dropped:       { zh: "域名已被删除，即将或已可重新注册。", en: "Domain has been deleted and may be available for re-registration." },
   };
 
   const urgencyNum =
     remainingDays === null ? "text-muted-foreground" :
-    remainingDays <= 0 ? "text-red-500" :
-    remainingDays <= 30 ? "text-red-500" :
-    remainingDays <= 90 ? "text-amber-500" :
-    "text-emerald-500";
+    remainingDays <= 0  ? "text-red-500 dark:text-red-400" :
+    remainingDays <= 30 ? "text-orange-500 dark:text-orange-400" :
+    remainingDays <= 90 ? "text-amber-500 dark:text-amber-400" :
+    "text-emerald-500 dark:text-emerald-400";
+
+  const phaseUI = lc ? PHASE_UI[lc.phase] : null;
+
+  type PhaseChip = { key: string; label: string; icon: React.ReactNode; style: string };
+  const phaseChips: PhaseChip[] = lc ? [
+    lc.cfg.grace > 0        && { key: "grace",    label: isZh ? "进入宽限期" : "Grace entered",    icon: <RiTimeLine className="w-2.5 h-2.5" />,          style: "bg-amber-500/10 border-amber-400/20 text-amber-600 dark:text-amber-400" },
+    lc.cfg.redemption > 0   && { key: "redemp",   label: isZh ? "进入赎回期" : "Redemption entered", icon: <RiExchangeDollarFill className="w-2.5 h-2.5" />, style: "bg-orange-500/10 border-orange-400/20 text-orange-600 dark:text-orange-400" },
+    lc.cfg.pendingDelete > 0 && { key: "pending",  label: isZh ? "进入待删除期" : "Pending delete",   icon: <RiDeleteBin2Line className="w-2.5 h-2.5" />,    style: "bg-red-500/10 border-red-400/20 text-red-600 dark:text-red-400" },
+  ].filter(Boolean) as PhaseChip[] : [];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm p-0 overflow-hidden gap-0">
-        {/* Header */}
-        <div className="px-5 pt-5 pb-4 border-b border-border/50">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-sky-500/10 flex items-center justify-center shrink-0">
-              <RiTimerLine className="w-4 h-4 text-sky-500" />
+      <DialogContent className="max-w-[420px] p-0 overflow-hidden gap-0">
+
+        {/* ── Header ── */}
+        <div className="px-5 pt-5 pb-4 border-b border-border/50 bg-gradient-to-br from-sky-500/5 via-transparent to-blue-500/5">
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-xl bg-sky-500/10 border border-sky-400/20 flex items-center justify-center shrink-0 mt-0.5">
+              <RiTimerLine className="w-[18px] h-[18px] text-sky-500" />
             </div>
-            <div>
-              <h2 className="text-sm font-bold text-foreground">
-                {isZh ? "域名订阅" : "Domain Subscription"}
+            <div className="min-w-0 flex-1">
+              <h2 className="text-sm font-bold text-foreground leading-none">
+                {isZh ? "域名监控订阅" : "Domain Monitoring"}
               </h2>
-              <p className="text-[11px] text-muted-foreground font-mono">{domain}</p>
+              <p className="text-[12px] text-sky-600 dark:text-sky-400 font-mono font-semibold mt-1 truncate">{domain}</p>
+              {lc?.cfg.registry && (
+                <p className="text-[10px] text-muted-foreground/55 mt-0.5">{lc.cfg.registry}</p>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Body */}
-        <div className="px-5 pb-5">
+        {/* ── Body ── */}
+        <div className="px-5 pb-5 overflow-y-auto max-h-[72vh]">
           <AnimatePresence mode="wait" initial={false}>
+
+            {/* ── Success ── */}
             {done ? (
               <motion.div
                 key="done"
-                initial={{ opacity: 0, scale: 0.96, y: 8 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.96, y: -8 }}
+                initial={{ opacity: 0, scale: 0.96 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.96 }}
                 transition={{ duration: 0.2, ease: [0.32, 0.72, 0, 1] }}
-                className="py-6 text-center space-y-3"
+                className="py-7 text-center space-y-4"
               >
-                <div className="relative w-14 h-14 mx-auto">
-                  <div className="absolute inset-0 rounded-full bg-sky-500/15 animate-ping" style={{ animationDuration: "1.5s" }} />
-                  <div className="relative w-14 h-14 bg-sky-500/10 border-2 border-sky-400/30 rounded-full flex items-center justify-center">
-                    <RiCheckLine className="w-6 h-6 text-sky-500" />
+                <div className="relative w-16 h-16 mx-auto">
+                  <div className="absolute inset-0 rounded-full bg-sky-500/15 animate-ping" style={{ animationDuration: "1.6s" }} />
+                  <div className="relative w-16 h-16 bg-sky-500/10 border-2 border-sky-400/30 rounded-full flex items-center justify-center">
+                    <RiCheckLine className="w-7 h-7 text-sky-500" />
                   </div>
                 </div>
                 <div>
-                  <p className="font-bold text-sm text-foreground">{isZh ? "订阅成功" : "Subscribed!"}</p>
+                  <p className="font-bold text-[15px] text-foreground">{isZh ? "订阅成功！" : "Subscribed!"}</p>
                   <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                    {isZh
-                      ? `将在到期前 60、30、10、5、1 天向`
-                      : `We'll email`}
-                    {" "}<strong className="text-foreground font-mono">{email}</strong>{" "}
-                    {isZh ? "发送提醒邮件" : "at 60, 30, 10, 5, 1 days before expiry"}
+                    {isZh ? "将向" : "We'll notify"}{" "}
+                    <strong className="text-foreground font-mono text-[11px]">{email}</strong>{" "}
+                    {isZh ? "发送以下提醒" : "with the alerts below"}
                   </p>
                 </div>
-                <p className="text-[10px] text-muted-foreground/60">
-                  {isZh ? "确认邮件已发送，请查收" : "Check your inbox for confirmation"}
-                </p>
-              </motion.div>
-            ) : (
-              <motion.div
-                key="form"
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                transition={{ duration: 0.18, ease: [0.32, 0.72, 0, 1] }}
-                className="space-y-3 pt-4"
-              >
-                {/* Expiry + lifecycle info */}
-                {hasExpiry && lifecycle ? (
-                  <div className={cn("rounded-xl border overflow-hidden", PHASE_META[lifecycle.phase]?.border ?? "border-border/50")}>
-                    {/* Expiry header row */}
-                    <div className={cn("flex items-center justify-between px-3 py-2.5", PHASE_META[lifecycle.phase]?.bg ?? "bg-muted/20")}>
-                      <div>
-                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold mb-0.5">
-                          {isZh ? "过期日期" : "Expiry date"}
-                        </p>
-                        <p className="text-sm font-mono font-semibold">{lifecycle.fmt(lifecycle.expiry)}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className={cn("text-3xl font-black tabular-nums leading-none", urgencyNum)}>
-                          {remainingDays !== null ? (remainingDays <= 0 ? "0" : remainingDays) : "—"}
-                        </p>
-                        <p className="text-[10px] text-muted-foreground mt-0.5">
-                          {isZh ? "天后到期" : "days left"}
-                        </p>
-                      </div>
-                    </div>
-                    {/* Phase badge + advice */}
-                    <div className="px-3 py-2 bg-background/60 border-t border-border/30">
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <span className={cn("text-[10px] font-bold uppercase tracking-wider", PHASE_META[lifecycle.phase]?.color)}>
-                          {isZh ? PHASE_META[lifecycle.phase]?.label : PHASE_META[lifecycle.phase]?.labelEn}
+                <div className="text-left rounded-xl border border-border/50 bg-muted/20 p-3 space-y-2.5">
+                  <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
+                    {isZh ? "已订阅的提醒类型" : "Subscribed alerts"}
+                  </p>
+                  <div>
+                    <p className="text-[10px] text-muted-foreground/60 mb-1.5">{isZh ? "到期前提醒" : "Pre-expiry"}</p>
+                    <div className="flex flex-wrap gap-1">
+                      {REMINDER_THRESHOLDS.map((d) => (
+                        <span key={d} className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-sky-500/10 border border-sky-400/20 text-sky-600 dark:text-sky-400 text-[10px] font-semibold">
+                          <RiTimerLine className="w-2.5 h-2.5" />{isZh ? `提前${d}天` : `${d}d`}
                         </span>
-                      </div>
-                      <p className="text-[11px] text-muted-foreground leading-relaxed">
-                        {isZh ? PHASE_META[lifecycle.phase]?.advice : PHASE_META[lifecycle.phase]?.adviceEn}
-                      </p>
-                    </div>
-                    {/* Timeline rows */}
-                    <div className="px-3 py-2 border-t border-border/30 space-y-1 bg-muted/20">
-                      {[
-                        { label: isZh ? "宽限期结束" : "Grace ends", date: lifecycle.graceEnd, phase: "grace" as const },
-                        { label: isZh ? "赎回期结束" : "Redemption ends", date: lifecycle.redemptionEnd, phase: "redemption" as const },
-                        { label: isZh ? "预计释放" : "Est. drop date", date: lifecycle.dropDate, phase: "pendingDelete" as const },
-                      ].map(({ label, date, phase }) => {
-                        const isPast = new Date() > date;
-                        return (
-                          <div key={phase} className="flex items-center justify-between text-[11px]">
-                            <span className={cn("text-muted-foreground", isPast && "line-through opacity-50")}>{label}</span>
-                            <span className={cn("font-mono font-semibold tabular-nums", isPast ? "text-muted-foreground/50" : PHASE_META[phase]?.color)}>
-                              {lifecycle.fmt(date)}
-                            </span>
-                          </div>
-                        );
-                      })}
+                      ))}
                     </div>
                   </div>
-                ) : hasExpiry && remainingDays !== null ? (
-                  <div className="flex items-center justify-between px-3 py-2.5 rounded-xl border border-border/50 bg-muted/20">
+                  {phaseChips.length > 0 && (
                     <div>
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold mb-0.5">
-                        {isZh ? "过期日期" : "Expiry date"}
-                      </p>
-                      <p className="text-sm font-mono font-semibold">{expirationDate}</p>
+                      <p className="text-[10px] text-muted-foreground/60 mb-1.5">{isZh ? "阶段提醒" : "Phase alerts"}</p>
+                      <div className="flex flex-wrap gap-1">
+                        {phaseChips.map((chip) => (
+                          <span key={chip.key} className={cn("inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md border text-[10px] font-semibold", chip.style)}>
+                            {chip.icon}{chip.label}
+                          </span>
+                        ))}
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className={cn("text-3xl font-black tabular-nums leading-none", urgencyNum)}>
-                        {remainingDays <= 0 ? "0" : remainingDays}
+                  )}
+                </div>
+                <p className="text-[10px] text-muted-foreground/55">{isZh ? "确认邮件已发送，请查收" : "Check your inbox for confirmation"}</p>
+              </motion.div>
+
+            ) : (
+              /* ── Form ── */
+              <motion.div
+                key="form"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
+                className="space-y-3 pt-4"
+              >
+                {/* Lifecycle card */}
+                {hasExpiry && lc && phaseUI ? (
+                  <div className={cn("rounded-xl border overflow-hidden", phaseUI.borderClass)}>
+                    {/* Expiry row */}
+                    <div className={cn("flex items-center justify-between px-3.5 py-3", phaseUI.bgClass)}>
+                      <div>
+                        <p className="text-[9px] text-muted-foreground/80 uppercase tracking-wider font-bold mb-1">
+                          {isZh ? "过期日期" : "Expiry date"}
+                        </p>
+                        <p className="text-[13px] font-mono font-bold text-foreground">{fmtDate(lc.expiry)}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className={cn("text-[30px] font-black tabular-nums leading-none", urgencyNum)}>
+                          {remainingDays !== null ? Math.max(0, remainingDays) : "—"}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">{isZh ? "天后到期" : "days left"}</p>
+                      </div>
+                    </div>
+                    {/* Phase badge */}
+                    <div className="px-3.5 py-2.5 bg-background/70 border-t border-border/30">
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", phaseUI.dotClass)} />
+                        <span className={cn("text-[10px] font-bold uppercase tracking-wider", phaseUI.colorClass)}>{phaseUI.label}</span>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground leading-relaxed">
+                        {isZh ? PHASE_ADVICE[lc.phase]?.zh : PHASE_ADVICE[lc.phase]?.en}
                       </p>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">
-                        {isZh ? "天后到期" : "days left"}
+                    </div>
+                    {/* Timeline */}
+                    <div className="px-3.5 py-2.5 border-t border-border/30 bg-muted/20">
+                      <p className="text-[9px] font-bold text-muted-foreground/70 uppercase tracking-widest mb-2">
+                        {isZh ? "生命周期时间表" : "Lifecycle timeline"}
                       </p>
+                      <div className="space-y-1.5">
+                        {([
+                          lc.cfg.grace > 0 &&
+                            { label: isZh ? "宽限期结束" : "Grace ends",      date: lc.graceEnd,      color: "text-amber-600 dark:text-amber-400" },
+                          lc.cfg.redemption > 0 &&
+                            { label: isZh ? "赎回期结束" : "Redemption ends",  date: lc.redemptionEnd, color: "text-orange-600 dark:text-orange-400" },
+                          lc.cfg.pendingDelete > 0 &&
+                            { label: isZh ? "预计释放" : "Est. drop",          date: lc.dropDate,      color: "text-red-600 dark:text-red-400" },
+                        ] as (false | { label: string; date: Date; color: string })[])
+                          .filter(Boolean)
+                          .map((row) => {
+                            if (!row) return null;
+                            const isPast = new Date() > row.date;
+                            return (
+                              <div key={row.label} className="flex items-center justify-between text-[11px]">
+                                <span className={cn("text-muted-foreground", isPast && "line-through opacity-40")}>{row.label}</span>
+                                <span className={cn("font-mono font-semibold tabular-nums", isPast ? "text-muted-foreground/40" : row.color)}>
+                                  {fmtDate(row.date)}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        {lc.cfg.grace === 0 && lc.cfg.redemption === 0 && lc.cfg.pendingDelete === 0 && (
+                          <p className="text-[11px] text-muted-foreground/60 italic">
+                            {isZh
+                              ? `.${tldUpper} 域名到期后通常立即删除，无宽限期`
+                              : `.${tldUpper} domains are typically deleted immediately on expiry`}
+                          </p>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ) : !hasExpiry ? (
-                  <div className="px-3 py-2.5 rounded-xl border border-border/50 bg-muted/20">
+                  <div className="px-3 py-3 rounded-xl border border-border/50 bg-muted/20">
                     <p className="text-xs text-muted-foreground text-center">
-                      {isZh ? "暂无到期日期，仍可订阅提醒" : "No expiry info available, but you can still subscribe"}
+                      {isZh ? "暂无到期日期，仍可订阅提醒" : "No expiry info yet, but you can still subscribe"}
                     </p>
                   </div>
                 ) : null}
 
+                {/* Reminder plan */}
+                <div className="rounded-xl border border-border/50 bg-muted/20 p-3.5 space-y-3">
+                  <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
+                    {isZh ? "提醒计划" : "Reminder plan"}
+                  </p>
+                  {/* Pre-expiry day alerts */}
+                  <div>
+                    <p className="text-[10px] text-muted-foreground/70 mb-1.5 flex items-center gap-1 font-medium">
+                      <RiTimerLine className="w-3 h-3" />
+                      {isZh ? "到期前提醒" : "Pre-expiry alerts"}
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {REMINDER_THRESHOLDS.map((d) => (
+                        <span key={d} className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md bg-sky-500/10 border border-sky-400/20 text-sky-600 dark:text-sky-400 text-[11px] font-semibold">
+                          {isZh ? `提前 ${d} 天` : `${d}d before`}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  {/* Phase event alerts */}
+                  {phaseChips.length > 0 ? (
+                    <div>
+                      <p className="text-[10px] text-muted-foreground/70 mb-1.5 flex items-center gap-1 font-medium">
+                        <RiCalendarEventLine className="w-3 h-3" />
+                        {isZh ? `阶段提醒（.${tldUpper}）` : `Phase alerts (.${tldUpper})`}
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {phaseChips.map((chip) => (
+                          <span key={chip.key} className={cn("inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md border text-[11px] font-semibold", chip.style)}>
+                            {chip.icon}{chip.label}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ) : lc ? (
+                    <p className="text-[10px] text-muted-foreground/55 italic">
+                      {isZh
+                        ? `.${tldUpper} 注册局不设宽限期，仅发送到期前提醒`
+                        : `.${tldUpper} has no grace/redemption — pre-expiry alerts only`}
+                    </p>
+                  ) : null}
+                  <p className="text-[10px] text-muted-foreground/50 border-t border-border/30 pt-2.5 leading-relaxed">
+                    {isZh ? "续费后自动停止 · 可随时取消订阅" : "Auto-stops on renewal · Unsubscribe anytime"}
+                  </p>
+                </div>
+
                 {/* Email input */}
                 <div>
                   <p className="text-xs font-semibold text-muted-foreground mb-1.5">
-                    {isZh ? "邮箱地址" : "Email address"} <span className="text-red-500">*</span>
+                    {isZh ? "接收邮箱" : "Email address"} <span className="text-red-500">*</span>
                   </p>
                   <input
                     type="email"
@@ -1994,28 +2061,17 @@ function DomainReminderDialog({
                     onChange={(e) => setEmail(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
                     placeholder="your@email.com"
-                    className="w-full text-sm rounded-xl border border-border bg-background px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-sky-400/40 transition-shadow"
+                    className="w-full text-sm rounded-xl border border-border bg-background px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-sky-400/40 transition-shadow font-mono"
                   />
+                  {userEmail && email === userEmail && (
+                    <p className="text-[10px] text-muted-foreground/60 mt-1 flex items-center gap-1">
+                      <RiShieldCheckLine className="w-3 h-3 text-emerald-500" />
+                      {isZh ? "已自动填入您的账户邮箱" : "Pre-filled from your account"}
+                    </p>
+                  )}
                 </div>
 
-                {/* Thresholds */}
-                <div className="rounded-xl border border-border/50 bg-muted/20 p-3">
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2">
-                    {isZh ? "自动提醒时间节点" : "Reminder schedule"}
-                  </p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {REMINDER_THRESHOLDS.map((d) => (
-                      <span key={d} className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md bg-sky-500/10 border border-sky-400/20 text-sky-600 dark:text-sky-400 text-[11px] font-semibold">
-                        <RiTimerLine className="w-2.5 h-2.5" />
-                        {isZh ? `提前 ${d} 天` : `${d}d before`}
-                      </span>
-                    ))}
-                  </div>
-                  <p className="text-[10px] text-muted-foreground/60 mt-2">
-                    {isZh ? "续费、赎回期或取消后自动停止" : "Auto-stops on renewal, redemption, or cancel"}
-                  </p>
-                </div>
-
+                {/* Submit */}
                 <Button
                   onClick={handleSubmit}
                   disabled={submitting}
@@ -2023,7 +2079,7 @@ function DomainReminderDialog({
                 >
                   {submitting
                     ? <><RiLoader4Line className="w-4 h-4 animate-spin" />{isZh ? "订阅中…" : "Subscribing…"}</>
-                    : <><RiCalendarEventLine className="w-4 h-4" />{isZh ? "订阅到期提醒" : "Subscribe"}</>
+                    : <><RiCalendarEventLine className="w-4 h-4" />{isZh ? "订阅域名监控" : "Subscribe"}</>
                   }
                 </Button>
               </motion.div>
@@ -3121,6 +3177,7 @@ export default function LookupPage({
                       open={reminderDialogOpen}
                       onOpenChange={setReminderDialogOpen}
                       isZh={isChinese}
+                      userEmail={session?.user?.email ?? ""}
                     />
 
                     {result.remainingDays === null &&
