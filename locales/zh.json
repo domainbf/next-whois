@@ -288,5 +288,15 @@
     "cat_dns": "域名解析",
     "cat_registrar": "域名注册平台",
     "cat_pricing": "域名比价平台"
+  },
+  "not_found": {
+    "title": "页面不存在",
+    "subtitle": "DNS 查询已完成，但此路由从未被注册过。",
+    "domain_hint": "看起来像是域名，要搜索它吗？",
+    "search_placeholder": "搜索一个真实的域名…",
+    "search_btn": "查询",
+    "back_home": "返回首页",
+    "log_title": "查询日志",
+    "tip": "404 是很正常的 HTTP 状态码，不像 NXDOMAIN 那么罕见。"
   }
 }

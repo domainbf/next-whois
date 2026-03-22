@@ -76,6 +76,17 @@ export function middleware(request: NextRequest) {
     (/[.]/.test(querySegment) || /^[0-9a-fA-F:]+:[0-9a-fA-F:]+$/.test(querySegment));
   if (isDomainQuery) return;
 
+  // Bare-word paths (e.g. /gouniy) don't match any page and have no locale
+  // prefix yet. Pass them through without locale redirect so Next.js can
+  // serve the 404 page cleanly — avoiding the middleware ↔ notFound redirect loop.
+  const isBareNavPath =
+    !currentLocale &&
+    pathWithoutLocale.split("/").filter(Boolean).length === 1 &&
+    !querySegment.includes(".") &&
+    !/^AS\d+$/i.test(querySegment) &&
+    !/^\d/.test(querySegment);
+  if (isBareNavPath) return;
+
   const isStaticRoute =
     pathWithoutLocale.startsWith("/remind/") ||
     pathWithoutLocale.startsWith("/stamp") ||

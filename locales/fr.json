@@ -288,5 +288,15 @@
     "cat_dns": "Résolution DNS",
     "cat_registrar": "Bureaux d'enregistrement",
     "cat_pricing": "Comparaison de prix de domaines"
+  },
+  "not_found": {
+    "title": "Page introuvable",
+    "subtitle": "Requête DNS terminée — cette route n'a jamais été enregistrée.",
+    "domain_hint": "Ça ressemble à un domaine. Voulez-vous le rechercher ?",
+    "search_placeholder": "Rechercher un vrai domaine…",
+    "search_btn": "Chercher",
+    "back_home": "Retour à l'accueil",
+    "log_title": "Journal de requête",
+    "tip": "404 est un code HTTP tout à fait normal. Contrairement à NXDOMAIN, ça arrive tout le temps."
   }
 }

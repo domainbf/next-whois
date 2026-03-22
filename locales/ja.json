@@ -288,5 +288,15 @@
     "cat_dns": "DNS サービス",
     "cat_registrar": "ドメインレジストラ",
     "cat_pricing": "ドメイン価格比較"
+  },
+  "not_found": {
+    "title": "ページが見つかりません",
+    "subtitle": "DNS クエリ完了 — このルートは登録されていません。",
+    "domain_hint": "ドメインのようです。検索しますか？",
+    "search_placeholder": "実際のドメインを検索…",
+    "search_btn": "検索",
+    "back_home": "ホームに戻る",
+    "log_title": "クエリログ",
+    "tip": "404 は普通の HTTP ステータスコードです。NXDOMAIN と違って、よくあることです。"
   }
 }

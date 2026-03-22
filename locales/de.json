@@ -288,5 +288,15 @@
     "cat_dns": "DNS-Dienste",
     "cat_registrar": "Domain-Registrare",
     "cat_pricing": "Domain-Preisvergleich"
+  },
+  "not_found": {
+    "title": "Seite nicht gefunden",
+    "subtitle": "DNS-Abfrage abgeschlossen — diese Route wurde nie registriert.",
+    "domain_hint": "Sieht wie eine Domain aus. Als Domain suchen?",
+    "search_placeholder": "Echte Domain suchen…",
+    "search_btn": "Suchen",
+    "back_home": "Zurück zur Startseite",
+    "log_title": "Abfrageprotokoll",
+    "tip": "404 ist ein völlig normaler HTTP-Statuscode. Anders als NXDOMAIN passiert er ständig."
   }
 }

@@ -288,5 +288,15 @@
     "cat_dns": "網域解析",
     "cat_registrar": "網域註冊平台",
     "cat_pricing": "網域比價平台"
+  },
+  "not_found": {
+    "title": "頁面不存在",
+    "subtitle": "DNS 查詢已完成，但此路由從未被註冊過。",
+    "domain_hint": "看起來像是網域，要搜尋它嗎？",
+    "search_placeholder": "搜尋一個真實的網域…",
+    "search_btn": "查詢",
+    "back_home": "返回首頁",
+    "log_title": "查詢日誌",
+    "tip": "404 是很正常的 HTTP 狀態碼，不像 NXDOMAIN 那麼罕見。"
   }
 }

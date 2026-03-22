@@ -1285,6 +1285,16 @@ export async function getServerSideProps(context: GetServerSidePropsContext) {
   const target = cleanDomain(querySegments.join("/"));
   const displayTarget = targetToDisplayName(target);
 
+  // If the path is a single bare word (no dots, not an IP/ASN/CIDR), it's a
+  // navigation path that doesn't match any page — show the real 404 page.
+  const looksLikeQuery =
+    target.includes(".") ||
+    /^AS\d+$/i.test(target) ||
+    /^([0-9a-fA-F]{0,4}:){1,7}[0-9a-fA-F]{0,4}/.test(target);
+  if (!looksLikeQuery) {
+    return { notFound: true };
+  }
+
   // Server-side TLD validation — reject clearly invalid domains before lookup
   if (!isValidDomainTld(target)) {
     return {

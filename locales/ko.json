@@ -288,5 +288,15 @@
     "cat_dns": "DNS 서비스",
     "cat_registrar": "도메인 등록기관",
     "cat_pricing": "도메인 가격 비교"
+  },
+  "not_found": {
+    "title": "페이지를 찾을 수 없음",
+    "subtitle": "DNS 조회 완료 — 이 경로는 등록된 적이 없습니다.",
+    "domain_hint": "도메인처럼 보입니다. 검색해 볼까요?",
+    "search_placeholder": "실제 도메인 검색…",
+    "search_btn": "검색",
+    "back_home": "홈으로 돌아가기",
+    "log_title": "쿼리 로그",
+    "tip": "404는 완전히 정상적인 HTTP 상태 코드입니다. NXDOMAIN과 달리 매우 흔합니다."
   }
 }
