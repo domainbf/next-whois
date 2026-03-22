@@ -3309,49 +3309,47 @@ export default function LookupPage({
                       <CssGlobe />
                     </div>
                     <div className="relative z-10">
-                      <div className="flex items-center justify-between gap-3 mb-2">
+                      <div className="flex items-center gap-2 mb-2">
                         <Badge
                           variant="outline"
                           className="text-[10px] font-bold uppercase tracking-wider font-mono"
                         >
                           {queryType}
                         </Badge>
-                        <div className="sm:hidden flex items-center gap-1.5">
-                          <button
-                            onClick={() => {
-                              if (!session) {
-                                toast.info(isChinese ? "请先登录再认领品牌" : "Please log in to claim a brand stamp");
-                                router.push(`/login?callbackUrl=${encodeURIComponent(`/stamp?domain=${encodeURIComponent(result.domain || target)}`)}`);
-                                return;
-                              }
-                              suppressNextLoad.current = true;
-                              router.push(`/stamp?domain=${encodeURIComponent(result.domain || target)}`);
-                            }}
-                            title={isChinese ? "品牌认领" : "Claim"}
-                            className="flex items-center justify-center w-7 h-7 rounded-full text-xs border transition-all active:scale-[0.93] bg-muted/50 border-border/50 text-muted-foreground hover:border-violet-400/50 hover:text-violet-500"
-                          >
-                            <RiShieldCheckLine className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            onClick={() => {
-                              if (!session) {
-                                toast.info(isChinese ? "请先登录再订阅域名提醒" : "Please log in to subscribe for reminders");
-                                router.push(`/login`);
-                                return;
-                              }
-                              setReminderDialogOpen(true);
-                            }}
-                            title={isChinese ? "域名订阅" : "Subscribe"}
-                            className={cn(
-                              "flex items-center justify-center w-7 h-7 rounded-full text-xs border transition-all active:scale-[0.93]",
-                              (result.remainingDays !== null && result.remainingDays <= 30)
-                                ? "bg-red-100 dark:bg-red-900/30 border-red-400/60 text-red-500"
-                                : "bg-muted/50 border-border/50 text-muted-foreground hover:border-sky-400/50 hover:text-sky-500",
-                            )}
-                          >
-                            <RiTimerLine className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
+                        <button
+                          onClick={() => {
+                            if (!session) {
+                              toast.info(isChinese ? "请先登录再认领品牌" : "Please log in to claim a brand stamp");
+                              router.push(`/login?callbackUrl=${encodeURIComponent(`/stamp?domain=${encodeURIComponent(result.domain || target)}`)}`);
+                              return;
+                            }
+                            suppressNextLoad.current = true;
+                            router.push(`/stamp?domain=${encodeURIComponent(result.domain || target)}`);
+                          }}
+                          title={isChinese ? "品牌认领" : "Claim"}
+                          className="sm:hidden flex items-center justify-center w-6 h-6 rounded-full text-xs border transition-all active:scale-[0.93] bg-muted/50 border-border/50 text-muted-foreground hover:border-violet-400/50 hover:text-violet-500"
+                        >
+                          <RiShieldCheckLine className="w-3 h-3" />
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (!session) {
+                              toast.info(isChinese ? "请先登录再订阅域名提醒" : "Please log in to subscribe for reminders");
+                              router.push(`/login`);
+                              return;
+                            }
+                            setReminderDialogOpen(true);
+                          }}
+                          title={isChinese ? "域名订阅" : "Subscribe"}
+                          className={cn(
+                            "sm:hidden flex items-center justify-center w-6 h-6 rounded-full text-xs border transition-all active:scale-[0.93]",
+                            (result.remainingDays !== null && result.remainingDays <= 30)
+                              ? "bg-red-100 dark:bg-red-900/30 border-red-400/60 text-red-500"
+                              : "bg-muted/50 border-border/50 text-muted-foreground hover:border-sky-400/50 hover:text-sky-500",
+                          )}
+                        >
+                          <RiTimerLine className="w-3 h-3" />
+                        </button>
                       </div>
                       <h2
                         className="text-3xl sm:text-4xl font-bold tracking-tight mb-1 cursor-pointer hover:opacity-80 transition-opacity uppercase"
