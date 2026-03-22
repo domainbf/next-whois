@@ -5,6 +5,7 @@ import { analyzeWhois } from "@/lib/whois/common_parser";
 import { extractDomain } from "@/lib/utils";
 import { lookupRdap, convertRdapToWhoisResult } from "@/lib/whois/rdap_client";
 import { whoisDomain, whoisIp, whoisAsn, whoisQuery } from "whoiser";
+import { domainToASCII } from "url";
 import {
   getCustomServerEntry,
   isHttpEntry,
@@ -46,6 +47,35 @@ const WHOIS_ERROR_PATTERNS = [
   /no whois information/i,
   /tld is not supported/i,
 ];
+
+const WHOIS_NOT_REGISTERED_PATTERNS = [
+  /no match/i,
+  /not found/i,
+  /no data found/i,
+  /no entries found/i,
+  /no object found/i,
+  /nothing found/i,
+  /object does not exist/i,
+  /domain not found/i,
+  /status:\s*free/i,
+  /status:\s*available/i,
+  /is available for/i,
+];
+
+function isNotRegisteredWhoisResponse(whoisError: string): boolean {
+  return WHOIS_NOT_REGISTERED_PATTERNS.some((p) => p.test(whoisError));
+}
+
+function toAsciiDomain(domain: string): string {
+  if (!/[^\x00-\x7F]/.test(domain)) return domain;
+  try {
+    const ascii = domainToASCII(domain.toLowerCase());
+    if (ascii && ascii !== domain.toLowerCase() && !ascii.includes("\u0000")) {
+      return ascii;
+    }
+  } catch {}
+  return domain;
+}
 
 function isIanaFallback(raw: string): boolean {
   return raw.includes("% IANA WHOIS server");
@@ -245,7 +275,8 @@ async function getLookupWhois(domain: string): Promise<WhoisRawResult> {
     };
   }
 
-  const domainToQuery = extractDomain(domain) || domain;
+  const rawExtracted = extractDomain(domain) || domain;
+  const domainToQuery = toAsciiDomain(rawExtracted);
   const follow = Math.min(Math.max(MAX_WHOIS_FOLLOW, 1), 2) as 1 | 2;
   const tld = domainToQuery.split(".").slice(1).join(".");
   const tldSuffix = domainToQuery.split(".").pop() || "";
@@ -530,6 +561,29 @@ export async function lookupWhois(domain: string): Promise<WhoisResult> {
 
       const whoisError = detectWhoisError(whoisRawData);
       if (whoisError || isEmptyResult(result)) {
+        if (whoisError && isNotRegisteredWhoisResponse(whoisError)) {
+          if (isDomainQuery) {
+            const yisiResult = await lookupYisi(domain).catch(() => null);
+            if (yisiResult) return yisiResult;
+          }
+          return {
+            time: elapsed(),
+            status: false,
+            cached: false,
+            error: whoisError,
+            dnsProbe: {
+              domain,
+              registrationStatus: "unregistered",
+              confidence: "high",
+              signals: [],
+              nameservers: [],
+              ipv4: [],
+              ipv6: [],
+              mx: [],
+              hasSsl: null,
+            },
+          };
+        }
         return tryYisiOrFail(whoisError || "Empty WHOIS response");
       }
 

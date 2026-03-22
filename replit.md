@@ -197,6 +197,12 @@ GET /api/remind/process
 x-cron-secret: <CRON_SECRET>
 ```
 
+## IDN / Chinese Domain Handling
+
+- **WHOIS punycode conversion**: `getLookupWhois` converts non-ASCII domains (e.g., `亲爱的.中国`) to their punycode equivalents (e.g., `xn--7lq487f54c.xn--fiqs8s`) via `domainToASCII()` before querying the WHOIS server
+- **DNS probe punycode**: `probeDomain` similarly converts IDN inputs to punycode before DNS lookups
+- **"No matching record" = available**: When WHOIS returns a "no match / not found" type response (pattern set `WHOIS_NOT_REGISTERED_PATTERNS`), the code treats this as "domain available" rather than a lookup failure — skipping the DNS fallback probe (which gives false positives for TLDs with wildcard A records like `.中国`). Yisi.yun is still tried first; if it fails, the domain is returned with `dnsProbe.registrationStatus: "unregistered", confidence: "high"` so the AvailableDomainCard is shown correctly.
+
 ## Dev Server
 
 Runs on port 5000 via `pnpm run dev` (next dev -p 5000 -H 0.0.0.0).

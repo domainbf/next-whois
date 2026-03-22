@@ -1715,48 +1715,63 @@ function DomainStatusInfoCard({
 const CONFETTI_COLORS = [
   "#f59e0b", "#10b981", "#3b82f6", "#8b5cf6",
   "#ef4444", "#ec4899", "#06b6d4", "#84cc16",
+  "#f97316", "#a855f7", "#14b8a6", "#facc15",
 ];
+
+type ConfettiShape = "circle" | "rect" | "ribbon";
 
 function ConfettiPieces() {
   const pieces = React.useMemo(
     () =>
-      Array.from({ length: 36 }, (_, i) => ({
-        id: i,
-        left: `${(i * 2.78 + (i % 3) * 7) % 100}%`,
-        delay: (i * 0.07) % 1.8,
-        duration: 1.6 + (i * 0.09) % 1.0,
-        color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
-        size: 5 + (i % 4) * 2,
-        isCircle: i % 3 === 0,
-        rotateDir: i % 2 === 0 ? 360 : -360,
-      })),
+      Array.from({ length: 52 }, (_, i) => {
+        const shape: ConfettiShape =
+          i % 5 === 0 ? "ribbon" : i % 3 === 0 ? "circle" : "rect";
+        const baseLeft = (i * 1.97 + (i % 7) * 5.3) % 100;
+        return {
+          id: i,
+          left: `${baseLeft}%`,
+          delay: (i * 0.06 + (i % 4) * 0.15) % 2.2,
+          duration: 1.4 + (i * 0.07) % 1.4,
+          color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+          width: shape === "ribbon" ? 3 : 5 + (i % 5) * 2,
+          height: shape === "ribbon" ? 10 + (i % 4) * 3 : 5 + (i % 5) * 2,
+          shape,
+          rotateDir: i % 2 === 0 ? 540 : -540,
+          xDrift: ((i % 9) - 4) * 12,
+          repeatDelay: 0.3 + (i % 5) * 0.2,
+        };
+      }),
     [],
   );
 
   return (
-    <div className="absolute inset-x-0 top-0 h-28 overflow-hidden pointer-events-none">
+    <div className="absolute inset-x-0 top-0 h-36 overflow-hidden pointer-events-none">
       {pieces.map((p) => (
         <motion.div
           key={p.id}
           style={{
             position: "absolute",
             left: p.left,
-            top: -12,
-            width: p.size,
-            height: p.size,
+            top: -16,
+            width: p.width,
+            height: p.height,
             backgroundColor: p.color,
-            borderRadius: p.isCircle ? "50%" : 2,
+            borderRadius:
+              p.shape === "circle" ? "50%" : p.shape === "ribbon" ? 1 : 2,
+            opacity: 0.9,
           }}
           animate={{
-            y: [0, 110, 110],
+            y: [0, 140, 140],
+            x: [0, p.xDrift, p.xDrift * 1.4],
             opacity: [0, 1, 0],
             rotate: [0, p.rotateDir],
+            scaleX: p.shape === "ribbon" ? [1, 0.3, 1, 0.3] : 1,
           }}
           transition={{
             duration: p.duration,
             delay: p.delay,
             repeat: Infinity,
-            repeatDelay: 0.6,
+            repeatDelay: p.repeatDelay,
             ease: "easeIn",
           }}
         />
@@ -2350,50 +2365,115 @@ function AvailableDomainCard({ domain, locale }: { domain: string; locale: strin
     return `USD ${amount.toFixed(2)}`;
   }
 
+  const tldForDisplay = domain.substring(domain.lastIndexOf(".")).toLowerCase();
+  const sldForDisplay = domain.substring(0, domain.lastIndexOf("."));
+  const bestRegistrar = registrars[0] ?? null;
+
   return (
     <div className="glass-panel border border-emerald-300/50 dark:border-emerald-700/40 rounded-xl overflow-hidden">
-      <div className="relative pt-8 pb-6 px-6 sm:px-8 text-center">
+      {/* Hero header */}
+      <div className="relative pt-10 pb-8 px-6 sm:px-10 text-center bg-gradient-to-b from-emerald-50/60 via-emerald-50/20 to-transparent dark:from-emerald-950/30 dark:via-emerald-950/10 dark:to-transparent">
         <ConfettiPieces />
-        <div className="relative z-10">
-          <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-900/40 rounded-full flex items-center justify-center mx-auto mb-4 border-2 border-emerald-300/60 dark:border-emerald-600/40">
-            <RiCheckLine className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
+        <div className="relative z-10 flex flex-col items-center">
+          {/* Animated ring + check */}
+          <div className="relative mb-5">
+            <motion.div
+              className="w-20 h-20 rounded-full border-2 border-emerald-400/40 dark:border-emerald-500/30 absolute -inset-2"
+              animate={{ scale: [1, 1.12, 1], opacity: [0.5, 0.2, 0.5] }}
+              transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
+            />
+            <motion.div
+              className="w-20 h-20 rounded-full border border-emerald-300/30 dark:border-emerald-600/20 absolute -inset-4"
+              animate={{ scale: [1, 1.18, 1], opacity: [0.3, 0.08, 0.3] }}
+              transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut", delay: 0.3 }}
+            />
+            <div className="w-20 h-20 bg-gradient-to-br from-emerald-400 to-emerald-600 dark:from-emerald-500 dark:to-emerald-700 rounded-full flex items-center justify-center shadow-lg shadow-emerald-500/30">
+              <RiCheckLine className="w-10 h-10 text-white" />
+            </div>
           </div>
-          <h2 className="text-2xl font-bold text-emerald-800 dark:text-emerald-300 mb-1">
-            {isZh ? "恭喜！这个域名可用！" : "Congratulations! Domain Available!"}
-          </h2>
-          <p className="text-sm text-emerald-700/70 dark:text-emerald-400/60 max-w-xs mx-auto">
+
+          {/* Status badge */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.15, duration: 0.4, ease: "backOut" }}
+            className="mb-4"
+          >
+            <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/50 border border-emerald-300/60 dark:border-emerald-600/40 rounded-full px-3 py-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              {isZh ? "可注册" : "Available"}
+            </span>
+          </motion.div>
+
+          {/* Domain name display */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2, duration: 0.5 }}
+            className="mb-3"
+          >
+            <div className="flex items-baseline justify-center flex-wrap gap-0">
+              <span className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground break-all">
+                {sldForDisplay}
+              </span>
+              <span className="text-3xl sm:text-4xl font-bold tracking-tight text-emerald-500 dark:text-emerald-400">
+                {tldForDisplay}
+              </span>
+            </div>
+          </motion.div>
+
+          <p className="text-sm text-muted-foreground max-w-sm">
             {isZh
-              ? `${domain} 尚未被注册，抢先注册属于你的域名！`
-              : `${domain} is unregistered. Grab it before someone else does!`}
+              ? "该域名尚未被注册，抢先注册属于你的域名！"
+              : "This domain is unregistered. Grab it before someone else does!"}
           </p>
+
+          {/* Quick register CTA */}
+          {!loadingPrices && bestRegistrar && (
+            <motion.a
+              href={bestRegistrar.registrarweb}
+              target="_blank"
+              rel="noopener noreferrer"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.35, duration: 0.35 }}
+              className="mt-5 inline-flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white font-semibold text-sm px-6 py-2.5 rounded-lg shadow-md shadow-emerald-500/25 transition-colors duration-150"
+            >
+              <RiShoppingCartLine className="w-4 h-4" />
+              {isZh
+                ? `立即注册 · ${formatPrice(bestRegistrar.new as number, bestRegistrar.currency)}/${isZh ? "首年" : "yr"}`
+                : `Register Now · ${formatPrice(bestRegistrar.new as number, bestRegistrar.currency)}/yr`}
+            </motion.a>
+          )}
         </div>
       </div>
 
+      {/* Pricing section */}
       <div className="border-t border-emerald-200/50 dark:border-emerald-700/30">
         <div className="px-4 sm:px-6 pt-4 pb-1 flex items-center justify-between">
           <p className="text-xs text-muted-foreground flex items-center gap-1.5 font-semibold uppercase tracking-wide">
             <RiShoppingCartLine className="w-3.5 h-3.5" />
-            {isZh ? "注册渠道价格对比" : "Registrar Price Comparison"}
+            {isZh ? "注册商价格对比" : "Registrar Price Comparison"}
           </p>
           {registrars.length > 0 && (
             <span className="text-[10px] text-muted-foreground/50">
-              {isZh ? "以官网为准" : "For reference only"}
+              {isZh ? "以官网为准" : "Reference only"}
             </span>
           )}
         </div>
 
         {loadingPrices ? (
-          <div className="px-4 sm:px-6 pb-5 pt-3 space-y-3">
+          <div className="px-4 sm:px-6 pb-5 pt-3 space-y-2.5">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="flex items-center gap-3">
+              <div key={i} className="flex items-center gap-3 py-1">
                 <div className="w-8 h-8 rounded-lg bg-muted/50 animate-pulse shrink-0" />
-                <div className="flex-1 h-4 rounded bg-muted/40 animate-pulse" />
-                <div className="w-16 h-5 rounded bg-muted/40 animate-pulse shrink-0" />
+                <div className="flex-1 h-3.5 rounded bg-muted/40 animate-pulse" />
+                <div className="w-20 h-4 rounded bg-muted/40 animate-pulse shrink-0" />
               </div>
             ))}
           </div>
         ) : registrars.length > 0 ? (
-          <div className="pb-4">
+          <div className="pb-3">
             {registrars.map((r, idx) => {
               const faviconDomain = (() => {
                 try { return new URL(r.registrarweb).hostname; } catch { return null; }
@@ -2405,57 +2485,60 @@ function AvailableDomainCard({ domain, locale }: { domain: string; locale: strin
                   target="_blank"
                   rel="noopener noreferrer"
                   className={cn(
-                    "flex items-center gap-3 px-4 sm:px-6 py-3.5 transition-colors duration-150",
-                    "hover:bg-emerald-50/50 dark:hover:bg-emerald-950/25",
-                    idx === 0 && "bg-emerald-50/30 dark:bg-emerald-950/15",
+                    "flex items-center gap-3 px-4 sm:px-6 py-3 transition-colors duration-150 group",
+                    "hover:bg-emerald-50/60 dark:hover:bg-emerald-950/30",
+                    idx === 0 && "bg-emerald-50/40 dark:bg-emerald-950/20",
                   )}
                 >
                   <RegistrarIcon faviconDomain={faviconDomain} name={r.registrarname} />
 
                   <div className="flex-1 min-w-0 flex items-center gap-2">
-                    <span className="shrink-0 text-xs font-semibold text-muted-foreground/40 w-4 text-center tabular-nums">
+                    <span className="shrink-0 text-[11px] font-bold text-muted-foreground/30 w-4 text-right tabular-nums">
                       {idx + 1}
                     </span>
                     <p className={cn(
                       "text-sm truncate",
-                      idx === 0 ? "font-semibold text-foreground" : "font-medium text-foreground/80",
+                      idx === 0 ? "font-semibold text-foreground" : "font-medium text-foreground/75",
                     )}>
                       {r.registrarname}
                     </p>
                     {idx === 0 && (
-                      <span className="shrink-0 text-[10px] font-bold text-white bg-emerald-500 dark:bg-emerald-600 px-1.5 py-0.5 rounded-md uppercase tracking-wide">
-                        {isZh ? "最低价" : "Best"}
+                      <span className="shrink-0 text-[9px] font-bold text-white bg-emerald-500 dark:bg-emerald-600 px-1.5 py-0.5 rounded uppercase tracking-wide">
+                        {isZh ? "最低价" : "BEST"}
                       </span>
                     )}
                   </div>
 
-                  <div className="shrink-0 text-right">
-                    <div className="flex items-baseline gap-0.5 justify-end">
+                  <div className="shrink-0 text-right flex items-center gap-1.5">
+                    <div className="flex items-baseline gap-0.5">
                       <span className={cn(
-                        "font-bold",
+                        "font-bold tabular-nums",
                         idx === 0
                           ? "text-base text-emerald-600 dark:text-emerald-400"
-                          : "text-sm text-foreground/80",
+                          : "text-sm text-foreground/75",
                       )}>
                         {typeof r.new === "number" ? formatPrice(r.new, r.currency) : "N/A"}
                       </span>
-                      <span className="text-xs text-muted-foreground/60">
-                        /{isZh ? "首年" : "yr"}
+                      <span className="text-xs text-muted-foreground/50">
+                        /{isZh ? "年" : "yr"}
                       </span>
                     </div>
+                    <svg className="w-3.5 h-3.5 text-muted-foreground/30 group-hover:text-muted-foreground/60 transition-colors shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                    </svg>
                   </div>
                 </a>
               );
             })}
-            <p className="text-[10px] text-muted-foreground/40 px-4 sm:px-6 pt-2 pb-2">
+            <p className="text-[10px] text-muted-foreground/35 px-4 sm:px-6 pt-2.5 pb-2">
               {isZh
-                ? "数据来源：nazhumi.com & miqingju.com · 取最低价 · 价格仅供参考"
-                : "Data from nazhumi.com & miqingju.com · Lowest price shown · For reference only"}
+                ? "数据来源：nazhumi.com & miqingju.com · 最低价优先 · 价格仅供参考"
+                : "Source: nazhumi.com & miqingju.com · Sorted by lowest price · For reference only"}
             </p>
           </div>
         ) : (
-          <p className="text-xs text-muted-foreground text-center py-5">
-            {isZh ? "暂无价格数据" : "No pricing data available"}
+          <p className="text-xs text-muted-foreground/60 text-center py-6">
+            {isZh ? "暂无价格数据" : "No pricing data available for this TLD"}
           </p>
         )}
       </div>
