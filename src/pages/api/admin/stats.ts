@@ -1,6 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { getDbReady } from "@/lib/db";
-import { one } from "@/lib/db-query";
+import { many, one } from "@/lib/db-query";
 import { requireAdmin } from "@/lib/admin";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -13,18 +12,35 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!session) return;
 
   try {
-    const pool = await getDbReady();
-    const [users, stamps, reminders, history] = await Promise.all([
-      one<{ count: string }>(pool, "SELECT COUNT(*) AS count FROM users", []),
-      one<{ count: string }>(pool, "SELECT COUNT(*) AS count FROM stamps", []),
-      one<{ count: string }>(pool, "SELECT COUNT(*) AS count FROM reminders WHERE active = true", []),
-      one<{ count: string }>(pool, "SELECT COUNT(*) AS count FROM search_history", []),
+    const [users, disabledUsers, stamps, verifiedStamps, reminders, history, feedback] = await Promise.all([
+      one<{ count: string }>("SELECT COUNT(*) AS count FROM users"),
+      one<{ count: string }>("SELECT COUNT(*) AS count FROM users WHERE disabled = true"),
+      one<{ count: string }>("SELECT COUNT(*) AS count FROM stamps"),
+      one<{ count: string }>("SELECT COUNT(*) AS count FROM stamps WHERE verified = true"),
+      one<{ count: string }>("SELECT COUNT(*) AS count FROM reminders WHERE active = true"),
+      one<{ count: string }>("SELECT COUNT(*) AS count FROM search_history"),
+      one<{ count: string }>("SELECT COUNT(*) AS count FROM feedback").catch(() => ({ count: "0" })),
     ]);
+
+    const [recentUsers, recentSearches] = await Promise.all([
+      many<{ id: string; email: string; name: string | null; created_at: string; disabled: boolean }>(
+        "SELECT id, email, name, created_at, disabled FROM users ORDER BY created_at DESC LIMIT 5"
+      ),
+      many<{ id: string; query: string; query_type: string; created_at: string }>(
+        "SELECT id, query, query_type, created_at FROM search_history ORDER BY created_at DESC LIMIT 8"
+      ),
+    ]);
+
     return res.json({
       users: parseInt(users?.count ?? "0"),
+      disabledUsers: parseInt(disabledUsers?.count ?? "0"),
       stamps: parseInt(stamps?.count ?? "0"),
+      verifiedStamps: parseInt(verifiedStamps?.count ?? "0"),
       activeReminders: parseInt(reminders?.count ?? "0"),
       searches: parseInt(history?.count ?? "0"),
+      feedback: parseInt(feedback?.count ?? "0"),
+      recentUsers,
+      recentSearches,
     });
   } catch (err: any) {
     return res.status(500).json({ error: err.message });

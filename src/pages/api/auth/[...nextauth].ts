@@ -20,11 +20,12 @@ export const authOptions: NextAuthOptions = {
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
 
-        const user = await one<{ id: string; email: string; name: string | null; password_hash: string }>(
-          "SELECT id, email, name, password_hash FROM users WHERE email = $1",
+        const user = await one<{ id: string; email: string; name: string | null; password_hash: string; disabled: boolean }>(
+          "SELECT id, email, name, password_hash, disabled FROM users WHERE email = $1",
           [credentials.email.toLowerCase().trim()],
         );
         if (!user) return null;
+        if (user.disabled) return null;
 
         const valid = await compare(credentials.password, user.password_hash);
         if (!valid) return null;

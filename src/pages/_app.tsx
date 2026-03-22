@@ -24,10 +24,15 @@ const pageTransition = {
   ease: [0.25, 0.46, 0.45, 0.94],
 };
 
-function AppHead() {
+function AppHead({ origin }: { origin: string }) {
   const settings = useSiteSettings();
   const title = settings.site_title || siteTitle;
   const description = settings.site_description || siteDescription;
+  const siteName = settings.og_site_name || settings.site_title || siteTitle;
+  const canonicalUrl = settings.og_url || origin;
+  const ogImage = settings.og_image || `${origin}/banner.png`;
+  const twitterCard = settings.twitter_card || "summary_large_image";
+
   return (
     <Head>
       <title>{title}</title>
@@ -36,9 +41,29 @@ function AppHead() {
       <meta name="keywords" content={siteKeywords} />
       <meta name="viewport" content="width=device-width, initial-scale=1" />
       <meta name="format-detection" content="telephone=no" />
-      {settings.site_icon_url && (
-        <link rel="icon" href={settings.site_icon_url} />
-      )}
+
+      {/* Open Graph */}
+      <meta key="og:type" property="og:type" content="website" />
+      <meta key="og:title" property="og:title" content={title} />
+      <meta key="og:description" property="og:description" content={description} />
+      <meta key="og:image" property="og:image" content={ogImage} />
+      {canonicalUrl && <meta key="og:url" property="og:url" content={canonicalUrl} />}
+      <meta key="og:site_name" property="og:site_name" content={siteName} />
+
+      {/* Twitter Card */}
+      <meta key="twitter:card" name="twitter:card" content={twitterCard} />
+      <meta key="twitter:title" name="twitter:title" content={title} />
+      <meta key="twitter:description" name="twitter:description" content={description} />
+      <meta key="twitter:image" name="twitter:image" content={ogImage} />
+
+      {/* Canonical */}
+      {canonicalUrl && <link key="canonical" rel="canonical" href={canonicalUrl} />}
+
+      {/* Favicon */}
+      {settings.site_icon_url
+        ? <link rel="icon" href={settings.site_icon_url} />
+        : <link rel="icon" href="/favicon.ico" />
+      }
     </Head>
   );
 }
@@ -71,19 +96,7 @@ export default function App({ Component, pageProps: { session, ...pageProps } }:
     <SessionProvider session={session}>
     <LocaleProvider initialLocale={router.locale}>
     <SiteSettingsProvider>
-    <>
-      <AppHead />
-      <Head>
-        <meta key="og:title" property="og:title" content={siteTitle} />
-        <meta key="og:description" property="og:description" content={siteDescription} />
-        <meta key="og:image" property="og:image" content={`${origin}/banner.png`} />
-        <meta key="og:url" property="og:url" content={origin} />
-        <meta key="og:type" property="og:type" content="website" />
-        <meta key="twitter:card" name="twitter:card" content="summary_large_image" />
-        <meta key="twitter:title" name="twitter:title" content={siteTitle} />
-        <meta key="twitter:description" name="twitter:description" content={siteDescription} />
-        <meta key="twitter:image" name="twitter:image" content={`${origin}/banner.png`} />
-      </Head>
+      <AppHead origin={origin} />
       <Toaster />
       <ThemeProvider
         attribute="class"
@@ -114,7 +127,6 @@ export default function App({ Component, pageProps: { session, ...pageProps } }:
           </main>
         </div>
       </ThemeProvider>
-    </>
     </SiteSettingsProvider>
     </LocaleProvider>
     </SessionProvider>

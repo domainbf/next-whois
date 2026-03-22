@@ -8,6 +8,10 @@ export interface SiteSettings {
   site_logo_text: string;
   site_icon_url: string;
   site_announcement: string;
+  og_site_name: string;
+  og_url: string;
+  og_image: string;
+  twitter_card: string;
 }
 
 export const DEFAULT_SETTINGS: SiteSettings = {
@@ -18,6 +22,10 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   site_logo_text: "NEXT WHOIS",
   site_icon_url: "",
   site_announcement: "",
+  og_site_name: "Next Whois",
+  og_url: "",
+  og_image: "",
+  twitter_card: "summary_large_image",
 };
 
 const SiteSettingsContext = React.createContext<SiteSettings>(DEFAULT_SETTINGS);

@@ -37,6 +37,8 @@ A fast, modern WHOIS and RDAP lookup tool supporting domains, IPv4/IPv6, ASN, an
 - `src/pages/api/admin/users.ts` — Admin user management API
 - `src/pages/api/admin/stamps.ts` — Admin stamp management API
 - `src/pages/api/admin/reminders.ts` — Admin reminder management API
+- `src/pages/api/admin/feedback.ts` — Admin feedback management API (GET list, DELETE)
+- `src/pages/admin/feedback.tsx` — Feedback viewer: expandable cards with issue type badges, search, delete
 
 ## Architecture
 

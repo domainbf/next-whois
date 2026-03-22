@@ -92,6 +92,9 @@ const CREATE_TABLES = [
 const ALTER_COLUMNS = [
   `ALTER TABLE reminders ADD COLUMN IF NOT EXISTS phase_flags TEXT`,
   `ALTER TABLE search_history ADD COLUMN IF NOT EXISTS reg_status TEXT`,
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS disabled BOOLEAN NOT NULL DEFAULT false`,
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS admin_notes TEXT`,
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`,
 ];
 
 function getConnectionString(): { url: string; source: string } | null {

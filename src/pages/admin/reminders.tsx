@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
   RiLoader4Line, RiSearchLine, RiDeleteBinLine,
-  RiBellLine, RiBellOffLine, RiCalendarLine, RiMailLine,
+  RiBellLine, RiCalendarLine, RiMailLine,
 } from "@remixicon/react";
 
 type Reminder = {
@@ -103,7 +103,7 @@ export default function AdminRemindersPage() {
                 )}>
                   {reminder.active
                     ? <RiBellLine className="w-4 h-4 text-primary" />
-                    : <RiBellOffLine className="w-4 h-4 text-muted-foreground" />}
+                    : <RiBellLine className="w-4 h-4 text-muted-foreground opacity-40" />}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
