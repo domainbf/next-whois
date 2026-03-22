@@ -2863,7 +2863,7 @@ export default function LookupPage({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.25 }}
-              className="flex items-center flex-wrap gap-2 mb-6"
+              className="flex items-center flex-wrap gap-2 mb-4 sm:mb-6"
             >
               {result.registerPrice &&
                 result.registerPrice.new !== -1 &&
@@ -2871,7 +2871,7 @@ export default function LookupPage({
                   <Link
                     target="_blank"
                     href={result.registerPrice.externalLink}
-                    className="px-2 py-0.5 rounded-md border bg-background flex items-center space-x-1 cursor-pointer hover:border-muted-foreground/50 transition-colors"
+                    className="hidden sm:flex px-2 py-0.5 rounded-md border bg-background items-center space-x-1 cursor-pointer hover:border-muted-foreground/50 transition-colors"
                   >
                     <RiBillLine className="w-3 h-3 text-muted-foreground shrink-0" />
                     <span
@@ -2893,7 +2893,7 @@ export default function LookupPage({
                   <Link
                     href={result.renewPrice.externalLink}
                     target="_blank"
-                    className="px-2 py-0.5 rounded-md border bg-background flex items-center space-x-1 cursor-pointer hover:border-muted-foreground/50 transition-colors"
+                    className="hidden sm:flex px-2 py-0.5 rounded-md border bg-background items-center space-x-1 cursor-pointer hover:border-muted-foreground/50 transition-colors"
                   >
                     <RiExchangeDollarFill className="w-3 h-3 text-muted-foreground shrink-0" />
                     <span className="text-[11px] sm:text-xs font-normal text-muted-foreground">
@@ -2910,7 +2910,7 @@ export default function LookupPage({
                   <Link
                     href={result.transferPrice.externalLink}
                     target="_blank"
-                    className="px-2 py-0.5 rounded-md border bg-background flex items-center space-x-1 cursor-pointer hover:border-muted-foreground/50 transition-colors"
+                    className="hidden sm:flex px-2 py-0.5 rounded-md border bg-background items-center space-x-1 cursor-pointer hover:border-muted-foreground/50 transition-colors"
                   >
                     <RiExchangeDollarFill className="w-3 h-3 text-muted-foreground shrink-0" />
                     <span className="text-[11px] sm:text-xs font-normal text-muted-foreground">
@@ -3302,13 +3302,49 @@ export default function LookupPage({
                       <CssGlobe />
                     </div>
                     <div className="relative z-10">
-                      <div className="flex items-center gap-3 mb-2">
+                      <div className="flex items-center justify-between gap-3 mb-2">
                         <Badge
                           variant="outline"
                           className="text-[10px] font-bold uppercase tracking-wider font-mono"
                         >
                           {queryType}
                         </Badge>
+                        <div className="sm:hidden flex items-center gap-1.5">
+                          <button
+                            onClick={() => {
+                              if (!session) {
+                                toast.info(isChinese ? "请先登录再认领品牌" : "Please log in to claim a brand stamp");
+                                router.push(`/login?callbackUrl=${encodeURIComponent(`/stamp?domain=${encodeURIComponent(result.domain || target)}`)}`);
+                                return;
+                              }
+                              suppressNextLoad.current = true;
+                              router.push(`/stamp?domain=${encodeURIComponent(result.domain || target)}`);
+                            }}
+                            title={isChinese ? "品牌认领" : "Claim"}
+                            className="flex items-center justify-center w-7 h-7 rounded-full text-xs border transition-all active:scale-[0.93] bg-muted/50 border-border/50 text-muted-foreground hover:border-violet-400/50 hover:text-violet-500"
+                          >
+                            <RiShieldCheckLine className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (!session) {
+                                toast.info(isChinese ? "请先登录再订阅域名提醒" : "Please log in to subscribe for reminders");
+                                router.push(`/login`);
+                                return;
+                              }
+                              setReminderDialogOpen(true);
+                            }}
+                            title={isChinese ? "域名订阅" : "Subscribe"}
+                            className={cn(
+                              "flex items-center justify-center w-7 h-7 rounded-full text-xs border transition-all active:scale-[0.93]",
+                              (result.remainingDays !== null && result.remainingDays <= 30)
+                                ? "bg-red-100 dark:bg-red-900/30 border-red-400/60 text-red-500"
+                                : "bg-muted/50 border-border/50 text-muted-foreground hover:border-sky-400/50 hover:text-sky-500",
+                            )}
+                          >
+                            <RiTimerLine className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
                       <h2
                         className="text-3xl sm:text-4xl font-bold tracking-tight mb-1 cursor-pointer hover:opacity-80 transition-opacity uppercase"
@@ -3368,6 +3404,59 @@ export default function LookupPage({
                         )}
                       </div>
                       <div className="flex items-center gap-2 mt-3 flex-wrap">
+                        {/* Mobile-only price tags (moved from above on mobile) */}
+                        {result.registerPrice &&
+                          result.registerPrice.new !== -1 &&
+                          result.registerPrice.currency !== "Unknown" && (
+                            <Link
+                              target="_blank"
+                              href={result.registerPrice.externalLink}
+                              className="sm:hidden px-2 py-0.5 rounded-md border bg-background flex items-center space-x-1 cursor-pointer hover:border-muted-foreground/50 transition-colors"
+                            >
+                              <RiBillLine className="w-3 h-3 text-muted-foreground shrink-0" />
+                              <span className={cn("text-[11px] font-normal text-muted-foreground", result.registerPrice.isPremium && "text-red-500")}>
+                                {t("register_price")}
+                                {isChinese
+                                  ? toCNY(result.registerPrice.new as number, result.registerPrice.currency)
+                                  : toUSD(result.registerPrice.new as number, result.registerPrice.currency)}
+                              </span>
+                            </Link>
+                          )}
+                        {result.renewPrice &&
+                          result.renewPrice.renew !== -1 &&
+                          result.renewPrice.currency !== "Unknown" && (
+                            <Link
+                              href={result.renewPrice.externalLink}
+                              target="_blank"
+                              className="sm:hidden px-2 py-0.5 rounded-md border bg-background flex items-center space-x-1 cursor-pointer hover:border-muted-foreground/50 transition-colors"
+                            >
+                              <RiExchangeDollarFill className="w-3 h-3 text-muted-foreground shrink-0" />
+                              <span className="text-[11px] font-normal text-muted-foreground">
+                                {t("renew_price")}
+                                {isChinese
+                                  ? toCNY(result.renewPrice.renew as number, result.renewPrice.currency)
+                                  : toUSD(result.renewPrice.renew as number, result.renewPrice.currency)}
+                              </span>
+                            </Link>
+                          )}
+                        {result.transferPrice &&
+                          result.transferPrice.transfer !== -1 &&
+                          result.transferPrice.currency !== "Unknown" && (
+                            <Link
+                              href={result.transferPrice.externalLink}
+                              target="_blank"
+                              className="sm:hidden px-2 py-0.5 rounded-md border bg-background flex items-center space-x-1 cursor-pointer hover:border-muted-foreground/50 transition-colors"
+                            >
+                              <RiExchangeDollarFill className="w-3 h-3 text-muted-foreground shrink-0" />
+                              <span className="text-[11px] font-normal text-muted-foreground">
+                                {t("transfer_price")}
+                                {isChinese
+                                  ? toCNY(result.transferPrice.transfer as number, result.transferPrice.currency)
+                                  : toUSD(result.transferPrice.transfer as number, result.transferPrice.currency)}
+                              </span>
+                            </Link>
+                          )}
+                        {/* Desktop-only Claim/Subscribe text buttons */}
                         <button
                           onClick={() => {
                             if (!session) {
@@ -3378,7 +3467,7 @@ export default function LookupPage({
                             suppressNextLoad.current = true;
                             router.push(`/stamp?domain=${encodeURIComponent(result.domain || target)}`);
                           }}
-                          className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-all active:scale-[0.93] bg-muted/50 border-border/50 text-muted-foreground hover:border-violet-400/50 hover:text-violet-500"
+                          className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-all active:scale-[0.93] bg-muted/50 border-border/50 text-muted-foreground hover:border-violet-400/50 hover:text-violet-500"
                         >
                           <RiShieldCheckLine className="w-3 h-3" />
                           {isChinese ? "品牌认领" : "Claim"}
@@ -3393,7 +3482,7 @@ export default function LookupPage({
                             setReminderDialogOpen(true);
                           }}
                           className={cn(
-                            "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-all active:scale-[0.93]",
+                            "hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-all active:scale-[0.93]",
                             (result.remainingDays !== null && result.remainingDays <= 30)
                               ? "bg-red-100 dark:bg-red-900/30 border-red-400/60 text-red-500"
                               : "bg-muted/50 border-border/50 text-muted-foreground hover:border-sky-400/50 hover:text-sky-500",
