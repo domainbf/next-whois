@@ -2749,6 +2749,22 @@ export default function LookupPage({
     return `$${(eurAmount * usdRate).toFixed(2)}`;
   }
 
+  type TianhuTranslation = { src: string; dst: string | null; parts: { part_name: string; means: string[] }[] } | null;
+  const [tianhuTranslation, setTianhuTranslation] = React.useState<TianhuTranslation>(null);
+
+  useEffect(() => {
+    setTianhuTranslation(null);
+    const isIp = /^(\d{1,3}\.){3}\d{1,3}$/.test(target) || /^([0-9a-fA-F]{0,4}:){1,7}[0-9a-fA-F]{0,4}$/.test(target);
+    if (!target || isIp) return;
+    const timer = setTimeout(() => {
+      fetch(`/api/tianhu/translate?domain=${encodeURIComponent(target)}`)
+        .then((r) => r.json())
+        .then((d) => { if (d.dst) setTianhuTranslation(d); })
+        .catch(() => {});
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [target]);
+
   const current = getWindowHref();
   const queryType = detectQueryType(target);
   const { status, result, error, time, dnsProbe, registryUrl } = data as typeof data & { registryUrl?: string };
@@ -3553,6 +3569,33 @@ export default function LookupPage({
                       </div>
                     </div>
 
+                    {tianhuTranslation && tianhuTranslation.dst && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.25, ease: "easeOut" }}
+                        className="flex flex-wrap items-center gap-x-3 gap-y-1.5 mt-3 px-3 py-2 rounded-lg bg-violet-50/60 dark:bg-violet-950/20 border border-violet-200/50 dark:border-violet-800/30"
+                      >
+                        <span className="text-[11px] font-mono text-muted-foreground/60 shrink-0">
+                          {isChinese ? "含义" : "Meaning"}
+                        </span>
+                        <span className="text-[13px] font-semibold text-violet-700 dark:text-violet-300">
+                          {tianhuTranslation.dst}
+                        </span>
+                        {tianhuTranslation.parts.flatMap((p, pi) =>
+                          p.means.slice(0, 3).map((m, i) => (
+                            <span key={`${pi}-${i}`} className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+                              {i === 0 && p.part_name && (
+                                <span className="text-[10px] font-medium text-muted-foreground/50 border border-border/40 rounded px-1 py-px">
+                                  {p.part_name}
+                                </span>
+                              )}
+                              {m}
+                            </span>
+                          ))
+                        )}
+                      </motion.div>
+                    )}
 
                     <FeedbackDrawer
                       open={feedbackOpen}
