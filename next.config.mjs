@@ -4,12 +4,25 @@ import setupPWA from 'next-pwa';
 
 const nextConfig = {
   reactStrictMode: true,
+  poweredByHeader: false,
+  compress: true,
   transpilePackages: ['whoiser'],
   i18n: {
     locales: ['en', 'zh', 'zh-tw', 'de', 'ru', 'ja', 'fr', 'ko'],
     defaultLocale: 'en',
   },
   ...(process.env.NEXT_BUILD_DIR ? { distDir: process.env.NEXT_BUILD_DIR } : {}),
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      config.externals = [
+        ...(Array.isArray(config.externals) ? config.externals : []),
+        'whoiser',
+        'node-rdap',
+        'ioredis',
+      ];
+    }
+    return config;
+  },
 };
 
 const withPWA = setupPWA({
@@ -19,7 +32,6 @@ const withPWA = setupPWA({
     skipWaiting: true,
     buildExcludes: [/manifest\.json$/, /_next\/data/, /_next\/static/],
     runtimeCaching: [
-      // cache *.css, *.js, *.woff2 files
       {
         urlPattern: /^https?.*\.(css|js|woff2)$/,
         handler: 'CacheFirst',
@@ -27,7 +39,7 @@ const withPWA = setupPWA({
           cacheName: 'assets-cache',
           expiration: {
             maxEntries: 200,
-            maxAgeSeconds: 7 * 24 * 60 * 60, // 7 days
+            maxAgeSeconds: 7 * 24 * 60 * 60,
           },
         }
       },

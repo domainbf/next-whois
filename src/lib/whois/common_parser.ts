@@ -247,13 +247,16 @@ export async function applyParams(result: WhoisAnalyzeResult) {
       ? null
       : calculateRemainingDays(result.expirationDate);
 
-  // Get pricing information
-  result.registerPrice = await getDomainPricing(result.domain, "new");
-  result.renewPrice = await getDomainPricing(result.domain, "renew");
-  result.transferPrice = await getDomainPricing(result.domain, "transfer");
-
-  // Get Moz metrics
-  const mozMetrics = await getMozMetrics(result.domain);
+  // Run pricing (3 calls) and Moz metrics in parallel instead of sequentially
+  const [registerPrice, renewPrice, transferPrice, mozMetrics] = await Promise.all([
+    getDomainPricing(result.domain, "new"),
+    getDomainPricing(result.domain, "renew"),
+    getDomainPricing(result.domain, "transfer"),
+    getMozMetrics(result.domain),
+  ]);
+  result.registerPrice = registerPrice;
+  result.renewPrice = renewPrice;
+  result.transferPrice = transferPrice;
   result.mozDomainAuthority = mozMetrics.domainAuthority;
   result.mozPageAuthority = mozMetrics.pageAuthority;
   result.mozSpamScore = mozMetrics.spamScore;

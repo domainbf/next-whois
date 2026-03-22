@@ -27,7 +27,9 @@ export async function getMozMetrics(domain: string): Promise<MozMetrics> {
 
     const authToken = await generateAuthToken();
 
-    // Get Domain Authority
+    const abortCtrl = new AbortController();
+    const mozTimeout = setTimeout(() => abortCtrl.abort(), 3_000);
+
     const daResponse = await fetch(`${MOZ_API_URL}/url_metrics`, {
       method: "POST",
       headers: {
@@ -38,7 +40,9 @@ export async function getMozMetrics(domain: string): Promise<MozMetrics> {
         targets: [`https://${domain}`],
         metrics: ["domain_authority", "page_authority", "spam_score"],
       }),
+      signal: abortCtrl.signal,
     });
+    clearTimeout(mozTimeout);
 
     if (!daResponse.ok) {
       throw new Error(`Moz API error: ${daResponse.statusText}`);

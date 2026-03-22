@@ -2,8 +2,11 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { randomBytes } from "crypto";
 import { getDbReady, getConnectionHost, getConnectionSource } from "@/lib/db";
 import { one, run } from "@/lib/db-query";
+import { requireAdmin } from "@/lib/admin";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  const adminErr = await requireAdmin(req, res);
+  if (adminErr) return;
   const steps: { step: string; ok: boolean; detail?: string }[] = [];
 
   const connSource = getConnectionSource();
