@@ -95,6 +95,10 @@ const ALTER_COLUMNS = [
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS disabled BOOLEAN NOT NULL DEFAULT false`,
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS admin_notes TEXT`,
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`,
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_color TEXT`,
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAULT false`,
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verify_token TEXT`,
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verify_expires TIMESTAMPTZ`,
 ];
 
 function getConnectionString(): { url: string; source: string } | null {

@@ -14,7 +14,8 @@ import {
   RiDeleteBinLine, RiPencilLine, RiCheckLine, RiCloseLine,
   RiUserLine, RiLogoutBoxLine, RiAlertLine, RiExternalLinkLine,
   RiFlashlightLine, RiTimeLine, RiHistoryLine, RiSearchLine,
-  RiEdit2Line, RiShieldUserLine,
+  RiEdit2Line, RiShieldUserLine, RiLockLine, RiMailLine,
+  RiEyeLine, RiEyeOffLine, RiPaletteLine,
 } from "@remixicon/react";
 import { ADMIN_EMAIL } from "@/lib/admin-shared";
 import type { HistoryItem } from "@/lib/history";
@@ -260,6 +261,19 @@ export default function DashboardPage() {
   const [editingName, setEditingName] = React.useState(false);
   const [nameValue, setNameValue] = React.useState("");
   const [savingName, setSavingName] = React.useState(false);
+  const [editingEmail, setEditingEmail] = React.useState(false);
+  const [emailValue, setEmailValue] = React.useState("");
+  const [savingEmail, setSavingEmail] = React.useState(false);
+  const [showPwdSection, setShowPwdSection] = React.useState(false);
+  const [currentPwd, setCurrentPwd] = React.useState("");
+  const [newPwd, setNewPwd] = React.useState("");
+  const [confirmPwd, setConfirmPwd] = React.useState("");
+  const [showCurrent, setShowCurrent] = React.useState(false);
+  const [showNew, setShowNew] = React.useState(false);
+  const [savingPwd, setSavingPwd] = React.useState(false);
+  const [avatarColor, setAvatarColor] = React.useState("violet");
+  const [editingAvatar, setEditingAvatar] = React.useState(false);
+  const [savingAvatar, setSavingAvatar] = React.useState(false);
 
   React.useEffect(() => {
     if (status === "unauthenticated") router.replace("/login");
@@ -325,6 +339,28 @@ export default function DashboardPage() {
     }
   }
 
+  const AVATAR_COLORS: { key: string; bg: string; text: string; label: string }[] = [
+    { key: "violet", bg: "bg-violet-500", text: "text-white", label: "紫" },
+    { key: "blue",   bg: "bg-blue-500",   text: "text-white", label: "蓝" },
+    { key: "emerald",bg: "bg-emerald-500",text: "text-white", label: "绿" },
+    { key: "orange", bg: "bg-orange-500", text: "text-white", label: "橙" },
+    { key: "pink",   bg: "bg-pink-500",   text: "text-white", label: "粉" },
+    { key: "red",    bg: "bg-red-500",    text: "text-white", label: "红" },
+    { key: "yellow", bg: "bg-yellow-400", text: "text-black", label: "黄" },
+    { key: "slate",  bg: "bg-slate-600",  text: "text-white", label: "灰" },
+  ];
+
+  React.useEffect(() => {
+    if (status === "authenticated") {
+      fetch("/api/user/profile")
+        .then(r => r.json())
+        .then(data => {
+          if (data.user?.avatar_color) setAvatarColor(data.user.avatar_color);
+        })
+        .catch(() => {});
+    }
+  }, [status]);
+
   async function saveName() {
     setSavingName(true);
     try {
@@ -341,6 +377,67 @@ export default function DashboardPage() {
       toast.error(e.message || "更新失败");
     } finally {
       setSavingName(false);
+    }
+  }
+
+  async function saveEmail() {
+    if (!emailValue.trim()) { toast.error("请输入新邮箱"); return; }
+    setSavingEmail(true);
+    try {
+      const res = await fetch("/api/user/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: emailValue.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      await updateSession({ email: emailValue.trim().toLowerCase() });
+      toast.success("邮箱已更新，请重新登录");
+      setEditingEmail(false);
+    } catch (e: any) {
+      toast.error(e.message || "更新失败");
+    } finally {
+      setSavingEmail(false);
+    }
+  }
+
+  async function changePassword() {
+    if (!currentPwd) { toast.error("请输入当前密码"); return; }
+    if (newPwd.length < 8) { toast.error("新密码至少 8 位"); return; }
+    if (newPwd !== confirmPwd) { toast.error("两次密码不一致"); return; }
+    setSavingPwd(true);
+    try {
+      const res = await fetch("/api/user/change-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ currentPassword: currentPwd, newPassword: newPwd }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      toast.success("密码已更新");
+      setShowPwdSection(false);
+      setCurrentPwd(""); setNewPwd(""); setConfirmPwd("");
+    } catch (e: any) {
+      toast.error(e.message || "修改失败");
+    } finally {
+      setSavingPwd(false);
+    }
+  }
+
+  async function saveAvatarColor(color: string) {
+    setSavingAvatar(true);
+    try {
+      await fetch("/api/user/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ avatar_color: color }),
+      });
+      setAvatarColor(color);
+      setEditingAvatar(false);
+    } catch {
+      toast.error("保存头像失败");
+    } finally {
+      setSavingAvatar(false);
     }
   }
 
@@ -659,13 +756,68 @@ export default function DashboardPage() {
           )}
 
           {/* ── Account ── */}
-          {tab === "account" && (
-            <motion.div key="account" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.18 }} className="space-y-3">
-              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">账户信息</p>
+          {tab === "account" && (() => {
+            const ac = AVATAR_COLORS.find(c => c.key === avatarColor) || AVATAR_COLORS[0];
+            const initial = ((user as any).name || user.email || "U").charAt(0).toUpperCase();
+            return (
+            <motion.div key="account" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }} className="space-y-4">
+
+              {/* ── Avatar card ── */}
+              <div className="glass-panel border border-border rounded-2xl p-5 flex items-center gap-4">
+                <div className="relative shrink-0">
+                  <div className={cn("w-16 h-16 rounded-2xl flex items-center justify-center text-2xl font-bold shadow-sm", ac.bg, ac.text)}>
+                    {initial}
+                  </div>
+                  <button
+                    onClick={() => setEditingAvatar(v => !v)}
+                    className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-background border border-border shadow flex items-center justify-center hover:bg-muted transition-colors"
+                  >
+                    <RiPaletteLine className="w-3 h-3 text-muted-foreground" />
+                  </button>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-base truncate">{(user as any).name || "未设置昵称"}</p>
+                  <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                  {isAdminUser && (
+                    <span className="inline-block mt-1 text-[10px] px-2 py-0.5 rounded-full bg-gradient-to-r from-violet-500/20 to-indigo-500/20 text-violet-700 dark:text-violet-300 font-bold border border-violet-200/50 dark:border-violet-700/30 uppercase tracking-wider">
+                      创始人
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Color picker */}
+              {editingAvatar && (
+                <div className="glass-panel border border-border rounded-2xl p-4 space-y-3">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">选择头像颜色</p>
+                  <div className="flex gap-2 flex-wrap">
+                    {AVATAR_COLORS.map(c => (
+                      <button
+                        key={c.key}
+                        onClick={() => saveAvatarColor(c.key)}
+                        disabled={savingAvatar}
+                        className={cn(
+                          "w-9 h-9 rounded-xl font-bold text-xs transition-all",
+                          c.bg, c.text,
+                          avatarColor === c.key ? "ring-2 ring-offset-2 ring-primary scale-110" : "opacity-70 hover:opacity-100 hover:scale-105"
+                        )}
+                      >
+                        {savingAvatar && avatarColor === c.key ? <RiLoader4Line className="w-3.5 h-3.5 animate-spin mx-auto" /> : c.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* ── Profile fields ── */}
               <div className="glass-panel border border-border rounded-2xl divide-y divide-border/50">
-                {/* Editable name row */}
-                <div className="flex items-center justify-between px-4 py-3 gap-3">
-                  <p className="text-xs text-muted-foreground shrink-0">昵称</p>
+
+                {/* Name */}
+                <div className="px-4 py-3 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 shrink-0">
+                    <RiUserLine className="w-3.5 h-3.5 text-muted-foreground" />
+                    <p className="text-xs text-muted-foreground">昵称</p>
+                  </div>
                   {editingName ? (
                     <div className="flex items-center gap-2 flex-1 justify-end">
                       <Input
@@ -676,27 +828,65 @@ export default function DashboardPage() {
                         autoFocus
                         onKeyDown={e => { if (e.key === "Enter") saveName(); if (e.key === "Escape") setEditingName(false); }}
                       />
-                      <button onClick={saveName} disabled={savingName} className="p-1 rounded-lg hover:bg-muted text-emerald-600 transition-colors">
+                      <button onClick={saveName} disabled={savingName} className="p-1.5 rounded-lg hover:bg-muted text-emerald-600 transition-colors">
                         {savingName ? <RiLoader4Line className="w-3.5 h-3.5 animate-spin" /> : <RiCheckLine className="w-3.5 h-3.5" />}
                       </button>
-                      <button onClick={() => setEditingName(false)} className="p-1 rounded-lg hover:bg-muted text-muted-foreground transition-colors">
+                      <button onClick={() => setEditingName(false)} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground transition-colors">
                         <RiCloseLine className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   ) : (
                     <div className="flex items-center gap-2">
                       <p className="text-xs font-semibold">{(user as any).name || "未设置"}</p>
-                      <button
-                        onClick={() => { setNameValue((user as any).name || ""); setEditingName(true); }}
+                      <button onClick={() => { setNameValue((user as any).name || ""); setEditingName(true); }}
                         className="p-1 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">
-                        <RiPencilLine className="w-3 h-3" />
+                        <RiPencilLine className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   )}
                 </div>
 
+                {/* Email */}
+                <div className="px-4 py-3 space-y-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2 shrink-0">
+                      <RiMailLine className="w-3.5 h-3.5 text-muted-foreground" />
+                      <p className="text-xs text-muted-foreground">邮箱</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs font-semibold truncate max-w-[160px]">{user.email}</p>
+                      {!editingEmail && (
+                        <button onClick={() => { setEmailValue(user.email || ""); setEditingEmail(true); }}
+                          className="p-1 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">
+                          <RiPencilLine className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  {editingEmail && (
+                    <div className="space-y-2 pt-1">
+                      <Input
+                        type="email"
+                        value={emailValue}
+                        onChange={e => setEmailValue(e.target.value)}
+                        placeholder="新邮箱地址"
+                        className="h-8 rounded-xl text-xs"
+                        autoFocus
+                      />
+                      <p className="text-[10px] text-amber-600 dark:text-amber-400">更换邮箱后需重新登录</p>
+                      <div className="flex gap-2">
+                        <Button size="sm" onClick={saveEmail} disabled={savingEmail} className="h-7 text-xs rounded-lg gap-1 flex-1">
+                          {savingEmail ? <RiLoader4Line className="w-3 h-3 animate-spin" /> : <RiCheckLine className="w-3 h-3" />}
+                          确认更换
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => setEditingEmail(false)} className="h-7 text-xs rounded-lg">取消</Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Stats */}
                 {[
-                  { label: "邮箱", value: user.email },
                   { label: "域名订阅", value: `${subscriptions.filter(s => s.active).length} 个活跃` },
                   { label: "品牌认领", value: `${stamps.length} 个（${stamps.filter(s => s.verified).length} 已验证）` },
                 ].map(row => (
@@ -706,13 +896,64 @@ export default function DashboardPage() {
                   </div>
                 ))}
               </div>
+
+              {/* ── Change password ── */}
+              <div className="glass-panel border border-border rounded-2xl overflow-hidden">
+                <button
+                  onClick={() => { setShowPwdSection(v => !v); setCurrentPwd(""); setNewPwd(""); setConfirmPwd(""); }}
+                  className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/40 transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <RiLockLine className="w-3.5 h-3.5 text-muted-foreground" />
+                    <p className="text-xs font-semibold">修改密码</p>
+                  </div>
+                  <RiPencilLine className="w-3.5 h-3.5 text-muted-foreground" />
+                </button>
+                {showPwdSection && (
+                  <div className="border-t border-border px-4 py-4 space-y-3">
+                    {[
+                      { label: "当前密码", value: currentPwd, onChange: setCurrentPwd, show: showCurrent, toggle: () => setShowCurrent(v => !v) },
+                      { label: "新密码（至少 8 位）", value: newPwd, onChange: setNewPwd, show: showNew, toggle: () => setShowNew(v => !v) },
+                      { label: "确认新密码", value: confirmPwd, onChange: setConfirmPwd, show: showNew, toggle: () => {} },
+                    ].map((f, i) => (
+                      <div key={i} className="space-y-1">
+                        <Label className="text-[11px] text-muted-foreground">{f.label}</Label>
+                        <div className="relative">
+                          <RiLockLine className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/50" />
+                          <Input
+                            type={f.show ? "text" : "password"}
+                            value={f.value}
+                            onChange={e => f.onChange(e.target.value)}
+                            className="pl-8 pr-8 h-9 rounded-xl text-xs"
+                          />
+                          {i < 2 && (
+                            <button type="button" onClick={f.toggle}
+                              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/50 hover:text-foreground transition-colors">
+                              {f.show ? <RiEyeOffLine className="w-3.5 h-3.5" /> : <RiEyeLine className="w-3.5 h-3.5" />}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                    <div className="flex gap-2 pt-1">
+                      <Button onClick={changePassword} disabled={savingPwd} className="flex-1 h-9 rounded-xl text-xs gap-1.5">
+                        {savingPwd ? <><RiLoader4Line className="w-3.5 h-3.5 animate-spin" />修改中…</> : <><RiCheckLine className="w-3.5 h-3.5" />确认修改</>}
+                      </Button>
+                      <Button variant="outline" onClick={() => setShowPwdSection(false)} className="h-9 rounded-xl text-xs">取消</Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* ── Danger zone ── */}
               <button onClick={() => signOut({ callbackUrl: "/" })}
                 className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-red-200/50 bg-red-50/40 dark:bg-red-950/20 text-red-600 dark:text-red-400 text-sm font-semibold hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors">
                 <RiLogoutBoxLine className="w-4 h-4" />
                 退出登录
               </button>
             </motion.div>
-          )}
+            );
+          })()}
         </AnimatePresence>
       </div>
     </>

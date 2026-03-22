@@ -437,6 +437,19 @@ export function passwordResetHtml({ resetUrl }: { resetUrl: string }): string {
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
+// Admin test / notification email
+// ──────────────────────────────────────────────────────────────────────────────
+export function adminNotifyHtml({ subject, body }: { subject: string; body: string }): string {
+  return emailLayout(`
+    <div style="background:linear-gradient(135deg,#0f172a 0%,#1e293b 100%);padding:28px 32px 24px">
+      <p style="margin:0;font-size:11px;font-weight:700;letter-spacing:2px;color:rgba(255,255,255,.5);text-transform:uppercase">管理员通知</p>
+      <h1 style="margin:8px 0 0;font-size:22px;font-weight:800;color:#fff">${subject}</h1>
+    </div>
+    ${section(`<p style="margin:0;font-size:14px;color:#475569;line-height:1.75">${body}</p>`)}
+  `);
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
 // Sending helper
 // ──────────────────────────────────────────────────────────────────────────────
 export async function sendEmail({

@@ -214,3 +214,8 @@ button {
   animation: text-shimmer 5.5s ease-in-out infinite, text-float 5s ease-in-out infinite;
   display: inline-block;
 }
+
+/* iOS safe area for bottom navigation */
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}

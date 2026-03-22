@@ -1,10 +1,10 @@
 import React from "react";
-import Link from "next/link";
+import { useRouter } from "next/router";
 import { AdminLayout } from "@/components/admin-layout";
 import {
   RiUserLine, RiShieldCheckLine, RiBellLine, RiSearchLine,
   RiSettings4Line, RiLoader4Line, RiArrowRightLine, RiUserForbidLine,
-  RiVerifiedBadgeLine, RiFeedbackLine, RiTimeLine,
+  RiFeedbackLine, RiTimeLine,
 } from "@remixicon/react";
 
 type Stats = {
@@ -28,9 +28,13 @@ function StatCard({ icon: Icon, label, value, sub, subValue, href, color }: {
   href: string;
   color: string;
 }) {
+  const router = useRouter();
   return (
-    <Link href={href}
-      className="glass-panel border border-border rounded-2xl p-5 flex items-start gap-4 hover:border-primary/30 hover:bg-primary/5 transition-all group">
+    <button
+      type="button"
+      onClick={() => router.push(href)}
+      className="glass-panel border border-border rounded-2xl p-5 flex items-start gap-4 hover:border-primary/30 hover:bg-primary/5 transition-all group text-left w-full active:scale-[0.98]"
+    >
       <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${color}`}>
         <Icon className="w-5 h-5" />
       </div>
@@ -44,7 +48,7 @@ function StatCard({ icon: Icon, label, value, sub, subValue, href, color }: {
         )}
       </div>
       <RiArrowRightLine className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors mt-1" />
-    </Link>
+    </button>
   );
 }
 
@@ -63,6 +67,7 @@ function fmt(d: string) {
 }
 
 export default function AdminIndexPage() {
+  const router = useRouter();
   const [stats, setStats] = React.useState<Stats | null>(null);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -75,6 +80,14 @@ export default function AdminIndexPage() {
       })
       .catch(() => setError("加载失败"));
   }, []);
+
+  const QUICK_ACTIONS = [
+    { href: "/admin/settings", label: "网站设置", desc: "标题、OG标签、公告" },
+    { href: "/admin/users", label: "用户管理", desc: "编辑、停用、删除用户" },
+    { href: "/admin/stamps", label: "品牌审核", desc: "审核品牌认领申请" },
+    { href: "/admin/reminders", label: "提醒管理", desc: "管理域名到期订阅" },
+    { href: "/admin/feedback", label: "用户反馈", desc: "查看用户提交的反馈" },
+  ];
 
   return (
     <AdminLayout title="概览">
@@ -132,7 +145,7 @@ export default function AdminIndexPage() {
               <h3 className="text-sm font-bold flex items-center gap-2">
                 <RiTimeLine className="w-4 h-4 text-primary" />最近注册
               </h3>
-              <Link href="/admin/users" className="text-xs text-primary hover:underline">查看全部</Link>
+              <button onClick={() => router.push("/admin/users")} className="text-xs text-primary hover:underline">查看全部</button>
             </div>
             <div className="space-y-2">
               {stats.recentUsers.map(u => (
@@ -159,11 +172,9 @@ export default function AdminIndexPage() {
         {/* Recent searches */}
         {stats?.recentSearches && stats.recentSearches.length > 0 && (
           <div className="glass-panel border border-border rounded-2xl p-5 space-y-3">
-            <div className="flex items-center gap-2 justify-between">
-              <h3 className="text-sm font-bold flex items-center gap-2">
-                <RiSearchLine className="w-4 h-4 text-primary" />最近查询
-              </h3>
-            </div>
+            <h3 className="text-sm font-bold flex items-center gap-2">
+              <RiSearchLine className="w-4 h-4 text-primary" />最近查询
+            </h3>
             <div className="flex flex-wrap gap-2">
               {stats.recentSearches.map(s => (
                 <div key={s.id} className="flex items-center gap-1.5 glass-panel border border-border/60 rounded-lg px-2.5 py-1.5">
@@ -182,18 +193,16 @@ export default function AdminIndexPage() {
             <RiSettings4Line className="w-4 h-4 text-primary" />快捷操作
           </h3>
           <div className="grid grid-cols-2 gap-2">
-            {[
-              { href: "/admin/settings", label: "网站设置", desc: "标题、OG标签、公告" },
-              { href: "/admin/users", label: "用户管理", desc: "编辑、停用、删除用户" },
-              { href: "/admin/stamps", label: "品牌审核", desc: "审核品牌认领申请" },
-              { href: "/admin/reminders", label: "提醒管理", desc: "管理域名到期订阅" },
-              { href: "/admin/feedback", label: "用户反馈", desc: "查看用户提交的反馈" },
-            ].map(({ href, label, desc }) => (
-              <Link key={href} href={href}
-                className="glass-panel border border-border/60 rounded-xl p-3 hover:border-primary/30 hover:bg-primary/5 transition-all group">
+            {QUICK_ACTIONS.map(({ href, label, desc }) => (
+              <button
+                key={href}
+                type="button"
+                onClick={() => router.push(href)}
+                className="glass-panel border border-border/60 rounded-xl p-3 hover:border-primary/30 hover:bg-primary/5 transition-all group text-left active:scale-[0.98]"
+              >
                 <p className="text-sm font-semibold group-hover:text-primary transition-colors">{label}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">{desc}</p>
-              </Link>
+              </button>
             ))}
           </div>
         </div>
