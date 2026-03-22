@@ -2749,35 +2749,6 @@ export default function LookupPage({
     return `$${(eurAmount * usdRate).toFixed(2)}`;
   }
 
-  type TianhuTranslation = { src: string; dst: string | null; parts: { part_name: string; means: string[] }[] } | null;
-  type TianhuDnsRecord = { type: string; entries: string[]; ttl: number };
-
-  const [tianhuTranslation, setTianhuTranslation] = React.useState<TianhuTranslation>(null);
-  const [tianhuDns, setTianhuDns] = React.useState<TianhuDnsRecord[]>([]);
-  const [tianhuDnsLoading, setTianhuDnsLoading] = React.useState(false);
-
-  const prevTargetRef = React.useRef<string>("");
-
-  useEffect(() => {
-    if (!target || prevTargetRef.current === target) return;
-    prevTargetRef.current = target;
-    setTianhuTranslation(null);
-    setTianhuDns([]);
-    const isIp = /^(\d{1,3}\.){3}\d{1,3}$/.test(target) || /^([0-9a-fA-F]{0,4}:){1,7}[0-9a-fA-F]{0,4}$/.test(target);
-    if (!isIp) {
-      fetch(`/api/tianhu/translate?domain=${encodeURIComponent(target)}`)
-        .then((r) => r.json())
-        .then((d) => { if (d.dst) setTianhuTranslation(d); })
-        .catch(() => {});
-      setTianhuDnsLoading(true);
-      fetch(`/api/tianhu/dns?domain=${encodeURIComponent(target)}`)
-        .then((r) => r.json())
-        .then((d) => { setTianhuDns(d.records || []); })
-        .catch(() => {})
-        .finally(() => setTianhuDnsLoading(false));
-    }
-  }, [target]);
-
   const current = getWindowHref();
   const queryType = detectQueryType(target);
   const { status, result, error, time, dnsProbe, registryUrl } = data as typeof data & { registryUrl?: string };
@@ -3582,36 +3553,6 @@ export default function LookupPage({
                       </div>
                     </div>
 
-                    {tianhuTranslation && tianhuTranslation.dst && (
-                      <motion.div
-                        initial={{ opacity: 0, y: -4 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.25, ease: "easeOut" }}
-                        className="flex flex-wrap items-center gap-x-3 gap-y-1.5 mt-3 px-3 py-2 rounded-lg bg-violet-50/60 dark:bg-violet-950/20 border border-violet-200/50 dark:border-violet-800/30"
-                      >
-                        <span className="text-[11px] font-mono text-muted-foreground/60 shrink-0">
-                          {isChinese ? "含义" : "Meaning"}
-                        </span>
-                        <span className="text-[13px] font-semibold text-violet-700 dark:text-violet-300">
-                          {tianhuTranslation.dst}
-                        </span>
-                        {tianhuTranslation.parts.flatMap((p, pi) =>
-                          p.means.slice(0, 3).map((m, i) => (
-                            <span
-                              key={`${pi}-${i}`}
-                              className="inline-flex items-center gap-1 text-[11px] text-muted-foreground"
-                            >
-                              {i === 0 && p.part_name && (
-                                <span className="text-[10px] font-medium text-muted-foreground/50 border border-border/40 rounded px-1 py-px">
-                                  {p.part_name}
-                                </span>
-                              )}
-                              {m}
-                            </span>
-                          )),
-                        )}
-                      </motion.div>
-                    )}
 
                     <FeedbackDrawer
                       open={feedbackOpen}
@@ -3921,57 +3862,6 @@ export default function LookupPage({
                       </div>
                     )}
 
-                    {(tianhuDnsLoading || tianhuDns.length > 0) && (
-                      <div className="glass-panel border border-border rounded-xl p-5">
-                        <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
-                          <RiServerLine className="w-4 h-4 text-muted-foreground" />
-                          {isChinese ? "DNS 记录" : "DNS Records"}
-                          <span className="ml-auto text-[10px] font-normal text-muted-foreground/60">tian.hu</span>
-                        </h3>
-                        {tianhuDnsLoading ? (
-                          <div className="space-y-2">
-                            {[1, 2, 3].map((i) => (
-                              <div key={i} className="h-7 rounded-md bg-muted/40 animate-pulse" />
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="space-y-3">
-                            {tianhuDns.map((rec, ri) => (
-                              <motion.div
-                                key={rec.type + ri}
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                transition={{ duration: 0.2, delay: ri * 0.04 }}
-                              >
-                                <div className="flex items-start gap-2">
-                                  <span className="shrink-0 w-12 text-center text-[10px] font-bold font-mono px-1.5 py-0.5 rounded bg-muted/60 border border-border/50 text-muted-foreground mt-0.5">
-                                    {rec.type}
-                                  </span>
-                                  <div className="flex-1 space-y-0.5 min-w-0">
-                                    {rec.entries.slice(0, 6).map((entry, ei) => (
-                                      <div
-                                        key={ei}
-                                        className="font-mono text-xs text-muted-foreground break-all leading-relaxed"
-                                      >
-                                        {entry}
-                                      </div>
-                                    ))}
-                                    {rec.entries.length > 6 && (
-                                      <div className="text-[10px] text-muted-foreground/50">
-                                        +{rec.entries.length - 6} {isChinese ? "条" : "more"}
-                                      </div>
-                                    )}
-                                  </div>
-                                  <span className="shrink-0 text-[10px] text-muted-foreground/40 font-mono mt-0.5">
-                                    TTL {rec.ttl}
-                                  </span>
-                                </div>
-                              </motion.div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
 
                     {hasIpFields && (
                       <div className="glass-panel border border-border rounded-xl p-5">
