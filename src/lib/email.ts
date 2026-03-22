@@ -452,23 +452,44 @@ export function adminNotifyHtml({ subject, body }: { subject: string; body: stri
 // ──────────────────────────────────────────────────────────────────────────────
 // Sending helper
 // ──────────────────────────────────────────────────────────────────────────────
+// Resend's built-in verified address — works without custom domain setup
+const RESEND_FALLBACK_FROM = "onboarding@resend.dev";
+
 export async function sendEmail({
   to, subject, html,
 }: { to: string; subject: string; html: string }) {
   const resendKey = process.env.RESEND_API_KEY;
-  if (!resendKey) return;
-  const from = process.env.RESEND_FROM_EMAIL || "noreply@x.rw";
-  try {
-    const resp = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ from, to, subject, html }),
-    });
-    if (!resp.ok) {
+  if (!resendKey) {
+    console.warn("[sendEmail] RESEND_API_KEY not set — email skipped");
+    return;
+  }
+
+  const configuredFrom = process.env.RESEND_FROM_EMAIL || "";
+
+  // Try configured from address first; fall back to Resend's built-in verified domain
+  const fromAddresses = configuredFrom
+    ? [configuredFrom, RESEND_FALLBACK_FROM]
+    : [RESEND_FALLBACK_FROM];
+
+  for (const from of fromAddresses) {
+    try {
+      const resp = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ from, to, subject, html }),
+      });
+      if (resp.ok) return; // success
       const body = await resp.text().catch(() => "");
+      // Domain not verified — retry with fallback
+      if (resp.status === 403 && body.includes("not verified") && from !== RESEND_FALLBACK_FROM) {
+        console.warn(`[sendEmail] Domain not verified for "${from}", retrying with ${RESEND_FALLBACK_FROM}`);
+        continue;
+      }
       console.error("[sendEmail] Resend error:", resp.status, body);
+      return;
+    } catch (err: any) {
+      console.error("[sendEmail] fetch error:", err.message);
+      return;
     }
-  } catch (err: any) {
-    console.error("[sendEmail] fetch error:", err.message);
   }
 }
