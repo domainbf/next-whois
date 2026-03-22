@@ -3,12 +3,16 @@ import { AdminLayout } from "@/components/admin-layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { TextArea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { DEFAULT_SETTINGS, type SiteSettings, notifySettingsUpdated } from "@/lib/site-settings";
 import {
   RiLoader4Line, RiSaveLine, RiRefreshLine, RiImageLine,
   RiGlobalLine, RiFileTextLine, RiShareLine, RiTwitterXLine,
   RiMegaphoneLine, RiMailSendLine, RiCheckLine, RiToggleLine,
+  RiHomeLine, RiInformationLine, RiHistoryLine, RiLinksLine,
+  RiHeartLine, RiBarChartLine, RiSearchLine, RiCodeBoxLine,
+  RiShieldLine, RiPaletteLine, RiEyeLine,
 } from "@remixicon/react";
 
 type FieldDef = {
@@ -17,47 +21,198 @@ type FieldDef = {
   desc: string;
   placeholder: string;
   icon: React.ElementType;
+  multiline?: boolean;
 };
 
-const SECTIONS: {
+type ToggleDef = {
+  key: keyof SiteSettings;
+  label: string;
+  desc: string;
+  onColor: string;
+};
+
+type Section = {
+  id: string;
   title: string;
   icon: React.ElementType;
   color: string;
-  fields: FieldDef[];
-}[] = [
+  fields?: FieldDef[];
+  toggles?: ToggleDef[];
+};
+
+const SECTIONS: Section[] = [
   {
-    title: "基础信息",
-    icon: RiGlobalLine,
+    id: "branding",
+    title: "品牌与基础信息",
+    icon: RiPaletteLine,
     color: "bg-blue-100 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400",
     fields: [
-      { key: "site_title", label: "网站标题", desc: "显示在浏览器标签页和搜索结果中", placeholder: "Next Whois", icon: RiGlobalLine },
-      { key: "site_logo_text", label: "Logo 文字", desc: "导航栏中显示的品牌名称", placeholder: "NEXT WHOIS", icon: RiGlobalLine },
-      { key: "site_subtitle", label: "副标题", desc: "首页和登录页显示的副标题文字", placeholder: "专业的 WHOIS / RDAP 查询工具", icon: RiFileTextLine },
-      { key: "site_description", label: "网站描述 (SEO)", desc: "SEO meta description，显示在搜索引擎结果中", placeholder: "快速查询域名、IP、ASN、CIDR...", icon: RiFileTextLine },
-      { key: "site_footer", label: "页脚文字", desc: "页面底部版权/说明文字", placeholder: "© 2024 Next Whois", icon: RiFileTextLine },
+      { key: "site_title", label: "网站标题", desc: "浏览器标签页和搜索结果中显示的标题", placeholder: "Next Whois", icon: RiGlobalLine },
+      { key: "site_logo_text", label: "Logo 文字", desc: "导航栏中显示的品牌名称（留空使用网站标题）", placeholder: "NEXT WHOIS", icon: RiGlobalLine },
+      { key: "site_subtitle", label: "网站副标题", desc: "首页 Hero 区域下方的副标题文字", placeholder: "专业的 WHOIS / RDAP 查询工具", icon: RiFileTextLine },
+      { key: "site_description", label: "网站描述 (SEO)", desc: "搜索引擎结果中显示的描述文字", placeholder: "快速查询域名、IP、ASN、CIDR...", icon: RiFileTextLine },
+      { key: "site_footer", label: "页脚文字", desc: "页面底部显示的版权/说明文字", placeholder: "© 2024 Next Whois", icon: RiFileTextLine },
+      { key: "site_icon_url", label: "网站图标 URL", desc: "Favicon 图标的外部链接（留空使用默认图标）", placeholder: "https://example.com/favicon.ico", icon: RiImageLine },
     ],
   },
   {
-    title: "Open Graph / 社交分享",
+    id: "home",
+    title: "首页内容",
+    icon: RiHomeLine,
+    color: "bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400",
+    fields: [
+      { key: "home_hero_title", label: "首页大标题", desc: "覆盖默认大标题文字（留空使用默认）", placeholder: "WHOIS / RDAP 查询", icon: RiHomeLine },
+      { key: "home_hero_subtitle", label: "首页副标题", desc: "覆盖首页 Hero 区域的副标题（留空使用 site_subtitle）", placeholder: "快速查询域名、IP、ASN...", icon: RiFileTextLine },
+      { key: "home_placeholder", label: "搜索框占位文字", desc: "搜索输入框内的提示文字（留空使用默认）", placeholder: "输入域名、IP、ASN...", icon: RiSearchLine },
+    ],
+    toggles: [
+      { key: "home_show_stats", label: "显示查询统计数字", desc: "首页显示总查询次数等统计数据", onColor: "bg-emerald-500" },
+    ],
+  },
+  {
+    id: "announcement",
+    title: "公告横幅",
+    icon: RiMegaphoneLine,
+    color: "bg-amber-100 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400",
+    fields: [
+      { key: "site_announcement", label: "公告横幅内容", desc: "显示在页面顶部的公告文字（留空则不显示公告条）", placeholder: "🎉 欢迎使用 Next Whois！", icon: RiMegaphoneLine },
+    ],
+  },
+  {
+    id: "og",
+    title: "社交分享 / Open Graph",
     icon: RiShareLine,
     color: "bg-violet-100 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400",
     fields: [
       { key: "og_site_name", label: "og:site_name", desc: "链接预览中显示的站点名称", placeholder: "Next Whois", icon: RiShareLine },
-      { key: "og_url", label: "og:url / 规范链接", desc: "网站的主域名，用于 og:url 和 canonical 标签", placeholder: "https://whois.example.com", icon: RiGlobalLine },
-      { key: "og_image", label: "og:image 自定义图片", desc: "社交分享时显示的图片 URL（留空使用 /banner.png）", placeholder: "https://example.com/og-image.png", icon: RiImageLine },
+      { key: "og_url", label: "规范链接 (og:url)", desc: "网站主域名，用于 og:url 和 canonical 标签", placeholder: "https://whois.example.com", icon: RiGlobalLine },
+      { key: "og_image", label: "分享图片 URL", desc: "社交分享时显示的图片（留空使用 /banner.png）", placeholder: "https://example.com/og-image.png", icon: RiImageLine },
       { key: "twitter_card", label: "Twitter Card 类型", desc: "summary 或 summary_large_image（推荐大图）", placeholder: "summary_large_image", icon: RiTwitterXLine },
     ],
   },
   {
-    title: "图标与公告",
-    icon: RiMegaphoneLine,
-    color: "bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400",
+    id: "about",
+    title: "关于页面",
+    icon: RiInformationLine,
+    color: "bg-sky-100 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400",
     fields: [
-      { key: "site_icon_url", label: "网站图标 URL", desc: "Favicon 图标的外部 URL（留空使用默认图标）", placeholder: "https://example.com/favicon.ico", icon: RiImageLine },
-      { key: "site_announcement", label: "公告横幅内容", desc: "显示在页面顶部的公告文字（留空则不显示）", placeholder: "🎉 欢迎使用 Next Whois！", icon: RiMegaphoneLine },
+      { key: "about_title", label: "关于页面标题", desc: "覆盖默认标题（留空使用默认）", placeholder: "关于 Next Whois", icon: RiInformationLine },
+      { key: "about_content", label: "关于页面额外内容", desc: "在关于页面底部追加显示的 HTML 或 Markdown 内容（留空则不显示）", placeholder: "<p>补充说明...</p>", icon: RiFileTextLine, multiline: true },
+    ],
+  },
+  {
+    id: "changelog",
+    title: "更新日志页面",
+    icon: RiHistoryLine,
+    color: "bg-indigo-100 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400",
+    fields: [
+      { key: "changelog_title", label: "更新日志标题", desc: "覆盖默认标题（留空使用默认）", placeholder: "更新日志", icon: RiHistoryLine },
+    ],
+  },
+  {
+    id: "links",
+    title: "外部链接页面",
+    icon: RiLinksLine,
+    color: "bg-teal-100 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400",
+    fields: [
+      { key: "links_title", label: "链接页面标题", desc: "覆盖默认标题（留空使用默认）", placeholder: "友情链接", icon: RiLinksLine },
+      { key: "links_content", label: "链接页面描述", desc: "链接页面顶部的描述文字（留空则不显示）", placeholder: "以下是相关资源和友情链接...", icon: RiFileTextLine, multiline: true },
+    ],
+  },
+  {
+    id: "sponsor",
+    title: "赞助页面",
+    icon: RiHeartLine,
+    color: "bg-rose-100 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400",
+    fields: [
+      { key: "sponsor_page_title", label: "赞助页面标题", desc: "赞助页面的主标题文字", placeholder: "赞助支持", icon: RiHeartLine },
+      { key: "sponsor_page_desc", label: "赞助页面描述", desc: "赞助页面的描述/说明文字", placeholder: "感谢您对本项目的支持！", icon: RiFileTextLine, multiline: true },
+      { key: "sponsor_alipay_qr", label: "支付宝收款码 URL", desc: "支付宝收款二维码图片链接", placeholder: "https://example.com/alipay-qr.png", icon: RiImageLine },
+      { key: "sponsor_wechat_qr", label: "微信收款码 URL", desc: "微信收款二维码图片链接", placeholder: "https://example.com/wechat-qr.png", icon: RiImageLine },
+      { key: "sponsor_github_url", label: "GitHub Sponsors 链接", desc: "GitHub Sponsors 主页链接（显示 GitHub 赞助按钮）", placeholder: "https://github.com/sponsors/yourname", icon: RiLinksLine },
+      { key: "sponsor_extra_links", label: "其他赞助方式 (JSON)", desc: `额外赞助链接，JSON 格式：[{"label":"Ko-fi","url":"https://ko-fi.com/..."}]`, placeholder: `[{"label":"Ko-fi","url":"https://ko-fi.com/..."}]`, icon: RiLinksLine },
+    ],
+  },
+  {
+    id: "analytics",
+    title: "统计分析",
+    icon: RiBarChartLine,
+    color: "bg-orange-100 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400",
+    fields: [
+      { key: "analytics_google", label: "Google Analytics ID", desc: "Google Analytics 4 的测量 ID，如 G-XXXXXXXXXX（留空禁用）", placeholder: "G-XXXXXXXXXX", icon: RiBarChartLine },
+      { key: "analytics_umami", label: "Umami Website ID", desc: "Umami 统计的 Website ID（留空禁用）", placeholder: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx", icon: RiBarChartLine },
+      { key: "analytics_umami_src", label: "Umami 脚本地址", desc: "自托管 Umami 的脚本 URL（留空使用默认云服务）", placeholder: "https://umami.example.com/script.js", icon: RiCodeBoxLine },
+      { key: "custom_head_script", label: "自定义 <head> 代码", desc: "注入到所有页面 <head> 中的自定义 HTML/JS 代码（谨慎使用）", placeholder: "<!-- 自定义脚本/像素代码 -->", icon: RiCodeBoxLine, multiline: true },
     ],
   },
 ];
+
+const FEATURE_GROUPS: { title: string; icon: React.ElementType; color: string; items: ToggleDef[] }[] = [
+  {
+    title: "用户权限",
+    icon: RiShieldLine,
+    color: "bg-slate-100 dark:bg-slate-800/60 text-slate-600 dark:text-slate-400",
+    items: [
+      { key: "allow_registration", label: "开放注册", desc: "允许新用户自助注册账户", onColor: "bg-emerald-500" },
+      { key: "require_login", label: "登录才能查询", desc: "未登录用户无法进行域名查询，只能看到首页", onColor: "bg-amber-500" },
+    ],
+  },
+  {
+    title: "核心查询功能",
+    icon: RiSearchLine,
+    color: "bg-blue-100 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400",
+    items: [
+      { key: "enable_feedback", label: "结果反馈入口", desc: "查询结果页底部显示「反馈问题」按钮", onColor: "bg-emerald-500" },
+      { key: "enable_share", label: "分享按钮", desc: "查询结果页显示分享/导出功能入口", onColor: "bg-emerald-500" },
+      { key: "enable_stamps", label: "品牌认领 (Stamps)", desc: "允许用户为域名申请添加品牌标签", onColor: "bg-emerald-500" },
+      { key: "enable_remind", label: "到期提醒", desc: "在导航和查询结果中显示域名到期订阅提醒功能", onColor: "bg-emerald-500" },
+    ],
+  },
+  {
+    title: "导航页面开关",
+    icon: RiEyeLine,
+    color: "bg-violet-100 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400",
+    items: [
+      { key: "enable_dns", label: "DNS 查询页", desc: "显示 DNS 解析查询工具入口", onColor: "bg-emerald-500" },
+      { key: "enable_ip", label: "IP 查询页", desc: "显示 IP 信息查询工具入口", onColor: "bg-emerald-500" },
+      { key: "enable_ssl", label: "SSL 检测页", desc: "显示 SSL 证书检测工具入口", onColor: "bg-emerald-500" },
+      { key: "enable_tools", label: "工具中心页", desc: "显示综合工具集合页入口", onColor: "bg-emerald-500" },
+      { key: "enable_about", label: "关于页面", desc: "在导航中显示关于页面链接", onColor: "bg-emerald-500" },
+      { key: "enable_changelog", label: "更新日志页", desc: "在导航中显示更新日志链接", onColor: "bg-emerald-500" },
+      { key: "enable_docs", label: "API 文档页", desc: "在导航中显示 API 文档链接", onColor: "bg-emerald-500" },
+      { key: "enable_links", label: "外部链接页", desc: "在导航中显示友情链接/外部链接页面", onColor: "bg-emerald-500" },
+      { key: "enable_sponsor", label: "赞助页面", desc: "在导航中显示赞助支持页面入口", onColor: "bg-rose-500" },
+    ],
+  },
+  {
+    title: "首页展示",
+    icon: RiHomeLine,
+    color: "bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400",
+    items: [
+      { key: "home_show_stats", label: "显示统计数字", desc: "首页显示总查询次数等实时统计数据", onColor: "bg-emerald-500" },
+    ],
+  },
+];
+
+function Toggle({ value, onChange, onColor }: { value: boolean; onChange: (v: boolean) => void; onColor: string }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(!value)}
+      className={[
+        "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none",
+        value ? onColor : "bg-muted",
+      ].join(" ")}
+    >
+      <span
+        className={[
+          "pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out",
+          value ? "translate-x-4" : "translate-x-0",
+        ].join(" ")}
+      />
+    </button>
+  );
+}
 
 export default function AdminSettingsPage() {
   const [form, setForm] = React.useState<SiteSettings>(DEFAULT_SETTINGS);
@@ -65,6 +220,13 @@ export default function AdminSettingsPage() {
   const [saving, setSaving] = React.useState(false);
   const [testingEmail, setTestingEmail] = React.useState(false);
   const [emailOk, setEmailOk] = React.useState<boolean | null>(null);
+  const [activeSection, setActiveSection] = React.useState("branding");
+
+  const set = (key: keyof SiteSettings, value: string) =>
+    setForm(prev => ({ ...prev, [key]: value }));
+  const toggle = (key: keyof SiteSettings, value: boolean) =>
+    setForm(prev => ({ ...prev, [key]: value ? "1" : "" }));
+  const isOn = (key: keyof SiteSettings) => form[key] === "1";
 
   async function handleTestEmail() {
     setTestingEmail(true);
@@ -120,173 +282,211 @@ export default function AdminSettingsPage() {
     toast.info("已重置为默认值（尚未保存）");
   }
 
+  const allSections = [
+    ...SECTIONS.map(s => ({ id: s.id, title: s.title, icon: s.icon })),
+    { id: "features", title: "功能开关", icon: RiToggleLine },
+    { id: "email", title: "邮件系统", icon: RiMailSendLine },
+  ];
+
   return (
     <AdminLayout title="网站设置">
-      <div className="space-y-6">
-        <div>
-          <h2 className="text-lg font-bold">网站设置</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">修改网站标题、OG 标签、图标、公告等内容</p>
+      <div className="space-y-4">
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <h2 className="text-lg font-bold">网站设置</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">全面配置网站内容、功能开关、分析统计等</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={reset} disabled={saving || loading} className="rounded-xl h-9 gap-2 text-sm">
+              <RiRefreshLine className="w-4 h-4" />重置默认
+            </Button>
+            <Button onClick={handleSave} disabled={saving || loading} className="rounded-xl h-9 gap-2 text-sm font-semibold">
+              {saving ? <><RiLoader4Line className="w-4 h-4 animate-spin" />保存中…</> : <><RiSaveLine className="w-4 h-4" />保存所有设置</>}
+            </Button>
+          </div>
         </div>
 
         {loading ? (
-          <div className="flex justify-center py-16">
+          <div className="flex justify-center py-20">
             <RiLoader4Line className="w-6 h-6 animate-spin text-muted-foreground" />
           </div>
         ) : (
-          <div className="space-y-6">
-            {SECTIONS.map(({ title, icon: SectionIcon, color, fields }) => (
-              <div key={title} className="glass-panel border border-border rounded-2xl overflow-hidden">
-                <div className={`px-5 py-3 flex items-center gap-2.5 border-b border-border bg-muted/30`}>
-                  <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${color}`}>
-                    <SectionIcon className="w-3.5 h-3.5" />
+          <div className="flex gap-5">
+            {/* Sidebar navigation */}
+            <div className="hidden lg:flex flex-col gap-1 w-44 shrink-0">
+              {allSections.map(({ id, title, icon: Icon }) => (
+                <button
+                  key={id}
+                  onClick={() => setActiveSection(id)}
+                  className={[
+                    "flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-left transition-all",
+                    activeSection === id
+                      ? "bg-primary text-primary-foreground font-semibold"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/60",
+                  ].join(" ")}
+                >
+                  <Icon className="w-4 h-4 shrink-0" />
+                  <span className="truncate">{title}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Main content */}
+            <div className="flex-1 min-w-0 space-y-5">
+              {/* Mobile section selector */}
+              <div className="lg:hidden">
+                <select
+                  value={activeSection}
+                  onChange={e => setActiveSection(e.target.value)}
+                  className="w-full h-9 rounded-xl border border-border bg-background px-3 text-sm"
+                >
+                  {allSections.map(({ id, title }) => (
+                    <option key={id} value={id}>{title}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Text/content sections */}
+              {SECTIONS.filter(s => s.id === activeSection).map(section => {
+                const SectionIcon = section.icon;
+                return (
+                  <div key={section.id} className="space-y-4">
+                    <div className="glass-panel border border-border rounded-2xl overflow-hidden">
+                      <div className="px-5 py-3 flex items-center gap-2.5 border-b border-border bg-muted/30">
+                        <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${section.color}`}>
+                          <SectionIcon className="w-3.5 h-3.5" />
+                        </div>
+                        <h3 className="text-sm font-bold">{section.title}</h3>
+                      </div>
+                      <div className="p-5 space-y-5">
+                        {section.fields?.map(({ key, label, desc, placeholder, icon: Icon, multiline }) => (
+                          <div key={key} className="space-y-1.5">
+                            <div className="flex items-start gap-1.5">
+                              <Icon className="w-3.5 h-3.5 text-muted-foreground mt-0.5 shrink-0" />
+                              <div>
+                                <Label className="text-sm font-semibold leading-none">{label}</Label>
+                                <p className="text-[11px] text-muted-foreground mt-0.5">{desc}</p>
+                              </div>
+                            </div>
+                            {multiline ? (
+                              <TextArea
+                                value={form[key]}
+                                onChange={e => set(key, e.target.value)}
+                                placeholder={placeholder}
+                                className="rounded-xl text-sm min-h-[90px] resize-y"
+                              />
+                            ) : (
+                              <Input
+                                value={form[key]}
+                                onChange={e => set(key, e.target.value)}
+                                placeholder={placeholder}
+                                className="h-9 rounded-xl text-sm"
+                              />
+                            )}
+                          </div>
+                        ))}
+                        {section.toggles?.map(({ key, label, desc, onColor }) => (
+                          <div key={key} className="flex items-center justify-between gap-4 py-1">
+                            <div>
+                              <p className="text-sm font-semibold">{label}</p>
+                              <p className="text-[11px] text-muted-foreground mt-0.5">{desc}</p>
+                            </div>
+                            <Toggle value={isOn(key)} onChange={v => toggle(key, v)} onColor={onColor} />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   </div>
-                  <h3 className="text-sm font-bold">{title}</h3>
-                </div>
-                <div className="p-4 space-y-4">
-                  {fields.map(({ key, label, desc, placeholder, icon: Icon }) => (
-                    <div key={key} className="space-y-1.5">
-                      <div className="flex items-start gap-1.5">
-                        <Icon className="w-3.5 h-3.5 text-muted-foreground mt-0.5 shrink-0" />
-                        <div>
-                          <Label className="text-sm font-semibold leading-none">{label}</Label>
-                          <p className="text-[11px] text-muted-foreground mt-0.5">{desc}</p>
+                );
+              })}
+
+              {/* Features section */}
+              {activeSection === "features" && (
+                <div className="space-y-4">
+                  {FEATURE_GROUPS.map(group => {
+                    const GroupIcon = group.icon;
+                    return (
+                      <div key={group.title} className="glass-panel border border-border rounded-2xl overflow-hidden">
+                        <div className="px-5 py-3 flex items-center gap-2.5 border-b border-border bg-muted/30">
+                          <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${group.color}`}>
+                            <GroupIcon className="w-3.5 h-3.5" />
+                          </div>
+                          <h3 className="text-sm font-bold">{group.title}</h3>
+                        </div>
+                        <div className="divide-y divide-border/50">
+                          {group.items.map(({ key, label, desc, onColor }) => (
+                            <div key={key} className="flex items-center justify-between gap-4 px-5 py-3">
+                              <div>
+                                <p className="text-sm font-semibold">{label}</p>
+                                <p className="text-[11px] text-muted-foreground mt-0.5">{desc}</p>
+                              </div>
+                              <Toggle value={isOn(key)} onChange={v => toggle(key, v)} onColor={onColor} />
+                            </div>
+                          ))}
                         </div>
                       </div>
-                      <Input
-                        value={form[key]}
-                        onChange={e => setForm(prev => ({ ...prev, [key]: e.target.value }))}
-                        placeholder={placeholder}
-                        className="h-9 rounded-xl text-sm"
-                      />
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
-              </div>
-            ))}
+              )}
 
-            {/* Feature flags */}
-            <div className="glass-panel border border-border rounded-2xl overflow-hidden">
-              <div className="px-5 py-3 flex items-center gap-2.5 border-b border-border bg-muted/30">
-                <div className="w-6 h-6 rounded-lg flex items-center justify-center bg-orange-100 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400">
-                  <RiToggleLine className="w-3.5 h-3.5" />
-                </div>
-                <h3 className="text-sm font-bold">功能开关</h3>
-              </div>
-              <div className="p-4 space-y-0 divide-y divide-border/50">
-                {([
-                  { key: "allow_registration" as const, label: "开放注册", desc: "允许新用户自助注册账户", onColor: "bg-emerald-500", offColor: "bg-muted" },
-                  { key: "require_login" as const, label: "登录才能搜索", desc: "未登录用户只能看到首页，搜索需要账户", onColor: "bg-amber-500", offColor: "bg-muted" },
-                  { key: "enable_feedback" as const, label: "开放用户反馈", desc: "查询结果页显示「反馈问题」入口", onColor: "bg-emerald-500", offColor: "bg-muted" },
-                  { key: "enable_stamps" as const, label: "开放品牌认领", desc: "用户可以申请为域名添加品牌标签", onColor: "bg-emerald-500", offColor: "bg-muted" },
-                  { key: "enable_sponsor" as const, label: "开放赞助页面", desc: "在导航菜单显示赞助页面入口", onColor: "bg-rose-500", offColor: "bg-muted" },
-                ] as const).map(({ key, label, desc, onColor, offColor }) => {
-                  const enabled = form[key] === "1";
-                  return (
-                    <div key={key} className="flex items-center justify-between gap-4 py-3">
-                      <div>
-                        <p className="text-sm font-medium">{label}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">{desc}</p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setForm(prev => ({ ...prev, [key]: enabled ? "" : "1" }))}
-                        className={`w-10 h-6 rounded-full transition-colors relative shrink-0 ${enabled ? onColor : offColor}`}
-                        aria-label={label}
-                      >
-                        <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${enabled ? "translate-x-4" : "translate-x-0.5"}`} />
-                      </button>
+              {/* Email section */}
+              {activeSection === "email" && (
+                <div className="glass-panel border border-border rounded-2xl overflow-hidden">
+                  <div className="px-5 py-3 flex items-center gap-2.5 border-b border-border bg-muted/30">
+                    <div className="w-6 h-6 rounded-lg flex items-center justify-center bg-sky-100 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400">
+                      <RiMailSendLine className="w-3.5 h-3.5" />
                     </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Previews */}
-            {(form.site_icon_url || form.og_image) && (
-              <div className="glass-panel border border-border rounded-2xl p-4 space-y-3">
-                <h3 className="text-sm font-semibold">图片预览</h3>
-                <div className="flex flex-wrap gap-4">
-                  {form.site_icon_url && (
-                    <div className="space-y-1">
-                      <p className="text-[10px] text-muted-foreground">网站图标</p>
-                      <img src={form.site_icon_url} alt="favicon" className="w-10 h-10 rounded-lg object-contain border border-border"
-                        onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                    <h3 className="text-sm font-bold">邮件系统</h3>
+                  </div>
+                  <div className="p-5 space-y-4">
+                    <div>
+                      <p className="text-sm font-semibold">测试邮件发送</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        向管理员邮箱发送一封测试邮件，验证 Resend API 和发件域名配置是否正常工作。
+                      </p>
+                      {emailOk === true && (
+                        <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-2 flex items-center gap-1">
+                          <RiCheckLine className="w-3.5 h-3.5" />邮件发送成功，请检查收件箱
+                        </p>
+                      )}
+                      {emailOk === false && (
+                        <p className="text-xs text-destructive mt-2">发送失败，请检查 RESEND_API_KEY 和发件域名配置</p>
+                      )}
                     </div>
-                  )}
-                  {form.og_image && (
-                    <div className="space-y-1">
-                      <p className="text-[10px] text-muted-foreground">OG 分享图片</p>
-                      <img src={form.og_image} alt="og image" className="h-16 rounded-lg object-cover border border-border"
-                        onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                    <Button
+                      variant="outline"
+                      onClick={handleTestEmail}
+                      disabled={testingEmail}
+                      className="rounded-xl h-9 gap-2"
+                    >
+                      {testingEmail
+                        ? <><RiLoader4Line className="w-4 h-4 animate-spin" />发送中…</>
+                        : <><RiMailSendLine className="w-4 h-4" />发送测试邮件</>}
+                    </Button>
+                    <div className="mt-2 p-3 rounded-xl bg-muted/40 border border-border/60">
+                      <p className="text-xs font-medium mb-1">邮件系统环境变量</p>
+                      <p className="text-[11px] text-muted-foreground">
+                        邮件发送功能依赖以下环境变量：<br />
+                        <code className="font-mono">RESEND_API_KEY</code> — Resend API 密钥<br />
+                        <code className="font-mono">RESEND_FROM</code> — 发件人地址（如 noreply@yourdomain.com）<br />
+                        <code className="font-mono">ADMIN_EMAIL</code> — 管理员邮箱（接收通知和测试邮件）
+                      </p>
                     </div>
-                  )}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Link preview mock */}
-            <div className="glass-panel border border-border rounded-2xl p-4 space-y-3">
-              <h3 className="text-sm font-semibold text-muted-foreground">社交分享预览（模拟）</h3>
-              <div className="border border-border rounded-xl overflow-hidden max-w-sm">
-                <div className="bg-muted/40 h-24 flex items-center justify-center text-xs text-muted-foreground">
-                  {form.og_image ? (
-                    <img src={form.og_image} alt="" className="w-full h-full object-cover" onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
-                  ) : (
-                    <span>og:image（默认 /banner.png）</span>
-                  )}
-                </div>
-                <div className="p-3 bg-background space-y-0.5">
-                  <p className="text-[10px] text-muted-foreground uppercase">{form.og_url || "https://your-site.com"}</p>
-                  <p className="text-sm font-bold leading-snug">{form.site_title || "Next Whois"}</p>
-                  <p className="text-xs text-muted-foreground line-clamp-2">{form.site_description || form.site_subtitle || "专业的 WHOIS / RDAP 查询工具"}</p>
-                </div>
-              </div>
-              <p className="text-[10px] text-muted-foreground">og:site_name: <span className="font-mono">{form.og_site_name || form.site_title || "—"}</span></p>
-            </div>
-
-            {/* Email test */}
-            <div className="glass-panel border border-border rounded-2xl overflow-hidden">
-              <div className="px-5 py-3 flex items-center gap-2.5 border-b border-border bg-muted/30">
-                <div className="w-6 h-6 rounded-lg flex items-center justify-center bg-sky-100 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400">
-                  <RiMailSendLine className="w-3.5 h-3.5" />
-                </div>
-                <h3 className="text-sm font-bold">邮件系统</h3>
-              </div>
-              <div className="p-4 flex items-center justify-between gap-4 flex-wrap">
-                <div>
-                  <p className="text-sm font-medium">测试邮件发送</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    向管理员邮箱发送一封测试邮件，验证 Resend API 和发件域名配置是否正常。
-                  </p>
-                  {emailOk === true && (
-                    <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1.5 flex items-center gap-1">
-                      <RiCheckLine className="w-3.5 h-3.5" />邮件发送成功，请检查收件箱
-                    </p>
-                  )}
-                  {emailOk === false && (
-                    <p className="text-xs text-destructive mt-1.5">发送失败，请检查 RESEND_API_KEY 和发件域名配置</p>
-                  )}
-                </div>
-                <Button
-                  variant="outline"
-                  onClick={handleTestEmail}
-                  disabled={testingEmail}
-                  className="rounded-xl h-9 gap-2 shrink-0"
-                >
-                  {testingEmail
-                    ? <><RiLoader4Line className="w-4 h-4 animate-spin" />发送中…</>
-                    : <><RiMailSendLine className="w-4 h-4" />发送测试邮件</>}
+              {/* Save bar at bottom */}
+              <div className="flex items-center gap-3 pt-2 border-t border-border/40">
+                <Button onClick={handleSave} disabled={saving} className="rounded-xl h-9 gap-2 font-semibold">
+                  {saving ? <><RiLoader4Line className="w-4 h-4 animate-spin" />保存中…</> : <><RiSaveLine className="w-4 h-4" />保存所有设置</>}
                 </Button>
+                <Button variant="outline" onClick={reset} disabled={saving} className="rounded-xl h-9 gap-2">
+                  <RiRefreshLine className="w-4 h-4" />重置默认
+                </Button>
+                <p className="text-xs text-muted-foreground ml-auto hidden sm:block">保存后设置将实时同步到所有用户页面</p>
               </div>
-            </div>
-
-            <div className="flex items-center gap-3 pt-1">
-              <Button onClick={handleSave} disabled={saving} className="rounded-xl h-10 gap-2 font-semibold">
-                {saving ? <><RiLoader4Line className="w-4 h-4 animate-spin" />保存中…</> : <><RiSaveLine className="w-4 h-4" />保存所有设置</>}
-              </Button>
-              <Button variant="outline" onClick={reset} disabled={saving} className="rounded-xl h-10 gap-2">
-                <RiRefreshLine className="w-4 h-4" />重置默认
-              </Button>
             </div>
           </div>
         )}

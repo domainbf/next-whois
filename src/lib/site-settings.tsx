@@ -1,6 +1,7 @@
 import React from "react";
 
 export interface SiteSettings {
+  // Branding
   site_title: string;
   site_subtitle: string;
   site_description: string;
@@ -8,21 +9,53 @@ export interface SiteSettings {
   site_logo_text: string;
   site_icon_url: string;
   site_announcement: string;
+  // OG / Social
   og_site_name: string;
   og_url: string;
   og_image: string;
   twitter_card: string;
+  // Auth
   allow_registration: string;
   require_login: string;
+  // Core feature toggles
   enable_feedback: string;
   enable_stamps: string;
   enable_sponsor: string;
+  enable_share: string;
+  enable_dns: string;
+  enable_ip: string;
+  enable_ssl: string;
+  enable_tools: string;
+  enable_remind: string;
+  enable_links: string;
+  enable_about: string;
+  enable_changelog: string;
+  enable_docs: string;
+  // Home page content
+  home_hero_title: string;
+  home_hero_subtitle: string;
+  home_placeholder: string;
+  home_show_stats: string;
+  // About page
+  about_title: string;
+  about_content: string;
+  // Changelog page
+  changelog_title: string;
+  // Links page
+  links_title: string;
+  links_content: string;
+  // Sponsor settings
   sponsor_page_title: string;
   sponsor_page_desc: string;
   sponsor_alipay_qr: string;
   sponsor_wechat_qr: string;
   sponsor_github_url: string;
   sponsor_extra_links: string;
+  // SEO / Analytics
+  analytics_google: string;
+  analytics_umami: string;
+  analytics_umami_src: string;
+  custom_head_script: string;
 }
 
 export const DEFAULT_SETTINGS: SiteSettings = {
@@ -42,12 +75,35 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   enable_feedback: "1",
   enable_stamps: "1",
   enable_sponsor: "1",
+  enable_share: "1",
+  enable_dns: "1",
+  enable_ip: "1",
+  enable_ssl: "1",
+  enable_tools: "1",
+  enable_remind: "1",
+  enable_links: "1",
+  enable_about: "1",
+  enable_changelog: "1",
+  enable_docs: "1",
+  home_hero_title: "",
+  home_hero_subtitle: "",
+  home_placeholder: "",
+  home_show_stats: "1",
+  about_title: "",
+  about_content: "",
+  changelog_title: "",
+  links_title: "",
+  links_content: "",
   sponsor_page_title: "赞助支持",
   sponsor_page_desc: "感谢您对本项目的支持！您的赞助将帮助我们持续维护和改进服务。",
   sponsor_alipay_qr: "",
   sponsor_wechat_qr: "",
   sponsor_github_url: "",
   sponsor_extra_links: "",
+  analytics_google: "",
+  analytics_umami: "",
+  analytics_umami_src: "",
+  custom_head_script: "",
 };
 
 const STORAGE_KEY = "next_whois_settings_ts";
@@ -80,17 +136,14 @@ export function SiteSettingsProvider({
   React.useEffect(() => {
     fetchSettings();
 
-    // Listen for cross-tab changes via localStorage
     function onStorage(e: StorageEvent) {
       if (e.key === STORAGE_KEY) fetchSettings();
     }
     window.addEventListener("storage", onStorage);
 
-    // Listen for same-tab change dispatch
     function onUpdate() { fetchSettings(); }
     window.addEventListener("site-settings-updated", onUpdate);
 
-    // Periodic refresh every 60s as fallback
     const timer = setInterval(fetchSettings, 60_000);
 
     return () => {
@@ -111,11 +164,8 @@ export function useSiteSettings(): SiteSettings {
   return React.useContext(SiteSettingsContext);
 }
 
-/** Call after saving settings to propagate to all tabs/windows */
 export function notifySettingsUpdated() {
-  // Same-tab dispatch
   window.dispatchEvent(new Event("site-settings-updated"));
-  // Cross-tab via localStorage
   try {
     localStorage.setItem(STORAGE_KEY, String(Date.now()));
   } catch {}
