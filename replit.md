@@ -212,3 +212,36 @@ x-cron-secret: <CRON_SECRET>
 ## Dev Server
 
 Runs on port 5000 via `pnpm run dev` (next dev -p 5000 -H 0.0.0.0).
+
+## Tian.hu (田虎) Integration
+
+Free public API (25 req/min, 300 req/day), no auth required.
+
+### Integrated Features
+
+| Feature | Endpoint | Usage |
+|---------|----------|-------|
+| WHOIS fallback | `/whois/{domain}` | `src/lib/whois/tianhu-fallback.ts` (tried before yisi.yun) |
+| Domain pricing | `/tlds/pricing/{tld}` | `src/lib/pricing/client.ts` (3rd source, merged) |
+| Translation | `/translate/{stem}` | `src/pages/api/tianhu/translate.ts` → shown on result page |
+| DNS records | `/dns/{domain}` | `src/pages/api/tianhu/dns.ts` → shown on result page |
+
+### Result Page Display
+
+**Translation strip** (`[...query].tsx`):  
+- Fetched client-side via `useEffect` when domain changes
+- Displayed horizontally between "time·source" row and dates section
+- Shows: "含义 **{zh translation}** {pos tag} {meaning}" in violet
+- Only shown when `dst !== null` (omits pure-numeric domains, IPs)
+
+**DNS Records card** (`[...query].tsx`):
+- Shown after the WHOIS Name Servers card
+- Displays A, NS, MX, SOA, TXT, AAAA records with TTL
+- Skeleton loading animation while fetching
+- Records animate in staggered with opacity
+
+### Anti-Flicker Improvements
+
+- ResultSkeleton now wrapped in `AnimatePresence` with opacity 0→1/0 transitions (no abrupt switch)
+- Main result cards use pure `opacity` animation (no scale → no "pop" effect)
+- Async-loaded sections (translation, DNS) animate in smoothly without layout shift
