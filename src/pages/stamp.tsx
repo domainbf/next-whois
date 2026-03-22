@@ -970,7 +970,7 @@ export default function StampPage() {
                                       {quickTxtResult.resolvers.map((r) => {
                                         const recCount = (r.flat || r.records || []).length;
                                         const hasRecords = recCount > 0;
-                                        const isDoh = r.proto === "doh";
+                                        const isDoh = r.proto === "doh" || (r as any).kind === "doh";
                                         return (
                                           <div key={r.name} className={cn(
                                             "rounded-lg border px-2.5 py-2 flex items-center gap-2",

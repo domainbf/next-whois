@@ -34,6 +34,12 @@ export function FeedbackDrawer({ open, onOpenChange, query, queryType }: Props) 
   const [email, setEmail] = React.useState("");
   const [submitting, setSubmitting] = React.useState(false);
   const [done, setDone] = React.useState(false);
+  const openedAtRef = React.useRef<number>(0);
+  const honeypotRef = React.useRef<HTMLInputElement>(null);
+
+  React.useEffect(() => {
+    if (open) openedAtRef.current = Date.now();
+  }, [open]);
 
   function reset() {
     setSelected(new Set());
@@ -65,6 +71,8 @@ export function FeedbackDrawer({ open, onOpenChange, query, queryType }: Props) 
           issueTypes: Array.from(selected),
           description: description.trim(),
           email: email.trim(),
+          _hp: honeypotRef.current?.value ?? "",
+          _t: openedAtRef.current,
         }),
       });
       if (!res.ok) throw new Error("submit failed");
@@ -111,6 +119,17 @@ export function FeedbackDrawer({ open, onOpenChange, query, queryType }: Props) 
             </div>
           ) : (
             <div className="space-y-4">
+              {/* Honeypot — hidden from real users, bots fill it */}
+              <input
+                ref={honeypotRef}
+                type="text"
+                name="website"
+                autoComplete="off"
+                tabIndex={-1}
+                aria-hidden="true"
+                style={{ position: "absolute", left: "-9999px", width: "1px", height: "1px", opacity: 0 }}
+              />
+
               <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/40 rounded-xl px-3 py-2.5">
                 <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground border border-border rounded px-1.5 py-0.5 bg-background">
                   {queryType}
