@@ -38,7 +38,6 @@ const VERSIONS: Version[] = [
     highlight: true,
     changes: [
       { type: "new", zh: "域名价值评分系统：100 分制多维评估（长度/后缀/关键词/模式）", en: "Domain value scoring: 100-point multi-dimensional evaluation (length/TLD/keywords/pattern)" },
-      { type: "new", zh: "管理员邮件告警：高价值可注册域名自动触发告警，24 小时去重", en: "Admin email alerts: auto-triggered for high-value available domains with 24-hour deduplication" },
       { type: "new", zh: "工具箱全分类点击量统计与永久排序", en: "Click tracking and permanent sorting across all toolbox categories" },
       { type: "new", zh: "关于我们 / 更新记录 / 支持后缀 / 友情链接 信息页", en: "About / Changelog / Supported TLDs / Friendly Links info pages" },
       { type: "feature", zh: "搜索记录管理页：域名价值评分徽章、特殊关键词⚡标识", en: "Search records admin: domain value score badges and ⚡ special keyword indicator" },
@@ -54,7 +53,6 @@ const VERSIONS: Version[] = [
       { type: "new", zh: "/remind 页面：域名到期提醒管理，支持取消订阅", en: "/remind page: domain expiry reminder management with unsubscribe support" },
       { type: "feature", zh: "搜索记录管理页升级：4 标签 / 按时段删除 / 统计概览", en: "Search records admin upgraded: 4 tabs, bulk delete by period, statistics overview" },
       { type: "feature", zh: "搜索历史上限提升至 500 条，支持按类型筛选", en: "Search history limit raised to 500, filterable by type" },
-      { type: "improve", zh: "管理员邮件告警：高价值可用域名自动推送通知", en: "Admin email alerts for high-value available domains" },
     ],
   },
   {
