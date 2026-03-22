@@ -3,7 +3,6 @@ import Head from "next/head";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { useSiteSettings } from "@/lib/site-settings";
 import { useTranslation } from "@/lib/i18n";
@@ -17,6 +16,8 @@ import {
 } from "@remixicon/react";
 import type { TldInfo, IanaTldsResponse } from "./api/iana-tlds";
 
+type FilterType = "all" | "cctld" | "gtld";
+
 export default function TldsPage() {
   const { locale } = useTranslation();
   const settings = useSiteSettings();
@@ -24,6 +25,7 @@ export default function TldsPage() {
   const siteName = settings.site_logo_text || "NEXT WHOIS";
 
   const [search, setSearch] = React.useState("");
+  const [typeFilter, setTypeFilter] = React.useState<FilterType>("all");
   const [data, setData] = React.useState<IanaTldsResponse | null>(null);
   const [loading, setLoading] = React.useState(true);
 
@@ -38,14 +40,20 @@ export default function TldsPage() {
   const filtered = React.useMemo(() => {
     if (!data) return [];
     const q = search.trim().toLowerCase().replace(/^\./, "");
-    if (!q) return data.tlds;
-    return data.tlds.filter(
+    let list = data.tlds;
+    if (typeFilter !== "all") list = list.filter((t) => t.type === typeFilter);
+    if (!q) return list;
+    return list.filter(
       (t) =>
         t.tld.includes(q) ||
         (t.country && t.country.includes(q)) ||
         (t.countryEn && t.countryEn.toLowerCase().includes(q))
     );
-  }, [data, search]);
+  }, [data, search, typeFilter]);
+
+  const handleFilterClick = (f: FilterType) => {
+    setTypeFilter((prev) => (prev === f ? "all" : f));
+  };
 
   return (
     <>
@@ -86,20 +94,36 @@ export default function TldsPage() {
               transition={{ duration: 0.3 }}
               className="grid grid-cols-2 gap-2.5 mb-5"
             >
-              <div className="glass-panel border border-border rounded-xl p-3 text-center">
-                <RiFlagLine className="w-4 h-4 mx-auto mb-1 text-blue-500" />
+              <button
+                onClick={() => handleFilterClick("cctld")}
+                className={[
+                  "glass-panel border rounded-xl p-3 text-center transition-all cursor-pointer",
+                  typeFilter === "cctld"
+                    ? "border-blue-500/60 bg-blue-500/8 ring-1 ring-blue-500/30"
+                    : "border-border hover:border-blue-400/40 hover:bg-blue-500/5",
+                ].join(" ")}
+              >
+                <RiFlagLine className={["w-4 h-4 mx-auto mb-1 transition-colors", typeFilter === "cctld" ? "text-blue-500" : "text-blue-400/70"].join(" ")} />
                 <p className="text-lg font-bold tabular-nums">{data.ccTldCount}</p>
                 <p className="text-[10px] text-muted-foreground">
                   {isChinese ? "国别域名 (ccTLD)" : "Country Code (ccTLD)"}
                 </p>
-              </div>
-              <div className="glass-panel border border-border rounded-xl p-3 text-center">
-                <RiStarLine className="w-4 h-4 mx-auto mb-1 text-violet-500" />
+              </button>
+              <button
+                onClick={() => handleFilterClick("gtld")}
+                className={[
+                  "glass-panel border rounded-xl p-3 text-center transition-all cursor-pointer",
+                  typeFilter === "gtld"
+                    ? "border-violet-500/60 bg-violet-500/8 ring-1 ring-violet-500/30"
+                    : "border-border hover:border-violet-400/40 hover:bg-violet-500/5",
+                ].join(" ")}
+              >
+                <RiStarLine className={["w-4 h-4 mx-auto mb-1 transition-colors", typeFilter === "gtld" ? "text-violet-500" : "text-violet-400/70"].join(" ")} />
                 <p className="text-lg font-bold tabular-nums">{data.gTldCount}</p>
                 <p className="text-[10px] text-muted-foreground">
                   {isChinese ? "通用顶级 (gTLD)" : "Generic (gTLD)"}
                 </p>
-              </div>
+              </button>
             </motion.div>
           )}
 
@@ -151,8 +175,8 @@ export default function TldsPage() {
           <div className="mt-10 pt-6 border-t border-border/40 text-center">
             <p className="text-[11px] text-muted-foreground/50">
               {isChinese
-                ? "点击任意后缀可查询该后缀的 nic 域名 · 数据来源 IANA"
-                : "Click any TLD to look up its NIC domain · Data source: IANA"}
+                ? "点击统计卡片可按类型筛选 · 数据来源 IANA"
+                : "Click the cards above to filter by type · Data source: IANA"}
             </p>
           </div>
         </main>
@@ -171,29 +195,10 @@ const TldCard = React.memo(function TldCard({
   const isCc = entry.type === "cctld";
   const countryLabel = isChinese ? entry.country : entry.countryEn;
 
-  const serverLine = entry.hasWhois
-    ? entry.whoisServer
-    : entry.hasRdap
-    ? entry.rdapServer
-    : null;
-
-  const serverBadge = entry.hasWhois ? (
-    <span className="text-[9px] px-1 py-0 h-3.5 leading-3.5 rounded-sm bg-emerald-500/12 text-emerald-600 dark:text-emerald-400 border border-emerald-400/30 shrink-0 inline-flex items-center">
-      WHOIS
-    </span>
-  ) : entry.hasRdap ? (
-    <span className="text-[9px] px-1 py-0 h-3.5 leading-3.5 rounded-sm bg-blue-500/12 text-blue-600 dark:text-blue-400 border border-blue-400/30 shrink-0 inline-flex items-center">
-      RDAP
-    </span>
-  ) : null;
-
   return (
-    <Link
-      href={`/nic.${entry.tld}`}
-      className="glass-panel border border-border rounded-xl p-3 flex flex-col gap-1.5 hover:border-primary/30 hover:bg-muted/30 transition-all group block"
-    >
+    <div className="glass-panel border border-border rounded-xl p-3 flex flex-col gap-1.5">
       <div className="flex items-center justify-between gap-1">
-        <span className="font-mono text-sm font-bold truncate group-hover:text-primary transition-colors">
+        <span className="font-mono text-sm font-bold truncate">
           .{entry.tld}
         </span>
         {isCc && countryLabel ? (
@@ -206,22 +211,23 @@ const TldCard = React.memo(function TldCard({
           </span>
         )}
       </div>
-      <div className="flex items-center gap-1.5 min-h-[14px]">
-        {serverBadge && serverLine ? (
-          <>
-            {serverBadge}
-            <p className="text-[10px] text-muted-foreground truncate font-mono">
-              {serverLine}
-            </p>
-          </>
-        ) : serverBadge ? (
-          serverBadge
-        ) : (
-          <p className="text-[10px] text-muted-foreground/40">
+      <div className="flex items-center gap-1 min-h-[14px]">
+        {entry.hasWhois && (
+          <span className="text-[9px] px-1.5 py-0 h-4 leading-4 rounded-sm bg-emerald-500/12 text-emerald-600 dark:text-emerald-400 border border-emerald-400/30 inline-flex items-center">
+            WHOIS
+          </span>
+        )}
+        {entry.hasRdap && (
+          <span className="text-[9px] px-1.5 py-0 h-4 leading-4 rounded-sm bg-sky-500/12 text-sky-600 dark:text-sky-400 border border-sky-400/30 inline-flex items-center">
+            RDAP
+          </span>
+        )}
+        {!entry.hasWhois && !entry.hasRdap && (
+          <span className="text-[10px] text-muted-foreground/40">
             {isChinese ? "暂无服务器" : "No server"}
-          </p>
+          </span>
         )}
       </div>
-    </Link>
+    </div>
   );
 });
