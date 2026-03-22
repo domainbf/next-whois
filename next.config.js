@@ -7,7 +7,7 @@ const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   compress: true,
-  transpilePackages: ['whoiser'],
+  transpilePackages: ['whoiser', 'node-rdap'],
   i18n: {
     locales: ['en', 'zh', 'zh-tw', 'de', 'ru', 'ja', 'fr', 'ko'],
     defaultLocale: 'en',
@@ -17,8 +17,6 @@ const nextConfig = {
     if (isServer) {
       config.externals = [
         ...(Array.isArray(config.externals) ? config.externals : []),
-        'whoiser',
-        'node-rdap',
         'ioredis',
       ];
     }
