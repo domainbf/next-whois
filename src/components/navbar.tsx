@@ -16,6 +16,7 @@ import {
   RiUserLine,
   RiLogoutBoxLine,
   RiDashboardLine,
+  RiShieldUserLine,
 } from "@remixicon/react";
 import { useTheme } from "next-themes";
 import { motion, AnimatePresence } from "framer-motion";
@@ -35,6 +36,8 @@ import { listHistory, removeHistory } from "@/lib/history";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { useSession, signOut } from "next-auth/react";
+import { useSiteSettings } from "@/lib/site-settings";
+import { ADMIN_EMAIL } from "@/lib/admin-shared";
 
 const TAP = { whileTap: { scale: 0.88 }, transition: { type: "spring" as const, stiffness: 500, damping: 22 } };
 
@@ -294,6 +297,8 @@ const navItems: NavItem[] = [
 
 export function NavDrawer() {
   const [open, setOpen] = React.useState(false);
+  const settings = useSiteSettings();
+  const logoText = settings.site_logo_text || "NEXT WHOIS";
 
   return (
     <Drawer open={open} onOpenChange={setOpen}>
@@ -327,7 +332,7 @@ export function NavDrawer() {
           <div className="flex items-center justify-between mb-5">
             <div>
               <p className="text-base font-semibold tracking-tight">
-                NEXT WHOIS
+                {logoText}
               </p>
               <p className="text-xs text-muted-foreground mt-0.5">
                 版本 {VERSION} · 导航菜单
@@ -386,6 +391,8 @@ function UserButton() {
   const { data: session, status } = useSession();
   const [open, setOpen] = React.useState(false);
   const ref = React.useRef<HTMLDivElement>(null);
+  const email = (session?.user as any)?.email as string | undefined;
+  const isAdminUser = !!email && email.toLowerCase().trim() === ADMIN_EMAIL;
 
   React.useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -411,7 +418,7 @@ function UserButton() {
     );
   }
 
-  const name = session?.user?.name || session?.user?.email || "U";
+  const name = session?.user?.name || email || "U";
   const initials = name.slice(0, 1).toUpperCase();
 
   return (
@@ -419,7 +426,12 @@ function UserButton() {
       <motion.button
         {...TAP}
         onClick={() => setOpen(v => !v)}
-        className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center touch-manipulation"
+        className={cn(
+          "w-6 h-6 rounded-full text-[10px] font-bold flex items-center justify-center touch-manipulation",
+          isAdminUser
+            ? "bg-gradient-to-br from-violet-500 to-indigo-600 text-white"
+            : "bg-primary text-primary-foreground"
+        )}
         aria-label="用户菜单"
       >
         {initials}
@@ -431,10 +443,13 @@ function UserButton() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.92, y: -4 }}
             transition={{ duration: 0.14 }}
-            className="absolute right-0 top-8 w-44 bg-background border border-border rounded-xl shadow-lg overflow-hidden z-50"
+            className="absolute right-0 top-8 w-48 bg-background border border-border rounded-xl shadow-lg overflow-hidden z-50"
           >
             <div className="px-3 py-2 border-b border-border/50">
-              <p className="text-[10px] text-muted-foreground truncate">{session?.user?.email}</p>
+              <p className="text-[10px] text-muted-foreground truncate">{email}</p>
+              {isAdminUser && (
+                <p className="text-[9px] font-bold text-violet-600 dark:text-violet-400 mt-0.5 uppercase tracking-wider">创始人 · 管理员</p>
+              )}
             </div>
             <Link
               href="/dashboard"
@@ -443,6 +458,15 @@ function UserButton() {
             >
               <RiDashboardLine className="w-3.5 h-3.5 text-muted-foreground" />用户中心
             </Link>
+            {isAdminUser && (
+              <Link
+                href="/admin"
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-violet-50 dark:hover:bg-violet-950/30 transition-colors text-violet-600 dark:text-violet-400 touch-manipulation"
+              >
+                <RiShieldUserLine className="w-3.5 h-3.5" />管理后台
+              </Link>
+            )}
             <button
               onClick={() => { setOpen(false); signOut({ callbackUrl: "/" }); }}
               className="w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-muted active:bg-muted/70 transition-colors text-red-500 touch-manipulation"
@@ -458,6 +482,8 @@ function UserButton() {
 
 export function Navbar() {
   const isVisible = useScrollDirection();
+  const settings = useSiteSettings();
+  const logoText = settings.site_logo_text || "NEXT WHOIS";
 
   return (
     <div className="fixed top-0 left-0 right-0 z-50 flex justify-center">
@@ -476,7 +502,7 @@ export function Navbar() {
             href="/"
             className="text-xs ml-2 font-medium tracking-wide hover:text-primary/80 transition-colors flex items-center touch-manipulation select-none"
           >
-            NEXT WHOIS
+            {logoText}
             <p className="text-xs text-muted-foreground ml-1.5">{VERSION}</p>
           </Link>
         </motion.div>

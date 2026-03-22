@@ -82,6 +82,11 @@ const CREATE_TABLES = [
     email        TEXT,
     created_at   TIMESTAMPTZ  NOT NULL DEFAULT NOW()
   )`,
+  `CREATE TABLE IF NOT EXISTS site_settings (
+    key          TEXT         PRIMARY KEY,
+    value        TEXT         NOT NULL DEFAULT '',
+    updated_at   TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+  )`,
 ];
 
 const ALTER_COLUMNS = [

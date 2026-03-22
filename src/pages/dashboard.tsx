@@ -14,8 +14,9 @@ import {
   RiDeleteBinLine, RiPencilLine, RiCheckLine, RiCloseLine,
   RiUserLine, RiLogoutBoxLine, RiAlertLine, RiExternalLinkLine,
   RiFlashlightLine, RiTimeLine, RiHistoryLine, RiSearchLine,
-  RiEdit2Line,
+  RiEdit2Line, RiShieldUserLine,
 } from "@remixicon/react";
+import { ADMIN_EMAIL } from "@/lib/admin-shared";
 import type { HistoryItem } from "@/lib/history";
 
 type Subscription = {
@@ -352,6 +353,7 @@ export default function DashboardPage() {
   }
 
   const user = session!.user!;
+  const isAdminUser = (user as any)?.email?.toLowerCase?.()?.trim?.() === ADMIN_EMAIL;
   const TABS = [
     { key: "subscriptions" as const, label: "域名订阅", icon: <RiCalendarLine className="w-3.5 h-3.5" /> },
     { key: "stamps" as const, label: "品牌认领", icon: <RiShieldCheckLine className="w-3.5 h-3.5" /> },
@@ -385,14 +387,30 @@ export default function DashboardPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold">用户中心</h1>
+            <h1 className="text-xl font-bold flex items-center gap-2">
+              用户中心
+              {isAdminUser && (
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-gradient-to-r from-violet-500/20 to-indigo-500/20 text-violet-700 dark:text-violet-300 font-bold border border-violet-200/50 dark:border-violet-700/30 uppercase tracking-wider">
+                  创始人
+                </span>
+              )}
+            </h1>
             <p className="text-xs text-muted-foreground mt-0.5">{user.email}</p>
           </div>
-          <button onClick={() => signOut({ callbackUrl: "/" })}
-            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-lg hover:bg-muted">
-            <RiLogoutBoxLine className="w-3.5 h-3.5" />
-            退出登录
-          </button>
+          <div className="flex items-center gap-2">
+            {isAdminUser && (
+              <Link href="/admin"
+                className="flex items-center gap-1.5 text-xs text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-950/30 transition-colors px-3 py-1.5 rounded-lg font-semibold">
+                <RiShieldUserLine className="w-3.5 h-3.5" />
+                管理后台
+              </Link>
+            )}
+            <button onClick={() => signOut({ callbackUrl: "/" })}
+              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-lg hover:bg-muted">
+              <RiLogoutBoxLine className="w-3.5 h-3.5" />
+              退出登录
+            </button>
+          </div>
         </div>
 
         {/* Tab switcher */}

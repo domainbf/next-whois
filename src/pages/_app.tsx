@@ -1,4 +1,5 @@
 import "@/styles/globals.css";
+import React from "react";
 import type { AppProps } from "next/app";
 import Head from "next/head";
 import { Toaster } from "sonner";
@@ -9,6 +10,8 @@ import { useRouter } from "next/router";
 import { AnimatePresence, motion } from "framer-motion";
 import { SessionProvider } from "next-auth/react";
 import { LocaleProvider } from "@/lib/locale-context";
+import { SiteSettingsProvider, useSiteSettings } from "@/lib/site-settings";
+import { RiMegaphoneLine, RiCloseLine } from "@remixicon/react";
 
 const pageVariants = {
   initial: { opacity: 0, y: 8, scale: 0.995 },
@@ -21,6 +24,45 @@ const pageTransition = {
   ease: [0.25, 0.46, 0.45, 0.94],
 };
 
+function AppHead() {
+  const settings = useSiteSettings();
+  const title = settings.site_title || siteTitle;
+  const description = settings.site_description || siteDescription;
+  return (
+    <Head>
+      <title>{title}</title>
+      <meta name="description" content={description} />
+      <meta name="tags" content={siteKeywords} />
+      <meta name="keywords" content={siteKeywords} />
+      <meta name="viewport" content="width=device-width, initial-scale=1" />
+      <meta name="format-detection" content="telephone=no" />
+      {settings.site_icon_url && (
+        <link rel="icon" href={settings.site_icon_url} />
+      )}
+    </Head>
+  );
+}
+
+function AnnouncementBanner() {
+  const settings = useSiteSettings();
+  const [dismissed, setDismissed] = React.useState(false);
+  const msg = settings.site_announcement;
+  if (!msg || dismissed) return null;
+  return (
+    <div className="fixed top-0 left-0 right-0 z-[60] flex items-center justify-center px-4 py-2 bg-gradient-to-r from-primary to-violet-600 text-white text-xs font-medium gap-2 shadow-md">
+      <RiMegaphoneLine className="w-3.5 h-3.5 shrink-0" />
+      <span className="flex-1 text-center">{msg}</span>
+      <button
+        onClick={() => setDismissed(true)}
+        className="p-0.5 rounded hover:bg-white/20 transition-colors shrink-0"
+        aria-label="关闭公告"
+      >
+        <RiCloseLine className="w-3.5 h-3.5" />
+      </button>
+    </div>
+  );
+}
+
 export default function App({ Component, pageProps: { session, ...pageProps } }: AppProps) {
   const origin: string = pageProps.origin || "";
   const router = useRouter();
@@ -28,43 +70,19 @@ export default function App({ Component, pageProps: { session, ...pageProps } }:
   return (
     <SessionProvider session={session}>
     <LocaleProvider initialLocale={router.locale}>
+    <SiteSettingsProvider>
     <>
+      <AppHead />
       <Head>
-        <title>{siteTitle}</title>
-        <meta name="description" content={siteDescription} />
-        <meta name="tags" content={siteKeywords} />
-        <meta name="keywords" content={siteKeywords} />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <meta name="format-detection" content="telephone=no" />
         <meta key="og:title" property="og:title" content={siteTitle} />
-        <meta
-          key="og:description"
-          property="og:description"
-          content={siteDescription}
-        />
-        <meta
-          key="og:image"
-          property="og:image"
-          content={`${origin}/banner.png`}
-        />
+        <meta key="og:description" property="og:description" content={siteDescription} />
+        <meta key="og:image" property="og:image" content={`${origin}/banner.png`} />
         <meta key="og:url" property="og:url" content={origin} />
         <meta key="og:type" property="og:type" content="website" />
-        <meta
-          key="twitter:card"
-          name="twitter:card"
-          content="summary_large_image"
-        />
+        <meta key="twitter:card" name="twitter:card" content="summary_large_image" />
         <meta key="twitter:title" name="twitter:title" content={siteTitle} />
-        <meta
-          key="twitter:description"
-          name="twitter:description"
-          content={siteDescription}
-        />
-        <meta
-          key="twitter:image"
-          name="twitter:image"
-          content={`${origin}/banner.png`}
-        />
+        <meta key="twitter:description" name="twitter:description" content={siteDescription} />
+        <meta key="twitter:image" name="twitter:image" content={`${origin}/banner.png`} />
       </Head>
       <Toaster />
       <ThemeProvider
@@ -78,6 +96,7 @@ export default function App({ Component, pageProps: { session, ...pageProps } }:
           <div className="absolute inset-0 bg-gradient-to-b from-transparent via-background/20 to-background" />
         </div>
         <div className="relative w-full min-h-screen font-sans">
+          <AnnouncementBanner />
           <Navbar />
           <main className="pt-16">
             <AnimatePresence mode="wait" initial={false}>
@@ -96,6 +115,7 @@ export default function App({ Component, pageProps: { session, ...pageProps } }:
         </div>
       </ThemeProvider>
     </>
+    </SiteSettingsProvider>
     </LocaleProvider>
     </SessionProvider>
   );

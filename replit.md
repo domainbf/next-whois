@@ -23,6 +23,20 @@ A fast, modern WHOIS and RDAP lookup tool supporting domains, IPv4/IPv6, ASN, an
 - `src/pages/api/remind/submit.ts` — Subscription submission API
 - `src/pages/api/remind/process.ts` — Cron processor that fires pre-expiry AND phase-event reminders
 - `src/lib/email.ts` — All email templates (welcome, subscription confirm, pre-expiry reminder, phase event)
+- `src/lib/admin-shared.ts` — Client-safe admin helpers: `ADMIN_EMAIL` constant and `isAdmin()` function
+- `src/lib/admin.ts` — Server-only admin middleware: `requireAdmin()` for API route protection
+- `src/lib/site-settings.tsx` — Site settings context: `SiteSettingsProvider`, `useSiteSettings()` hook, `DEFAULT_SETTINGS`
+- `src/components/admin-layout.tsx` — Shared admin backend layout with sidebar navigation and auth guard
+- `src/pages/admin/index.tsx` — Admin dashboard with real-time stats (users, stamps, reminders, searches)
+- `src/pages/admin/settings.tsx` — Site settings editor (title, logo, subtitle, description, footer, icon, announcement)
+- `src/pages/admin/users.tsx` — User management (search, list, delete)
+- `src/pages/admin/stamps.tsx` — Stamp management (search, verify/unverify, delete)
+- `src/pages/admin/reminders.tsx` — Reminder management (search, deactivate)
+- `src/pages/api/admin/settings.ts` — GET (public) / PUT (admin-only) site settings
+- `src/pages/api/admin/stats.ts` — Admin stats endpoint
+- `src/pages/api/admin/users.ts` — Admin user management API
+- `src/pages/api/admin/stamps.ts` — Admin stamp management API
+- `src/pages/api/admin/reminders.ts` — Admin reminder management API
 
 ## Architecture
 
