@@ -3047,6 +3047,11 @@ export default function LookupPage({
                       <div className="flex items-center gap-2 mt-3 flex-wrap">
                         <button
                           onClick={() => {
+                            if (!session) {
+                              toast.info(isChinese ? "请先登录再认领品牌" : "Please log in to claim a brand stamp");
+                              router.push(`/login?callbackUrl=${encodeURIComponent(`/stamp?domain=${encodeURIComponent(result.domain || target)}`)}`);
+                              return;
+                            }
                             suppressNextLoad.current = true;
                             router.push(`/stamp?domain=${encodeURIComponent(result.domain || target)}`);
                           }}
@@ -3056,7 +3061,14 @@ export default function LookupPage({
                           {isChinese ? "品牌认领" : "Claim"}
                         </button>
                         <button
-                          onClick={() => setReminderDialogOpen(true)}
+                          onClick={() => {
+                            if (!session) {
+                              toast.info(isChinese ? "请先登录再订阅域名提醒" : "Please log in to subscribe for reminders");
+                              router.push(`/login`);
+                              return;
+                            }
+                            setReminderDialogOpen(true);
+                          }}
                           className={cn(
                             "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-all active:scale-[0.93]",
                             (result.remainingDays !== null && result.remainingDays <= 30)

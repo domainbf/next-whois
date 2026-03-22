@@ -1,6 +1,7 @@
 import React from "react";
 import Head from "next/head";
 import { useRouter } from "next/router";
+import { useSession } from "next-auth/react";
 import { useTranslation, TranslationKey } from "@/lib/i18n";
 import en from "../../locales/en.json";
 import { cn } from "@/lib/utils";
@@ -146,12 +147,24 @@ const TAG_ID_KEY_MAP: Record<string, StampKey> = {
 
 export default function StampPage() {
   const router = useRouter();
+  const { data: session, status: authStatus } = useSession();
   const { t, locale } = useTranslation();
   const isZh = locale.startsWith("zh");
   const s = (key: StampKey, params?: Record<string, string | number>) =>
     t(`stamp.${key}` as TranslationKey, params);
 
   const domain = String(router.query.domain || "");
+
+  // Redirect unauthenticated users to login, preserving the destination URL.
+  React.useEffect(() => {
+    if (authStatus === "unauthenticated") {
+      const callbackUrl = domain
+        ? `/stamp?domain=${encodeURIComponent(domain)}`
+        : "/stamp";
+      router.replace(`/login?callbackUrl=${encodeURIComponent(callbackUrl)}`);
+    }
+  }, [authStatus, domain, router]);
+
   const defaultForm = { tagName: "", tagStyle: "personal", link: "", description: "", nickname: "", email: "" };
 
   const [hydrated, setHydrated] = React.useState(false);
@@ -466,6 +479,11 @@ export default function StampPage() {
       stopVercelPolling();
     }
   }, [verifyTab, submitResult?.id]);
+
+  // Don't render the page content while checking auth or redirecting.
+  if (authStatus === "loading" || authStatus === "unauthenticated") {
+    return null;
+  }
 
   return (
     <>
