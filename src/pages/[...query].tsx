@@ -3343,7 +3343,7 @@ export default function LookupPage({
                 {" "}
                 <div className="lg:col-span-8 space-y-6">
                   <div className="glass-panel border border-border rounded-xl p-6 sm:p-8 relative overflow-hidden">
-                    <div className="absolute top-3 right-2 opacity-60 pointer-events-none select-none">
+                    <div className="absolute top-3 right-2 opacity-60 pointer-events-none select-none w-[120px] h-[120px] overflow-hidden">
                       <CssGlobe />
                     </div>
                     <div className="relative z-10">
