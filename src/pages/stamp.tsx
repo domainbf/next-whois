@@ -927,12 +927,24 @@ export default function StampPage() {
                             </div>
 
                             {/* DNS record table */}
+                            {(() => {
+                              // The host record shown to users = subdomain prefix only (without the domain).
+                              // DNS panels (Cloudflare, DNSPod, etc.) auto-append the zone/domain.
+                              const hostPrefix = submitResult.txtRecord.replace(new RegExp(`\\.${domain.replace(/\./g, "\\.")}$`), "");
+                              return (
                             <div className="rounded-xl border border-border/60 overflow-hidden divide-y divide-border/60">
+                              <div className="px-3 py-2 bg-amber-50/60 dark:bg-amber-950/20 border-b border-amber-200/40">
+                                <p className="text-[10px] text-amber-700 dark:text-amber-400 leading-relaxed">
+                                  {isZh
+                                    ? "主机记录只填前缀部分，DNS 面板会自动加上域名后缀。不要填完整域名。"
+                                    : "Enter only the prefix for the host record — your DNS panel adds the domain automatically."}
+                                </p>
+                              </div>
                               {[
-                                { label: s("dns_field_type"), value: "TXT", mono: false, copyable: false },
-                                { label: s("dns_field_host"), value: submitResult.txtRecord, mono: true, color: "text-violet-600 dark:text-violet-400", copyable: true },
-                                { label: s("dns_field_value"), value: submitResult.txtValue, mono: true, color: "text-emerald-600 dark:text-emerald-400", copyable: true },
-                                { label: "TTL", value: s("dns_field_ttl_val"), mono: false, copyable: false },
+                                { label: s("dns_field_type"), value: "TXT", mono: false, copyable: false, note: null },
+                                { label: s("dns_field_host"), value: hostPrefix, mono: true, color: "text-violet-600 dark:text-violet-400", copyable: true, note: isZh ? `完整: ${submitResult.txtRecord}` : `Full: ${submitResult.txtRecord}` },
+                                { label: s("dns_field_value"), value: submitResult.txtValue, mono: true, color: "text-emerald-600 dark:text-emerald-400", copyable: true, note: null },
+                                { label: "TTL", value: s("dns_field_ttl_val"), mono: false, copyable: false, note: null },
                               ].map((row) => (
                                 <div key={row.label} className="flex items-center justify-between gap-3 px-3 py-2.5 bg-muted/20">
                                   <div className="shrink-0 w-20">
@@ -942,6 +954,9 @@ export default function StampPage() {
                                     <p className={cn("text-xs break-all leading-relaxed", row.mono ? "font-mono" : "", row.color || "text-foreground")}>
                                       {row.value}
                                     </p>
+                                    {row.note && (
+                                      <p className="text-[10px] text-muted-foreground/50 mt-0.5 font-mono">{row.note}</p>
+                                    )}
                                   </div>
                                   {row.copyable && (
                                     <button
@@ -954,6 +969,7 @@ export default function StampPage() {
                                 </div>
                               ))}
                             </div>
+                              ); })()}
 
                             {/* Quick TXT check */}
                             <div className="rounded-xl border border-border/60 bg-muted/15 overflow-hidden">
