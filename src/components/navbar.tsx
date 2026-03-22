@@ -284,11 +284,11 @@ const navItems: NavItem[] = [
     description: "查看接口文档与使用示例",
   },
   {
-    label: "WHOIS 服务器",
-    labelEn: "WHOIS Servers",
-    href: "/whois-servers",
+    label: "TLD / 服务器",
+    labelEn: "TLDs / Servers",
+    href: "/tlds",
     icon: <RiServerLine className="h-6 w-6" />,
-    description: "管理与查看 WHOIS 服务器配置",
+    description: "IANA 后缀列表与 WHOIS 服务器配置",
   },
   {
     label: "域名查询",
