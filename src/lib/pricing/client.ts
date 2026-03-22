@@ -203,7 +203,7 @@ function mergeRegistrars(
     }
   }
 
-  return Array.from(map.values()).filter((r) => typeof r[type] === "number");
+  return Array.from(map.values()).filter((r) => typeof r[type] === "number" && (r[type] as number) > 0);
 }
 
 function calcIsPremium(r: NazhumiRegistrar): boolean {
@@ -273,7 +273,7 @@ export async function getTopRegistrars(
     const merged = mergeRegistrars([nazhumiData, miqingjuData, tianhuData], type);
 
     return merged
-      .filter((r) => typeof r[type] === "number")
+      .filter((r) => typeof r[type] === "number" && (r[type] as number) > 0)
       .sort((a, b) => {
         const av = typeof a[type] === "number" ? (a[type] as number) : Infinity;
         const bv = typeof b[type] === "number" ? (b[type] as number) : Infinity;

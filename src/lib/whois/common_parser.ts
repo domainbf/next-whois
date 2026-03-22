@@ -588,6 +588,7 @@ export async function analyzeWhois(data: string): Promise<WhoisAnalyzeResult> {
       result.domain = value;
     } else if (
       includeArgs(key, "registrar") &&
+      !includeArgs(key, "expir", "date", "phone", "email", "url", "whois", "iana", "server", "abuse", "registration") &&
       result.registrar === "Unknown"
     ) {
       result.registrar = value;
