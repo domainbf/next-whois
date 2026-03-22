@@ -1,9 +1,8 @@
 /**
- * Fallback WHOIS lookup via yisi.yun API.
+ * Fallback WHOIS lookup via yisi.yun public API (no auth required).
  * Called when native RDAP + WHOIS produce no usable result for a domain.
  *
- * API docs: https://yisi.yun/api-docs
- * Auth: set YISI_API_KEY env var (optional — anonymous: 10 req/min, key: 20 req/min)
+ * Endpoint: GET https://yisi.yun/api/lookup?query=<domain>
  */
 
 import { WhoisResult, WhoisAnalyzeResult, DomainStatusProps, initialWhoisAnalyzeResult } from "@/lib/whois/types";
@@ -113,16 +112,18 @@ function toAnalyzeResult(r: YisiResult, domain: string): WhoisAnalyzeResult {
  */
 export async function lookupYisi(domain: string): Promise<WhoisResult | null> {
   try {
-    const apiKey = process.env.YISI_API_KEY;
-    const url = `${YISI_API}?query=${encodeURIComponent(domain)}${apiKey ? `&apiKey=${encodeURIComponent(apiKey)}` : ""}`;
-
-    const headers: Record<string, string> = { Accept: "application/json" };
-    if (apiKey) headers["x-api-key"] = apiKey;
+    const url = `${YISI_API}?query=${encodeURIComponent(domain)}`;
 
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), YISI_TIMEOUT);
 
-    const res = await fetch(url, { headers, signal: controller.signal }).finally(() => clearTimeout(timer));
+    const res = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        Accept: "application/json",
+        "User-Agent": "Mozilla/5.0 (compatible; NextWhois/1.0; +https://github.com/zmh-program/next-whois-ui)",
+      },
+    }).finally(() => clearTimeout(timer));
 
     if (!res.ok) return null;
 
