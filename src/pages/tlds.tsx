@@ -217,14 +217,14 @@ const TldCard = React.memo(function TldCard({
             WHOIS
           </span>
         )}
-        {entry.hasRdap && (
+        {(entry.hasRdap || (!entry.hasWhois && !isCc)) && (
           <span className="text-[9px] px-1.5 py-0 h-4 leading-4 rounded-sm bg-sky-500/12 text-sky-600 dark:text-sky-400 border border-sky-400/30 inline-flex items-center">
             RDAP
           </span>
         )}
-        {!entry.hasWhois && !entry.hasRdap && (
+        {isCc && !entry.hasWhois && !entry.hasRdap && (
           <span className="text-[10px] text-muted-foreground/40">
-            {isChinese ? "暂无服务器" : "No server"}
+            {isChinese ? "暂不支持查询" : "Not supported"}
           </span>
         )}
       </div>
