@@ -4,7 +4,8 @@ import { getJsonRedisValue, setJsonRedisValue } from "@/lib/server/redis";
 import { analyzeWhois } from "@/lib/whois/common_parser";
 import { extractDomain } from "@/lib/utils";
 import { lookupRdap, convertRdapToWhoisResult } from "@/lib/whois/rdap_client";
-import { whoisDomain, whoisIp, whoisAsn, whoisQuery } from "whoiser";
+// whoiser is ESM-only; use dynamic import() so CJS serverless can load it
+const getWhoiser = () => import("whoiser");
 import { domainToASCII } from "url";
 import {
   getCustomServerEntry,
@@ -257,6 +258,7 @@ async function queryWhoisHttp(
 async function getLookupWhois(domain: string): Promise<WhoisRawResult> {
   if (isIPAddress(domain)) {
     const ip = domain.replace(/\/\d{1,3}$/, "");
+    const { whoisIp } = await getWhoiser();
     const data = await whoisIp(ip, { timeout: LOOKUP_TIMEOUT });
     return {
       raw: (data as any).__raw || "",
@@ -267,6 +269,7 @@ async function getLookupWhois(domain: string): Promise<WhoisRawResult> {
 
   if (isASNumber(domain)) {
     const asNum = parseInt(domain.replace(/^AS/i, ""));
+    const { whoisAsn } = await getWhoiser();
     const data = await whoisAsn(asNum, { timeout: LOOKUP_TIMEOUT });
     return {
       raw: (data as any).__raw || "",
@@ -337,6 +340,7 @@ async function getLookupWhois(domain: string): Promise<WhoisRawResult> {
             ? customEntry.port
             : 43;
         try {
+          const { whoisQuery } = await getWhoiser();
           const raw =
             port === 43
               ? await whoisQuery(tcpHost, domainToQuery, LOOKUP_TIMEOUT)
@@ -356,6 +360,7 @@ async function getLookupWhois(domain: string): Promise<WhoisRawResult> {
     }
   }
 
+  const { whoisDomain } = await getWhoiser();
   const data = await whoisDomain(domainToQuery, {
     raw: true,
     follow,

@@ -1,4 +1,5 @@
-import { domain, ip, autnum } from "node-rdap";
+// node-rdap is ESM-only; use dynamic import() so CJS serverless can load it
+const getRdap = () => import("node-rdap");
 import { WhoisAnalyzeResult, DomainStatusProps } from "./types";
 import { extractDomain } from "@/lib/utils";
 import { applyParams } from "./common_parser";
@@ -192,13 +193,16 @@ export async function lookupRdap(query: string): Promise<any> {
   const cleanQuery = query.trim().toLowerCase();
 
   if (isIPAddress(cleanQuery)) {
+    const { ip } = await getRdap();
     return await ip(cleanQuery);
   } else if (isASNumber(cleanQuery)) {
     const asNumber = cleanQuery.replace(/^as/i, "");
+    const { autnum } = await getRdap();
     return await autnum(parseInt(asNumber));
   } else {
     const domainToQuery = extractDomain(cleanQuery) || cleanQuery;
     try {
+      const { domain } = await getRdap();
       const result = await domain(domainToQuery);
       // node-rdap sometimes returns an error object instead of throwing
       if (result && result.errorCode) throw new Error(`RDAP error ${result.errorCode}`);

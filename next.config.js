@@ -7,7 +7,6 @@ const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   compress: true,
-  transpilePackages: ['whoiser', 'node-rdap'],
   i18n: {
     locales: ['en', 'zh', 'zh-tw', 'de', 'ru', 'ja', 'fr', 'ko'],
     defaultLocale: 'en',
@@ -17,6 +16,10 @@ const nextConfig = {
     if (isServer) {
       config.externals = [
         ...(Array.isArray(config.externals) ? config.externals : []),
+        // These are ESM-only packages; keep as externals and load via dynamic
+        // import() at runtime (CJS dynamic import() handles ESM correctly).
+        'whoiser',
+        'node-rdap',
         'ioredis',
       ];
     }
