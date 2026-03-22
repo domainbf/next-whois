@@ -375,7 +375,7 @@ export default function TldsPage() {
         <title key="site-title">{`${tab === "servers" ? (isChinese ? "WHOIS 服务器" : "WHOIS Servers") : (isChinese ? "支持后缀" : "Supported TLDs")} — ${siteName}`}</title>
       </Head>
       <ScrollArea className="w-full h-[calc(100vh-4rem)]">
-        <main className="w-full max-w-3xl mx-auto px-4 sm:px-6 py-6 pb-16">
+        <main className="w-full max-w-3xl mx-auto px-4 sm:px-6 py-6 pb-16 overflow-x-hidden">
 
           <div className="flex items-center gap-3 mb-5">
             <Link
@@ -394,7 +394,7 @@ export default function TldsPage() {
                     ? (isChinese ? "WHOIS 服务器" : "WHOIS Servers")
                     : (isChinese ? "支持后缀" : "Supported TLDs")}
                 </h1>
-                <p className="text-[11px] text-muted-foreground mt-0.5">
+                <p className="text-[11px] text-muted-foreground mt-0.5 break-words">
                   {tab === "servers"
                     ? (isChinese ? "查看与管理各 TLD 的 WHOIS 查询服务器配置" : "View and manage custom WHOIS server overrides per TLD")
                     : (isChinese ? "IANA 全量后缀列表，标注 WHOIS/RDAP 查询支持情况" : "Full IANA TLD list with WHOIS/RDAP support status")}
@@ -409,7 +409,7 @@ export default function TldsPage() {
                 key={t}
                 onClick={() => setTab(t)}
                 className={[
-                  "flex-1 flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all",
+                  "flex-1 flex items-center justify-center gap-1.5 px-2 sm:px-4 py-2 rounded-lg text-sm font-medium transition-all min-w-0 overflow-hidden",
                   tab === t
                     ? "bg-primary text-primary-foreground shadow-sm"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted/60",
@@ -418,7 +418,7 @@ export default function TldsPage() {
                 {t === "tlds"
                   ? <RiGlobalLine className="w-4 h-4 shrink-0" />
                   : <RiServerLine className="w-4 h-4 shrink-0" />}
-                {TAB_LABELS[t]}
+                <span className="truncate">{TAB_LABELS[t]}</span>
               </button>
             ))}
           </div>
