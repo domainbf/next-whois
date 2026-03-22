@@ -93,7 +93,7 @@ export default function RegisterPage() {
 
   return (
     <>
-      <Head><title>注册 · {settings.site_title || "Next Whois"}</title></Head>
+      <Head><title key="site-title">注册 · {settings.site_title || "Next Whois"}</title></Head>
       <div className="min-h-screen flex items-center justify-center px-4 py-16">
         <motion.div
           initial={{ opacity: 0, y: 16 }}

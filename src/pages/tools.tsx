@@ -83,7 +83,7 @@ export default function ToolsPage() {
   return (
     <>
       <Head>
-        <title>{t("tools.page_title")} — NEXT WHOIS</title>
+        <title key="site-title">{t("tools.page_title")} — NEXT WHOIS</title>
       </Head>
       <ScrollArea className="w-full h-[calc(100vh-4rem)]">
         <main className="w-full max-w-3xl mx-auto px-4 sm:px-6 py-6">

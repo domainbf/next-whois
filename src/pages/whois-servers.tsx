@@ -371,7 +371,7 @@ export default function WhoisServersPage() {
   return (
     <>
       <Head>
-        <title>WHOIS 服务器管理 - Next Whois</title>
+        <title key="site-title">WHOIS 服务器管理 - Next Whois</title>
       </Head>
       <div className="w-full h-[calc(100vh-4rem)] overflow-y-auto overflow-x-hidden">
         <main className="w-full max-w-4xl mx-auto px-4 sm:px-6 py-6 min-h-[calc(100vh-4rem)]">

@@ -464,7 +464,7 @@ export default function DashboardPage() {
 
   return (
     <>
-      <Head><title>用户中心 · Next WHOIS</title></Head>
+      <Head><title key="site-title">用户中心 · Next WHOIS</title></Head>
       {editingStamp && (
         <EditStampModal stamp={editingStamp} onClose={() => setEditingStamp(null)} onSaved={refreshData} />
       )}

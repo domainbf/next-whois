@@ -35,7 +35,7 @@ function AppHead({ origin }: { origin: string }) {
 
   return (
     <Head>
-      <title>{title}</title>
+      <title key="site-title">{title}</title>
       <meta name="description" content={description} />
       <meta name="tags" content={siteKeywords} />
       <meta name="keywords" content={siteKeywords} />

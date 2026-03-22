@@ -2724,7 +2724,7 @@ export default function LookupPage({
   return (
     <>
       <Head>
-        <title>{`${displayTarget} - WHOIS Lookup`}</title>
+        <title key="site-title">{`${displayTarget} - WHOIS Lookup`}</title>
         <meta
           key="og:title"
           property="og:title"
