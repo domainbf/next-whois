@@ -90,6 +90,27 @@ export default function RegisterPage() {
   }
 
   const logoText = settings.site_logo_text || "NEXT WHOIS";
+  const registrationOpen = settings.allow_registration !== "" ? settings.allow_registration === "1" : true;
+
+  if (!registrationOpen) {
+    return (
+      <>
+        <Head><title key="site-title">注册已关闭 · {settings.site_title || "Next Whois"}</title></Head>
+        <div className="min-h-screen flex items-center justify-center px-4">
+          <div className="text-center space-y-4 max-w-sm">
+            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-amber-100 dark:bg-amber-950/40 border border-amber-200/50 dark:border-amber-700/30 mb-2">
+              <RiAlertLine className="w-7 h-7 text-amber-500" />
+            </div>
+            <h1 className="text-xl font-bold">注册已暂停</h1>
+            <p className="text-sm text-muted-foreground">当前网站暂停开放注册，请联系管理员。</p>
+            <Link href="/login" className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline font-semibold">
+              ← 去登录
+            </Link>
+          </div>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>

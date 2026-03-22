@@ -2,13 +2,14 @@ import React from "react";
 import { AdminLayout } from "@/components/admin-layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
   RiLoader4Line, RiSearchLine, RiDeleteBinLine,
   RiShieldCheckLine, RiShieldLine, RiCalendarLine, RiMailLine,
   RiLinkM, RiFileTextLine, RiUserLine, RiArrowDownSLine,
-  RiArrowUpSLine, RiFilterLine,
+  RiArrowUpSLine, RiFilterLine, RiPencilLine, RiCloseLine, RiSaveLine,
 } from "@remixicon/react";
 
 type Stamp = {
@@ -36,6 +37,143 @@ const TAG_COLORS: Record<string, string> = {
   premium: "bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white",
 };
 
+const TAG_STYLES = [
+  { value: "personal", label: "个人 (personal)" },
+  { value: "official", label: "官方 (official)" },
+  { value: "brand", label: "品牌 (brand)" },
+  { value: "verified", label: "认证 (verified)" },
+  { value: "partner", label: "合作 (partner)" },
+  { value: "dev", label: "开发者 (dev)" },
+  { value: "warning", label: "警告 (warning)" },
+  { value: "premium", label: "高级 (premium)" },
+];
+
+function StampEditModal({ stamp, onClose, onSaved }: {
+  stamp: Stamp;
+  onClose: () => void;
+  onSaved: (updated: Stamp) => void;
+}) {
+  const [tagName, setTagName] = React.useState(stamp.tag_name);
+  const [tagStyle, setTagStyle] = React.useState(stamp.tag_style);
+  const [link, setLink] = React.useState(stamp.link || "");
+  const [description, setDescription] = React.useState(stamp.description || "");
+  const [saving, setSaving] = React.useState(false);
+
+  async function handleSave() {
+    if (!tagName.trim()) { toast.error("标签名不能为空"); return; }
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/admin/stamps?id=${stamp.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tag_name: tagName.trim(),
+          tag_style: tagStyle,
+          link: link.trim() || null,
+          description: description.trim() || null,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      toast.success("品牌信息已更新");
+      onSaved(data.stamp);
+      onClose();
+    } catch (e: any) {
+      toast.error(e.message || "保存失败");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const previewColor = TAG_COLORS[tagStyle] || TAG_COLORS.personal;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+      onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="bg-background border border-border rounded-2xl shadow-xl w-full max-w-md p-6 space-y-5">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-base font-bold">编辑品牌标签</h3>
+            <p className="text-xs text-muted-foreground mt-0.5 font-mono">{stamp.domain}</p>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
+            <RiCloseLine className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <Label className="text-sm font-medium">标签文字</Label>
+            <Input
+              value={tagName}
+              onChange={e => setTagName(e.target.value)}
+              placeholder="例如：官方认证"
+              className="h-10 rounded-xl"
+              maxLength={20}
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-sm font-medium">标签样式</Label>
+            <select
+              value={tagStyle}
+              onChange={e => setTagStyle(e.target.value)}
+              className="w-full h-10 rounded-xl border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            >
+              {TAG_STYLES.map(s => (
+                <option key={s.value} value={s.value}>{s.label}</option>
+              ))}
+            </select>
+            <div className="flex items-center gap-2 mt-1.5">
+              <span className="text-[11px] text-muted-foreground">预览：</span>
+              <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold", previewColor)}>
+                {tagName || "标签预览"}
+              </span>
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-sm font-medium flex items-center gap-1.5">
+              <RiLinkM className="w-3.5 h-3.5 text-muted-foreground" />官网链接
+              <span className="text-[10px] text-muted-foreground/60 ml-auto">可选</span>
+            </Label>
+            <Input
+              value={link}
+              onChange={e => setLink(e.target.value)}
+              placeholder="https://example.com"
+              type="url"
+              className="h-10 rounded-xl"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-sm font-medium flex items-center gap-1.5">
+              <RiFileTextLine className="w-3.5 h-3.5 text-muted-foreground" />简介说明
+              <span className="text-[10px] text-muted-foreground/60 ml-auto">可选</span>
+            </Label>
+            <textarea
+              value={description}
+              onChange={e => setDescription(e.target.value)}
+              placeholder="品牌或组织的简要说明…"
+              rows={3}
+              maxLength={200}
+              className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+            <p className="text-[10px] text-muted-foreground text-right">{description.length}/200</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 pt-1">
+          <Button onClick={handleSave} disabled={saving} className="flex-1 rounded-xl h-10 gap-2">
+            {saving ? <><RiLoader4Line className="w-4 h-4 animate-spin" />保存中…</> : <><RiSaveLine className="w-4 h-4" />保存更改</>}
+          </Button>
+          <Button variant="outline" onClick={onClose} disabled={saving} className="rounded-xl h-10">取消</Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 type FilterTab = "all" | "pending" | "verified";
 
 export default function AdminStampsPage() {
@@ -48,6 +186,7 @@ export default function AdminStampsPage() {
   const [loading, setLoading] = React.useState(false);
   const [acting, setActing] = React.useState<string | null>(null);
   const [expanded, setExpanded] = React.useState<string | null>(null);
+  const [editStamp, setEditStamp] = React.useState<Stamp | null>(null);
   const [offset, setOffset] = React.useState(0);
   const LIMIT = 50;
 
@@ -131,6 +270,13 @@ export default function AdminStampsPage() {
 
   return (
     <AdminLayout title="品牌认领">
+      {editStamp && (
+        <StampEditModal
+          stamp={editStamp}
+          onClose={() => setEditStamp(null)}
+          onSaved={updated => setStamps(prev => prev.map(s => s.id === updated.id ? { ...s, ...updated } : s))}
+        />
+      )}
       <div className="space-y-5">
         {/* Header */}
         <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -248,6 +394,13 @@ export default function AdminStampsPage() {
                     </div>
 
                     <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => setEditStamp(stamp)}
+                        className="p-1.5 rounded-lg text-muted-foreground hover:bg-blue-50 dark:hover:bg-blue-950/30 hover:text-blue-500 transition-colors"
+                        title="编辑标签"
+                      >
+                        <RiPencilLine className="w-3.5 h-3.5" />
+                      </button>
                       {hasDetails && (
                         <button
                           onClick={() => setExpanded(isExpanded ? null : stamp.id)}

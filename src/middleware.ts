@@ -69,8 +69,11 @@ export function middleware(request: NextRequest) {
   const isDashboardRoute = pathWithoutLocale.startsWith("/dashboard");
   if (isDashboardRoute) return;
 
+  const querySegment = pathWithoutLocale.split("/")[1] || "";
   const isDomainQuery =
-    pathWithoutLocale.split("/").length === 2 && pathWithoutLocale !== "/";
+    pathWithoutLocale.split("/").length === 2 &&
+    pathWithoutLocale !== "/" &&
+    (/[.]/.test(querySegment) || /^[0-9a-fA-F:]+:[0-9a-fA-F:]+$/.test(querySegment));
   if (isDomainQuery) return;
 
   const isStaticRoute =

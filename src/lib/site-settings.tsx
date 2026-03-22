@@ -12,6 +12,10 @@ export interface SiteSettings {
   og_url: string;
   og_image: string;
   twitter_card: string;
+  allow_registration: string;
+  require_login: string;
+  enable_feedback: string;
+  enable_stamps: string;
 }
 
 export const DEFAULT_SETTINGS: SiteSettings = {
@@ -26,6 +30,10 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   og_url: "",
   og_image: "",
   twitter_card: "summary_large_image",
+  allow_registration: "1",
+  require_login: "",
+  enable_feedback: "1",
+  enable_stamps: "1",
 };
 
 const STORAGE_KEY = "next_whois_settings_ts";

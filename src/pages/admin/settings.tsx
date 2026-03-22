@@ -8,7 +8,7 @@ import { DEFAULT_SETTINGS, type SiteSettings, notifySettingsUpdated } from "@/li
 import {
   RiLoader4Line, RiSaveLine, RiRefreshLine, RiImageLine,
   RiGlobalLine, RiFileTextLine, RiShareLine, RiTwitterXLine,
-  RiMegaphoneLine, RiMailSendLine, RiCheckLine,
+  RiMegaphoneLine, RiMailSendLine, RiCheckLine, RiToggleLine,
 } from "@remixicon/react";
 
 type FieldDef = {
@@ -163,6 +163,42 @@ export default function AdminSettingsPage() {
                 </div>
               </div>
             ))}
+
+            {/* Feature flags */}
+            <div className="glass-panel border border-border rounded-2xl overflow-hidden">
+              <div className="px-5 py-3 flex items-center gap-2.5 border-b border-border bg-muted/30">
+                <div className="w-6 h-6 rounded-lg flex items-center justify-center bg-orange-100 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400">
+                  <RiToggleLine className="w-3.5 h-3.5" />
+                </div>
+                <h3 className="text-sm font-bold">功能开关</h3>
+              </div>
+              <div className="p-4 space-y-0 divide-y divide-border/50">
+                {([
+                  { key: "allow_registration" as const, label: "开放注册", desc: "允许新用户自助注册账户", onColor: "bg-emerald-500", offColor: "bg-muted" },
+                  { key: "require_login" as const, label: "登录才能搜索", desc: "未登录用户只能看到首页，搜索需要账户", onColor: "bg-amber-500", offColor: "bg-muted" },
+                  { key: "enable_feedback" as const, label: "开放用户反馈", desc: "查询结果页显示「反馈问题」入口", onColor: "bg-emerald-500", offColor: "bg-muted" },
+                  { key: "enable_stamps" as const, label: "开放品牌认领", desc: "用户可以申请为域名添加品牌标签", onColor: "bg-emerald-500", offColor: "bg-muted" },
+                ] as const).map(({ key, label, desc, onColor, offColor }) => {
+                  const enabled = form[key] === "1";
+                  return (
+                    <div key={key} className="flex items-center justify-between gap-4 py-3">
+                      <div>
+                        <p className="text-sm font-medium">{label}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{desc}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setForm(prev => ({ ...prev, [key]: enabled ? "" : "1" }))}
+                        className={`w-10 h-6 rounded-full transition-colors relative shrink-0 ${enabled ? onColor : offColor}`}
+                        aria-label={label}
+                      >
+                        <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${enabled ? "translate-x-4" : "translate-x-0.5"}`} />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
 
             {/* Previews */}
             {(form.site_icon_url || form.og_image) && (

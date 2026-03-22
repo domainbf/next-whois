@@ -16,6 +16,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (!(await isDbReady())) return res.status(503).json({ error: "数据库暂不可用，请稍后重试" });
 
+  const regSetting = await one<{ value: string }>("SELECT value FROM site_settings WHERE key = 'allow_registration'");
+  const allowReg = !regSetting || regSetting.value === "1";
+  if (!allowReg) return res.status(403).json({ error: "注册已暂停，请联系管理员" });
+
   const cleanEmail = String(email).toLowerCase().trim();
 
   const existing = await one("SELECT id FROM users WHERE email = $1", [cleanEmail]);

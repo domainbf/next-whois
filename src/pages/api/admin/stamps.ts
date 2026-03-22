@@ -56,12 +56,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method === "PATCH") {
     const { id } = req.query;
     if (!id || typeof id !== "string") return res.status(400).json({ error: "Missing id" });
-    const { verified } = req.body;
+    const { verified, tag_name, tag_style, link, description } = req.body;
     try {
       if (verified === true) {
         await run(`UPDATE stamps SET verified = true, verified_at = NOW() WHERE id = $1`, [id]);
       } else if (verified === false) {
         await run(`UPDATE stamps SET verified = false, verified_at = NULL WHERE id = $1`, [id]);
+      }
+      if (tag_name !== undefined || tag_style !== undefined || link !== undefined || description !== undefined) {
+        const sets: string[] = [];
+        const params: any[] = [];
+        if (tag_name !== undefined) { params.push(tag_name || null); sets.push(`tag_name = $${params.length}`); }
+        if (tag_style !== undefined) { params.push(tag_style || null); sets.push(`tag_style = $${params.length}`); }
+        if (link !== undefined) { params.push(link || null); sets.push(`link = $${params.length}`); }
+        if (description !== undefined) { params.push(description || null); sets.push(`description = $${params.length}`); }
+        if (sets.length) {
+          params.push(id);
+          await run(`UPDATE stamps SET ${sets.join(", ")} WHERE id = $${params.length}`, params);
+        }
       }
       const updated = await one("SELECT * FROM stamps WHERE id = $1", [id]);
       return res.json({ ok: true, stamp: updated });
