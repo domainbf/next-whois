@@ -7,7 +7,7 @@ import {
   RiLoader4Line, RiRefreshLine, RiSearchLine, RiDeleteBin2Line,
   RiGlobalLine, RiCheckboxCircleLine, RiTimeLine, RiBarChartLine,
   RiCalendarLine, RiArrowLeftLine, RiArrowRightLine, RiUserLine,
-  RiFireLine, RiAlertLine,
+  RiFireLine, RiAlertLine, RiFlashlightLine, RiExternalLinkLine,
 } from "@remixicon/react";
 
 type SearchRecord = {
@@ -20,6 +20,10 @@ type SearchRecord = {
   createdAt: string;
   userEmail: string | null;
   userName: string | null;
+  valueScore: number | null;
+  valueTier: string | null;
+  valueReasons: string[];
+  isAlertKeyword: boolean;
 };
 
 type PageData = {
@@ -71,6 +75,19 @@ function regStatusBadge(status: string, remainingDays: number | null) {
   }
   if (status === "reserved") return <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 font-semibold">保留</span>;
   return <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground font-semibold">未知</span>;
+}
+
+function ValueScoreBadge({ score, tier, isAlert }: { score: number; tier: string; isAlert: boolean }) {
+  const color = score >= 75 ? "bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-400 border-red-200 dark:border-red-900"
+    : score >= 55 ? "bg-orange-100 dark:bg-orange-950/40 text-orange-700 dark:text-orange-400 border-orange-200 dark:border-orange-900"
+    : score >= 35 ? "bg-violet-100 dark:bg-violet-950/40 text-violet-700 dark:text-violet-400 border-violet-200 dark:border-violet-900"
+    : "bg-muted text-muted-foreground border-border";
+  return (
+    <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full font-bold border inline-flex items-center gap-0.5 shrink-0", color)}>
+      {isAlert && <RiFlashlightLine className="w-2.5 h-2.5" />}
+      {score}分·{tier}
+    </span>
+  );
 }
 
 export default function AdminSearchRecordsPage() {
@@ -322,17 +339,51 @@ export default function AdminSearchRecordsPage() {
             <>
               <div className="divide-y divide-border/50">
                 {data.records.map(r => (
-                  <div key={r.id} className="flex items-center gap-3 px-4 py-3 hover:bg-muted/30 transition-colors">
-                    <div className="w-7 h-7 rounded-lg bg-muted flex items-center justify-center shrink-0">
-                      <RiGlobalLine className="w-3.5 h-3.5 text-muted-foreground" />
+                  <div key={r.id} className={cn(
+                    "flex items-start gap-3 px-4 py-3 hover:bg-muted/30 transition-colors",
+                    r.isAlertKeyword && r.regStatus === "unregistered" && "bg-amber-50/60 dark:bg-amber-950/10 hover:bg-amber-100/50 dark:hover:bg-amber-950/20"
+                  )}>
+                    {/* Icon */}
+                    <div className={cn(
+                      "w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5",
+                      r.isAlertKeyword && r.regStatus === "unregistered"
+                        ? "bg-amber-100 dark:bg-amber-950/40"
+                        : "bg-muted"
+                    )}>
+                      {r.isAlertKeyword && r.regStatus === "unregistered"
+                        ? <RiFlashlightLine className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                        : <RiGlobalLine className="w-3.5 h-3.5 text-muted-foreground" />
+                      }
                     </div>
+
+                    {/* Content */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-sm font-mono font-semibold truncate">{r.query}</span>
+                        <a
+                          href={`/${r.query}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm font-mono font-semibold truncate hover:text-primary hover:underline inline-flex items-center gap-0.5"
+                        >
+                          {r.query}
+                          <RiExternalLinkLine className="w-2.5 h-2.5 opacity-50 shrink-0" />
+                        </a>
                         <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground uppercase">{r.queryType}</span>
                         {regStatusBadge(r.regStatus, r.remainingDays)}
+                        {r.valueScore !== null && r.valueTier && r.queryType === "domain" && (
+                          <ValueScoreBadge score={r.valueScore} tier={r.valueTier} isAlert={r.isAlertKeyword} />
+                        )}
                       </div>
-                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                      <div className="flex items-center gap-3 mt-1 flex-wrap">
+                        {r.valueReasons.length > 0 && (
+                          <div className="flex gap-1 flex-wrap">
+                            {r.valueReasons.map((reason, i) => (
+                              <span key={i} className="text-[9px] px-1 py-0 rounded bg-violet-100/60 dark:bg-violet-950/30 text-violet-600 dark:text-violet-400">
+                                {reason}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                         {r.userEmail && (
                           <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
                             <RiUserLine className="w-2.5 h-2.5" />
@@ -347,7 +398,8 @@ export default function AdminSearchRecordsPage() {
                         )}
                       </div>
                     </div>
-                    <span className="text-[10px] text-muted-foreground shrink-0">{fmt(r.createdAt)}</span>
+
+                    <span className="text-[10px] text-muted-foreground shrink-0 mt-0.5">{fmt(r.createdAt)}</span>
                   </div>
                 ))}
               </div>

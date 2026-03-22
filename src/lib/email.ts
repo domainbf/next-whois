@@ -434,6 +434,101 @@ export function feedbackHtml({
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
+// 8. High-value available domain alert (sent to admin)
+// ──────────────────────────────────────────────────────────────────────────────
+export interface HighValueAlertParams {
+  domain: string;
+  score: number;
+  tier: string;
+  reasons: string[];
+  isAlertKeyword: boolean;
+  isNumericOnly: boolean;
+  checkedBy?: string | null;
+  breakdown: { lengthScore: number; tldScore: number; keywordScore: number; patternScore: number };
+}
+
+export function highValueAlertHtml(p: HighValueAlertParams): string {
+  const ALERT_COLOR = p.score >= 80 ? "#dc2626" : p.score >= 60 ? "#d97706" : "#7c3aed";
+  const tierBg     = p.score >= 80 ? "#fef2f2" : p.score >= 60 ? "#fffbeb" : "#ede9fe";
+  const tierColor  = p.score >= 80 ? "#991b1b" : p.score >= 60 ? "#92400e" : "#5b21b6";
+  const LOOKUP_URL = `${BASE_URL()}/${p.domain}`;
+
+  const labelRow = (l: string, v: string) =>
+    `<tr><td style="padding:8px 0;font-size:12px;color:#94a3b8;font-weight:500;width:90px;vertical-align:top;border-bottom:1px solid #f1f5f9">${l}</td><td style="padding:8px 0;font-size:13px;color:#1e293b;font-weight:600;border-bottom:1px solid #f1f5f9">${v}</td></tr>`;
+
+  const scoreBar = (label: string, val: number, max: number, color: string) => {
+    const pct = Math.round((val / max) * 100);
+    return `<div style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+        <span style="font-size:11px;color:#64748b">${label}</span>
+        <span style="font-size:11px;font-weight:700;color:${color}">${val}/${max}</span>
+      </div>
+      <div style="height:6px;background:#f1f5f9;border-radius:999px;overflow:hidden">
+        <div style="height:6px;width:${pct}%;background:${color};border-radius:999px"></div>
+      </div>
+    </div>`;
+  };
+
+  return emailLayout(`
+    <div style="background:${ALERT_COLOR};padding:28px 32px 24px;position:relative">
+      <p style="margin:0;font-size:10px;font-weight:700;letter-spacing:2px;color:rgba(255,255,255,.5);text-transform:uppercase">
+        ${p.isAlertKeyword ? "⚡ 特殊关键词可用告警" : "💎 高价值域名可用告警"}
+      </p>
+      <h1 style="margin:8px 0 6px;font-size:26px;font-weight:900;color:#fff;font-family:ui-monospace,'Fira Code',monospace;letter-spacing:-0.5px">
+        ${p.domain}
+      </h1>
+      <p style="margin:0;font-size:13px;color:rgba(255,255,255,.7)">该域名当前未被注册，请及时评估并决定是否注册</p>
+    </div>
+
+    ${section(`
+      <!-- Score badge -->
+      <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px;flex-wrap:wrap">
+        <div style="background:${tierBg};border:2px solid ${ALERT_COLOR}22;border-radius:16px;padding:14px 20px;text-align:center;min-width:90px">
+          <p style="margin:0;font-size:32px;font-weight:900;color:${ALERT_COLOR};line-height:1">${p.score}</p>
+          <p style="margin:4px 0 0;font-size:10px;font-weight:700;letter-spacing:1px;color:${tierColor};text-transform:uppercase">价值评分</p>
+        </div>
+        <div>
+          <div style="display:inline-block;background:${tierBg};border:1px solid ${ALERT_COLOR}44;color:${tierColor};padding:4px 14px;border-radius:999px;font-size:13px;font-weight:700;margin-bottom:8px">
+            ${p.tier}价值
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px">
+            ${p.reasons.map(r => pill(r, tierBg, tierColor)).join("")}
+            ${p.isAlertKeyword ? pill("⚡ 特殊关键词", "#fef3c7", "#92400e") : ""}
+            ${p.isNumericOnly ? pill("🔢 纯数字", "#ecfdf5", "#065f46") : ""}
+          </div>
+        </div>
+      </div>
+
+      <!-- Score breakdown -->
+      <div style="background:#f8fafc;border-radius:12px;padding:16px;margin-bottom:20px">
+        <p style="margin:0 0 12px;font-size:11px;font-weight:700;letter-spacing:1px;color:#94a3b8;text-transform:uppercase">评分明细</p>
+        ${scoreBar("名称长度", p.breakdown.lengthScore, 30, "#3b82f6")}
+        ${scoreBar("后缀价值", p.breakdown.tldScore, 20, "#8b5cf6")}
+        ${scoreBar("热词匹配", p.breakdown.keywordScore, 25, "#f59e0b")}
+        ${scoreBar("特征加分", p.breakdown.patternScore, 15, "#10b981")}
+      </div>
+
+      <!-- Info table -->
+      <table cellpadding="0" cellspacing="0" style="width:100%;margin-bottom:20px">
+        ${labelRow("域名", `<span style="font-family:monospace;font-size:15px;color:#1e293b">${p.domain}</span>`)}
+        ${labelRow("状态", `<span style="color:#059669;font-weight:700">✓ 可注册（未被注册）</span>`)}
+        ${p.checkedBy ? labelRow("查询者", p.checkedBy) : ""}
+        ${labelRow("检测时间", new Date().toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" }) + "（北京时间）")}
+      </table>
+    `)}
+
+    ${divider()}
+    <div style="padding:20px 32px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+      ${ctaBtn(LOOKUP_URL, "立即查看域名详情", ALERT_COLOR)}
+      <a href="https://www.namesilo.com/domain/search-domains?query=${encodeURIComponent(p.domain)}"
+         style="font-size:12px;color:#7c3aed;text-decoration:underline;text-underline-offset:3px">
+        前往 NameSilo 注册 →
+      </a>
+    </div>
+  `);
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
 // Sending helper
 // ──────────────────────────────────────────────────────────────────────────────
 const RESEND_FALLBACK_FROM = "onboarding@resend.dev";

@@ -1,21 +1,27 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { many, one, run } from "@/lib/db-query";
 import { requireAdmin } from "@/lib/admin";
+import { scoreDomain } from "@/lib/domain-value";
 
 const PAGE_SIZE = 50;
 
-// High-value: domain with short name (≤4 chars before TLD) or premium TLD
-function isHighValue(query: string, queryType: string): boolean {
-  if (queryType !== "domain") return false;
-  const parts = query.split(".");
-  if (parts.length < 2) return false;
-  const name = parts.slice(0, parts.length - 1).join(".");
-  const tld = parts[parts.length - 1].toLowerCase();
-  const premiumTlds = ["com", "net", "org", "io", "ai", "app", "dev", "co"];
-  if (name.length <= 4) return true;
-  if (premiumTlds.includes(tld) && name.length <= 6) return true;
-  return false;
-}
+// Expanded SQL condition for high-value domains
+const HIGH_VALUE_SQL = `(
+  query_type = 'domain' AND reg_status = 'unregistered' AND (
+    length(split_part(query, '.', 1)) <= 4
+    OR regexp_replace(query, '\\.[^.]+$', '') ~ '^[0-9]+$'
+    OR (
+      length(split_part(query, '.', 1)) <= 6
+      AND split_part(query, '.', -1) IN ('com','net','org','io','ai','app','dev','co','me')
+    )
+    OR split_part(query, '.', 1) IN (
+      'ai','api','bot','gpt','llm','pay','web3','nft','dao','defi',
+      'www','domain','whois','dns','cloud','data','code','dev',
+      'shop','store','trade','market','crypto','chain','wallet',
+      'tech','app','hub','lab','pro','go','me','my','one'
+    )
+  )
+)`;
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const session = await requireAdmin(req, res);
@@ -59,27 +65,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     } else if (filter === "expiring") {
       whereClause = "query_type = 'domain' AND reg_status = 'registered' AND remaining_days IS NOT NULL AND remaining_days >= 0 AND remaining_days <= 90";
     } else if (filter === "high_value") {
-      whereClause = "query_type = 'domain' AND reg_status = 'unregistered' AND (length(split_part(query, '.', 1)) <= 4 OR (length(split_part(query, '.', 1)) <= 6 AND split_part(query, '.', -1) IN ('com','net','org','io','ai','app','dev','co')))";
+      whereClause = HIGH_VALUE_SQL;
     }
 
-    const [totalRow, todayRow, stats] = await Promise.all([
+    const [totalRow, todayRow, statsCounts] = await Promise.all([
       one<{ count: string }>(
         `SELECT COUNT(*) AS count FROM search_history WHERE ${whereClause}`
       ),
       one<{ count: string }>(
         `SELECT COUNT(*) AS count FROM search_history WHERE created_at >= NOW() - INTERVAL '1 day'`
       ),
-      // Category counts
       Promise.all([
         one<{ count: string }>("SELECT COUNT(*) AS count FROM search_history"),
         one<{ count: string }>("SELECT COUNT(*) AS count FROM search_history WHERE query_type = 'domain' AND reg_status = 'unregistered'"),
         one<{ count: string }>("SELECT COUNT(*) AS count FROM search_history WHERE query_type = 'domain' AND reg_status = 'registered' AND remaining_days IS NOT NULL AND remaining_days >= 0 AND remaining_days <= 90"),
-        one<{ count: string }>("SELECT COUNT(*) AS count FROM search_history WHERE query_type = 'domain' AND reg_status = 'unregistered' AND (length(split_part(query, '.', 1)) <= 4 OR (length(split_part(query, '.', 1)) <= 6 AND split_part(query, '.', -1) IN ('com','net','org','io','ai','app','dev','co')))"),
+        one<{ count: string }>(`SELECT COUNT(*) AS count FROM search_history WHERE ${HIGH_VALUE_SQL}`),
         one<{ count: string }>("SELECT COUNT(*) AS count FROM search_history WHERE query_type = 'domain' AND reg_status = 'registered'"),
       ]),
     ]);
 
-    const [allCount, availableCount, expiringCount, highValueCount, registeredCount] = stats;
+    const [allCount, availableCount, expiringCount, highValueCount, registeredCount] = statsCounts;
 
     const rows = await many(
       `SELECT sh.id, sh.query, sh.query_type, sh.reg_status, sh.expiration_date, sh.remaining_days,
@@ -110,15 +115,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
        GROUP BY query_type ORDER BY count DESC`
     );
 
-    // Top queried domains
+    // Top queried domains (30 days)
     const topQueries = await many<{ query: string; query_type: string; count: string }>(
       `SELECT query, query_type, COUNT(*) AS count FROM search_history
        WHERE created_at >= NOW() - INTERVAL '30 days'
        GROUP BY query, query_type ORDER BY count DESC LIMIT 20`
     );
 
-    return res.json({
-      records: rows.map(r => ({
+    // Compute domain value scores for each record
+    const records = rows.map(r => {
+      const valueResult = r.query_type === "domain"
+        ? scoreDomain(r.query, r.query_type)
+        : null;
+      return {
         id: r.id,
         query: r.query,
         queryType: r.query_type,
@@ -128,7 +137,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         createdAt: r.created_at,
         userEmail: r.user_email ?? null,
         userName: r.user_name ?? null,
-      })),
+        valueScore: valueResult?.score ?? null,
+        valueTier: valueResult?.tier ?? null,
+        valueReasons: valueResult?.reasons ?? [],
+        isAlertKeyword: valueResult?.isAlertKeyword ?? false,
+      };
+    });
+
+    return res.json({
+      records,
       pagination: {
         page,
         pageSize: PAGE_SIZE,
