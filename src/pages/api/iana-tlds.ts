@@ -8,6 +8,8 @@ export type TldInfo = {
   countryEn?: string;
   hasWhois: boolean;
   whoisServer?: string;
+  hasRdap: boolean;
+  rdapServer?: string;
 };
 
 export type IanaTldsResponse = {
@@ -284,21 +286,37 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const [ianaResp, serversData] = await Promise.all([
+    const [ianaResp, rdapResp, serversData] = await Promise.all([
       fetch("https://data.iana.org/TLD/tlds-alpha-by-domain.txt", {
-        headers: { "User-Agent": "RDAP+WHOIS/1.6 (domain lookup tool)" },
+        headers: { "User-Agent": "RDAP+WHOIS/1.6" },
         signal: AbortSignal.timeout(8000),
       }),
+      fetch("https://data.iana.org/rdap/dns.json", {
+        headers: { "User-Agent": "RDAP+WHOIS/1.6" },
+        signal: AbortSignal.timeout(8000),
+      }).catch(() => null),
       getAllCustomServers().catch(() => ({})),
     ]);
 
-    if (!ianaResp.ok) throw new Error("IANA fetch failed");
+    if (!ianaResp.ok) throw new Error("IANA TLD fetch failed");
 
     const text = await ianaResp.text();
     const ianaTlds = text
       .split("\n")
       .map((l) => l.trim().toLowerCase())
       .filter((l) => l && !l.startsWith("#"));
+
+    const rdapMap: Record<string, string> = {};
+    if (rdapResp && rdapResp.ok) {
+      const rdapData = await rdapResp.json();
+      if (Array.isArray(rdapData?.services)) {
+        for (const [[...tldList], [...urlList]] of rdapData.services as [string[], string[]][]) {
+          const url = urlList[0];
+          if (!url) continue;
+          for (const t of tldList) rdapMap[t.toLowerCase()] = url.replace(/\/$/, "");
+        }
+      }
+    }
 
     const serverMap = serversData as Record<string, unknown>;
 
@@ -316,6 +334,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (h) { hasWhois = true; whoisServer = String(h); }
       }
 
+      const rdapServer = rdapMap[tld];
+      const hasRdap = Boolean(rdapServer);
+
       const names = isCc ? CC_NAMES[tld] : undefined;
       return {
         tld,
@@ -324,6 +345,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         countryEn: names?.en,
         hasWhois,
         whoisServer,
+        hasRdap,
+        rdapServer,
       };
     });
 

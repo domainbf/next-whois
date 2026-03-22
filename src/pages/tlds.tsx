@@ -151,8 +151,8 @@ export default function TldsPage() {
           <div className="mt-10 pt-6 border-t border-border/40 text-center">
             <p className="text-[11px] text-muted-foreground/50">
               {isChinese
-                ? "点击任意后缀可直接查询示例域名 · 数据来源 IANA"
-                : "Click any TLD to run a sample lookup · Data source: IANA"}
+                ? "点击任意后缀可查询该后缀的 nic 域名 · 数据来源 IANA"
+                : "Click any TLD to look up its NIC domain · Data source: IANA"}
             </p>
           </div>
         </main>
@@ -171,9 +171,25 @@ const TldCard = React.memo(function TldCard({
   const isCc = entry.type === "cctld";
   const countryLabel = isChinese ? entry.country : entry.countryEn;
 
+  const serverLine = entry.hasWhois
+    ? entry.whoisServer
+    : entry.hasRdap
+    ? entry.rdapServer
+    : null;
+
+  const serverBadge = entry.hasWhois ? (
+    <span className="text-[9px] px-1 py-0 h-3.5 leading-3.5 rounded-sm bg-emerald-500/12 text-emerald-600 dark:text-emerald-400 border border-emerald-400/30 shrink-0 inline-flex items-center">
+      WHOIS
+    </span>
+  ) : entry.hasRdap ? (
+    <span className="text-[9px] px-1 py-0 h-3.5 leading-3.5 rounded-sm bg-blue-500/12 text-blue-600 dark:text-blue-400 border border-blue-400/30 shrink-0 inline-flex items-center">
+      RDAP
+    </span>
+  ) : null;
+
   return (
     <Link
-      href={`/${entry.tld}.com`}
+      href={`/nic.${entry.tld}`}
       className="glass-panel border border-border rounded-xl p-3 flex flex-col gap-1.5 hover:border-primary/30 hover:bg-muted/30 transition-all group block"
     >
       <div className="flex items-center justify-between gap-1">
@@ -191,20 +207,18 @@ const TldCard = React.memo(function TldCard({
         )}
       </div>
       <div className="flex items-center gap-1.5 min-h-[14px]">
-        {entry.hasWhois ? (
+        {serverBadge && serverLine ? (
           <>
-            <span className="text-[9px] px-1 py-0 h-3.5 leading-3.5 rounded-sm bg-emerald-500/12 text-emerald-600 dark:text-emerald-400 border border-emerald-400/30 shrink-0 inline-flex items-center">
-              WHOIS
-            </span>
-            {entry.whoisServer && (
-              <p className="text-[10px] text-muted-foreground truncate font-mono">
-                {entry.whoisServer}
-              </p>
-            )}
+            {serverBadge}
+            <p className="text-[10px] text-muted-foreground truncate font-mono">
+              {serverLine}
+            </p>
           </>
+        ) : serverBadge ? (
+          serverBadge
         ) : (
-          <p className="text-[10px] text-muted-foreground/50">
-            {isChinese ? "暂无 WHOIS" : "No WHOIS"}
+          <p className="text-[10px] text-muted-foreground/40">
+            {isChinese ? "暂无服务器" : "No server"}
           </p>
         )}
       </div>
