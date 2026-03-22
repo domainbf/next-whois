@@ -16,6 +16,13 @@ export interface SiteSettings {
   require_login: string;
   enable_feedback: string;
   enable_stamps: string;
+  enable_sponsor: string;
+  sponsor_page_title: string;
+  sponsor_page_desc: string;
+  sponsor_alipay_qr: string;
+  sponsor_wechat_qr: string;
+  sponsor_github_url: string;
+  sponsor_extra_links: string;
 }
 
 export const DEFAULT_SETTINGS: SiteSettings = {
@@ -34,6 +41,13 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   require_login: "",
   enable_feedback: "1",
   enable_stamps: "1",
+  enable_sponsor: "1",
+  sponsor_page_title: "赞助支持",
+  sponsor_page_desc: "感谢您对本项目的支持！您的赞助将帮助我们持续维护和改进服务。",
+  sponsor_alipay_qr: "",
+  sponsor_wechat_qr: "",
+  sponsor_github_url: "",
+  sponsor_extra_links: "",
 };
 
 const STORAGE_KEY = "next_whois_settings_ts";

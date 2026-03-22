@@ -20,6 +20,7 @@ import {
   RiLockLine,
   RiMapPinLine,
   RiInformationLine,
+  RiHeart3Line,
 } from "@remixicon/react";
 import { useTheme } from "next-themes";
 import { motion, AnimatePresence } from "framer-motion";
@@ -273,6 +274,7 @@ interface NavItem {
   icon: React.ReactNode;
   external?: boolean;
   description: string;
+  settingKey?: string;
 }
 
 const navItems: NavItem[] = [
@@ -325,12 +327,23 @@ const navItems: NavItem[] = [
     icon: <RiInformationLine className="h-6 w-6" />,
     description: "更新记录、支持后缀、友情链接",
   },
+  {
+    label: "赞助支持",
+    labelEn: "Sponsor",
+    href: "/sponsor",
+    icon: <RiHeart3Line className="h-6 w-6" />,
+    description: "支持项目持续运营",
+    settingKey: "enable_sponsor",
+  },
 ];
 
 export function NavDrawer() {
   const [open, setOpen] = React.useState(false);
   const settings = useSiteSettings();
   const logoText = settings.site_logo_text || "NEXT WHOIS";
+  const visibleNavItems = navItems.filter(item =>
+    !item.settingKey || !!(settings as unknown as Record<string, string>)[item.settingKey]
+  );
 
   return (
     <Drawer open={open} onOpenChange={setOpen}>
@@ -378,7 +391,7 @@ export function NavDrawer() {
           </div>
 
           <div className="grid grid-cols-3 gap-3">
-            {navItems.map((item) => (
+            {visibleNavItems.map((item) => (
               <DrawerClose key={item.href} asChild>
                 <Link href={item.href} className="touch-manipulation">
                   <motion.div

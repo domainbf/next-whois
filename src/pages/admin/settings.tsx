@@ -178,6 +178,7 @@ export default function AdminSettingsPage() {
                   { key: "require_login" as const, label: "登录才能搜索", desc: "未登录用户只能看到首页，搜索需要账户", onColor: "bg-amber-500", offColor: "bg-muted" },
                   { key: "enable_feedback" as const, label: "开放用户反馈", desc: "查询结果页显示「反馈问题」入口", onColor: "bg-emerald-500", offColor: "bg-muted" },
                   { key: "enable_stamps" as const, label: "开放品牌认领", desc: "用户可以申请为域名添加品牌标签", onColor: "bg-emerald-500", offColor: "bg-muted" },
+                  { key: "enable_sponsor" as const, label: "开放赞助页面", desc: "在导航菜单显示赞助页面入口", onColor: "bg-rose-500", offColor: "bg-muted" },
                 ] as const).map(({ key, label, desc, onColor, offColor }) => {
                   const enabled = form[key] === "1";
                   return (

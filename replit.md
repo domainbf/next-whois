@@ -45,6 +45,9 @@ A fast, modern WHOIS and RDAP lookup tool supporting domains, IPv4/IPv6, ASN, an
 - `src/pages/api/admin/reminders.ts` — Admin reminder management API
 - `src/pages/api/admin/feedback.ts` — Admin feedback management API (GET list, DELETE)
 - `src/pages/admin/feedback.tsx` — Feedback viewer: expandable cards with issue type badges, search, delete
+- `src/pages/admin/sponsors.tsx` — Sponsor management: add/edit/delete records, visibility toggle, stats, payment QR settings
+- `src/pages/api/admin/sponsors.ts` — Sponsor CRUD API (GET public with visible_only, POST/PUT/DELETE admin-only)
+- `src/pages/sponsor.tsx` — Public sponsor page: payment QR codes, sponsor list, cumulative stats
 
 ## Architecture
 

@@ -127,6 +127,19 @@ const CREATE_TABLES = [
     count      INTEGER      NOT NULL DEFAULT 0,
     reset_at   TIMESTAMPTZ  NOT NULL
   )`,
+  `CREATE TABLE IF NOT EXISTS sponsors (
+    id           VARCHAR(16)  PRIMARY KEY,
+    name         TEXT         NOT NULL,
+    avatar_url   TEXT,
+    amount       NUMERIC(10,2),
+    currency     TEXT         NOT NULL DEFAULT 'CNY',
+    message      TEXT,
+    sponsor_date DATE,
+    is_anonymous BOOLEAN      NOT NULL DEFAULT false,
+    is_visible   BOOLEAN      NOT NULL DEFAULT true,
+    platform     TEXT,
+    created_at   TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+  )`,
 ];
 
 const ALTER_COLUMNS = [
