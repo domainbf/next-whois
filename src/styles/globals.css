@@ -219,3 +219,24 @@ button {
 .safe-bottom {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
+
+/*
+ * Prevent iOS Safari from zooming the page when an input is focused.
+ * Safari zooms in whenever an input's computed font-size is below 16px.
+ * We force 16px on mobile; sm: breakpoint restores the designed smaller size.
+ */
+@media (max-width: 639px) {
+  input,
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="search"],
+  input[type="number"],
+  input[type="date"],
+  input[type="url"],
+  input[type="tel"],
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
