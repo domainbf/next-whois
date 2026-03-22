@@ -11,6 +11,12 @@ A fast, modern WHOIS and RDAP lookup tool supporting domains, IPv4/IPv6, ASN, an
 - **i18n**: next-i18next (EN, ZH, DE, RU, JA, FR, KO)
 - **Fonts**: Geist
 
+## Build / Deployment
+
+- **Config**: `next.config.js` (CommonJS, `require`/`module.exports`) — converted from `.mjs` to be compatible with Vercel's `sed`-based build command which patches `next.config.js`
+- **TypeScript errors**: `typescript: { ignoreBuildErrors: true }` is pre-applied in the config, so Vercel's sed patch is a harmless no-op
+- **Vercel build command**: `sed -i '...' next.config.js && node scripts/migrate.js && pnpm run build`
+
 ## Key Files
 
 - `src/lib/whois/lookup.ts` — WHOIS/RDAP orchestration, caching, error detection
