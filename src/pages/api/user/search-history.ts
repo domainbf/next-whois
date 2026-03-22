@@ -16,7 +16,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method === "GET") {
     const { data } = await supabase
       .from("search_history")
-      .select("query, query_type, created_at")
+      .select("query, query_type, created_at, reg_status")
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
       .limit(MAX_HISTORY);
@@ -26,12 +26,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         query: r.query,
         queryType: r.query_type,
         timestamp: new Date(r.created_at).getTime(),
+        regStatus: r.reg_status ?? "unknown",
       })),
     });
   }
 
   if (req.method === "POST") {
-    const { query, queryType } = req.body;
+    const { query, queryType, regStatus } = req.body;
     if (!query || typeof query !== "string") return res.status(400).json({ error: "query required" });
 
     const clean = query.trim().slice(0, 255);
@@ -44,12 +45,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .eq("query", clean);
 
     const id = randomBytes(8).toString("hex");
-    await supabase.from("search_history").insert({
+    const insertData: Record<string, unknown> = {
       id,
       user_id: userId,
       query: clean,
       query_type: queryType ?? "domain",
-    });
+    };
+    // reg_status column may or may not exist; write it and ignore error if column absent
+    if (regStatus) insertData.reg_status = regStatus;
+    await supabase.from("search_history").insert(insertData);
 
     const { data: all } = await supabase
       .from("search_history")

@@ -23,6 +23,15 @@ type Subscription = {
   active: boolean; created_at: string; cancel_token: string;
 };
 
+type RegStatus = "registered" | "unregistered" | "reserved" | "error" | "unknown";
+
+type ServerHistoryItem = {
+  query: string;
+  queryType: string;
+  timestamp: number;
+  regStatus: RegStatus;
+};
+
 type Stamp = {
   id: string; domain: string; tag_name: string; tag_style: string;
   link: string | null; description: string | null; nickname: string;
@@ -240,7 +249,7 @@ export default function DashboardPage() {
   const [tab, setTab] = React.useState<"subscriptions" | "stamps" | "account" | "history">("subscriptions");
   const [subscriptions, setSubscriptions] = React.useState<Subscription[]>([]);
   const [stamps, setStamps] = React.useState<Stamp[]>([]);
-  const [searchHistory, setSearchHistory] = React.useState<HistoryItem[]>([]);
+  const [searchHistory, setSearchHistory] = React.useState<ServerHistoryItem[]>([]);
   const [loadingData, setLoadingData] = React.useState(false);
   const [loadingHistory, setLoadingHistory] = React.useState(false);
   const [editingStamp, setEditingStamp] = React.useState<Stamp | null>(null);
@@ -582,7 +591,7 @@ export default function DashboardPage() {
 
           {/* ── Search History ── */}
           {tab === "history" && (
-            <motion.div key="history" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.18 }} className="space-y-3">
+            <motion.div key="history" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }} className="space-y-3">
               <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">搜索历史（最近 50 条）</p>
               {loadingHistory ? (
                 <div className="flex justify-center py-8"><RiLoader4Line className="w-5 h-5 animate-spin text-muted-foreground" /></div>
@@ -593,26 +602,39 @@ export default function DashboardPage() {
                 </div>
               ) : (
                 <div className="glass-panel border border-border rounded-2xl divide-y divide-border/50">
-                  {searchHistory.map((item, i) => (
-                    <Link key={i} href={`/${item.query}`}
-                      className="flex items-center gap-3 px-4 py-3 hover:bg-muted/40 transition-colors first:rounded-t-2xl last:rounded-b-2xl">
-                      <div className="w-7 h-7 rounded-lg bg-muted flex items-center justify-center shrink-0">
-                        <RiSearchLine className="w-3.5 h-3.5 text-muted-foreground" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-mono truncate">{item.query}</p>
-                        <p className="text-[11px] text-muted-foreground mt-0.5">
+                  {searchHistory.map((item, i) => {
+                    const rs = item.regStatus ?? "unknown";
+                    const statusCfg: Record<string, { label: string; cls: string }> = {
+                      registered:   { label: "已注册", cls: "text-emerald-600 bg-emerald-50 border-emerald-300/60 dark:bg-emerald-950/30 dark:border-emerald-700/40" },
+                      unregistered: { label: "未注册", cls: "text-sky-600 bg-sky-50 border-sky-300/60 dark:bg-sky-950/30 dark:border-sky-700/40" },
+                      reserved:     { label: "保留",   cls: "text-amber-600 bg-amber-50 border-amber-300/60 dark:bg-amber-950/30 dark:border-amber-700/40" },
+                      error:        { label: "查询失败", cls: "text-rose-600 bg-rose-50 border-rose-300/60 dark:bg-rose-950/30 dark:border-rose-700/40" },
+                      unknown:      { label: "未知",   cls: "text-muted-foreground bg-muted border-border" },
+                    };
+                    const cfg = statusCfg[rs] ?? statusCfg.unknown;
+                    const d = new Date(item.timestamp);
+                    const ts = `${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+                    return (
+                      <Link key={i} href={`/${item.query}`}
+                        className="flex items-center gap-2.5 px-3.5 py-2.5 hover:bg-muted/40 transition-colors first:rounded-t-2xl last:rounded-b-2xl">
+                        <div className="w-6 h-6 rounded-md bg-muted flex items-center justify-center shrink-0">
+                          <RiSearchLine className="w-3 h-3 text-muted-foreground" />
+                        </div>
+                        <span className="text-sm font-mono truncate flex-1 min-w-0">{item.query}</span>
+                        {item.queryType === "domain" && (
+                          <span className={`shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-md border ${cfg.cls}`}>
+                            {cfg.label}
+                          </span>
+                        )}
+                        <span className="shrink-0 text-[11px] text-muted-foreground tabular-nums whitespace-nowrap">
                           {QUERY_TYPE_LABEL[item.queryType] ?? item.queryType}
                           {" · "}
-                          {new Date(item.timestamp).toLocaleString("zh-CN", {
-                            month: "2-digit", day: "2-digit",
-                            hour: "2-digit", minute: "2-digit",
-                          })}
-                        </p>
-                      </div>
-                      <RiExternalLinkLine className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                    </Link>
-                  ))}
+                          {ts}
+                        </span>
+                        <RiExternalLinkLine className="w-3 h-3 text-muted-foreground/50 shrink-0" />
+                      </Link>
+                    );
+                  })}
                 </div>
               )}
             </motion.div>

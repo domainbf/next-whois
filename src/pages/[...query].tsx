@@ -2666,10 +2666,17 @@ export default function LookupPage({
     if (status) {
       addHistory(target);
       if (session?.user) {
+        // Determine registration status from available signals
+        const regStatus: string =
+          status && result ? "registered" :
+          dnsProbe?.registrationStatus === "unregistered" ? "unregistered" :
+          dnsProbe?.registrationStatus === "registered" ? "registered" :
+          !status ? "error" : "unknown";
+
         fetch("/api/user/search-history", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ query: target, queryType }),
+          body: JSON.stringify({ query: target, queryType, regStatus }),
         }).catch(() => {});
       }
     }
