@@ -1,16 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { one, run, isDbReady } from "@/lib/db-query";
-import dns from "dns/promises";
 
-// ─── Resolvers ───────────────────────────────────────────────────────────────
-
-const UDP_RESOLVERS = [
-  { name: "Google DNS",   ip: "8.8.8.8" },
-  { name: "Cloudflare",  ip: "1.1.1.1" },
-  { name: "Quad9",       ip: "9.9.9.9" },
-  { name: "OpenDNS",     ip: "208.67.222.222" },
-  { name: "System DNS",  ip: "" },
-] as const;
+// ─── DoH Resolvers only (UDP port 53 is blocked in most server environments) ──
 
 const DOH_RESOLVERS = [
   {
@@ -26,14 +17,13 @@ const DOH_RESOLVERS = [
     url: (h: string) => `https://dns.quad9.net:5053/dns-query?name=${encodeURIComponent(h)}&type=TXT`,
   },
   {
-    name: "NextDNS DoH",
-    url: (h: string) => `https://dns.nextdns.io/dns-query?name=${encodeURIComponent(h)}&type=TXT`,
+    name: "AdGuard DoH",
+    url: (h: string) => `https://dns.adguard-dns.com/dns-query?name=${encodeURIComponent(h)}&type=TXT`,
   },
 ] as const;
 
-const UDP_TIMEOUT_MS  = 2500;
-const DOH_TIMEOUT_MS  = 6000;
-const HTTP_TIMEOUT_MS = 6000;
+const DOH_TIMEOUT_MS  = 8000;
+const HTTP_TIMEOUT_MS = 8000;
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -51,38 +41,6 @@ function tokenMatch(records: string[], expected: string): { found: boolean; exac
     if (norm.includes(expected)) return { found: true, exactMatch: false, nearMatch: true, matchedRecord: norm };
   }
   return { found: false, exactMatch: false, nearMatch: false, matchedRecord: null };
-}
-
-async function queryUDP(
-  host: string, resolverIp: string, timeoutMs: number
-): Promise<{ records: string[]; latencyMs: number; error?: string }> {
-  const start = Date.now();
-  try {
-    const raw = await Promise.race([
-      (async () => {
-        if (resolverIp) {
-          const r = new dns.Resolver();
-          r.setServers([resolverIp]);
-          return r.resolveTxt(host);
-        }
-        return dns.resolveTxt(host);
-      })(),
-      new Promise<never>((_, rej) =>
-        setTimeout(() => rej(Object.assign(new Error("timeout"), { code: "ETIMEOUT" })), timeoutMs)
-      ),
-    ]);
-    const records = raw.map(parts => parts.join(""));
-    return { records, latencyMs: Date.now() - start };
-  } catch (err: any) {
-    const code = err.code ?? "";
-    const error =
-      code === "ETIMEOUT" || err.message === "timeout" ? "timeout" :
-      code === "ENODATA" || code === "ENOTFOUND"       ? "no_record" :
-      code === "ESERVFAIL" || code === "EREFUSED"      ? "servfail" :
-      code === "ECONNREFUSED"                           ? "udp_blocked" :
-                                                          "dns_error";
-    return { records: [], latencyMs: Date.now() - start, error };
-  }
 }
 
 async function queryDoH(
@@ -155,7 +113,7 @@ async function checkHttpFile(
 
 interface ResolverResult {
   name: string;
-  proto: "udp" | "doh";
+  proto: "doh";
   latencyMs: number;
   found: boolean;
   nearMatch: boolean;
@@ -197,19 +155,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const expectedValue = `next-whois-verify=${verifyToken}`;
   const txtHost       = `_next-whois.${cleanDomain}`;
 
-  const [udpResults, dohResults, httpResult] = await Promise.all([
-    Promise.all(
-      UDP_RESOLVERS.map(async (r): Promise<ResolverResult> => {
-        const { records, latencyMs, error } = await queryUDP(txtHost, r.ip, UDP_TIMEOUT_MS);
-        const match = tokenMatch(records, expectedValue);
-        return {
-          name: r.name, proto: "udp", latencyMs,
-          found: match.found, nearMatch: match.nearMatch,
-          records: records.slice(0, 5),
-          error: error ?? null,
-        };
-      })
-    ),
+  const [dohResults, httpResult] = await Promise.all([
     Promise.all(
       DOH_RESOLVERS.map(async (r): Promise<ResolverResult> => {
         const { records, latencyMs, error } = await queryDoH(r.url, txtHost, DOH_TIMEOUT_MS);
@@ -225,15 +171,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     checkHttpFile(cleanDomain, expectedValue),
   ]);
 
-  const allResolverResults = [...udpResults, ...dohResults];
+  const allResolverResults = dohResults;
   const dnsVerified = allResolverResults.some(r => r.found);
   const verified    = dnsVerified || httpResult.found;
 
-  const udpBlocked     = udpResults.every(r => r.error === "udp_blocked" || r.error === "timeout");
   const anyNearMatch   = allResolverResults.some(r => r.nearMatch) || httpResult.nearMatch;
   const anyRecordFound = allResolverResults.some(r => r.records.length > 0);
   const allDnsError    = allResolverResults.every(r =>
-    r.error === "dns_error" || r.error === "timeout" || r.error === "servfail" || r.error === "udp_blocked"
+    r.error === "dns_error" || r.error === "timeout" || r.error === "servfail"
   );
 
   if (verified) {
@@ -252,7 +197,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   return res.status(200).json({
     verified: false,
     dnsError: allDnsError,
-    udpBlocked,
     anyNearMatch,
     anyRecordFound,
     resolvers: allResolverResults,

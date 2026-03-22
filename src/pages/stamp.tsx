@@ -110,6 +110,16 @@ function clearSession(domain: string) {
   try { localStorage.removeItem(getSessionKey(domain)); } catch {}
 }
 
+function loadUserPrefs(): { nickname: string; email: string } | null {
+  if (typeof window === "undefined") return null;
+  try { const raw = localStorage.getItem("stamp_user_prefs"); return raw ? JSON.parse(raw) : null; } catch { return null; }
+}
+
+function saveUserPrefs(nickname: string, email: string) {
+  if (typeof window === "undefined") return;
+  try { localStorage.setItem("stamp_user_prefs", JSON.stringify({ nickname, email })); } catch {}
+}
+
 const STEP_LABELS: { key: Step }[] = [
   { key: "form" },
   { key: "verify" },
@@ -212,11 +222,23 @@ export default function StampPage() {
   React.useEffect(() => {
     if (!domain || hydrated) return;
     const saved = loadSession(domain);
+    const prefs = loadUserPrefs();
     if (saved) {
       const restoredStep = saved.step === "done" ? "form" : saved.step;
       setStep(restoredStep);
-      setForm(saved.form || defaultForm);
+      const restoredForm = saved.form || defaultForm;
+      // Fallback: fill email/nickname from global prefs if the saved form is missing them
+      if (!restoredForm.email && prefs?.email) restoredForm.email = prefs.email;
+      if (!restoredForm.nickname && prefs?.nickname) restoredForm.nickname = prefs.nickname;
+      setForm(restoredForm);
       setSubmitResult(saved.submitResult || null);
+    } else if (prefs) {
+      // No domain session but we have saved user prefs — prefill contact info
+      setForm(prev => ({
+        ...prev,
+        nickname: prefs.nickname || prev.nickname,
+        email: prefs.email || prev.email,
+      }));
     }
     setHydrated(true);
   }, [domain]);
@@ -226,6 +248,13 @@ export default function StampPage() {
     if (step === "done") { clearSession(domain); return; }
     saveSession(domain, { step, form, submitResult });
   }, [step, form, submitResult, domain, hydrated]);
+
+  // Prefill email from NextAuth session if not already set
+  const sessionUserEmail = session?.user?.email ?? null;
+  React.useEffect(() => {
+    if (!hydrated || !sessionUserEmail) return;
+    setForm(prev => ({ ...prev, email: prev.email || sessionUserEmail }));
+  }, [hydrated, sessionUserEmail]);
 
   React.useEffect(() => {
     if (!domain) return;
@@ -282,6 +311,7 @@ export default function StampPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
+      saveUserPrefs(form.nickname.trim(), form.email.trim());
       setSubmitResult({ id: data.id, txtRecord: data.txtRecord, txtValue: data.txtValue });
       goToStep("verify");
     } catch (err: any) {
@@ -398,7 +428,14 @@ export default function StampPage() {
   }, [submitResult, domain]);
 
   React.useEffect(() => {
-    if (step === "verify" && submitResult) handleVerify(true);
+    if (step === "verify" && submitResult) {
+      // Don't verify immediately — give user time to set up the DNS record first.
+      // Start a countdown and only verify after POLL_SCHEDULE[0] seconds.
+      pollAttemptRef.current = 0;
+      setPollAttempt(0);
+      setVerifyState("idle");
+      startCountdown(POLL_SCHEDULE[0], () => handleVerify(true));
+    }
     return () => stopPolling();
   }, [step, submitResult?.id]);
 
@@ -970,36 +1007,29 @@ export default function StampPage() {
                                       {quickTxtResult.resolvers.map((r) => {
                                         const recCount = (r.flat || r.records || []).length;
                                         const hasRecords = recCount > 0;
-                                        const isDoh = r.proto === "doh" || (r as any).kind === "doh";
                                         return (
                                           <div key={r.name} className={cn(
                                             "rounded-lg border px-2.5 py-2 flex items-center gap-2",
                                             hasRecords ? "border-emerald-300/60 bg-emerald-50/50 dark:bg-emerald-950/25"
-                                              : r.error === "timeout" || r.error === "udp_blocked" ? "border-amber-200/50 bg-amber-50/30 dark:bg-amber-950/15"
+                                              : r.error === "timeout" ? "border-amber-200/50 bg-amber-50/30 dark:bg-amber-950/15"
                                               : "border-border/50 bg-muted/10"
                                           )}>
                                             <div className={cn("shrink-0 w-5 h-5 rounded-md flex items-center justify-center",
-                                              hasRecords ? "bg-emerald-500/10" : r.error ? "bg-amber-500/10" : "bg-muted/30"
+                                              hasRecords ? "bg-emerald-500/10" : r.error === "timeout" ? "bg-amber-500/10" : "bg-muted/30"
                                             )}>
                                               {hasRecords ? <RiCheckLine className="w-3 h-3 text-emerald-500" />
-                                                : r.error ? <RiTimeLine className="w-3 h-3 text-amber-500" />
-                                                : <RiWifiLine className="w-3 h-3 text-muted-foreground/30" />}
+                                                : r.error === "timeout" ? <RiTimeLine className="w-3 h-3 text-amber-500" />
+                                                : <RiCloudLine className="w-3 h-3 text-muted-foreground/30" />}
                                             </div>
                                             <div className="min-w-0 flex-1">
-                                              <div className="flex items-center gap-1">
-                                                <p className={cn("text-[10px] font-semibold truncate",
-                                                  hasRecords ? "text-emerald-700 dark:text-emerald-300"
-                                                    : r.error ? "text-amber-600 dark:text-amber-400"
-                                                    : "text-muted-foreground"
-                                                )}>{r.name}</p>
-                                                {isDoh && (
-                                                  <span className="shrink-0 text-[8px] font-bold px-1 py-px rounded bg-sky-100 dark:bg-sky-900/40 text-sky-600 dark:text-sky-400 leading-none">DoH</span>
-                                                )}
-                                              </div>
+                                              <p className={cn("text-[10px] font-semibold truncate",
+                                                hasRecords ? "text-emerald-700 dark:text-emerald-300"
+                                                  : r.error === "timeout" ? "text-amber-600 dark:text-amber-400"
+                                                  : "text-muted-foreground"
+                                              )}>{r.name}</p>
                                               <p className="text-[10px] text-muted-foreground/50 mt-0.5">
                                                 {hasRecords ? `${r.latencyMs}ms · ${recCount} 条`
                                                   : r.error === "timeout" ? (isZh ? "超时" : "timeout")
-                                                  : r.error === "udp_blocked" ? (isZh ? "UDP被阻" : "UDP blocked")
                                                   : r.error === "no_record" ? (isZh ? "无记录" : "no record")
                                                   : r.error ? r.error
                                                   : (isZh ? "未找到" : "not found")}
@@ -1053,29 +1083,23 @@ export default function StampPage() {
                               </div>
                             </div>
 
-                            {/* DNS status grid */}
+                            {/* DNS status grid — DoH only */}
                             <div>
                               <div className="flex items-center justify-between mb-2">
                                 <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
-                                  <RiWifiLine className="w-3 h-3" />
+                                  <RiCloudLine className="w-3 h-3" />
                                   {s("parallel_check")}
                                 </p>
-                                <div className="flex items-center gap-2 text-[10px] text-muted-foreground/50">
-                                  <span className="flex items-center gap-0.5"><RiServerLine className="w-2.5 h-2.5" />UDP</span>
-                                  <span className="flex items-center gap-0.5"><RiCloudLine className="w-2.5 h-2.5" />DoH</span>
-                                </div>
+                                <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground/50">
+                                  <RiCloudLine className="w-2.5 h-2.5" />DoH
+                                </span>
                               </div>
                               {(() => {
                                 const PLACEHOLDER_RESOLVERS = [
-                                  { name: "Google DNS",    proto: "udp" },
-                                  { name: "Cloudflare",    proto: "udp" },
-                                  { name: "Quad9",         proto: "udp" },
-                                  { name: "OpenDNS",       proto: "udp" },
-                                  { name: "System DNS",    proto: "udp" },
-                                  { name: "Google DoH",    proto: "doh" },
+                                  { name: "Google DoH",     proto: "doh" },
                                   { name: "Cloudflare DoH", proto: "doh" },
-                                  { name: "Quad9 DoH",     proto: "doh" },
-                                  { name: "NextDNS DoH",   proto: "doh" },
+                                  { name: "Quad9 DoH",      proto: "doh" },
+                                  { name: "AdGuard DoH",    proto: "doh" },
                                 ];
                                 const isLoading = verifyState === "loading";
                                 const displayList = isLoading && resolvers.length === 0
@@ -1085,7 +1109,6 @@ export default function StampPage() {
                                   <div className="grid grid-cols-2 gap-1.5">
                                     {displayList.map((item, i) => {
                                       const r = resolvers[i];
-                                      const isDoh = (item as any).proto === "doh";
                                       return (
                                         <div
                                           key={item.name}
@@ -1095,7 +1118,7 @@ export default function StampPage() {
                                               ? "border-emerald-300/60 bg-emerald-50/50 dark:bg-emerald-950/25"
                                               : r?.nearMatch
                                               ? "border-orange-300/60 bg-orange-50/40 dark:bg-orange-950/20"
-                                              : r?.error === "timeout" || r?.error === "udp_blocked"
+                                              : r?.error === "timeout"
                                               ? "border-amber-200/50 bg-amber-50/30 dark:bg-amber-950/15"
                                               : "border-border/50 bg-muted/15"
                                           )}
@@ -1104,7 +1127,7 @@ export default function StampPage() {
                                             "shrink-0 w-6 h-6 rounded-md flex items-center justify-center",
                                             r?.found ? "bg-emerald-500/10"
                                               : r?.nearMatch ? "bg-orange-500/10"
-                                              : r?.error === "timeout" || r?.error === "udp_blocked" ? "bg-amber-500/10"
+                                              : r?.error === "timeout" ? "bg-amber-500/10"
                                               : "bg-muted/40"
                                           )}>
                                             {isLoading
@@ -1113,11 +1136,9 @@ export default function StampPage() {
                                               ? <RiCheckLine className="w-3 h-3 text-emerald-500" />
                                               : r?.nearMatch
                                               ? <RiAlertLine className="w-3 h-3 text-orange-500" />
-                                              : r?.error === "timeout" || r?.error === "udp_blocked"
+                                              : r?.error === "timeout"
                                               ? <RiTimeLine className="w-3 h-3 text-amber-500" />
-                                              : isDoh
-                                              ? <RiCloudLine className="w-3 h-3 text-muted-foreground/30" />
-                                              : <RiWifiLine className="w-3 h-3 text-muted-foreground/30" />
+                                              : <RiCloudLine className="w-3 h-3 text-muted-foreground/30" />
                                             }
                                           </div>
                                           <div className="min-w-0 flex-1">
@@ -1125,7 +1146,7 @@ export default function StampPage() {
                                               "text-[11px] font-semibold leading-none truncate",
                                               r?.found ? "text-emerald-700 dark:text-emerald-300"
                                                 : r?.nearMatch ? "text-orange-600 dark:text-orange-400"
-                                                : r?.error === "timeout" || r?.error === "udp_blocked" ? "text-amber-600 dark:text-amber-400"
+                                                : r?.error === "timeout" ? "text-amber-600 dark:text-amber-400"
                                                 : "text-muted-foreground"
                                             )}>{item.name}</p>
                                             <p className="text-[10px] text-muted-foreground/50 mt-0.5">
@@ -1133,7 +1154,6 @@ export default function StampPage() {
                                                 : r?.found ? `${r.latencyMs}ms ✓`
                                                 : r?.nearMatch ? (isZh ? "记录不匹配" : "wrong token")
                                                 : r?.error === "timeout" ? s("timeout")
-                                                : r?.error === "udp_blocked" ? (isZh ? "UDP阻断" : "UDP blocked")
                                                 : r?.error === "servfail" ? (isZh ? "DNS拒绝" : "SERVFAIL")
                                                 : r?.error ? s("not_found_dns")
                                                 : s("waiting")}
@@ -1482,11 +1502,6 @@ export default function StampPage() {
                                 <p className="text-[11px] text-muted-foreground leading-relaxed">
                                   {s("fail_msg")}
                                 </p>
-                                {udpBlocked && (
-                                  <p className="text-[10px] text-amber-600 dark:text-amber-400">
-                                    {isZh ? "⚠ UDP DNS 被防火墙阻断，仅依赖 DoH 查询（正常现象，不影响验证）" : "⚠ UDP DNS blocked by firewall; using DoH only — normal in serverless environments"}
-                                  </p>
-                                )}
                               </div>
                             </motion.div>
                           )}
@@ -1580,12 +1595,19 @@ export default function StampPage() {
                             </div>
                           )}
                           {pollAttempt === 0 && countdown > 0 && verifyState !== "loading" && (
-                            <p className="text-[11px] text-muted-foreground/70 text-center flex items-center justify-center gap-1">
-                              <RiTimeLine className="w-3 h-3" />
-                              {countdown >= 60
-                                ? (isZh ? `${Math.ceil(countdown / 60)} 分钟后自动检测` : `next check in ${Math.ceil(countdown / 60)}m`)
-                                : (isZh ? `${countdown} 秒后自动检测` : `next check in ${countdown}s`)}
-                            </p>
+                            <div className="rounded-lg bg-sky-50/60 dark:bg-sky-950/20 border border-sky-200/50 px-3 py-2 flex items-center gap-2">
+                              <RiTimeLine className="w-3.5 h-3.5 text-sky-500 shrink-0" />
+                              <p className="text-[11px] text-sky-700 dark:text-sky-300 flex-1">
+                                {isZh
+                                  ? "请先按上方说明设置 TXT 记录，设置完成后点击【立即验证】或等待自动检测"
+                                  : "Add the TXT record above first, then click Verify Now or wait for the auto-check"}
+                              </p>
+                              <span className="shrink-0 text-[10px] font-mono text-sky-500 tabular-nums">
+                                {countdown >= 60
+                                  ? `${Math.ceil(countdown / 60)}m`
+                                  : `${countdown}s`}
+                              </span>
+                            </div>
                           )}
                         </div>
                       </div>
