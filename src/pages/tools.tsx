@@ -73,7 +73,6 @@ export default function ToolsPage() {
   };
 
   const sortedCategories = TOOL_CATEGORIES.map((cat) => {
-    if (cat.id !== "common") return cat;
     const sorted = [...cat.tools].sort(
       (a, b) => (clicks[b.url] || 0) - (clicks[a.url] || 0)
     );
@@ -116,7 +115,7 @@ export default function ToolsPage() {
                   <h2 className="text-base font-bold tracking-tight">
                     {t(cat.titleKey as Parameters<typeof t>[0])}
                   </h2>
-                  {cat.id === "common" && (
+                  {clicks && Object.keys(clicks).length > 0 && (
                     <span className="inline-flex items-center gap-0.5 text-[9px] text-orange-500/70 font-medium">
                       <RiFireLine className="w-3 h-3" />
                       {isChinese ? "按点击排序" : "sorted by clicks"}
@@ -146,7 +145,7 @@ export default function ToolsPage() {
                             {tool.name}
                           </span>
                           <div className="flex items-center gap-1 shrink-0">
-                            {cat.id === "common" && clickCount > 0 && (
+                            {clickCount > 0 && (
                               <span className="text-[9px] text-orange-500/60 tabular-nums">
                                 {clickCount}
                               </span>
