@@ -110,6 +110,13 @@ const ALTER_COLUMNS = [
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAULT false`,
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verify_token TEXT`,
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verify_expires TIMESTAMPTZ`,
+  `ALTER TABLE search_history ALTER COLUMN user_id DROP NOT NULL`,
+  `CREATE TABLE IF NOT EXISTS tld_fallback_stats (
+    tld           TEXT         PRIMARY KEY,
+    fail_count    INTEGER      NOT NULL DEFAULT 0,
+    use_fallback  BOOLEAN      NOT NULL DEFAULT false,
+    last_fail_at  TIMESTAMPTZ
+  )`,
 ];
 
 function getConnectionString(): { url: string; source: string } | null {

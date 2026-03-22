@@ -2,6 +2,8 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { lookupWhoisWithCache } from "@/lib/whois/lookup";
 import { WhoisAnalyzeResult } from "@/lib/whois/types";
 import { DnsProbeResult } from "@/lib/whois/dns-check";
+import { run, isDbReady } from "@/lib/db-query";
+import { randomBytes } from "crypto";
 
 export const config = {
   maxDuration: 30,
@@ -17,6 +19,36 @@ type Data = {
   dnsProbe?: DnsProbeResult;
   registryUrl?: string;
 };
+
+async function saveAnonymousSearchRecord(
+  query: string,
+  result: WhoisAnalyzeResult,
+): Promise<void> {
+  if (!(await isDbReady())) return;
+  try {
+    const id = randomBytes(8).toString("hex");
+    const queryType = result.domain ? "domain" : "ip";
+    const regStatus = result.expirationDate && result.expirationDate !== "Unknown"
+      ? "registered"
+      : result.status?.some(s => s.status?.toLowerCase().includes("active")) ? "registered"
+      : null;
+
+    await run(
+      `INSERT INTO search_history
+         (id, user_id, query, query_type, reg_status, expiration_date, remaining_days)
+       VALUES ($1, NULL, $2, $3, $4, $5, $6)
+       ON CONFLICT DO NOTHING`,
+      [
+        id,
+        query.toLowerCase().trim(),
+        queryType,
+        regStatus,
+        result.expirationDate !== "Unknown" ? result.expirationDate : null,
+        result.remainingDays ?? null,
+      ],
+    );
+  } catch {}
+}
 
 export default async function handler(
   req: NextApiRequest,
@@ -34,6 +66,10 @@ export default async function handler(
     await lookupWhoisWithCache(query);
   if (!status) {
     return res.status(500).json({ time, status, error, dnsProbe, registryUrl });
+  }
+
+  if (result && !cached) {
+    saveAnonymousSearchRecord(query, result).catch(() => {});
   }
 
   res.setHeader("Cache-Control", "s-maxage=3600, stale-while-revalidate=86400");

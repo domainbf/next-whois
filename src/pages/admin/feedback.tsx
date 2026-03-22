@@ -20,11 +20,11 @@ type FeedbackItem = {
 };
 
 const ISSUE_LABELS: Record<string, { label: string; color: string }> = {
-  wrong_data: { label: "数据错误", color: "bg-red-100 dark:bg-red-950/30 text-red-600 dark:text-red-400" },
-  missing_data: { label: "数据缺失", color: "bg-orange-100 dark:bg-orange-950/30 text-orange-600 dark:text-orange-400" },
-  slow: { label: "查询慢", color: "bg-yellow-100 dark:bg-yellow-950/30 text-yellow-600 dark:text-yellow-400" },
-  ui_bug: { label: "界面问题", color: "bg-blue-100 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400" },
-  other: { label: "其他", color: "bg-muted text-muted-foreground" },
+  inaccurate:  { label: "数据不准确",  color: "bg-red-100 dark:bg-red-950/30 text-red-600 dark:text-red-400" },
+  incomplete:  { label: "数据不完整",  color: "bg-orange-100 dark:bg-orange-950/30 text-orange-600 dark:text-orange-400" },
+  outdated:    { label: "数据已过期",  color: "bg-yellow-100 dark:bg-yellow-950/30 text-yellow-600 dark:text-yellow-400" },
+  parse_error: { label: "解析错误",    color: "bg-blue-100 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400" },
+  other:       { label: "其他",        color: "bg-muted text-muted-foreground" },
 };
 
 export default function AdminFeedbackPage() {

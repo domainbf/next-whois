@@ -2,6 +2,8 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { sendEmail, feedbackHtml } from "@/lib/email";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { ADMIN_EMAIL } from "@/lib/admin-shared";
+import { run, isDbReady } from "@/lib/db-query";
+import { randomBytes } from "crypto";
 
 const ISSUE_LABELS: Record<string, string> = {
   inaccurate: "数据不准确",
@@ -73,6 +75,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       ts,
     }),
   });
+
+  if (await isDbReady()) {
+    const id = randomBytes(8).toString("hex");
+    await run(
+      `INSERT INTO feedback (id, query, query_type, issue_types, description, email)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [
+        id,
+        cleanQuery,
+        String(queryType || "domain"),
+        validatedIssues.join(","),
+        cleanDescription || null,
+        cleanEmail || null,
+      ],
+    ).catch(() => {});
+  }
 
   return res.status(200).json({ ok: true });
 }

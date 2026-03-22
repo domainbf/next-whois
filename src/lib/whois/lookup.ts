@@ -19,6 +19,7 @@ import { probeDomain } from "@/lib/whois/dns-check";
 import { lookupNicBa } from "@/lib/whois/http-scrapers/nic-ba";
 import { lookupYisi } from "@/lib/whois/yisi-fallback";
 import { lookupTianhu } from "@/lib/whois/tianhu-fallback";
+import { isTldFallbackEnabled, recordTldNativeFailure, recordTldNativeSuccess } from "@/lib/whois/tld-fallback-gate";
 
 class ScraperRequiredError extends Error {
   registryUrl: string;
@@ -537,6 +538,7 @@ export async function lookupWhois(domain: string): Promise<WhoisResult> {
       }
       result.rawRdapContent = rdapRaw!;
 
+      recordTldNativeSuccess(domain).catch(() => {});
       return {
         time: elapsed(),
         status: true,
@@ -574,17 +576,23 @@ export async function lookupWhois(domain: string): Promise<WhoisResult> {
   }
 
   // Try tian.hu and yisi.yun in parallel as fallbacks; only for domain queries.
+  // Only triggered when the TLD has failed native lookup enough times to enable fallback.
   async function tryYisiOrFail(
     error: string,
     registryUrl?: string,
   ): Promise<WhoisResult> {
     if (isDomainQuery) {
-      const [tianhuResult, yisiResult] = await Promise.all([
-        lookupTianhu(domain).catch(() => null),
-        lookupYisi(domain).catch(() => null),
-      ]);
-      if (tianhuResult) return tianhuResult;
-      if (yisiResult) return yisiResult;
+      const useFallback = await isTldFallbackEnabled(domain);
+      if (useFallback) {
+        const [tianhuResult, yisiResult] = await Promise.all([
+          lookupTianhu(domain).catch(() => null),
+          lookupYisi(domain).catch(() => null),
+        ]);
+        if (tianhuResult) return tianhuResult;
+        if (yisiResult) return yisiResult;
+      } else {
+        recordTldNativeFailure(domain).catch(() => {});
+      }
     }
     return failWithDns(error, registryUrl);
   }
@@ -600,7 +608,7 @@ export async function lookupWhois(domain: string): Promise<WhoisResult> {
       const whoisError = detectWhoisError(whoisRawData);
       if (whoisError || isEmptyResult(result)) {
         if (whoisError && isNotRegisteredWhoisResponse(whoisError)) {
-          if (isDomainQuery) {
+          if (isDomainQuery && await isTldFallbackEnabled(domain)) {
             const [tianhuResult, yisiResult] = await Promise.all([
               lookupTianhu(domain).catch(() => null),
               lookupYisi(domain).catch(() => null),
@@ -634,6 +642,7 @@ export async function lookupWhois(domain: string): Promise<WhoisResult> {
       }
       if (rdapRaw) result.rawRdapContent = rdapRaw;
 
+      recordTldNativeSuccess(domain).catch(() => {});
       return {
         time: elapsed(),
         status: true,
