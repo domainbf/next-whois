@@ -17,6 +17,8 @@ import {
   RiLogoutBoxLine,
   RiDashboardLine,
   RiShieldUserLine,
+  RiLockLine,
+  RiMapPinLine,
 } from "@remixicon/react";
 import { useTheme } from "next-themes";
 import { motion, AnimatePresence } from "framer-motion";
@@ -292,6 +294,27 @@ const navItems: NavItem[] = [
     href: "/",
     icon: <RiGlobalLine className="h-6 w-6" />,
     description: "查询域名、IP、ASN 等信息",
+  },
+  {
+    label: "DNS 查询",
+    labelEn: "DNS Lookup",
+    href: "/dns",
+    icon: <RiServerLine className="h-6 w-6" />,
+    description: "A/MX/TXT/SPF/DMARC 多解析器",
+  },
+  {
+    label: "SSL 证书",
+    labelEn: "SSL Cert",
+    href: "/ssl",
+    icon: <RiLockLine className="h-6 w-6" />,
+    description: "直连检测 HTTPS 证书详情",
+  },
+  {
+    label: "IP / ASN",
+    labelEn: "IP / ASN",
+    href: "/ip",
+    icon: <RiMapPinLine className="h-6 w-6" />,
+    description: "IP 归属地与 ASN 自治系统",
   },
 ];
 

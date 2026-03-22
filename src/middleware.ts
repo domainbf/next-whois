@@ -78,7 +78,10 @@ export function middleware(request: NextRequest) {
 
   const isStaticRoute =
     pathWithoutLocale.startsWith("/remind/") ||
-    pathWithoutLocale.startsWith("/stamp");
+    pathWithoutLocale.startsWith("/stamp") ||
+    pathWithoutLocale === "/dns" ||
+    pathWithoutLocale === "/ssl" ||
+    pathWithoutLocale === "/ip";
   if (isStaticRoute) return;
 
   const pathnameHasLocale = locales.some(
