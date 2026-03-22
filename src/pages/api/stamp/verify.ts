@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { getSupabase } from "@/lib/supabase";
+import { one, run, isDbReady } from "@/lib/db-query";
 import dns from "dns/promises";
 
 // ─── Resolvers ───────────────────────────────────────────────────────────────
@@ -39,8 +39,8 @@ const HTTP_TIMEOUT_MS = 8000;
 
 function normalizeRecord(raw: string): string {
   return raw
-    .replace(/^"+|"+$/g, "")  // strip surrounding quotes
-    .replace(/"\s*"/g, "")    // join multi-chunk DoH " " separators
+    .replace(/^"+|"+$/g, "")
+    .replace(/"\s*"/g, "")
     .trim();
 }
 
@@ -71,7 +71,6 @@ async function queryUDP(
         setTimeout(() => rej(Object.assign(new Error("timeout"), { code: "ETIMEOUT" })), timeoutMs)
       ),
     ]);
-    // Join chunks per record — crucial for multi-part TXT records
     const records = raw.map(parts => parts.join(""));
     return { records, latencyMs: Date.now() - start };
   } catch (err: any) {
@@ -102,7 +101,6 @@ async function queryDoH(
     const data = await res.json();
     const rcode: number = data.Status ?? 0;
     if (rcode !== 0) {
-      // NXDOMAIN=3, SERVFAIL=2, REFUSED=5
       return { records: [], latencyMs: Date.now() - start, error: rcode === 3 ? "no_record" : "servfail" };
     }
     const records: string[] = ((data.Answer as any[]) || [])
@@ -122,7 +120,6 @@ async function queryDoH(
 async function checkHttpFile(
   domain: string, expectedValue: string
 ): Promise<{ found: boolean; latencyMs: number; error: string | null; url: string; nearMatch: boolean }> {
-  // Try HTTPS first, fall back to HTTP
   for (const scheme of ["https", "http"] as const) {
     const url = `${scheme}://${domain}/.well-known/next-whois-verify.txt`;
     const start = Date.now();
@@ -132,7 +129,7 @@ async function checkHttpFile(
       const res = await fetch(url, { signal: ctrl.signal, redirect: "follow" });
       clearTimeout(timer);
       if (!res.ok) {
-        if (scheme === "https") continue; // try http
+        if (scheme === "https") continue;
         return { found: false, latencyMs: Date.now() - start, error: `HTTP ${res.status}`, url, nearMatch: false };
       }
       const body = (await res.text()).trim();
@@ -176,31 +173,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const cleanDomain = String(domain).toLowerCase().trim();
 
-  const supabase = getSupabase();
-  if (!supabase) return res.status(503).json({ error: "数据库未配置，品牌认领功能暂不可用" });
+  if (!(await isDbReady())) return res.status(503).json({ error: "数据库未配置，品牌认领功能暂不可用" });
 
-  // Admin override: ADMIN_VERIFY_SECRET in env
+  // Admin override
   if (req.body.adminSecret && process.env.ADMIN_VERIFY_SECRET &&
       req.body.adminSecret === process.env.ADMIN_VERIFY_SECRET) {
-    await supabase.from("stamps").update({ verified: true, verified_at: new Date().toISOString() }).eq("id", id);
+    await run(
+      "UPDATE stamps SET verified = true, verified_at = $1 WHERE id = $2",
+      [new Date().toISOString(), id],
+    );
     return res.status(200).json({ verified: true, adminOverride: true });
   }
 
-  const { data: stamp } = await supabase
-    .from("stamps")
-    .select("verify_token, verified")
-    .eq("id", id)
-    .eq("domain", cleanDomain)
-    .maybeSingle();
+  const stamp = await one<{ verify_token: string; verified: boolean }>(
+    "SELECT verify_token, verified FROM stamps WHERE id = $1 AND domain = $2",
+    [id, cleanDomain],
+  );
 
   if (!stamp) return res.status(404).json({ error: "Stamp not found" });
   if (stamp.verified) return res.status(200).json({ verified: true, already: true });
 
-  const verifyToken  = stamp.verify_token;
+  const verifyToken   = stamp.verify_token;
   const expectedValue = `next-whois-verify=${verifyToken}`;
-  const txtHost      = `_next-whois.${cleanDomain}`;
+  const txtHost       = `_next-whois.${cleanDomain}`;
 
-  // Run all checks in parallel
   const [udpResults, dohResults, httpResult] = await Promise.all([
     Promise.all(
       UDP_RESOLVERS.map(async (r): Promise<ResolverResult> => {
@@ -233,16 +229,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const dnsVerified = allResolverResults.some(r => r.found);
   const verified    = dnsVerified || httpResult.found;
 
-  // DNS health diagnosis
-  const udpBlocked = udpResults.every(r => r.error === "udp_blocked" || r.error === "timeout");
-  const anyNearMatch = allResolverResults.some(r => r.nearMatch) || httpResult.nearMatch;
+  const udpBlocked     = udpResults.every(r => r.error === "udp_blocked" || r.error === "timeout");
+  const anyNearMatch   = allResolverResults.some(r => r.nearMatch) || httpResult.nearMatch;
   const anyRecordFound = allResolverResults.some(r => r.records.length > 0);
-  const allDnsError = allResolverResults.every(r =>
+  const allDnsError    = allResolverResults.every(r =>
     r.error === "dns_error" || r.error === "timeout" || r.error === "servfail" || r.error === "udp_blocked"
   );
 
   if (verified) {
-    await supabase.from("stamps").update({ verified: true, verified_at: new Date().toISOString() }).eq("id", id);
+    await run(
+      "UPDATE stamps SET verified = true, verified_at = $1 WHERE id = $2",
+      [new Date().toISOString(), id],
+    );
     return res.status(200).json({
       verified: true,
       resolvers: allResolverResults,
@@ -255,8 +253,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     verified: false,
     dnsError: allDnsError,
     udpBlocked,
-    anyNearMatch,        // record found but token mismatch
-    anyRecordFound,      // any TXT records at all at this hostname
+    anyNearMatch,
+    anyRecordFound,
     resolvers: allResolverResults,
     httpCheck: httpResult,
     expected: expectedValue,

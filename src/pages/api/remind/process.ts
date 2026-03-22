@@ -1,5 +1,4 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { getSupabase } from "@/lib/supabase";
 import { randomBytes } from "crypto";
 import { sendEmail, reminderHtml, phaseEventHtml } from "@/lib/email";
 import {
@@ -9,6 +8,7 @@ import {
   REDEMPTION_KEY,
   PENDING_KEY,
 } from "@/lib/lifecycle";
+import { many, run, isDbReady } from "@/lib/db-query";
 
 const THRESHOLDS = [60, 30, 10, 5, 1];
 
@@ -20,28 +20,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(401).json({ error: "Unauthorized" });
   }
 
+  if (!(await isDbReady())) return res.status(500).json({ error: "Database unavailable" });
+
   try {
-    const supabase = getSupabase();
-    if (!supabase) return res.status(500).json({ error: "Database unavailable" });
+    const remindersRaw = await many<{
+      id: string; domain: string; email: string;
+      expiration_date: string | null; cancel_token: string; phase_flags: string | null;
+    }>(
+      `SELECT id, domain, email, expiration_date, cancel_token, phase_flags
+       FROM reminders WHERE active = true AND expiration_date IS NOT NULL`,
+    );
 
-    const { data: remindersRaw } = await supabase
-      .from("reminders")
-      .select("id, domain, email, expiration_date, cancel_token, phase_flags")
-      .eq("active", true)
-      .not("expiration_date", "is", null);
-
-    const reminderIds = (remindersRaw ?? []).map((r) => r.id);
-    const { data: logsRaw } = reminderIds.length > 0
-      ? await supabase.from("reminder_logs").select("reminder_id, days_before").in("reminder_id", reminderIds)
-      : { data: [] };
+    const reminderIds = remindersRaw.map((r) => r.id);
+    const logsRaw = reminderIds.length > 0
+      ? await many<{ reminder_id: string; days_before: number }>(
+          `SELECT reminder_id, days_before FROM reminder_logs WHERE reminder_id = ANY($1::varchar[])`,
+          [reminderIds],
+        )
+      : [];
 
     const logsByReminder: Record<string, number[]> = {};
-    for (const log of logsRaw ?? []) {
+    for (const log of logsRaw) {
       if (!logsByReminder[log.reminder_id]) logsByReminder[log.reminder_id] = [];
       logsByReminder[log.reminder_id].push(log.days_before);
     }
 
-    const reminders = (remindersRaw ?? []).map((r) => ({
+    const reminders = remindersRaw.map((r) => ({
       ...r,
       sent_keys: logsByReminder[r.id] ?? [],
     }));
@@ -59,20 +63,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const daysToExpiry = Math.ceil((expiry.getTime() - now.getTime()) / msPerDay);
         const sentKeys: number[] = reminder.sent_keys;
 
-        // ── Auto-deactivate when domain is fully past any recovery window ───
         const totalPostExpiry = cfg.grace + cfg.redemption + cfg.pendingDelete;
         const pastRecovery = (now.getTime() - expiry.getTime()) / msPerDay > (totalPostExpiry + 30);
         if (pastRecovery || phase === "dropped") {
-          await supabase.from("reminders").update({
-            active: false,
-            cancelled_at: now.toISOString(),
-            cancel_reason: "domain_dropped_or_expired",
-          }).eq("id", reminder.id);
+          await run(
+            `UPDATE reminders
+             SET active = false, cancelled_at = $1, cancel_reason = 'domain_dropped_or_expired'
+             WHERE id = $2`,
+            [now.toISOString(), reminder.id],
+          );
           results.expired++;
           continue;
         }
 
-        // Parse per-user phase flags (default all true if column missing/null)
         let phaseFlags = { grace: true, redemption: true, pendingDelete: true };
         try {
           if (reminder.phase_flags) phaseFlags = { ...phaseFlags, ...JSON.parse(reminder.phase_flags) };
@@ -80,10 +83,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         let didSend = false;
 
-        // ── Phase-event reminders ─────────────────────────────────────────
-        // Grace entered — only if this TLD has a grace period AND user opted in
-        if (phaseFlags.grace && phase === "grace" && cfg.grace > 0 && !sentKeys.includes(GRACE_KEY)) {
+        const upsertLog = async (daysKey: number) => {
           const logId = randomBytes(8).toString("hex");
+          await run(
+            `INSERT INTO reminder_logs (id, reminder_id, days_before)
+             VALUES ($1, $2, $3)
+             ON CONFLICT (reminder_id, days_before) DO NOTHING`,
+            [logId, reminder.id, daysKey],
+          );
+        };
+
+        if (phaseFlags.grace && phase === "grace" && cfg.grace > 0 && !sentKeys.includes(GRACE_KEY)) {
           await sendEmail({
             to: reminder.email,
             subject: `⏰ ${reminder.domain} 已进入宽限期，请尽快续费`,
@@ -95,17 +105,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               cancelToken: reminder.cancel_token,
             }),
           });
-          await supabase.from("reminder_logs").upsert(
-            { id: logId, reminder_id: reminder.id, days_before: GRACE_KEY },
-            { onConflict: "reminder_id,days_before", ignoreDuplicates: true }
-          );
+          await upsertLog(GRACE_KEY);
           results.sent++;
           didSend = true;
         }
 
-        // Redemption entered — only if this TLD has a redemption period AND user opted in
         if (!didSend && phaseFlags.redemption && phase === "redemption" && cfg.redemption > 0 && !sentKeys.includes(REDEMPTION_KEY)) {
-          const logId = randomBytes(8).toString("hex");
           await sendEmail({
             to: reminder.email,
             subject: `🚨 ${reminder.domain} 已进入赎回期，赎回费用较高`,
@@ -118,17 +123,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               cancelToken: reminder.cancel_token,
             }),
           });
-          await supabase.from("reminder_logs").upsert(
-            { id: logId, reminder_id: reminder.id, days_before: REDEMPTION_KEY },
-            { onConflict: "reminder_id,days_before", ignoreDuplicates: true }
-          );
+          await upsertLog(REDEMPTION_KEY);
           results.sent++;
           didSend = true;
         }
 
-        // Pending delete entered — only if this TLD has a pendingDelete period AND user opted in
         if (!didSend && phaseFlags.pendingDelete && phase === "pendingDelete" && cfg.pendingDelete > 0 && !sentKeys.includes(PENDING_KEY)) {
-          const logId = randomBytes(8).toString("hex");
           await sendEmail({
             to: reminder.email,
             subject: `❌ ${reminder.domain} 即将被删除，域名进入待删除期`,
@@ -140,21 +140,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               cancelToken: reminder.cancel_token,
             }),
           });
-          await supabase.from("reminder_logs").upsert(
-            { id: logId, reminder_id: reminder.id, days_before: PENDING_KEY },
-            { onConflict: "reminder_id,days_before", ignoreDuplicates: true }
-          );
+          await upsertLog(PENDING_KEY);
           results.sent++;
           didSend = true;
         }
 
-        // ── Pre-expiry day reminders (only while domain is still active) ──
         if (!didSend && phase === "active") {
           for (const threshold of THRESHOLDS) {
             if (daysToExpiry <= threshold && !sentKeys.includes(threshold)) {
-              const logId = randomBytes(8).toString("hex");
               const urgencyLabel =
-                daysToExpiry <= 1 ? "🔴 紧急" :
                 daysToExpiry <= 5 ? "🔴 紧急" :
                 daysToExpiry <= 10 ? "🟠 临近" : "📅";
 
@@ -168,21 +162,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                   cancelToken: reminder.cancel_token,
                 }),
               });
-              await supabase.from("reminder_logs").upsert(
-                { id: logId, reminder_id: reminder.id, days_before: threshold },
-                { onConflict: "reminder_id,days_before", ignoreDuplicates: true }
-              );
+              await upsertLog(threshold);
               results.sent++;
               break;
             }
           }
-        }
-
-        // ── Auto-deactivate if all pre-expiry thresholds sent and expired ─
-        const allPreExpirySent = THRESHOLDS.every((t) => sentKeys.includes(t));
-        if (allPreExpirySent && phase !== "active") {
-          // All day reminders sent and domain is past expiry — keep active for
-          // phase events; deactivate only after dropped phase check above.
         }
       } catch (reminderErr: any) {
         console.error("[remind/process] Error processing reminder", reminder.id, reminderErr.message);

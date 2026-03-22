@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { getSession } from "@/lib/auth";
-import { getSupabase } from "@/lib/supabase";
 import { randomBytes } from "crypto";
+import { many, run, isDbReady } from "@/lib/db-query";
 
 const MAX_HISTORY = 50;
 
@@ -10,19 +10,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const userId = (session?.user as any)?.id as string | undefined;
   if (!userId) return res.status(401).json({ error: "未登录" });
 
-  const supabase = getSupabase();
-  if (!supabase) return res.status(503).json({ error: "db unavailable" });
+  if (!(await isDbReady())) return res.status(503).json({ error: "db unavailable" });
 
   if (req.method === "GET") {
-    const { data } = await supabase
-      .from("search_history")
-      .select("query, query_type, created_at, reg_status")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false })
-      .limit(MAX_HISTORY);
-
+    const rows = await many(
+      `SELECT query, query_type, created_at, reg_status
+       FROM search_history WHERE user_id = $1
+       ORDER BY created_at DESC LIMIT $2`,
+      [userId, MAX_HISTORY],
+    );
     return res.status(200).json({
-      history: (data ?? []).map((r) => ({
+      history: rows.map((r) => ({
         query: r.query,
         queryType: r.query_type,
         timestamp: new Date(r.created_at).getTime(),
@@ -38,32 +36,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const clean = query.trim().slice(0, 255);
     if (!clean) return res.status(400).json({ error: "query empty" });
 
-    await supabase
-      .from("search_history")
-      .delete()
-      .eq("user_id", userId)
-      .eq("query", clean);
+    // Remove duplicate entry for this user+query first
+    await run(
+      "DELETE FROM search_history WHERE user_id = $1 AND query = $2",
+      [userId, clean],
+    );
 
     const id = randomBytes(8).toString("hex");
-    const insertData: Record<string, unknown> = {
-      id,
-      user_id: userId,
-      query: clean,
-      query_type: queryType ?? "domain",
-    };
-    // reg_status column may or may not exist; write it and ignore error if column absent
-    if (regStatus) insertData.reg_status = regStatus;
-    await supabase.from("search_history").insert(insertData);
+    await run(
+      `INSERT INTO search_history (id, user_id, query, query_type, reg_status)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [id, userId, clean, queryType ?? "domain", regStatus ?? null],
+    );
 
-    const { data: all } = await supabase
-      .from("search_history")
-      .select("id")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false });
-
-    if ((all?.length ?? 0) > MAX_HISTORY) {
-      const toDelete = (all ?? []).slice(MAX_HISTORY).map((r) => r.id);
-      await supabase.from("search_history").delete().in("id", toDelete);
+    // Trim to MAX_HISTORY
+    const allRows = await many(
+      "SELECT id FROM search_history WHERE user_id = $1 ORDER BY created_at DESC",
+      [userId],
+    );
+    if (allRows.length > MAX_HISTORY) {
+      const toDelete = allRows.slice(MAX_HISTORY).map((r) => r.id);
+      await run(
+        `DELETE FROM search_history WHERE id = ANY($1::varchar[])`,
+        [toDelete],
+      );
     }
 
     return res.status(200).json({ ok: true });

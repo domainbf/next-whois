@@ -1,9 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { getSupabase } from "@/lib/supabase";
 import { randomBytes } from "crypto";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { sendEmail, subscriptionConfirmHtml } from "@/lib/email";
 import { computeLifecycle, fmtDate } from "@/lib/lifecycle";
+import { one, run, isDbReady } from "@/lib/db-query";
 
 const REMINDER_THRESHOLDS = [60, 30, 10, 5, 1];
 
@@ -17,7 +17,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const { domain, email, expirationDate, phaseAlerts } = req.body;
   if (!domain || !email) return res.status(400).json({ error: "Missing required fields" });
 
-  // Normalise phase flags: default all to true if not provided
   const flags = {
     grace:         phaseAlerts?.grace         !== false,
     redemption:    phaseAlerts?.redemption    !== false,
@@ -27,68 +26,58 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(email)) return res.status(400).json({ error: "邮箱格式不正确" });
 
-  const cleanDomain = String(domain).toLowerCase().trim();
-  const cleanEmail = String(email).trim();
-  const expDate = expirationDate ? String(expirationDate) : null;
-  const cancelToken = randomBytes(20).toString("hex");
-  const id = randomBytes(8).toString("hex");
+  if (!(await isDbReady())) return res.status(500).json({ error: "Database unavailable" });
+
+  const cleanDomain  = String(domain).toLowerCase().trim();
+  const cleanEmail   = String(email).trim();
+  const expDate      = expirationDate ? String(expirationDate) : null;
+  const cancelToken  = randomBytes(20).toString("hex");
+  const id           = randomBytes(8).toString("hex");
 
   let reminderId: string;
   let cancelTok: string;
 
   try {
-    const supabase = getSupabase();
-    if (!supabase) return res.status(500).json({ error: "Database unavailable" });
-
-    const { data: existing } = await supabase
-      .from("reminders")
-      .select("id, cancel_token, active")
-      .eq("domain", cleanDomain)
-      .eq("email", cleanEmail)
-      .maybeSingle();
+    const existing = await one<{ id: string; cancel_token: string; active: boolean }>(
+      "SELECT id, cancel_token, active FROM reminders WHERE domain = $1 AND email = $2",
+      [cleanDomain, cleanEmail],
+    );
 
     if (existing) {
       reminderId = existing.id;
-      cancelTok = existing.cancel_token || cancelToken;
-      await supabase.from("reminders").update({
-        expiration_date: expDate,
-        active: true,
-        cancelled_at: null,
-        cancel_reason: null,
-        cancel_token: cancelTok,
-        phase_flags: JSON.stringify(flags),
-      }).eq("id", reminderId);
-      // Clear existing logs so reminders restart fresh
-      await supabase.from("reminder_logs").delete().eq("reminder_id", reminderId);
+      cancelTok  = existing.cancel_token || cancelToken;
+      await run(
+        `UPDATE reminders
+         SET expiration_date = $1, active = true, cancelled_at = NULL,
+             cancel_reason = NULL, cancel_token = $2, phase_flags = $3
+         WHERE id = $4`,
+        [expDate, cancelTok, JSON.stringify(flags), reminderId],
+      );
+      await run("DELETE FROM reminder_logs WHERE reminder_id = $1", [reminderId]);
     } else {
       reminderId = id;
-      cancelTok = cancelToken;
-      await supabase.from("reminders").insert({
-        id: reminderId,
-        domain: cleanDomain,
-        email: cleanEmail,
-        expiration_date: expDate,
-        active: true,
-        cancel_token: cancelTok,
-        phase_flags: JSON.stringify(flags),
-      });
+      cancelTok  = cancelToken;
+      await run(
+        `INSERT INTO reminders (id, domain, email, expiration_date, active, cancel_token, phase_flags)
+         VALUES ($1, $2, $3, $4, true, $5, $6)`,
+        [reminderId, cleanDomain, cleanEmail, expDate, cancelTok, JSON.stringify(flags)],
+      );
     }
   } catch (dbErr: any) {
     console.error("[remind/submit] DB error:", dbErr);
     return res.status(500).json({ error: "数据库写入失败，请稍后重试" });
   }
 
-  // Compute lifecycle for confirmation email
   const lc = computeLifecycle(cleanDomain, expDate);
   const lifecycleInfo = lc ? {
-    phase: lc.phase,
-    graceEnd: fmtDate(lc.graceEnd),
-    redemptionEnd: fmtDate(lc.redemptionEnd),
-    dropDate: fmtDate(lc.dropDate),
-    hasGrace: lc.cfg.grace > 0,
-    hasRedemption: lc.cfg.redemption > 0,
+    phase:           lc.phase,
+    graceEnd:        fmtDate(lc.graceEnd),
+    redemptionEnd:   fmtDate(lc.redemptionEnd),
+    dropDate:        fmtDate(lc.dropDate),
+    hasGrace:        lc.cfg.grace > 0,
+    hasRedemption:   lc.cfg.redemption > 0,
     hasPendingDelete: lc.cfg.pendingDelete > 0,
-    registry: lc.cfg.registry,
+    registry:        lc.cfg.registry,
   } : undefined;
 
   await sendEmail({

@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { randomBytes } from "crypto";
-import { getSupabase } from "@/lib/supabase";
+import { one, run, isDbReady } from "@/lib/db-query";
 import { sendEmail, passwordResetHtml } from "@/lib/email";
 
 const RESET_EXPIRES_MINUTES = 60;
@@ -13,51 +13,39 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method !== "POST") return res.status(405).end();
 
   const { email } = req.body;
-  if (!email || typeof email !== "string") {
+  if (!email || typeof email !== "string")
     return res.status(400).json({ error: "请输入邮箱地址" });
-  }
 
   const cleanEmail = email.toLowerCase().trim();
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail))
     return res.status(400).json({ error: "邮箱格式不正确" });
-  }
 
-  const supabase = getSupabase();
-  if (!supabase) return res.status(503).json({ error: "数据库暂不可用" });
+  if (!(await isDbReady())) return res.status(503).json({ error: "数据库暂不可用" });
 
-  const { data: user } = await supabase
-    .from("users")
-    .select("id")
-    .eq("email", cleanEmail)
-    .maybeSingle();
-
+  const user = await one<{ id: string }>("SELECT id FROM users WHERE email = $1", [cleanEmail]);
   // Always return ok to prevent email enumeration
   if (!user) return res.status(200).json({ ok: true });
 
-  await supabase
-    .from("password_reset_tokens")
-    .update({ used: true })
-    .eq("user_id", user.id)
-    .eq("used", false);
+  await run(
+    "UPDATE password_reset_tokens SET used = true WHERE user_id = $1 AND used = false",
+    [user.id],
+  );
 
   const tokenId = randomBytes(8).toString("hex");
   const rawToken = randomBytes(32).toString("hex");
   const expiresAt = new Date(Date.now() + RESET_EXPIRES_MINUTES * 60 * 1000).toISOString();
 
-  const { error } = await supabase.from("password_reset_tokens").insert({
-    id: tokenId,
-    user_id: user.id,
-    token: rawToken,
-    expires_at: expiresAt,
-  });
-
-  if (error) {
-    console.error("[forgot-password] token insert error:", error.message);
+  try {
+    await run(
+      "INSERT INTO password_reset_tokens (id, user_id, token, expires_at) VALUES ($1, $2, $3, $4)",
+      [tokenId, user.id, rawToken, expiresAt],
+    );
+  } catch (err: any) {
+    console.error("[forgot-password] token insert error:", err.message);
     return res.status(500).json({ error: "操作失败，请稍后重试" });
   }
 
   const resetUrl = `${SITE_URL}/reset-password?token=${rawToken}`;
-
   try {
     await sendEmail({
       to: cleanEmail,

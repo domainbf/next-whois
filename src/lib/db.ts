@@ -3,7 +3,7 @@ import { Pool } from "pg";
 let pool: Pool | null = null;
 let migrated = false;
 
-const TABLES = [
+const CREATE_TABLES = [
   `CREATE TABLE IF NOT EXISTS users (
     id           VARCHAR(16)  PRIMARY KEY,
     email        TEXT         UNIQUE NOT NULL,
@@ -43,6 +43,7 @@ const TABLES = [
     cancelled_at    TIMESTAMPTZ,
     cancel_reason   TEXT,
     days_before     INTEGER      DEFAULT 30,
+    phase_flags     TEXT,
     created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW()
   )`,
   `CREATE TABLE IF NOT EXISTS reminder_logs (
@@ -69,26 +70,28 @@ const TABLES = [
     user_id      VARCHAR(16)  NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     query        TEXT         NOT NULL,
     query_type   TEXT         NOT NULL DEFAULT 'domain',
+    reg_status   TEXT,
+    created_at   TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+  )`,
+  `CREATE TABLE IF NOT EXISTS feedback (
+    id           VARCHAR(16)  PRIMARY KEY,
+    query        TEXT         NOT NULL,
+    query_type   TEXT,
+    issue_types  TEXT         NOT NULL,
+    description  TEXT,
+    email        TEXT,
     created_at   TIMESTAMPTZ  NOT NULL DEFAULT NOW()
   )`,
 ];
 
-/**
- * Resolve the Supabase connection string.
- *
- * Priority order:
- *   1. POSTGRES_URL_NON_POOLING  – direct connection (port 5432), best for DDL / migrations
- *   2. POSTGRES_URL              – transaction pooler (port 6543), pgbouncer mode
- *
- * Both are injected automatically by the Vercel ↔ Supabase integration,
- * or can be added manually as secrets in Replit / any other environment.
- */
+const ALTER_COLUMNS = [
+  `ALTER TABLE reminders ADD COLUMN IF NOT EXISTS phase_flags TEXT`,
+  `ALTER TABLE search_history ADD COLUMN IF NOT EXISTS reg_status TEXT`,
+];
+
 function getConnectionString(): { url: string; source: string } | null {
   if (process.env.POSTGRES_URL_NON_POOLING) {
-    return {
-      url: process.env.POSTGRES_URL_NON_POOLING,
-      source: "POSTGRES_URL_NON_POOLING",
-    };
+    return { url: process.env.POSTGRES_URL_NON_POOLING, source: "POSTGRES_URL_NON_POOLING" };
   }
   if (process.env.POSTGRES_URL) {
     const raw = process.env.POSTGRES_URL;
@@ -99,7 +102,6 @@ function getConnectionString(): { url: string; source: string } | null {
   return null;
 }
 
-/** Extract just the host:port from the connection URL for safe logging (no credentials). */
 export function getConnectionHost(): string {
   const cs = getConnectionString();
   if (!cs) return "none";
@@ -111,17 +113,10 @@ export function getConnectionHost(): string {
   }
 }
 
-/** Which env var is being used for the database connection. */
 export function getConnectionSource(): string {
   return getConnectionString()?.source ?? "none";
 }
 
-/**
- * Strip `sslmode` from the connection URL so that the ssl option we set on
- * Pool (rejectUnauthorized: false) is the sole authority. Supabase URLs
- * sometimes carry sslmode=verify-full which would override our setting and
- * reject the certificate chain.
- */
 function stripSslMode(url: string): string {
   try {
     const u = new URL(url);
@@ -137,7 +132,7 @@ function makePool(connectionString: string): Pool {
   const p = new Pool({
     connectionString: cleanUrl,
     ssl: { rejectUnauthorized: false },
-    max: 3,
+    max: 5,
     connectionTimeoutMillis: 10000,
     idleTimeoutMillis: 30000,
     allowExitOnIdle: false,
@@ -150,11 +145,7 @@ export function getDb(): Pool | null {
   if (pool) return pool;
   const cs = getConnectionString();
   if (!cs) {
-    console.error(
-      "[db] No Supabase connection URL found. " +
-      "Set POSTGRES_URL_NON_POOLING (recommended) or POSTGRES_URL as a secret. " +
-      "Get these from your Supabase project → Settings → Database → Connection string.",
-    );
+    console.error("[db] No PostgreSQL connection URL found. Set POSTGRES_URL_NON_POOLING as a secret.");
     return null;
   }
   console.log(`[db] Connecting via ${cs.source} → ${getConnectionHost()}`);
@@ -166,8 +157,15 @@ export function getDb(): Pool | null {
 export async function runMigrations(db: Pool): Promise<void> {
   const client = await db.connect();
   try {
-    for (const sql of TABLES) {
+    for (const sql of CREATE_TABLES) {
       await client.query(sql);
+    }
+    for (const sql of ALTER_COLUMNS) {
+      try {
+        await client.query(sql);
+      } catch {
+        // Column may already exist with different syntax on older PG — ignore
+      }
     }
     console.log("[db] Schema ready");
   } finally {
@@ -175,11 +173,6 @@ export async function runMigrations(db: Pool): Promise<void> {
   }
 }
 
-/**
- * Returns the pool after ensuring all tables exist.
- * Call this in every API handler before running queries.
- * Returns null when no Supabase URL is configured.
- */
 export async function getDbReady(): Promise<Pool | null> {
   const db = getDb();
   if (!db) return null;

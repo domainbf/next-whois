@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { getSupabase } from "@/lib/supabase";
+import { one, run, isDbReady } from "@/lib/db-query";
 
 export const config = { maxDuration: 15 };
 
@@ -15,20 +15,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!process.env.VERCEL_API_TOKEN || !process.env.VERCEL_PROJECT_ID)
     return res.status(503).json({ error: "Vercel integration not configured" });
 
-  const supabase = getSupabase();
-  if (!supabase) return res.status(503).json({ error: "数据库暂不可用" });
+  if (!(await isDbReady())) return res.status(503).json({ error: "数据库暂不可用" });
 
-  const { data: stamp } = await supabase
-    .from("stamps")
-    .select("id, verified")
-    .eq("id", stampId)
-    .eq("domain", String(domain).toLowerCase().trim())
-    .maybeSingle();
-
+  const stamp = await one<{ id: string; verified: boolean }>(
+    "SELECT id, verified FROM stamps WHERE id = $1 AND domain = $2",
+    [stampId, String(domain).toLowerCase().trim()],
+  );
   if (!stamp) return res.status(404).json({ error: "Stamp not found" });
   if (stamp.verified) return res.status(200).json({ verified: true, already: true });
 
-  // Trigger Vercel's verify check
   const verifyRes = await fetch(
     `${VERCEL_API}/v9/projects/${process.env.VERCEL_PROJECT_ID}/domains/${domain}/verify`,
     {
@@ -37,7 +32,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         Authorization: `Bearer ${process.env.VERCEL_API_TOKEN}`,
         "Content-Type": "application/json",
       },
-    }
+    },
   );
   const verifyData = await verifyRes.json();
 
@@ -49,7 +44,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   if (verifyData.verified) {
-    await supabase.from("stamps").update({ verified: true, verified_at: new Date().toISOString() }).eq("id", stampId);
+    await run(
+      "UPDATE stamps SET verified = true, verified_at = $1 WHERE id = $2",
+      [new Date().toISOString(), stampId],
+    );
     return res.status(200).json({ verified: true });
   }
 
