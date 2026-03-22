@@ -1761,6 +1761,10 @@ function DomainReminderDialog({
   onOpenChange,
   isZh,
   userEmail,
+  registerPriceFmt,
+  renewPriceFmt,
+  isPremium,
+  eppStatuses,
 }: {
   domain: string;
   expirationDate: string | null | undefined;
@@ -1769,6 +1773,10 @@ function DomainReminderDialog({
   onOpenChange: (v: boolean) => void;
   isZh: boolean;
   userEmail?: string;
+  registerPriceFmt?: string;
+  renewPriceFmt?: string;
+  isPremium?: boolean;
+  eppStatuses?: string[];
 }) {
   const hasExpiry = !!(expirationDate && expirationDate !== "Unknown");
   const [email, setEmail] = React.useState("");
@@ -1804,10 +1812,11 @@ function DomainReminderDialog({
   }
 
   const lc = React.useMemo(
-    () => computeLifecycle(domain, expirationDate ?? null),
-    [domain, expirationDate]
+    () => computeLifecycle(domain, expirationDate ?? null, eppStatuses),
+    [domain, expirationDate, eppStatuses]
   );
   const tldUpper = domain.split(".").pop()?.toUpperCase() ?? "";
+  const hasPricing = !!(registerPriceFmt || renewPriceFmt);
 
   const PHASE_UI = {
     active:        { label: isZh ? "正常有效" : "Active",        colorClass: "text-emerald-600 dark:text-emerald-400", bgClass: "bg-emerald-50/70 dark:bg-emerald-950/25", borderClass: "border-emerald-200/60 dark:border-emerald-800/40", dotClass: "bg-emerald-500" },
@@ -1931,6 +1940,49 @@ function DomainReminderDialog({
                 transition={{ duration: 0.15 }}
                 className="space-y-3 pt-4"
               >
+                {/* ── Pricing + premium row ────────────────────────────── */}
+                {hasPricing && (
+                  <div className="grid grid-cols-3 gap-1.5 rounded-xl border border-border/50 bg-muted/15 overflow-hidden">
+                    {/* Register price */}
+                    <div className="flex flex-col items-center justify-center px-2 py-2.5 gap-0.5">
+                      <p className="text-[9px] font-bold text-muted-foreground/70 uppercase tracking-widest">
+                        {isZh ? "注册" : "Register"}
+                      </p>
+                      <p className={cn("text-[13px] font-black tabular-nums leading-none", isPremium ? "text-red-500 dark:text-red-400" : "text-foreground")}>
+                        {registerPriceFmt ?? "—"}
+                      </p>
+                    </div>
+                    {/* Renew price */}
+                    <div className="flex flex-col items-center justify-center px-2 py-2.5 gap-0.5 border-x border-border/40">
+                      <p className="text-[9px] font-bold text-muted-foreground/70 uppercase tracking-widest">
+                        {isZh ? "续费" : "Renew"}
+                      </p>
+                      <p className="text-[13px] font-black tabular-nums leading-none text-foreground">
+                        {renewPriceFmt ?? "—"}
+                      </p>
+                    </div>
+                    {/* Premium badge */}
+                    <div className={cn(
+                      "flex flex-col items-center justify-center px-2 py-2.5 gap-0.5",
+                      isPremium ? "bg-red-500/8 dark:bg-red-500/12" : ""
+                    )}>
+                      <p className="text-[9px] font-bold text-muted-foreground/70 uppercase tracking-widest">
+                        {isZh ? "议价" : "Premium"}
+                      </p>
+                      <p className={cn(
+                        "text-[12px] font-black leading-none",
+                        isPremium
+                          ? "text-red-500 dark:text-red-400"
+                          : "text-emerald-600 dark:text-emerald-400"
+                      )}>
+                        {isPremium
+                          ? (isZh ? "是" : "Yes")
+                          : (isZh ? "否" : "No")}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 {/* Lifecycle card */}
                 {hasExpiry && lc && phaseUI ? (
                   <div className={cn("rounded-xl border overflow-hidden", phaseUI.borderClass)}>
@@ -1954,6 +2006,12 @@ function DomainReminderDialog({
                       <div className="flex items-center gap-1.5 mb-1">
                         <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", phaseUI.dotClass)} />
                         <span className={cn("text-[10px] font-bold uppercase tracking-wider", phaseUI.colorClass)}>{phaseUI.label}</span>
+                        {lc.phaseSource === "epp" && (
+                          <span className="ml-auto inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-400/20 text-[9px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wide">
+                            <RiShieldCheckLine className="w-2.5 h-2.5" />
+                            {isZh ? "EPP实时" : "EPP live"}
+                          </span>
+                        )}
                       </div>
                       <p className="text-[11px] text-muted-foreground leading-relaxed">
                         {isZh ? PHASE_ADVICE[lc.phase]?.zh : PHASE_ADVICE[lc.phase]?.en}
@@ -3178,6 +3236,22 @@ export default function LookupPage({
                       onOpenChange={setReminderDialogOpen}
                       isZh={isChinese}
                       userEmail={session?.user?.email ?? ""}
+                      registerPriceFmt={
+                        result.registerPrice && result.registerPrice.new !== -1 && result.registerPrice.currency !== "Unknown"
+                          ? isChinese
+                            ? toCNY(result.registerPrice.new as number, result.registerPrice.currency)
+                            : toUSD(result.registerPrice.new as number, result.registerPrice.currency)
+                          : undefined
+                      }
+                      renewPriceFmt={
+                        result.renewPrice && result.renewPrice.renew !== -1 && result.renewPrice.currency !== "Unknown"
+                          ? isChinese
+                            ? toCNY(result.renewPrice.renew as number, result.renewPrice.currency)
+                            : toUSD(result.renewPrice.renew as number, result.renewPrice.currency)
+                          : undefined
+                      }
+                      isPremium={result.registerPrice?.isPremium ?? false}
+                      eppStatuses={result.status?.map((s) => s.status) ?? []}
                     />
 
                     {result.remainingDays === null &&
