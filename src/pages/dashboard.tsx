@@ -15,7 +15,8 @@ import {
   RiUserLine, RiLogoutBoxLine, RiAlertLine, RiExternalLinkLine,
   RiFlashlightLine, RiTimeLine, RiHistoryLine, RiSearchLine,
   RiEdit2Line, RiShieldUserLine, RiLockLine, RiMailLine,
-  RiEyeLine, RiEyeOffLine, RiPaletteLine,
+  RiEyeLine, RiEyeOffLine, RiPaletteLine, RiArrowRightLine,
+  RiBellLine, RiFileTextLine, RiWifiLine,
 } from "@remixicon/react";
 import { ADMIN_EMAIL } from "@/lib/admin-shared";
 import type { HistoryItem } from "@/lib/history";
@@ -245,6 +246,219 @@ function EditExpiryModal({ sub, onClose, onSaved }: { sub: Subscription; onClose
   );
 }
 
+// ── Claim Guide Modal ─────────────────────────────────────────────────────────
+function ClaimGuideModal({ onClose }: { onClose: () => void }) {
+  const router = useRouter();
+  const [domain, setDomain] = React.useState("");
+
+  function handleSearch(e: React.FormEvent) {
+    e.preventDefault();
+    const q = domain.trim();
+    if (!q) return;
+    onClose();
+    router.push(`/${q}`);
+  }
+
+  const steps = [
+    {
+      icon: RiSearchLine,
+      color: "bg-blue-100 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400",
+      title: "搜索你的域名",
+      desc: "在下方输入你拥有的域名，进入 WHOIS 详情页",
+    },
+    {
+      icon: RiShieldCheckLine,
+      color: "bg-violet-100 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400",
+      title: "点击「认领」按钮",
+      desc: "在域名详情页点击「认领此域名」，填写昵称和标签",
+    },
+    {
+      icon: RiWifiLine,
+      color: "bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400",
+      title: "完成 DNS / 文件验证",
+      desc: "添加 TXT 记录或上传验证文件，证明你是域名所有者",
+    },
+    {
+      icon: RiCheckLine,
+      color: "bg-amber-100 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400",
+      title: "获得「已验证」标签",
+      desc: "验证通过后，域名 WHOIS 页显示你的品牌认证信息",
+    },
+  ];
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full max-w-md bg-background border border-border rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-5 pb-0">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-xl bg-violet-100 dark:bg-violet-950/40 flex items-center justify-center">
+              <RiShieldCheckLine className="w-4 h-4 text-violet-600 dark:text-violet-400" />
+            </div>
+            <div>
+              <h2 className="text-sm font-bold">品牌认领</h2>
+              <p className="text-[11px] text-muted-foreground">声明你对域名的所有权</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
+            <RiCloseLine className="w-5 h-5 text-muted-foreground" />
+          </button>
+        </div>
+
+        <div className="p-5 space-y-4">
+          {/* Steps */}
+          <div className="space-y-2">
+            {steps.map((step, i) => (
+              <div key={i} className="flex items-start gap-3 p-3 rounded-xl bg-muted/30">
+                <div className={cn("w-7 h-7 rounded-lg flex items-center justify-center shrink-0", step.color)}>
+                  <step.icon className="w-3.5 h-3.5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5 mb-0.5">
+                    <span className="text-[9px] font-bold text-muted-foreground/50 uppercase tracking-widest">步骤 {i + 1}</span>
+                  </div>
+                  <p className="text-xs font-semibold">{step.title}</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">{step.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Search bar */}
+          <div className="border border-border rounded-xl p-3 space-y-2 bg-muted/20">
+            <p className="text-xs font-semibold text-muted-foreground">立即搜索你的域名</p>
+            <form onSubmit={handleSearch} className="flex gap-2">
+              <Input
+                value={domain}
+                onChange={e => setDomain(e.target.value)}
+                placeholder="example.com"
+                className="h-9 rounded-lg text-sm font-mono flex-1"
+                autoFocus
+              />
+              <Button type="submit" size="sm" className="h-9 rounded-lg gap-1.5 shrink-0">
+                前往
+                <RiArrowRightLine className="w-3.5 h-3.5" />
+              </Button>
+            </form>
+          </div>
+
+          {/* Info note */}
+          <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/40">
+            <RiAlertLine className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
+            <p className="text-[11px] text-muted-foreground">
+              品牌认领需通过 DNS TXT 记录或指定文件路径验证，以确认域名归属权。
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Subscribe Guide Modal ──────────────────────────────────────────────────────
+function SubscribeGuideModal({ onClose }: { onClose: () => void }) {
+  const router = useRouter();
+  const [domain, setDomain] = React.useState("");
+
+  function handleSearch(e: React.FormEvent) {
+    e.preventDefault();
+    const q = domain.trim();
+    if (!q) return;
+    onClose();
+    router.push(`/${q}`);
+  }
+
+  const steps = [
+    {
+      icon: RiSearchLine,
+      color: "bg-blue-100 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400",
+      title: "搜索你的域名",
+      desc: "输入你的域名，查看当前的 WHOIS 到期信息",
+    },
+    {
+      icon: RiBellLine,
+      color: "bg-violet-100 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400",
+      title: "点击「订阅提醒」",
+      desc: "在域名详情页找到订阅按钮，选择提前提醒天数",
+    },
+    {
+      icon: RiMailLine,
+      color: "bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400",
+      title: "自动接收邮件提醒",
+      desc: "到期前 90天、30天、7天、1天分别发送提醒邮件",
+    },
+  ];
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full max-w-md bg-background border border-border rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-5 pb-0">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center">
+              <RiCalendarLine className="w-4 h-4 text-primary" />
+            </div>
+            <div>
+              <h2 className="text-sm font-bold">域名到期提醒</h2>
+              <p className="text-[11px] text-muted-foreground">到期前自动发邮件，不再遗漏续费</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
+            <RiCloseLine className="w-5 h-5 text-muted-foreground" />
+          </button>
+        </div>
+
+        <div className="p-5 space-y-4">
+          {/* Steps */}
+          <div className="space-y-2">
+            {steps.map((step, i) => (
+              <div key={i} className="flex items-start gap-3 p-3 rounded-xl bg-muted/30">
+                <div className={cn("w-7 h-7 rounded-lg flex items-center justify-center shrink-0", step.color)}>
+                  <step.icon className="w-3.5 h-3.5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5 mb-0.5">
+                    <span className="text-[9px] font-bold text-muted-foreground/50 uppercase tracking-widest">步骤 {i + 1}</span>
+                  </div>
+                  <p className="text-xs font-semibold">{step.title}</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">{step.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Search bar */}
+          <div className="border border-border rounded-xl p-3 space-y-2 bg-muted/20">
+            <p className="text-xs font-semibold text-muted-foreground">搜索你的域名开始订阅</p>
+            <form onSubmit={handleSearch} className="flex gap-2">
+              <Input
+                value={domain}
+                onChange={e => setDomain(e.target.value)}
+                placeholder="example.com"
+                className="h-9 rounded-lg text-sm font-mono flex-1"
+                autoFocus
+              />
+              <Button type="submit" size="sm" className="h-9 rounded-lg gap-1.5 shrink-0">
+                前往
+                <RiArrowRightLine className="w-3.5 h-3.5" />
+              </Button>
+            </form>
+          </div>
+
+          <div className="flex gap-2">
+            <Link href="/remind" className="flex-1" onClick={onClose}>
+              <Button variant="outline" size="sm" className="w-full h-9 rounded-xl text-xs gap-1.5">
+                <RiCalendarLine className="w-3.5 h-3.5" />
+                查看订阅管理页
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const router = useRouter();
@@ -260,6 +474,8 @@ export default function DashboardPage() {
   const [editingSubscription, setEditingSubscription] = React.useState<Subscription | null>(null);
   const [cancelling, setCancelling] = React.useState<string | null>(null);
   const [deletingStamp, setDeletingStamp] = React.useState<string | null>(null);
+  const [showClaimGuide, setShowClaimGuide] = React.useState(false);
+  const [showSubscribeGuide, setShowSubscribeGuide] = React.useState(false);
   const [editingName, setEditingName] = React.useState(false);
   const [nameValue, setNameValue] = React.useState("");
   const [savingName, setSavingName] = React.useState(false);
@@ -467,6 +683,8 @@ export default function DashboardPage() {
   return (
     <>
       <Head><title key="site-title">{t("nav_dashboard")} · Next WHOIS</title></Head>
+      {showClaimGuide && <ClaimGuideModal onClose={() => setShowClaimGuide(false)} />}
+      {showSubscribeGuide && <SubscribeGuideModal onClose={() => setShowSubscribeGuide(false)} />}
       {editingStamp && (
         <EditStampModal stamp={editingStamp} onClose={() => setEditingStamp(null)} onSaved={refreshData} />
       )}
@@ -533,19 +751,39 @@ export default function DashboardPage() {
             <motion.div key="subscriptions" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.18 }} className="space-y-3">
               <div className="flex items-center justify-between">
                 <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">域名到期提醒订阅</p>
-                <Link href="/remind" className="text-xs text-primary hover:underline flex items-center gap-1">
+                <button
+                  onClick={() => setShowSubscribeGuide(true)}
+                  className="text-xs text-primary hover:underline flex items-center gap-1"
+                >
                   <RiCalendarLine className="w-3 h-3" />新增订阅
-                </Link>
+                </button>
               </div>
               {loadingData ? (
                 <div className="flex justify-center py-8"><RiLoader4Line className="w-5 h-5 animate-spin text-muted-foreground" /></div>
               ) : subscriptions.length === 0 ? (
-                <div className="text-center py-12 space-y-3">
-                  <RiCalendarLine className="w-10 h-10 text-muted-foreground/30 mx-auto" />
-                  <p className="text-sm text-muted-foreground">暂无订阅</p>
-                  <Link href="/remind">
-                    <Button variant="outline" size="sm" className="rounded-xl text-xs">订阅域名到期提醒</Button>
-                  </Link>
+                <div className="text-center py-12 space-y-4">
+                  <div className="w-14 h-14 rounded-2xl bg-primary/8 border border-dashed border-border flex items-center justify-center mx-auto">
+                    <RiCalendarLine className="w-7 h-7 text-muted-foreground/40" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <p className="text-sm font-semibold">还没有订阅</p>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      订阅你的域名，到期前自动发送邮件提醒<br/>再也不会因忘记续费而丢失域名
+                    </p>
+                  </div>
+                  <div className="flex flex-col gap-2 items-center">
+                    <Button
+                      variant="default"
+                      size="sm"
+                      className="rounded-xl text-xs gap-1.5"
+                      onClick={() => setShowSubscribeGuide(true)}
+                    >
+                      <RiBellLine className="w-3.5 h-3.5" />如何订阅
+                    </Button>
+                    <Link href="/remind" className="text-[11px] text-muted-foreground hover:text-primary underline underline-offset-2">
+                      前往订阅管理页
+                    </Link>
+                  </div>
                 </div>
               ) : subscriptions.map(sub => {
                 const lifecycle = sub.expiration_date
@@ -633,17 +871,34 @@ export default function DashboardPage() {
             <motion.div key="stamps" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.18 }} className="space-y-3">
               <div className="flex items-center justify-between">
                 <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">品牌认领记录</p>
-                <Link href="/" className="text-xs text-primary hover:underline flex items-center gap-1">
+                <button
+                  onClick={() => setShowClaimGuide(true)}
+                  className="text-xs text-primary hover:underline flex items-center gap-1"
+                >
                   <RiShieldCheckLine className="w-3 h-3" />认领新域名
-                </Link>
+                </button>
               </div>
               {loadingData ? (
                 <div className="flex justify-center py-8"><RiLoader4Line className="w-5 h-5 animate-spin text-muted-foreground" /></div>
               ) : stamps.length === 0 ? (
-                <div className="text-center py-12 space-y-3">
-                  <RiShieldCheckLine className="w-10 h-10 text-muted-foreground/30 mx-auto" />
-                  <p className="text-sm text-muted-foreground">暂无品牌认领记录</p>
-                  <p className="text-xs text-muted-foreground">搜索你的域名后点击「认领」开始</p>
+                <div className="text-center py-12 space-y-4">
+                  <div className="w-14 h-14 rounded-2xl bg-violet-500/8 border border-dashed border-border flex items-center justify-center mx-auto">
+                    <RiShieldCheckLine className="w-7 h-7 text-muted-foreground/40" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <p className="text-sm font-semibold">还没有品牌认领</p>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      认领你拥有的域名，在 WHOIS 查询结果中<br/>显示你的品牌名称和认证标签
+                    </p>
+                  </div>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="rounded-xl text-xs gap-1.5"
+                    onClick={() => setShowClaimGuide(true)}
+                  >
+                    <RiShieldCheckLine className="w-3.5 h-3.5" />如何认领域名
+                  </Button>
                 </div>
               ) : stamps.map(stamp => (
                 <div key={stamp.id} className="glass-panel border border-border rounded-2xl p-4 space-y-3">
