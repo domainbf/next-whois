@@ -102,7 +102,7 @@ function toAnalyzeResult(r: YisiResult, domain: string): WhoisAnalyzeResult {
     remainingDays: typeof r.remainingDays === "number" ? r.remainingDays : null,
     registerPrice: null,
     renewPrice: null,
-    transferPrice: null,
+    negotiable: null,
   };
 }
 

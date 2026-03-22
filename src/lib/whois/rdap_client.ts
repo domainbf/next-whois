@@ -395,7 +395,7 @@ export async function convertRdapToWhoisResult(
     remainingDays,
     registerPrice: null,
     renewPrice: null,
-    transferPrice: null,
+    negotiable: null,
     mozDomainAuthority: 0,
     mozPageAuthority: 0,
     mozSpamScore: 0,

@@ -47,6 +47,29 @@ export interface DomainPricing extends NazhumiRegistrar {
   externalLink: string;
 }
 
+export async function getDomainTransferNegotiable(domain: string): Promise<boolean | null> {
+  try {
+    const tld = domain
+      .substring(domain.lastIndexOf(".") + 1)
+      .replace("www.", "")
+      .toLowerCase()
+      .trim();
+
+    const [nazhumiData, miqingjuData] = await Promise.all([
+      fetchNazhumiData(tld, "transfer"),
+      fetchMiqingjuData(tld, "transfer"),
+    ]);
+
+    const combined = [...nazhumiData, ...miqingjuData].filter(
+      (r) => typeof r.transfer === "number" && (r.transfer as number) > 0,
+    );
+
+    return combined.length === 0;
+  } catch {
+    return null;
+  }
+}
+
 const MQ_TYPE_MAP: Record<NazhumiOrder, string> = {
   new: "registration",
   renew: "renewal",

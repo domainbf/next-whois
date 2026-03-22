@@ -164,7 +164,7 @@ function toAnalyzeResult(data: TianhuData, domain: string): WhoisAnalyzeResult {
     remainingDays: calcRemaining(d.expired_date),
     registerPrice: null,
     renewPrice: null,
-    transferPrice: null,
+    negotiable: null,
   };
 }
 

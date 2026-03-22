@@ -2949,23 +2949,17 @@ export default function LookupPage({
                     </span>
                   </Link>
                 )}
-              {result.transferPrice &&
-                result.transferPrice.transfer !== -1 &&
-                result.transferPrice.currency !== "Unknown" && (
-                  <Link
-                    href={result.transferPrice.externalLink}
-                    target="_blank"
-                    className="hidden sm:flex px-2 py-0.5 rounded-md border bg-background items-center space-x-1 cursor-pointer hover:border-muted-foreground/50 transition-colors"
-                  >
-                    <RiExchangeDollarFill className="w-3 h-3 text-muted-foreground shrink-0" />
-                    <span className="text-[11px] sm:text-xs font-normal text-muted-foreground">
-                      {t("transfer_price")}
-                      {isChinese
-                        ? toCNY(result.transferPrice.transfer as number, result.transferPrice.currency)
-                        : toUSD(result.transferPrice.transfer as number, result.transferPrice.currency)}
+              {result.negotiable !== null && (
+                <div className="hidden sm:flex px-2 py-0.5 rounded-md border bg-background items-center space-x-1">
+                  <RiExchangeDollarFill className="w-3 h-3 text-muted-foreground shrink-0" />
+                  <span className="text-[11px] sm:text-xs font-normal text-muted-foreground">
+                    {t("negotiable")}
+                    <span className={result.negotiable ? "text-amber-500" : "text-emerald-600 dark:text-emerald-400"}>
+                      {result.negotiable ? t("negotiable_yes") : t("negotiable_no")}
                     </span>
-                  </Link>
-                )}
+                  </span>
+                </div>
+              )}
               <div className="flex-grow" />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -3482,23 +3476,17 @@ export default function LookupPage({
                               </span>
                             </Link>
                           )}
-                        {result.transferPrice &&
-                          result.transferPrice.transfer !== -1 &&
-                          result.transferPrice.currency !== "Unknown" && (
-                            <Link
-                              href={result.transferPrice.externalLink}
-                              target="_blank"
-                              className="sm:hidden px-2 py-0.5 rounded-md border bg-background flex items-center space-x-1 cursor-pointer hover:border-muted-foreground/50 transition-colors"
-                            >
-                              <RiExchangeDollarFill className="w-3 h-3 text-muted-foreground shrink-0" />
-                              <span className="text-[11px] font-normal text-muted-foreground">
-                                {t("transfer_price")}
-                                {isChinese
-                                  ? toCNY(result.transferPrice.transfer as number, result.transferPrice.currency)
-                                  : toUSD(result.transferPrice.transfer as number, result.transferPrice.currency)}
+                        {result.negotiable !== null && (
+                          <div className="sm:hidden px-2 py-0.5 rounded-md border bg-background flex items-center space-x-1">
+                            <RiExchangeDollarFill className="w-3 h-3 text-muted-foreground shrink-0" />
+                            <span className="text-[11px] font-normal text-muted-foreground">
+                              {t("negotiable")}
+                              <span className={result.negotiable ? "text-amber-500" : "text-emerald-600 dark:text-emerald-400"}>
+                                {result.negotiable ? t("negotiable_yes") : t("negotiable_no")}
                               </span>
-                            </Link>
-                          )}
+                            </span>
+                          </div>
+                        )}
                         {/* Desktop-only Claim/Subscribe text buttons */}
                         <button
                           onClick={() => {

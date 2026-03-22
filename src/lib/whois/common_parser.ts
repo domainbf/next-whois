@@ -7,7 +7,7 @@ import { includeArgs } from "@/lib/utils";
 import moment from "moment";
 import { domainToUnicode } from "url";
 import { getMozMetrics } from "@/lib/moz/client";
-import { getDomainPricing } from "@/lib/pricing/client";
+import { getDomainPricing, getDomainTransferNegotiable } from "@/lib/pricing/client";
 
 function convertIdnToUnicode(domain: string): {
   unicode: string;
@@ -247,16 +247,16 @@ export async function applyParams(result: WhoisAnalyzeResult) {
       ? null
       : calculateRemainingDays(result.expirationDate);
 
-  // Run pricing (3 calls) and Moz metrics in parallel instead of sequentially
-  const [registerPrice, renewPrice, transferPrice, mozMetrics] = await Promise.all([
+  // Run pricing and Moz metrics in parallel
+  const [registerPrice, renewPrice, negotiable, mozMetrics] = await Promise.all([
     getDomainPricing(result.domain, "new"),
     getDomainPricing(result.domain, "renew"),
-    getDomainPricing(result.domain, "transfer"),
+    getDomainTransferNegotiable(result.domain),
     getMozMetrics(result.domain),
   ]);
   result.registerPrice = registerPrice;
   result.renewPrice = renewPrice;
-  result.transferPrice = transferPrice;
+  result.negotiable = negotiable;
   result.mozDomainAuthority = mozMetrics.domainAuthority;
   result.mozPageAuthority = mozMetrics.pageAuthority;
   result.mozSpamScore = mozMetrics.spamScore;

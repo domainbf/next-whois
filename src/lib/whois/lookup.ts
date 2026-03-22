@@ -439,7 +439,7 @@ function mergeResults(
     remainingDays: rdap.remainingDays ?? whoisParsed.remainingDays,
     registerPrice: rdap.registerPrice ?? whoisParsed.registerPrice,
     renewPrice: rdap.renewPrice ?? whoisParsed.renewPrice,
-    transferPrice: rdap.transferPrice ?? whoisParsed.transferPrice,
+    negotiable: rdap.negotiable ?? whoisParsed.negotiable,
     mozDomainAuthority:
       rdap.mozDomainAuthority || whoisParsed.mozDomainAuthority,
     mozPageAuthority: rdap.mozPageAuthority || whoisParsed.mozPageAuthority,

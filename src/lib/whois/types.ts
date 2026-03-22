@@ -40,7 +40,7 @@ export type WhoisAnalyzeResult = {
   // Domain pricing
   registerPrice: DomainPricing | null;
   renewPrice: DomainPricing | null;
-  transferPrice: DomainPricing | null;
+  negotiable: boolean | null;
 
   // Moz statistics
   mozDomainAuthority: number;
@@ -87,7 +87,7 @@ export const initialWhoisAnalyzeResult: WhoisAnalyzeResult = {
   // Domain pricing
   registerPrice: null,
   renewPrice: null,
-  transferPrice: null,
+  negotiable: null,
 
   // Moz statistics
   mozDomainAuthority: 0,
