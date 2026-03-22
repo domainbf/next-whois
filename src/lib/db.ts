@@ -90,14 +90,13 @@ const ALTER_COLUMNS = [
 ];
 
 function getConnectionString(): { url: string; source: string } | null {
+  // Prefer POSTGRES_URL (Supabase Session Pooler, IPv4-reachable) over the direct
+  // non-pooling address which is IPv6-only and unreachable from Replit.
+  if (process.env.POSTGRES_URL) {
+    return { url: process.env.POSTGRES_URL, source: "POSTGRES_URL" };
+  }
   if (process.env.POSTGRES_URL_NON_POOLING) {
     return { url: process.env.POSTGRES_URL_NON_POOLING, source: "POSTGRES_URL_NON_POOLING" };
-  }
-  if (process.env.POSTGRES_URL) {
-    const raw = process.env.POSTGRES_URL;
-    const sep = raw.includes("?") ? "&" : "?";
-    const url = raw.includes("pgbouncer") ? raw : `${raw}${sep}pgbouncer=true`;
-    return { url, source: "POSTGRES_URL (pooler)" };
   }
   return null;
 }
