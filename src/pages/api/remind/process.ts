@@ -26,7 +26,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const { data: remindersRaw } = await supabase
       .from("reminders")
-      .select("id, domain, email, expiration_date, cancel_token")
+      .select("id, domain, email, expiration_date, cancel_token, phase_flags")
       .eq("active", true)
       .not("expiration_date", "is", null);
 
@@ -72,11 +72,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           continue;
         }
 
+        // Parse per-user phase flags (default all true if column missing/null)
+        let phaseFlags = { grace: true, redemption: true, pendingDelete: true };
+        try {
+          if (reminder.phase_flags) phaseFlags = { ...phaseFlags, ...JSON.parse(reminder.phase_flags) };
+        } catch { /* keep defaults */ }
+
         let didSend = false;
 
         // ── Phase-event reminders ─────────────────────────────────────────
-        // Grace entered — only if this TLD has a grace period
-        if (phase === "grace" && cfg.grace > 0 && !sentKeys.includes(GRACE_KEY)) {
+        // Grace entered — only if this TLD has a grace period AND user opted in
+        if (phaseFlags.grace && phase === "grace" && cfg.grace > 0 && !sentKeys.includes(GRACE_KEY)) {
           const logId = randomBytes(8).toString("hex");
           await sendEmail({
             to: reminder.email,
@@ -97,8 +103,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           didSend = true;
         }
 
-        // Redemption entered — only if this TLD has a redemption period
-        if (!didSend && phase === "redemption" && cfg.redemption > 0 && !sentKeys.includes(REDEMPTION_KEY)) {
+        // Redemption entered — only if this TLD has a redemption period AND user opted in
+        if (!didSend && phaseFlags.redemption && phase === "redemption" && cfg.redemption > 0 && !sentKeys.includes(REDEMPTION_KEY)) {
           const logId = randomBytes(8).toString("hex");
           await sendEmail({
             to: reminder.email,
@@ -120,8 +126,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           didSend = true;
         }
 
-        // Pending delete entered — only if this TLD has a pendingDelete period
-        if (!didSend && phase === "pendingDelete" && cfg.pendingDelete > 0 && !sentKeys.includes(PENDING_KEY)) {
+        // Pending delete entered — only if this TLD has a pendingDelete period AND user opted in
+        if (!didSend && phaseFlags.pendingDelete && phase === "pendingDelete" && cfg.pendingDelete > 0 && !sentKeys.includes(PENDING_KEY)) {
           const logId = randomBytes(8).toString("hex");
           await sendEmail({
             to: reminder.email,

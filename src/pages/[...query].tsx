@@ -51,6 +51,8 @@ import {
   RiLoader4Line,
   RiErrorWarningLine,
   RiSearchLine,
+  RiCheckboxCircleLine,
+  RiCheckboxBlankCircleLine,
 } from "@remixicon/react";
 import { getTopRegistrars, DomainPricing } from "@/lib/pricing/client";
 import { computeLifecycle, fmtDate } from "@/lib/lifecycle";
@@ -1797,7 +1799,7 @@ function DomainReminderDialog({
       const res = await fetch("/api/remind/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ domain, email, expirationDate }),
+        body: JSON.stringify({ domain, email, expirationDate, phaseAlerts }),
       });
       if (res.ok) {
         setDone(true);
@@ -1843,11 +1845,25 @@ function DomainReminderDialog({
 
   const phaseUI = lc ? PHASE_UI[lc.phase] : null;
 
-  type PhaseChip = { key: string; label: string; icon: React.ReactNode; style: string };
+  type PhaseAlerts = { grace: boolean; redemption: boolean; pendingDelete: boolean };
+  const [phaseAlerts, setPhaseAlerts] = React.useState<PhaseAlerts>({
+    grace: true, redemption: true, pendingDelete: true,
+  });
+  function togglePhase(key: keyof PhaseAlerts) {
+    setPhaseAlerts((prev) => ({ ...prev, [key]: !prev[key] }));
+  }
+
+  type PhaseChip = {
+    key: keyof PhaseAlerts;
+    label: string;
+    icon: React.ReactNode;
+    activeCls: string;
+    inactiveCls: string;
+  };
   const phaseChips: PhaseChip[] = lc ? [
-    lc.cfg.grace > 0        && { key: "grace",    label: isZh ? "进入宽限期" : "Grace entered",    icon: <RiTimeLine className="w-2.5 h-2.5" />,          style: "bg-amber-500/10 border-amber-400/20 text-amber-600 dark:text-amber-400" },
-    lc.cfg.redemption > 0   && { key: "redemp",   label: isZh ? "进入赎回期" : "Redemption entered", icon: <RiExchangeDollarFill className="w-2.5 h-2.5" />, style: "bg-orange-500/10 border-orange-400/20 text-orange-600 dark:text-orange-400" },
-    lc.cfg.pendingDelete > 0 && { key: "pending",  label: isZh ? "进入待删除期" : "Pending delete",   icon: <RiDeleteBin2Line className="w-2.5 h-2.5" />,    style: "bg-red-500/10 border-red-400/20 text-red-600 dark:text-red-400" },
+    lc.cfg.grace > 0         && { key: "grace"      as const, label: isZh ? "进入宽限期"   : "Grace entered",    icon: <RiTimeLine className="w-2.5 h-2.5" />,          activeCls: "bg-amber-500/15 border-amber-400/40 text-amber-600 dark:text-amber-400",   inactiveCls: "bg-muted/20 border-border/30 text-muted-foreground/40 line-through" },
+    lc.cfg.redemption > 0    && { key: "redemption" as const, label: isZh ? "进入赎回期"   : "Redemption",       icon: <RiExchangeDollarFill className="w-2.5 h-2.5" />, activeCls: "bg-orange-500/15 border-orange-400/40 text-orange-600 dark:text-orange-400", inactiveCls: "bg-muted/20 border-border/30 text-muted-foreground/40 line-through" },
+    lc.cfg.pendingDelete > 0 && { key: "pendingDelete" as const, label: isZh ? "进入待删除期" : "Pending delete", icon: <RiDeleteBin2Line className="w-2.5 h-2.5" />,    activeCls: "bg-red-500/15 border-red-400/40 text-red-600 dark:text-red-400",          inactiveCls: "bg-muted/20 border-border/30 text-muted-foreground/40 line-through" },
   ].filter(Boolean) as PhaseChip[] : [];
 
   return (
@@ -1914,13 +1930,13 @@ function DomainReminderDialog({
                       ))}
                     </div>
                   </div>
-                  {phaseChips.length > 0 && (
+                  {phaseChips.filter((c) => phaseAlerts[c.key]).length > 0 && (
                     <div>
                       <p className="text-[10px] text-muted-foreground/60 mb-1.5">{isZh ? "阶段提醒" : "Phase alerts"}</p>
                       <div className="flex flex-wrap gap-1">
-                        {phaseChips.map((chip) => (
-                          <span key={chip.key} className={cn("inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md border text-[10px] font-semibold", chip.style)}>
-                            {chip.icon}{chip.label}
+                        {phaseChips.filter((c) => phaseAlerts[c.key]).map((chip) => (
+                          <span key={chip.key} className={cn("inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md border text-[10px] font-semibold", chip.activeCls)}>
+                            <RiCheckboxCircleLine className="w-2.5 h-2.5" />{chip.label}
                           </span>
                         ))}
                       </div>
@@ -2087,13 +2103,30 @@ function DomainReminderDialog({
                       <p className="text-[10px] text-muted-foreground/70 mb-1.5 flex items-center gap-1 font-medium">
                         <RiCalendarEventLine className="w-3 h-3" />
                         {isZh ? `阶段提醒（.${tldUpper}）` : `Phase alerts (.${tldUpper})`}
+                        <span className="ml-auto text-[9px] text-muted-foreground/40 font-normal normal-case">
+                          {isZh ? "点击选择" : "click to toggle"}
+                        </span>
                       </p>
                       <div className="flex flex-wrap gap-1.5">
-                        {phaseChips.map((chip) => (
-                          <span key={chip.key} className={cn("inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md border text-[11px] font-semibold", chip.style)}>
-                            {chip.icon}{chip.label}
-                          </span>
-                        ))}
+                        {phaseChips.map((chip) => {
+                          const on = phaseAlerts[chip.key];
+                          return (
+                            <button
+                              key={chip.key}
+                              type="button"
+                              onClick={() => togglePhase(chip.key)}
+                              className={cn(
+                                "inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md border text-[11px] font-semibold transition-all cursor-pointer select-none",
+                                on ? chip.activeCls : chip.inactiveCls
+                              )}
+                            >
+                              {on
+                                ? <RiCheckboxCircleLine className="w-2.5 h-2.5 shrink-0" />
+                                : <RiCheckboxBlankCircleLine className="w-2.5 h-2.5 shrink-0" />}
+                              {chip.label}
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
                   ) : lc ? (

@@ -14,8 +14,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const rl = checkRateLimit(ip, 5);
   if (!rl.ok) return res.status(429).json({ error: "请求过于频繁，请稍后再试" });
 
-  const { domain, email, expirationDate } = req.body;
+  const { domain, email, expirationDate, phaseAlerts } = req.body;
   if (!domain || !email) return res.status(400).json({ error: "Missing required fields" });
+
+  // Normalise phase flags: default all to true if not provided
+  const flags = {
+    grace:         phaseAlerts?.grace         !== false,
+    redemption:    phaseAlerts?.redemption    !== false,
+    pendingDelete: phaseAlerts?.pendingDelete !== false,
+  };
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(email)) return res.status(400).json({ error: "邮箱格式不正确" });
@@ -49,6 +56,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         cancelled_at: null,
         cancel_reason: null,
         cancel_token: cancelTok,
+        phase_flags: JSON.stringify(flags),
       }).eq("id", reminderId);
       // Clear existing logs so reminders restart fresh
       await supabase.from("reminder_logs").delete().eq("reminder_id", reminderId);
@@ -62,6 +70,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         expiration_date: expDate,
         active: true,
         cancel_token: cancelTok,
+        phase_flags: JSON.stringify(flags),
       });
     }
   } catch (dbErr: any) {

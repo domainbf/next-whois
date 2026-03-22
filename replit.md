@@ -136,7 +136,7 @@ Required Supabase tables — **created automatically by `scripts/migrate.js` on 
 - `users` — user accounts for auth
 - `password_reset_tokens` — password reset tokens (60-min expiry, single-use)
 - `stamps` — brand claiming records
-- `reminders` — domain expiry reminder subscriptions
+- `reminders` — domain expiry reminder subscriptions (`phase_flags TEXT` column required — run migration below)
 - `reminder_logs` — tracking which reminder thresholds have been sent
 - `tool_clicks` — global aggregate click counts per tool URL
 - `user_tool_clicks` — per-user click counts for personalized sorting
@@ -155,6 +155,14 @@ Required Supabase tables — **created automatically by `scripts/migrate.js` on 
 | `VERCEL_API_TOKEN` | Yes (Vercel verify) | Vercel API token for domain verification |
 | `VERCEL_PROJECT_ID` | Yes (Vercel verify) | Vercel project ID (`prj_...`) |
 | `POSTGRES_URL_NON_POOLING` | Vercel only | Direct Supabase connection for pg Pool migrations |
+
+### Pending DB Migrations
+Run in **Supabase Dashboard → SQL Editor**:
+```sql
+-- Add phase_flags column to reminders table (phase event notification preferences)
+ALTER TABLE reminders ADD COLUMN IF NOT EXISTS phase_flags text DEFAULT NULL;
+```
+The column is optional — the code defaults all phase flags to `true` if the column is missing or null, so existing subscriptions are unaffected until users re-subscribe.
 
 ### Cron Setup
 To trigger reminder emails automatically, set up a cron job (e.g. daily) to call:
