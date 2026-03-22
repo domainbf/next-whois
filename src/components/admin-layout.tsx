@@ -15,18 +15,20 @@ import {
   RiServerLine, RiServerFill,
   RiPlugLine, RiPlugFill,
   RiSearchLine, RiSearchFill,
+  RiRadarLine,
 } from "@remixicon/react";
 
 const NAV = [
-  { href: "/admin",                label: "概览",     icon: RiDashboardLine,   activeIcon: RiDashboardFill,   exact: true },
-  { href: "/admin/users",          label: "用户",     icon: RiUserLine,        activeIcon: RiUserFill },
-  { href: "/admin/stamps",         label: "品牌",     icon: RiShieldCheckLine, activeIcon: RiShieldCheckFill },
-  { href: "/admin/reminders",      label: "提醒",     icon: RiBellLine,        activeIcon: RiBellFill },
-  { href: "/admin/search-records", label: "查询",     icon: RiSearchLine,      activeIcon: RiSearchFill },
-  { href: "/admin/feedback",       label: "反馈",     icon: RiFeedbackLine,    activeIcon: RiFeedbackFill },
-  { href: "/admin/system",         label: "系统",     icon: RiServerLine,      activeIcon: RiServerFill },
-  { href: "/admin/api",            label: "API",      icon: RiPlugLine,        activeIcon: RiPlugFill },
-  { href: "/admin/settings",       label: "设置",     icon: RiSettings4Line,   activeIcon: RiSettings4Fill },
+  { href: "/admin",                 label: "概览", icon: RiDashboardLine,   activeIcon: RiDashboardFill,   exact: true },
+  { href: "/admin/users",           label: "用户", icon: RiUserLine,        activeIcon: RiUserFill },
+  { href: "/admin/stamps",          label: "品牌", icon: RiShieldCheckLine, activeIcon: RiShieldCheckFill },
+  { href: "/admin/reminders",       label: "提醒", icon: RiBellLine,        activeIcon: RiBellFill },
+  { href: "/admin/search-records",  label: "查询", icon: RiSearchLine,      activeIcon: RiSearchFill },
+  { href: "/admin/feedback",        label: "反馈", icon: RiFeedbackLine,    activeIcon: RiFeedbackFill },
+  { href: "/admin/tld-fallback",    label: "兜底", icon: RiRadarLine,       activeIcon: RiRadarLine },
+  { href: "/admin/system",          label: "系统", icon: RiServerLine,      activeIcon: RiServerFill },
+  { href: "/admin/api",             label: "API",  icon: RiPlugLine,        activeIcon: RiPlugFill },
+  { href: "/admin/settings",        label: "设置", icon: RiSettings4Line,   activeIcon: RiSettings4Fill },
 ];
 
 export function AdminLayout({ children, title }: { children: React.ReactNode; title?: string }) {
@@ -167,9 +169,9 @@ export function AdminLayout({ children, title }: { children: React.ReactNode; ti
           </div>
         </main>
 
-        {/* Fixed bottom tab bar */}
+        {/* Fixed bottom tab bar — scrollable when items overflow */}
         <nav className="fixed bottom-0 inset-x-0 z-50 bg-background/95 backdrop-blur-md border-t border-border safe-bottom">
-          <div className="flex items-stretch">
+          <div className="flex items-stretch overflow-x-auto scrollbar-none">
             {NAV.map(({ href, label, icon: Icon, activeIcon: ActiveIcon, exact }) => {
               const active = isActive(href, exact);
               return (
@@ -177,7 +179,7 @@ export function AdminLayout({ children, title }: { children: React.ReactNode; ti
                   key={href}
                   onClick={() => navigate(href)}
                   className={cn(
-                    "flex-1 flex flex-col items-center justify-center gap-0.5 py-2.5 transition-colors min-h-[56px]",
+                    "flex-none flex flex-col items-center justify-center gap-0.5 py-2.5 px-3 transition-colors min-h-[56px] min-w-[52px]",
                     active ? "text-primary" : "text-muted-foreground"
                   )}
                 >
@@ -185,7 +187,7 @@ export function AdminLayout({ children, title }: { children: React.ReactNode; ti
                     ? <ActiveIcon className="w-5 h-5" />
                     : <Icon className="w-5 h-5" />
                   }
-                  <span className={cn("text-[9px] font-semibold leading-none", active ? "text-primary" : "text-muted-foreground/70")}>
+                  <span className={cn("text-[9px] font-semibold leading-none whitespace-nowrap", active ? "text-primary" : "text-muted-foreground/70")}>
                     {label}
                   </span>
                 </button>

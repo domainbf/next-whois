@@ -23,7 +23,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     req.headers["x-forwarded-for"] || req.socket?.remoteAddress || "unknown"
   ).split(",")[0].trim();
 
-  const rl = checkRateLimit(ip, 3);
+  const rl = await checkRateLimit(ip, 3);
   if (!rl.ok) {
     return res.status(429).json({ error: "提交过于频繁，请稍后再试" });
   }

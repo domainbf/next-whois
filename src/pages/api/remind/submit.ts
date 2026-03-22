@@ -11,7 +11,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method !== "POST") return res.status(405).end();
 
   const ip = String(req.headers["x-forwarded-for"] || req.socket?.remoteAddress || "unknown").split(",")[0].trim();
-  const rl = checkRateLimit(ip, 5);
+  const rl = await checkRateLimit(ip, 5);
   if (!rl.ok) return res.status(429).json({ error: "请求过于频繁，请稍后再试" });
 
   const { domain, email, expirationDate, phaseAlerts } = req.body;

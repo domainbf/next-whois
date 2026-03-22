@@ -245,3 +245,56 @@ Free public API (25 req/min, 300 req/day), no auth required.
 - ResultSkeleton now wrapped in `AnimatePresence` with opacity 0→1/0 transitions (no abrupt switch)
 - Main result cards use pure `opacity` animation (no scale → no "pop" effect)
 - Async-loaded sections (translation, DNS) animate in smoothly without layout shift
+
+## Database Schema (Full Table List)
+
+All persistent state lives in PostgreSQL (`src/lib/db.ts`). Tables auto-created on startup via `runMigrations()`.
+
+| Table | Purpose |
+|-------|---------|
+| `users` | Registered accounts — email, password_hash, disabled, avatar_color, email_verified, etc. |
+| `password_reset_tokens` | Secure time-limited reset links |
+| `stamps` | Domain brand claims, awaiting admin verification |
+| `reminders` | Domain expiry alert subscriptions |
+| `reminder_logs` | Tracks which reminder phases have been sent (dedup) |
+| `tool_clicks` | Aggregate link-click counts for Tools/Links pages |
+| `user_tool_clicks` | Per-user link-click history |
+| `search_history` | All queries (user_id nullable — anonymous queries also recorded) |
+| `feedback` | User-submitted issue reports |
+| `site_settings` | Key-value admin settings (title, OG, API keys, announcements) |
+| `tld_fallback_stats` | Per-TLD failure tracking; enables 3rd-party fallback after 3 consecutive failures |
+| `custom_whois_servers` | Admin-managed custom WHOIS server overrides (JSONB per TLD) |
+| `rate_limit_records` | DB-backed rate limiting (key = IP, count + reset_at per 60s window) |
+
+**Concurrent migration guard**: `getDbReady()` uses a shared Promise lock (`global.__pgMigrating`) so parallel Next.js requests on cold start never trigger duplicate migrations.
+
+## Rate Limiting
+
+`src/lib/rate-limit.ts` — DB-backed with in-memory fast-path:
+- Hot path: in-memory Map for IPs seen within current server process window
+- Cold path: atomic `INSERT … ON CONFLICT DO UPDATE` into `rate_limit_records`
+- Fallback: pure in-memory if DB unavailable
+- `checkRateLimit(ip, maxRequests)` is now `async` — all call sites use `await`
+
+## TLD Smart Fallback Gate
+
+`src/lib/whois/tld-fallback-gate.ts` — prevents over-reliance on paid 3rd-party APIs:
+- Tracks per-TLD failure count in `tld_fallback_stats`
+- Native RDAP/WHOIS failures increment count; success resets to 0
+- Third-party APIs (tianhu / yisi) only invoked when `fail_count >= 3` AND `use_fallback = true`
+- Admin UI: `/admin/tld-fallback` — view stats, toggle fallback per TLD, bulk clear
+
+## Admin Backend Pages
+
+| Page | Route |
+|------|-------|
+| Dashboard | `/admin` |
+| Users | `/admin/users` |
+| Brand Claims | `/admin/stamps` |
+| Reminders | `/admin/reminders` |
+| Search Records | `/admin/search-records` |
+| User Feedback | `/admin/feedback` |
+| TLD Fallback Stats | `/admin/tld-fallback` |
+| System Status | `/admin/system` |
+| API Keys | `/admin/api` |
+| Site Settings | `/admin/settings` |

@@ -20,18 +20,28 @@ type Data = {
   registryUrl?: string;
 };
 
+function deriveRegStatus(
+  result: WhoisAnalyzeResult,
+  dnsProbe?: DnsProbeResult,
+): string | null {
+  if (result.expirationDate && result.expirationDate !== "Unknown") return "registered";
+  if (result.registrar && result.registrar !== "Unknown") return "registered";
+  if (result.status?.some(s => s.status?.toLowerCase().includes("active"))) return "registered";
+  if (dnsProbe?.registrationStatus === "unregistered") return "unregistered";
+  if (dnsProbe?.registrationStatus === "registered") return "registered";
+  return null;
+}
+
 async function saveAnonymousSearchRecord(
   query: string,
   result: WhoisAnalyzeResult,
+  dnsProbe?: DnsProbeResult,
 ): Promise<void> {
   if (!(await isDbReady())) return;
   try {
     const id = randomBytes(8).toString("hex");
-    const queryType = result.domain ? "domain" : "ip";
-    const regStatus = result.expirationDate && result.expirationDate !== "Unknown"
-      ? "registered"
-      : result.status?.some(s => s.status?.toLowerCase().includes("active")) ? "registered"
-      : null;
+    const queryType = result.cidr && result.cidr !== "Unknown" ? "ip" : "domain";
+    const regStatus = deriveRegStatus(result, dnsProbe);
 
     await run(
       `INSERT INTO search_history
@@ -43,7 +53,7 @@ async function saveAnonymousSearchRecord(
         query.toLowerCase().trim(),
         queryType,
         regStatus,
-        result.expirationDate !== "Unknown" ? result.expirationDate : null,
+        result.expirationDate && result.expirationDate !== "Unknown" ? result.expirationDate : null,
         result.remainingDays ?? null,
       ],
     );
@@ -69,7 +79,7 @@ export default async function handler(
   }
 
   if (result && !cached) {
-    saveAnonymousSearchRecord(query, result).catch(() => {});
+    saveAnonymousSearchRecord(query, result, dnsProbe).catch(() => {});
   }
 
   res.setHeader("Cache-Control", "s-maxage=3600, stale-while-revalidate=86400");

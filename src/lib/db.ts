@@ -7,6 +7,11 @@ declare global {
   var __pgMigrated: boolean | undefined;
 }
 
+declare global {
+  // eslint-disable-next-line no-var
+  var __pgMigrating: Promise<void> | undefined;
+}
+
 function getPool(): Pool | null { return global.__pgPool ?? null; }
 function setPool(p: Pool | null) { global.__pgPool = p ?? undefined; }
 function getMigrated(): boolean { return global.__pgMigrated ?? false; }
@@ -14,11 +19,18 @@ function setMigrated(v: boolean) { global.__pgMigrated = v; }
 
 const CREATE_TABLES = [
   `CREATE TABLE IF NOT EXISTS users (
-    id           VARCHAR(16)  PRIMARY KEY,
-    email        TEXT         UNIQUE NOT NULL,
-    password_hash TEXT        NOT NULL,
-    name         TEXT,
-    created_at   TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+    id                    VARCHAR(16)  PRIMARY KEY,
+    email                 TEXT         UNIQUE NOT NULL,
+    password_hash         TEXT         NOT NULL,
+    name                  TEXT,
+    disabled              BOOLEAN      NOT NULL DEFAULT false,
+    admin_notes           TEXT,
+    avatar_color          TEXT,
+    email_verified        BOOLEAN      NOT NULL DEFAULT false,
+    email_verify_token    TEXT,
+    email_verify_expires  TIMESTAMPTZ,
+    updated_at            TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    created_at            TIMESTAMPTZ  NOT NULL DEFAULT NOW()
   )`,
   `CREATE TABLE IF NOT EXISTS password_reset_tokens (
     id           VARCHAR(16)  PRIMARY KEY,
@@ -68,19 +80,21 @@ const CREATE_TABLES = [
     updated_at   TIMESTAMPTZ  NOT NULL DEFAULT NOW()
   )`,
   `CREATE TABLE IF NOT EXISTS user_tool_clicks (
-    user_id      VARCHAR(16)  NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    url          TEXT         NOT NULL,
-    click_count  INTEGER      NOT NULL DEFAULT 0,
-    last_clicked_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    user_id         VARCHAR(16)  NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    url             TEXT         NOT NULL,
+    click_count     INTEGER      NOT NULL DEFAULT 0,
+    last_clicked_at TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     PRIMARY KEY (user_id, url)
   )`,
   `CREATE TABLE IF NOT EXISTS search_history (
-    id           VARCHAR(16)  PRIMARY KEY,
-    user_id      VARCHAR(16)  NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    query        TEXT         NOT NULL,
-    query_type   TEXT         NOT NULL DEFAULT 'domain',
-    reg_status   TEXT,
-    created_at   TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+    id              VARCHAR(16)  PRIMARY KEY,
+    user_id         VARCHAR(16)  REFERENCES users(id) ON DELETE CASCADE,
+    query           TEXT         NOT NULL,
+    query_type      TEXT         NOT NULL DEFAULT 'domain',
+    reg_status      TEXT,
+    expiration_date TEXT,
+    remaining_days  INTEGER,
+    created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW()
   )`,
   `CREATE TABLE IF NOT EXISTS feedback (
     id           VARCHAR(16)  PRIMARY KEY,
@@ -92,36 +106,45 @@ const CREATE_TABLES = [
     created_at   TIMESTAMPTZ  NOT NULL DEFAULT NOW()
   )`,
   `CREATE TABLE IF NOT EXISTS site_settings (
-    key          TEXT         PRIMARY KEY,
-    value        TEXT         NOT NULL DEFAULT '',
-    updated_at   TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+    key        TEXT         PRIMARY KEY,
+    value      TEXT         NOT NULL DEFAULT '',
+    updated_at TIMESTAMPTZ  NOT NULL DEFAULT NOW()
   )`,
-];
-
-const ALTER_COLUMNS = [
-  `ALTER TABLE reminders ADD COLUMN IF NOT EXISTS phase_flags TEXT`,
-  `ALTER TABLE search_history ADD COLUMN IF NOT EXISTS reg_status TEXT`,
-  `ALTER TABLE search_history ADD COLUMN IF NOT EXISTS expiration_date TEXT`,
-  `ALTER TABLE search_history ADD COLUMN IF NOT EXISTS remaining_days INTEGER`,
-  `ALTER TABLE users ADD COLUMN IF NOT EXISTS disabled BOOLEAN NOT NULL DEFAULT false`,
-  `ALTER TABLE users ADD COLUMN IF NOT EXISTS admin_notes TEXT`,
-  `ALTER TABLE users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`,
-  `ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_color TEXT`,
-  `ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAULT false`,
-  `ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verify_token TEXT`,
-  `ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verify_expires TIMESTAMPTZ`,
-  `ALTER TABLE search_history ALTER COLUMN user_id DROP NOT NULL`,
   `CREATE TABLE IF NOT EXISTS tld_fallback_stats (
     tld           TEXT         PRIMARY KEY,
     fail_count    INTEGER      NOT NULL DEFAULT 0,
     use_fallback  BOOLEAN      NOT NULL DEFAULT false,
     last_fail_at  TIMESTAMPTZ
   )`,
+  `CREATE TABLE IF NOT EXISTS custom_whois_servers (
+    tld        TEXT         PRIMARY KEY,
+    entry      JSONB        NOT NULL,
+    created_at TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+  )`,
+  `CREATE TABLE IF NOT EXISTS rate_limit_records (
+    key        TEXT         PRIMARY KEY,
+    count      INTEGER      NOT NULL DEFAULT 0,
+    reset_at   TIMESTAMPTZ  NOT NULL
+  )`,
+];
+
+const ALTER_COLUMNS = [
+  `ALTER TABLE reminders    ADD COLUMN IF NOT EXISTS phase_flags          TEXT`,
+  `ALTER TABLE search_history ADD COLUMN IF NOT EXISTS reg_status         TEXT`,
+  `ALTER TABLE search_history ADD COLUMN IF NOT EXISTS expiration_date    TEXT`,
+  `ALTER TABLE search_history ADD COLUMN IF NOT EXISTS remaining_days     INTEGER`,
+  `ALTER TABLE search_history ALTER COLUMN user_id                        DROP NOT NULL`,
+  `ALTER TABLE users         ADD COLUMN IF NOT EXISTS disabled            BOOLEAN NOT NULL DEFAULT false`,
+  `ALTER TABLE users         ADD COLUMN IF NOT EXISTS admin_notes         TEXT`,
+  `ALTER TABLE users         ADD COLUMN IF NOT EXISTS updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()`,
+  `ALTER TABLE users         ADD COLUMN IF NOT EXISTS avatar_color        TEXT`,
+  `ALTER TABLE users         ADD COLUMN IF NOT EXISTS email_verified      BOOLEAN NOT NULL DEFAULT false`,
+  `ALTER TABLE users         ADD COLUMN IF NOT EXISTS email_verify_token  TEXT`,
+  `ALTER TABLE users         ADD COLUMN IF NOT EXISTS email_verify_expires TIMESTAMPTZ`,
 ];
 
 function getConnectionString(): { url: string; source: string } | null {
-  // Prefer POSTGRES_URL (Supabase Session Pooler, IPv4-reachable) over the direct
-  // non-pooling address which is IPv6-only and unreachable from Replit.
   if (process.env.POSTGRES_URL) {
     return { url: process.env.POSTGRES_URL, source: "POSTGRES_URL" };
   }
@@ -195,7 +218,7 @@ export async function runMigrations(db: Pool): Promise<void> {
       try {
         await client.query(sql);
       } catch {
-        // Column may already exist with different syntax on older PG — ignore
+        // Column may already exist — ignore
       }
     }
     console.log("[db] Schema ready");
@@ -207,9 +230,18 @@ export async function runMigrations(db: Pool): Promise<void> {
 export async function getDbReady(): Promise<Pool | null> {
   const db = getDb();
   if (!db) return null;
-  if (!getMigrated()) {
-    await runMigrations(db);
-    setMigrated(true);
+  if (getMigrated()) return db;
+
+  if (global.__pgMigrating) {
+    await global.__pgMigrating;
+    return db;
   }
+
+  global.__pgMigrating = runMigrations(db).then(() => {
+    setMigrated(true);
+    global.__pgMigrating = undefined;
+  });
+
+  await global.__pgMigrating;
   return db;
 }
