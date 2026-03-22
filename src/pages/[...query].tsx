@@ -2806,14 +2806,21 @@ export default function LookupPage({
       (result.inetNum && result.inetNum !== "Unknown") ||
       (result.inet6Num && result.inet6Num !== "Unknown"));
 
+  const INVALID_FIELD_VALUES = new Set([
+    "unknown", "n/a", "na", "none", "null", "undefined", "-", "--",
+  ]);
+  const isValidField = (v: string | null | undefined): boolean => {
+    if (!v || !v.trim()) return false;
+    return !INVALID_FIELD_VALUES.has(v.trim().toLowerCase());
+  };
+
   const hasRegistrant =
     result &&
-    ((result.registrantOrganization &&
-      result.registrantOrganization !== "Unknown") ||
-      (result.registrantCountry && result.registrantCountry !== "Unknown") ||
-      (result.registrantProvince && result.registrantProvince !== "Unknown") ||
-      (result.registrantEmail && result.registrantEmail !== "Unknown") ||
-      (result.registrantPhone && result.registrantPhone !== "Unknown"));
+    (isValidField(result.registrantOrganization) ||
+      isValidField(result.registrantCountry) ||
+      isValidField(result.registrantProvince) ||
+      isValidField(result.registrantEmail) ||
+      isValidField(result.registrantPhone));
 
   return (
     <>
@@ -3668,7 +3675,7 @@ export default function LookupPage({
                             value: result.registrantPhone,
                           },
                         ]
-                          .filter((f) => f.value && f.value !== "Unknown")
+                          .filter((f) => isValidField(f.value))
                           .map((f, i) => (
                             <div key={i} className="min-w-0">
                               <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">
@@ -3881,7 +3888,7 @@ export default function LookupPage({
                               value: result.inet6Num,
                             },
                           ]
-                            .filter((f) => f.value && f.value !== "Unknown")
+                            .filter((f) => isValidField(f.value))
                             .map((f, i) => (
                               <div key={i}>
                                 <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">
@@ -3979,13 +3986,13 @@ export default function LookupPage({
                 </div>
                 <div className="lg:col-span-4 relative overflow-hidden">
                   <div className="flex flex-col gap-6 lg:absolute lg:inset-0 lg:overflow-y-auto">
-                    {result.registrar && result.registrar !== "Unknown" && (
+                    {isValidField(result.registrar) && (
                       <div className="glass-panel border border-border rounded-xl p-5 shrink-0 overflow-hidden">
                         <div className="flex items-center justify-between mb-4">
                           <h3 className="text-sm font-semibold">
                             {t("whois_fields.registrar")}
                           </h3>
-                          {result.ianaId && result.ianaId !== "N/A" && (
+                          {isValidField(result.ianaId) && (
                             <Link
                               href={`https://www.internic.net/registrars/registrar-${result.ianaId}.html`}
                               target="_blank"
@@ -4043,8 +4050,7 @@ export default function LookupPage({
                             <p className="font-medium text-sm truncate">
                               {result.registrar}
                             </p>
-                            {result.registrarURL &&
-                              result.registrarURL !== "Unknown" && (
+                            {isValidField(result.registrarURL) && (
                                 <a
                                   href={
                                     result.registrarURL.startsWith("http")
@@ -4060,8 +4066,7 @@ export default function LookupPage({
                               )}
                           </div>
                         </div>
-                        {result.whoisServer &&
-                          result.whoisServer !== "Unknown" && (
+                        {isValidField(result.whoisServer) && (
                             <div className="mb-3">
                               <p className="text-[10px] uppercase text-muted-foreground font-medium mb-1">
                                 {t("whois_fields.whois_server")}
@@ -4071,8 +4076,7 @@ export default function LookupPage({
                               </p>
                             </div>
                           )}
-                        {result.registrantEmail &&
-                          result.registrantEmail !== "Unknown" && (
+                        {isValidField(result.registrantEmail) && (
                             <div className="mb-3">
                               <p className="text-[10px] uppercase text-muted-foreground font-medium mb-1">
                                 {t("whois_fields.contact_email")}
@@ -4082,8 +4086,7 @@ export default function LookupPage({
                               </p>
                             </div>
                           )}
-                        {result.registrantPhone &&
-                          result.registrantPhone !== "Unknown" && (
+                        {isValidField(result.registrantPhone) && (
                             <div>
                               <p className="text-[10px] uppercase text-muted-foreground font-medium mb-1">
                                 {t("whois_fields.contact_phone")}

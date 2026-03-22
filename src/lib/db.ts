@@ -1,7 +1,16 @@
 import { Pool } from "pg";
 
-let pool: Pool | null = null;
-let migrated = false;
+declare global {
+  // eslint-disable-next-line no-var
+  var __pgPool: Pool | undefined;
+  // eslint-disable-next-line no-var
+  var __pgMigrated: boolean | undefined;
+}
+
+function getPool(): Pool | null { return global.__pgPool ?? null; }
+function setPool(p: Pool | null) { global.__pgPool = p ?? undefined; }
+function getMigrated(): boolean { return global.__pgMigrated ?? false; }
+function setMigrated(v: boolean) { global.__pgMigrated = v; }
 
 const CREATE_TABLES = [
   `CREATE TABLE IF NOT EXISTS users (
@@ -143,26 +152,28 @@ function makePool(connectionString: string): Pool {
   const p = new Pool({
     connectionString: cleanUrl,
     ssl: { rejectUnauthorized: false },
-    max: 5,
+    max: 3,
     connectionTimeoutMillis: 10000,
-    idleTimeoutMillis: 30000,
-    allowExitOnIdle: false,
+    idleTimeoutMillis: 20000,
+    allowExitOnIdle: true,
   });
   p.on("error", (err) => console.error("[db] pool error:", err.message));
   return p;
 }
 
 export function getDb(): Pool | null {
-  if (pool) return pool;
+  const existing = getPool();
+  if (existing) return existing;
   const cs = getConnectionString();
   if (!cs) {
     console.error("[db] No PostgreSQL connection URL found. Set POSTGRES_URL_NON_POOLING as a secret.");
     return null;
   }
   console.log(`[db] Connecting via ${cs.source} → ${getConnectionHost()}`);
-  pool = makePool(cs.url);
-  migrated = false;
-  return pool;
+  const p = makePool(cs.url);
+  setPool(p);
+  setMigrated(false);
+  return p;
 }
 
 export async function runMigrations(db: Pool): Promise<void> {
@@ -187,9 +198,9 @@ export async function runMigrations(db: Pool): Promise<void> {
 export async function getDbReady(): Promise<Pool | null> {
   const db = getDb();
   if (!db) return null;
-  if (!migrated) {
+  if (!getMigrated()) {
     await runMigrations(db);
-    migrated = true;
+    setMigrated(true);
   }
   return db;
 }
