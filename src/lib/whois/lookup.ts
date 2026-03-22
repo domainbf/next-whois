@@ -259,21 +259,22 @@ async function getLookupWhois(domain: string): Promise<WhoisRawResult> {
     if (isScraperEntry(customEntry)) {
       const { name: scraperName, registryUrl } = customEntry;
       if (scraperName === "nic-ba") {
-        const result = await lookupNicBa(domainToQuery, LOOKUP_TIMEOUT);
-        if (result.success) {
+        const nicBaResult = await lookupNicBa(domainToQuery, LOOKUP_TIMEOUT);
+        if (nicBaResult.success) {
           return {
-            raw: result.raw,
+            raw: nicBaResult.raw,
             structured: {},
             server: "nic.ba",
             registryUrl,
           };
         }
+        const nicBaFail = nicBaResult as { success: false; blocked: boolean; reason: string };
         throw new ScraperRequiredError(
-          result.blocked
+          nicBaFail.blocked
             ? "nic.ba requires CAPTCHA verification — automated WHOIS lookup is not available for .ba domains"
-            : `nic.ba scraper error: ${result.reason}`,
+            : `nic.ba scraper error: ${nicBaFail.reason}`,
           registryUrl,
-          result.blocked,
+          nicBaFail.blocked,
         );
       }
       throw new ScraperRequiredError(
