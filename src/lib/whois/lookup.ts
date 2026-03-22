@@ -18,6 +18,7 @@ import {
 import { probeDomain } from "@/lib/whois/dns-check";
 import { lookupNicBa } from "@/lib/whois/http-scrapers/nic-ba";
 import { lookupYisi } from "@/lib/whois/yisi-fallback";
+import { lookupTianhu } from "@/lib/whois/tianhu-fallback";
 
 class ScraperRequiredError extends Error {
   registryUrl: string;
@@ -544,12 +545,14 @@ export async function lookupWhois(domain: string): Promise<WhoisResult> {
     };
   }
 
-  // Try yisi.yun as a fallback before giving up; only for domain queries.
+  // Try tian.hu then yisi.yun as fallbacks before giving up; only for domain queries.
   async function tryYisiOrFail(
     error: string,
     registryUrl?: string,
   ): Promise<WhoisResult> {
     if (isDomainQuery) {
+      const tianhuResult = await lookupTianhu(domain).catch(() => null);
+      if (tianhuResult) return tianhuResult;
       const yisiResult = await lookupYisi(domain).catch(() => null);
       if (yisiResult) return yisiResult;
     }
@@ -568,6 +571,8 @@ export async function lookupWhois(domain: string): Promise<WhoisResult> {
       if (whoisError || isEmptyResult(result)) {
         if (whoisError && isNotRegisteredWhoisResponse(whoisError)) {
           if (isDomainQuery) {
+            const tianhuResult = await lookupTianhu(domain).catch(() => null);
+            if (tianhuResult) return tianhuResult;
             const yisiResult = await lookupYisi(domain).catch(() => null);
             if (yisiResult) return yisiResult;
           }

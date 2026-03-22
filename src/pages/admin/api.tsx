@@ -23,6 +23,7 @@ import {
 interface ApiState {
   nazhumi_enabled: boolean;
   miqingju_enabled: boolean;
+  tianhu_enabled: boolean;
   yisi_enabled: boolean;
   yisi_key_configured: boolean;
   yisi_key_from_env: boolean;
@@ -38,6 +39,7 @@ interface TestResult {
 const DEFAULT_STATE: ApiState = {
   nazhumi_enabled: true,
   miqingju_enabled: true,
+  tianhu_enabled: true,
   yisi_enabled: true,
   yisi_key_configured: false,
   yisi_key_from_env: false,
@@ -72,6 +74,7 @@ export default function AdminApiPage() {
       const body: Record<string, unknown> = {
         nazhumi_enabled: state.nazhumi_enabled,
         miqingju_enabled: state.miqingju_enabled,
+        tianhu_enabled: state.tianhu_enabled,
         yisi_enabled: state.yisi_enabled,
       };
       if (yisiKeyInput) {
@@ -204,6 +207,23 @@ export default function AdminApiPage() {
           onTest={() => handleTest("miqingju")}
           testing={testing === "miqingju"}
           testResult={testResult("miqingju")}
+        />
+
+        {/* 田虎 tian.hu */}
+        <ServiceCard
+          color="bg-orange-100 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400"
+          dot="bg-orange-500"
+          name="田虎"
+          name_en="tian.hu"
+          desc="WHOIS 兜底查询 + 注册商价格比价（免费，无需 Key，25次/分钟）"
+          link="https://tian.hu"
+          apiDocsLink="https://api.tian.hu/docs"
+          noKey
+          enabled={state.tianhu_enabled}
+          onToggle={(v) => setState((s) => ({ ...s, tianhu_enabled: v }))}
+          onTest={() => handleTest("tianhu")}
+          testing={testing === "tianhu"}
+          testResult={testResult("tianhu")}
         />
 
         {/* 易思云 yisi.yun */}

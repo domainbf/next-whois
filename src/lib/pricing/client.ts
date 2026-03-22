@@ -1,5 +1,6 @@
 const NAZHUMI_API_URL = "https://www.nazhumi.com/api/v1";
 const MIQINGJU_API_URL = "https://api.miqingju.com/api/v1/query";
+const TIANHU_API_URL = "https://api.tian.hu/tlds/pricing";
 
 type NazhumiOrder = "new" | "renew" | "transfer";
 
@@ -83,6 +84,63 @@ async function fetchNazhumiData(
   }
 }
 
+interface TianhuPriceEntry {
+  registrar: string;
+  registrarname: string;
+  registrarweb: string;
+  new_usd?: number;
+  renew_usd?: number;
+  transfer_usd?: number;
+  new?: number;
+  renew?: number;
+  transfer?: number;
+  currency?: string;
+  updatedtime?: string;
+}
+
+async function fetchTianhuData(
+  tld: string,
+  type: NazhumiOrder,
+): Promise<NazhumiRegistrar[]> {
+  try {
+    const { getApiConfig } = await import("@/lib/api-config");
+    const cfg = await getApiConfig();
+    if (!cfg.tianhu_enabled) return [];
+
+    const url = `${TIANHU_API_URL}/${encodeURIComponent(tld)}`;
+    const response = await fetch(url, {
+      headers: { Accept: "application/json" },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!response.ok) return [];
+    const json = await response.json();
+    if (json.code !== 200 || !Array.isArray(json.data)) return [];
+
+    return (json.data as TianhuPriceEntry[])
+      .filter((r) => typeof r.new_usd === "number" || typeof r.new === "number")
+      .map((r) => {
+        const newPrice = r.new_usd ?? r.new ?? "n/a";
+        const renewPrice = r.renew_usd ?? r.renew ?? "n/a";
+        const transferPrice = r.transfer_usd ?? r.transfer ?? "n/a";
+        return {
+          registrar: r.registrar,
+          registrarname: r.registrarname || r.registrar,
+          registrarweb: r.registrarweb || "",
+          new: type === "new" ? newPrice : "n/a",
+          renew: type === "renew" ? renewPrice : "n/a",
+          transfer: type === "transfer" ? transferPrice : "n/a",
+          currency: "USD",
+          currencyname: "USD",
+          currencytype: "standard",
+          promocode: false,
+          updatedtime: r.updatedtime ?? "",
+        };
+      });
+  } catch {
+    return [];
+  }
+}
+
 async function fetchMiqingjuData(
   tld: string,
   type: NazhumiOrder,
@@ -123,29 +181,25 @@ async function fetchMiqingjuData(
 }
 
 function mergeRegistrars(
-  nazhumi: NazhumiRegistrar[],
-  miqingju: NazhumiRegistrar[],
+  sources: NazhumiRegistrar[][],
   type: NazhumiOrder,
 ): NazhumiRegistrar[] {
   const map = new Map<string, NazhumiRegistrar>();
 
-  for (const r of nazhumi) {
-    const key = registrarKey(r.registrarname || r.registrar);
-    if (key) map.set(key, r);
-  }
-
-  for (const r of miqingju) {
-    const key = registrarKey(r.registrarname || r.registrar);
-    if (!key) continue;
-    if (map.has(key)) {
-      const existing = map.get(key)!;
-      const ePrice = typeof existing[type] === "number" ? (existing[type] as number) : Infinity;
-      const mPrice = typeof r[type] === "number" ? (r[type] as number) : Infinity;
-      if (mPrice < ePrice) {
-        map.set(key, { ...existing, [type]: r[type] });
+  for (const source of sources) {
+    for (const r of source) {
+      const key = registrarKey(r.registrarname || r.registrar);
+      if (!key) continue;
+      if (map.has(key)) {
+        const existing = map.get(key)!;
+        const ePrice = typeof existing[type] === "number" ? (existing[type] as number) : Infinity;
+        const mPrice = typeof r[type] === "number" ? (r[type] as number) : Infinity;
+        if (mPrice < ePrice) {
+          map.set(key, { ...existing, [type]: r[type] });
+        }
+      } else {
+        map.set(key, r);
       }
-    } else {
-      map.set(key, r);
     }
   }
 
@@ -171,12 +225,13 @@ export async function getDomainPricing(
       .toLowerCase()
       .trim();
 
-    const [nazhumiData, miqingjuData] = await Promise.all([
+    const [nazhumiData, miqingjuData, tianhuData] = await Promise.all([
       fetchNazhumiData(tld, type),
       fetchMiqingjuData(tld, type),
+      fetchTianhuData(tld, type),
     ]);
 
-    const merged = mergeRegistrars(nazhumiData, miqingjuData, type);
+    const merged = mergeRegistrars([nazhumiData, miqingjuData, tianhuData], type);
     if (merged.length === 0) return null;
 
     merged.sort((a, b) => {
@@ -209,12 +264,13 @@ export async function getTopRegistrars(
       .toLowerCase()
       .trim();
 
-    const [nazhumiData, miqingjuData] = await Promise.all([
+    const [nazhumiData, miqingjuData, tianhuData] = await Promise.all([
       fetchNazhumiData(tld, type),
       fetchMiqingjuData(tld, type),
+      fetchTianhuData(tld, type),
     ]);
 
-    const merged = mergeRegistrars(nazhumiData, miqingjuData, type);
+    const merged = mergeRegistrars([nazhumiData, miqingjuData, tianhuData], type);
 
     return merged
       .filter((r) => typeof r[type] === "number")

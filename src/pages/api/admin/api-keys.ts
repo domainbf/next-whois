@@ -21,6 +21,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.json({
         nazhumi_enabled: map.api_nazhumi_enabled !== "0",
         miqingju_enabled: map.api_miqingju_enabled !== "0",
+        tianhu_enabled: map.api_tianhu_enabled !== "0",
         yisi_enabled: map.api_yisi_enabled !== "0",
         yisi_key_configured: effectiveKey.length > 0,
         yisi_key_from_env: !dbYisiKey && !!envYisiKey,
@@ -40,10 +41,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const session = await requireAdmin(req, res);
     if (!session) return;
 
-    const { nazhumi_enabled, miqingju_enabled, yisi_enabled, yisi_key } =
+    const { nazhumi_enabled, miqingju_enabled, tianhu_enabled, yisi_enabled, yisi_key } =
       req.body as {
         nazhumi_enabled?: boolean;
         miqingju_enabled?: boolean;
+        tianhu_enabled?: boolean;
         yisi_enabled?: boolean;
         yisi_key?: string;
       };
@@ -52,6 +54,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const updates: [string, string][] = [
         ["api_nazhumi_enabled", nazhumi_enabled !== false ? "1" : "0"],
         ["api_miqingju_enabled", miqingju_enabled !== false ? "1" : "0"],
+        ["api_tianhu_enabled", tianhu_enabled !== false ? "1" : "0"],
         ["api_yisi_enabled", yisi_enabled !== false ? "1" : "0"],
       ];
 
@@ -84,10 +87,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (service === "nazhumi") {
         const r = await fetch(
           "https://www.nazhumi.com/api/v1?domain=com&order=new",
-          {
-            signal: AbortSignal.timeout(8000),
-            headers: { Accept: "application/json" },
-          },
+          { signal: AbortSignal.timeout(8000), headers: { Accept: "application/json" } },
         );
         if (!r.ok) return res.json({ ok: false, error: `HTTP ${r.status}` });
         const j = await r.json();
@@ -101,44 +101,48 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (service === "miqingju") {
         const r = await fetch(
           "https://api.miqingju.com/api/v1/query?tld=com",
-          {
-            signal: AbortSignal.timeout(8000),
-            headers: { Accept: "application/json" },
-          },
+          { signal: AbortSignal.timeout(8000), headers: { Accept: "application/json" } },
         );
         if (!r.ok) return res.json({ ok: false, error: `HTTP ${r.status}` });
         const j = await r.json();
         const count = j.data?.length ?? 0;
         return res.json({
           ok: !!j.success,
-          details: j.success
-            ? `已获取 ${count} 条注册商数据`
-            : (j.message ?? "请求失败"),
+          details: j.success ? `已获取 ${count} 条注册商数据` : (j.message ?? "请求失败"),
+        });
+      }
+
+      if (service === "tianhu") {
+        const r = await fetch(
+          "https://api.tian.hu/whois/google.com",
+          { signal: AbortSignal.timeout(10000), headers: { Accept: "application/json" } },
+        );
+        if (!r.ok) return res.json({ ok: false, error: `HTTP ${r.status}` });
+        const j = await r.json();
+        if (j.code !== 200) return res.json({ ok: false, error: j.message || "请求失败" });
+        const d = j.data?.formatted?.domain;
+        const reg = j.data?.formatted?.registrar;
+        return res.json({
+          ok: true,
+          details: `${j.data?.domain ?? "google.com"} · 注册商: ${reg?.registrar_name ?? "已返回数据"} · NS: ${(d?.name_servers ?? []).length} 条`,
         });
       }
 
       if (service === "yisi") {
-        const rows = await many<{ key: string; value: string }>(
+        const rows = await many<{ value: string }>(
           "SELECT value FROM site_settings WHERE key = 'api_yisi_key'",
         );
-        const dbKey = (rows as any)[0]?.value || "";
+        const dbKey = rows[0]?.value || "";
         const apiKey = dbKey || process.env.YISI_API_KEY || "";
 
-        if (!apiKey) {
-          return res.json({ ok: false, error: "未配置 API Key" });
-        }
+        if (!apiKey) return res.json({ ok: false, error: "未配置 API Key" });
 
-        const r = await fetch(
-          "https://yisi.yun/api/lookup?query=google.com",
-          {
-            signal: AbortSignal.timeout(10000),
-            headers: { Accept: "application/json", "x-api-key": apiKey },
-          },
-        );
+        const r = await fetch("https://yisi.yun/api/lookup?query=google.com", {
+          signal: AbortSignal.timeout(10000),
+          headers: { Accept: "application/json", "x-api-key": apiKey },
+        });
         const j = await r.json();
-        if (!j.status) {
-          return res.json({ ok: false, error: j.error || "请求失败" });
-        }
+        if (!j.status) return res.json({ ok: false, error: j.error || "请求失败" });
         return res.json({
           ok: true,
           details: `${j.result?.domain} · ${j.result?.registrar ?? "已返回数据"}`,

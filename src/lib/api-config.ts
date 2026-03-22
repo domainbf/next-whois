@@ -3,6 +3,7 @@ import { many } from "@/lib/db-query";
 export interface ApiConfig {
   nazhumi_enabled: boolean;
   miqingju_enabled: boolean;
+  tianhu_enabled: boolean;
   yisi_enabled: boolean;
   yisi_key: string;
 }
@@ -23,6 +24,7 @@ export async function getApiConfig(): Promise<ApiConfig> {
     _cache = {
       nazhumi_enabled: map.api_nazhumi_enabled !== "0",
       miqingju_enabled: map.api_miqingju_enabled !== "0",
+      tianhu_enabled: map.api_tianhu_enabled !== "0",
       yisi_enabled: map.api_yisi_enabled !== "0",
       yisi_key: map.api_yisi_key || process.env.YISI_API_KEY || "",
     };
@@ -30,6 +32,7 @@ export async function getApiConfig(): Promise<ApiConfig> {
     _cache = {
       nazhumi_enabled: true,
       miqingju_enabled: true,
+      tianhu_enabled: true,
       yisi_enabled: true,
       yisi_key: process.env.YISI_API_KEY || "",
     };
