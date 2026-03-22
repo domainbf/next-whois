@@ -188,7 +188,7 @@ export default function StampPage() {
   const [httpCheck, setHttpCheck] = React.useState<{ found: boolean; latencyMs: number; error: string | null; url: string; nearMatch?: boolean } | null>(null);
   const [verifyTab, setVerifyTab] = React.useState<"dns" | "http" | "vercel">("dns");
   const [quickTxtLoading, setQuickTxtLoading] = React.useState(false);
-  const [quickTxtResult, setQuickTxtResult] = React.useState<{ found: boolean; flat: string[]; records: string[][]; latencyMs: number; resolvers: { name: string; records: string[][]; flat: string[]; latencyMs: number; error?: string }[] } | null>(null);
+  const [quickTxtResult, setQuickTxtResult] = React.useState<{ found: boolean; flat: string[]; records: string[][]; latencyMs: number; tokenFound?: boolean; resolvers: { name: string; proto?: string; records: string[][]; flat?: string[]; latencyMs: number; error?: string | null }[] } | null>(null);
   const [countdown, setCountdown] = React.useState(0);
   const pollRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const countdownRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
@@ -316,9 +316,18 @@ export default function StampPage() {
     setQuickTxtLoading(true);
     setQuickTxtResult(null);
     try {
-      const res = await fetch(`/api/dns/txt?name=${encodeURIComponent(submitResult.txtRecord)}`);
+      const res = await fetch(`/api/dns/records?name=${encodeURIComponent(submitResult.txtRecord)}&type=TXT`);
       const data = await res.json();
-      setQuickTxtResult(data);
+      // Check if our verification token is present in the results
+      const expectedValue = submitResult.txtValue;
+      const tokenFound = (data.flat as string[] || []).some(
+        (r: string) => r === expectedValue || r.includes(expectedValue)
+      );
+      setQuickTxtResult({ ...data, tokenFound });
+      // Auto-trigger full verification if token is detected
+      if (tokenFound) {
+        setTimeout(() => handleVerify(false), 300);
+      }
     } catch {
       setQuickTxtResult({ found: false, flat: [], records: [], latencyMs: 0, resolvers: [] });
     } finally {
@@ -946,10 +955,22 @@ export default function StampPage() {
                                 )}
                                 {quickTxtResult && !quickTxtLoading && (
                                   <div className="space-y-2">
+                                    {/* Token found — auto-verifying banner */}
+                                    {quickTxtResult.tokenFound && (
+                                      <div className="flex items-center gap-2 rounded-lg border border-emerald-400/60 bg-emerald-50/60 dark:bg-emerald-950/30 px-3 py-2">
+                                        <RiCheckboxCircleLine className="w-4 h-4 text-emerald-500 shrink-0" />
+                                        <p className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">
+                                          {isZh ? "检测到验证 Token！正在自动完成所有权确认…" : "Verification token detected! Auto-confirming ownership…"}
+                                        </p>
+                                        <RiLoader4Line className="w-3.5 h-3.5 animate-spin text-emerald-500 shrink-0 ml-auto" />
+                                      </div>
+                                    )}
                                     {/* Per-resolver results */}
                                     <div className="grid grid-cols-2 gap-1.5">
                                       {quickTxtResult.resolvers.map((r) => {
-                                        const hasRecords = (r.flat || r.records || []).length > 0;
+                                        const recCount = (r.flat || r.records || []).length;
+                                        const hasRecords = recCount > 0;
+                                        const isDoh = r.proto === "doh";
                                         return (
                                           <div key={r.name} className={cn(
                                             "rounded-lg border px-2.5 py-2 flex items-center gap-2",
@@ -965,13 +986,18 @@ export default function StampPage() {
                                                 : <RiWifiLine className="w-3 h-3 text-muted-foreground/30" />}
                                             </div>
                                             <div className="min-w-0 flex-1">
-                                              <p className={cn("text-[10px] font-semibold truncate",
-                                                hasRecords ? "text-emerald-700 dark:text-emerald-300"
-                                                  : r.error ? "text-amber-600 dark:text-amber-400"
-                                                  : "text-muted-foreground"
-                                              )}>{r.name}</p>
+                                              <div className="flex items-center gap-1">
+                                                <p className={cn("text-[10px] font-semibold truncate",
+                                                  hasRecords ? "text-emerald-700 dark:text-emerald-300"
+                                                    : r.error ? "text-amber-600 dark:text-amber-400"
+                                                    : "text-muted-foreground"
+                                                )}>{r.name}</p>
+                                                {isDoh && (
+                                                  <span className="shrink-0 text-[8px] font-bold px-1 py-px rounded bg-sky-100 dark:bg-sky-900/40 text-sky-600 dark:text-sky-400 leading-none">DoH</span>
+                                                )}
+                                              </div>
                                               <p className="text-[10px] text-muted-foreground/50 mt-0.5">
-                                                {hasRecords ? `${r.latencyMs}ms · ${(r.flat || []).length} 条`
+                                                {hasRecords ? `${r.latencyMs}ms · ${recCount} 条`
                                                   : r.error === "timeout" ? (isZh ? "超时" : "timeout")
                                                   : r.error === "udp_blocked" ? (isZh ? "UDP被阻" : "UDP blocked")
                                                   : r.error === "no_record" ? (isZh ? "无记录" : "no record")
@@ -985,22 +1011,36 @@ export default function StampPage() {
                                     </div>
                                     {/* Found records (raw content display) */}
                                     {(quickTxtResult.flat || []).length > 0 && (
-                                      <div className="rounded-lg border border-emerald-300/50 bg-emerald-50/30 dark:bg-emerald-950/20 px-2.5 py-2 space-y-1">
+                                      <div className={cn(
+                                        "rounded-lg border px-2.5 py-2 space-y-1",
+                                        quickTxtResult.tokenFound
+                                          ? "border-emerald-400/60 bg-emerald-50/40 dark:bg-emerald-950/25"
+                                          : "border-emerald-300/50 bg-emerald-50/30 dark:bg-emerald-950/20"
+                                      )}>
                                         <p className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
                                           <RiCheckLine className="w-3 h-3" />
                                           {isZh ? `已找到 ${quickTxtResult.flat.length} 条 TXT 记录` : `Found ${quickTxtResult.flat.length} TXT record(s)`}
                                         </p>
-                                        {quickTxtResult.flat.slice(0, 5).map((record, i) => (
-                                          <div key={i} className="flex items-start gap-1.5">
-                                            <code className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 break-all leading-relaxed flex-1 bg-emerald-500/5 rounded px-1.5 py-0.5">
-                                              {record}
-                                            </code>
-                                            <button onClick={() => navigator.clipboard.writeText(record).then(() => toast.success(s("copied")))}
-                                              className="shrink-0 p-1 rounded hover:bg-muted transition-colors text-muted-foreground/50 hover:text-foreground mt-0.5">
-                                              <RiFileCopyLine className="w-2.5 h-2.5" />
-                                            </button>
-                                          </div>
-                                        ))}
+                                        {quickTxtResult.flat.slice(0, 5).map((record, i) => {
+                                          const isToken = record === submitResult?.txtValue || record.includes(submitResult?.txtValue || "");
+                                          return (
+                                            <div key={i} className="flex items-start gap-1.5">
+                                              <code className={cn(
+                                                "text-[10px] font-mono break-all leading-relaxed flex-1 rounded px-1.5 py-0.5",
+                                                isToken
+                                                  ? "text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 ring-1 ring-emerald-400/40"
+                                                  : "text-emerald-600 dark:text-emerald-400 bg-emerald-500/5"
+                                              )}>
+                                                {isToken && <RiCheckLine className="w-2.5 h-2.5 inline mr-1 mb-0.5" />}
+                                                {record}
+                                              </code>
+                                              <button onClick={() => navigator.clipboard.writeText(record).then(() => toast.success(s("copied")))}
+                                                className="shrink-0 p-1 rounded hover:bg-muted transition-colors text-muted-foreground/50 hover:text-foreground mt-0.5">
+                                                <RiFileCopyLine className="w-2.5 h-2.5" />
+                                              </button>
+                                            </div>
+                                          );
+                                        })}
                                       </div>
                                     )}
                                     {(quickTxtResult.flat || []).length === 0 && (

@@ -31,9 +31,9 @@ const DOH_RESOLVERS = [
   },
 ] as const;
 
-const UDP_TIMEOUT_MS  = 7000;
-const DOH_TIMEOUT_MS  = 9000;
-const HTTP_TIMEOUT_MS = 8000;
+const UDP_TIMEOUT_MS  = 2500;
+const DOH_TIMEOUT_MS  = 6000;
+const HTTP_TIMEOUT_MS = 6000;
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
