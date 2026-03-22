@@ -1,6 +1,9 @@
 import Redis from "ioredis";
 
-export const REDIS_URL = process.env.REDIS_URL as string | undefined;
+export const REDIS_URL =
+  (process.env.KV_URL as string | undefined) ||
+  (process.env.REDIS_URL as string | undefined);
+
 export const REDIS_HOST = process.env.REDIS_HOST as string | undefined;
 export const REDIS_PORT = parseInt(process.env.REDIS_PORT || "6379");
 export const REDIS_PASSWORD = process.env.REDIS_PASSWORD;
@@ -13,9 +16,12 @@ function createRedisConn(): Redis | undefined {
   if (REDIS_URL) {
     try {
       const client = new Redis(REDIS_URL, {
-        maxRetriesPerRequest: 2,
-        connectTimeout: 5000,
+        maxRetriesPerRequest: 1,
+        connectTimeout: 3000,
+        commandTimeout: 2000,
         lazyConnect: false,
+        enableReadyCheck: false,
+        keepAlive: 10000,
       });
       client.on("error", (err) => {
         console.error("Redis connection error:", err.message);
@@ -32,8 +38,11 @@ function createRedisConn(): Redis | undefined {
         port: REDIS_PORT,
         password: REDIS_PASSWORD,
         db: REDIS_DB,
-        maxRetriesPerRequest: 2,
-        connectTimeout: 5000,
+        maxRetriesPerRequest: 1,
+        connectTimeout: 3000,
+        commandTimeout: 2000,
+        enableReadyCheck: false,
+        keepAlive: 10000,
       });
       client.on("error", (err) => {
         console.error("Redis connection error:", err.message);
@@ -52,15 +61,11 @@ export function isRedisAvailable(): boolean {
 export async function getRedisValue(key: string): Promise<string | null> {
   if (!redis) return null;
   try {
-    const res = await redis.get(key);
-    if (res) {
-      console.info(`Redis cache hit: ${key} (${res.length} bytes)`);
-      return res;
-    }
+    return await redis.get(key);
   } catch (err) {
     console.error(`Redis GET error for key ${key}:`, err);
+    return null;
   }
-  return null;
 }
 
 export async function setRedisValue(
@@ -70,19 +75,17 @@ export async function setRedisValue(
 ): Promise<boolean> {
   if (!redis) return false;
   try {
-    const result = await redis.set(key, value);
-    if (result === "OK") {
-      const effectiveTtl = ttl !== undefined ? ttl : REDIS_CACHE_TTL;
-      if (effectiveTtl > 0) {
-        await redis.expire(key, effectiveTtl);
-      }
-      console.info(`Redis SET: ${key} (${value.length} bytes, ttl=${effectiveTtl}s)`);
-      return true;
+    const effectiveTtl = ttl !== undefined ? ttl : REDIS_CACHE_TTL;
+    if (effectiveTtl > 0) {
+      await redis.set(key, value, "EX", effectiveTtl);
+    } else {
+      await redis.set(key, value);
     }
+    return true;
   } catch (err) {
     console.error(`Redis SET error for key ${key}:`, err);
+    return false;
   }
-  return false;
 }
 
 export async function deleteRedisValue(key: string): Promise<boolean> {
@@ -98,8 +101,9 @@ export async function deleteRedisValue(key: string): Promise<boolean> {
 
 export async function getJsonRedisValue<T>(key: string): Promise<T | null> {
   const res = await getRedisValue(key);
+  if (!res) return null;
   try {
-    return res ? (JSON.parse(res) as T) : null;
+    return JSON.parse(res) as T;
   } catch (error) {
     console.error("Failed to parse JSON from Redis:", error);
     return null;
