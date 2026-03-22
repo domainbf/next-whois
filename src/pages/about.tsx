@@ -26,6 +26,8 @@ import {
   RiServerLine,
   RiDatabaseLine,
   RiBrainLine,
+  RiHeartLine,
+  RiExternalLinkLine,
 } from "@remixicon/react";
 
 const FEATURES = [
@@ -122,6 +124,33 @@ const SUB_PAGES = [
     titleEn: "API Docs",
     desc: "接入我们的查询 API，构建你自己的应用",
     descEn: "Integrate our lookup API to build your own applications",
+  },
+];
+
+const THANKS = [
+  {
+    name: "nazhumi",
+    url: "https://www.nazhumi.com",
+    desc: "WHOIS 数据源支持",
+    descEn: "WHOIS data source",
+  },
+  {
+    name: "tianhu",
+    url: "https://www.tianhu.org",
+    desc: "域名工具推荐",
+    descEn: "Domain tools reference",
+  },
+  {
+    name: "miqingju",
+    url: "https://www.miqingju.com",
+    desc: "资源与推荐支持",
+    descEn: "Resources & recommendations",
+  },
+  {
+    name: "yisiyun",
+    url: "https://www.yisiyun.com",
+    desc: "API 数据服务支持",
+    descEn: "API data service",
   },
 ];
 
@@ -320,6 +349,39 @@ export default function AboutPage() {
                     API Docs
                   </Link>
                 </div>
+              </div>
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35, delay: 0.7 }}
+              className="glass-panel border border-border rounded-xl p-5"
+            >
+              <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
+                <RiHeartLine className="w-4 h-4 text-rose-500" />
+                {isChinese ? "致谢" : "Acknowledgements"}
+              </h3>
+              <div className="grid grid-cols-2 gap-2.5">
+                {THANKS.map((t) => (
+                  <a
+                    key={t.name}
+                    href={t.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2.5 p-2.5 rounded-lg bg-muted/40 hover:bg-muted/70 border border-border/60 hover:border-border transition-all group"
+                  >
+                    <div className="p-1.5 rounded-md bg-rose-500/10 shrink-0">
+                      <RiHeartLine className="w-3.5 h-3.5 text-rose-500" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-semibold leading-none truncate">{t.name}</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5 leading-snug truncate">
+                        {isChinese ? t.desc : t.descEn}
+                      </p>
+                    </div>
+                    <RiExternalLinkLine className="w-3 h-3 text-muted-foreground/30 group-hover:text-muted-foreground/60 transition-colors shrink-0" />
+                  </a>
+                ))}
               </div>
             </motion.div>
           </div>
