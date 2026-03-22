@@ -32,7 +32,7 @@ function StatCard({ icon: Icon, label, value, sub, subValue, href, color }: {
   return (
     <button
       type="button"
-      onClick={() => router.push(href)}
+      onClick={() => router.push(href, undefined, { locale: false })}
       className="glass-panel border border-border rounded-2xl p-5 flex items-start gap-4 hover:border-primary/30 hover:bg-primary/5 transition-all group text-left w-full active:scale-[0.98]"
     >
       <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${color}`}>
@@ -145,7 +145,7 @@ export default function AdminIndexPage() {
               <h3 className="text-sm font-bold flex items-center gap-2">
                 <RiTimeLine className="w-4 h-4 text-primary" />最近注册
               </h3>
-              <button onClick={() => router.push("/admin/users")} className="text-xs text-primary hover:underline">查看全部</button>
+              <button onClick={() => router.push("/admin/users", undefined, { locale: false })} className="text-xs text-primary hover:underline">查看全部</button>
             </div>
             <div className="space-y-2">
               {stats.recentUsers.map(u => (
@@ -197,7 +197,7 @@ export default function AdminIndexPage() {
               <button
                 key={href}
                 type="button"
-                onClick={() => router.push(href)}
+                onClick={() => router.push(href, undefined, { locale: false })}
                 className="glass-panel border border-border/60 rounded-xl p-3 hover:border-primary/30 hover:bg-primary/5 transition-all group text-left active:scale-[0.98]"
               >
                 <p className="text-sm font-semibold group-hover:text-primary transition-colors">{label}</p>

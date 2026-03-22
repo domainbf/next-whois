@@ -67,7 +67,7 @@ export function AdminLayout({ children, title }: { children: React.ReactNode; ti
   }
 
   function navigate(href: string) {
-    router.push(href);
+    router.push(href, undefined, { locale: false });
   }
 
   return (

@@ -105,6 +105,7 @@ function AnnouncementBanner() {
 export default function App({ Component, pageProps: { session, ...pageProps } }: AppProps) {
   const origin: string = pageProps.origin || "";
   const router = useRouter();
+  const isAdminPage = router.pathname.startsWith("/admin");
 
   return (
     <SessionProvider session={session}>
@@ -123,22 +124,26 @@ export default function App({ Component, pageProps: { session, ...pageProps } }:
           <div className="absolute inset-0 bg-gradient-to-b from-transparent via-background/20 to-background" />
         </div>
         <div className="relative w-full min-h-screen font-sans">
-          <AnnouncementBanner />
-          <Navbar />
-          <main className="pt-16">
-            <AnimatePresence mode="wait" initial={false}>
-              <motion.div
-                key={router.pathname}
-                variants={pageVariants}
-                initial="initial"
-                animate="animate"
-                exit="exit"
-                transition={pageTransition}
-              >
-                <Component {...pageProps} />
-              </motion.div>
-            </AnimatePresence>
-            <SiteFooter />
+          {!isAdminPage && <AnnouncementBanner />}
+          {!isAdminPage && <Navbar />}
+          <main className={isAdminPage ? undefined : "pt-16"}>
+            {isAdminPage ? (
+              <Component {...pageProps} />
+            ) : (
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.div
+                  key={router.pathname}
+                  variants={pageVariants}
+                  initial="initial"
+                  animate="animate"
+                  exit="exit"
+                  transition={pageTransition}
+                >
+                  <Component {...pageProps} />
+                </motion.div>
+              </AnimatePresence>
+            )}
+            {!isAdminPage && <SiteFooter />}
           </main>
         </div>
       </ThemeProvider>

@@ -63,6 +63,12 @@ export function middleware(request: NextRequest) {
     ? pathname.replace(`/${currentLocale}`, "")
     : pathname;
 
+  const isAdminRoute = pathWithoutLocale.startsWith("/admin");
+  if (isAdminRoute) return;
+
+  const isDashboardRoute = pathWithoutLocale.startsWith("/dashboard");
+  if (isDashboardRoute) return;
+
   const isDomainQuery =
     pathWithoutLocale.split("/").length === 2 && pathWithoutLocale !== "/";
   if (isDomainQuery) return;
