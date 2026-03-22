@@ -19,6 +19,7 @@ import {
   RiShieldUserLine,
   RiLockLine,
   RiMapPinLine,
+  RiInformationLine,
 } from "@remixicon/react";
 import { useTheme } from "next-themes";
 import { motion, AnimatePresence } from "framer-motion";
@@ -316,6 +317,13 @@ const navItems: NavItem[] = [
     href: "/ip",
     icon: <RiMapPinLine className="h-6 w-6" />,
     description: "IP 归属地与 ASN 自治系统",
+  },
+  {
+    label: "关于项目",
+    labelEn: "About",
+    href: "/about",
+    icon: <RiInformationLine className="h-6 w-6" />,
+    description: "更新记录、支持后缀、友情链接",
   },
 ];
 
