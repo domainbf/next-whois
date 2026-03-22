@@ -132,20 +132,20 @@ const THANKS = [
   {
     name: "nazhumi.com",
     url: "https://www.nazhumi.com",
-    desc: "WHOIS 数据源支持",
-    descEn: "WHOIS data source",
+    desc: "低注册价格支持",
+    descEn: "Low registration price support",
   },
   {
     name: "tian.hu",
     url: "https://tian.hu",
-    desc: "域名工具推荐",
-    descEn: "Domain tools reference",
+    desc: "域名翻译数据支持",
+    descEn: "Domain translation data support",
   },
   {
     name: "miqingju.com",
     url: "https://www.miqingju.com",
-    desc: "资源与推荐支持",
-    descEn: "Resources & recommendations",
+    desc: "域名比价查询支持",
+    descEn: "Domain price comparison support",
   },
   {
     name: "yisi.yun",
