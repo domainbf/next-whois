@@ -126,7 +126,7 @@ export default function LinksPage() {
   return (
     <>
       <Head>
-        <title key="site-title">{isChinese ? "友情链接" : "Friendly Links"} — {siteName}</title>
+        <title key="site-title">{`${isChinese ? "友情链接" : "Friendly Links"} — ${siteName}`}</title>
       </Head>
       <ScrollArea className="w-full h-[calc(100vh-4rem)]">
         <main className="w-full max-w-3xl mx-auto px-4 sm:px-6 py-6 pb-16">

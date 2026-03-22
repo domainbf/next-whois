@@ -534,7 +534,7 @@ export default function StampPage() {
   return (
     <>
       <Head>
-        <title key="site-title">{s("title")} · {domain}</title>
+        <title key="site-title">{`${s("title")} · ${domain}`}</title>
       </Head>
 
       <div className="min-h-[calc(100vh-64px)] bg-background">
