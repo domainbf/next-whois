@@ -111,6 +111,9 @@ function toAnalyzeResult(r: YisiResult, domain: string): WhoisAnalyzeResult {
  * or null so the caller can fall back to the DNS probe error page.
  */
 export async function lookupYisi(domain: string): Promise<WhoisResult | null> {
+  const apiKey = process.env.YISI_API_KEY;
+  if (!apiKey) return null;
+
   try {
     const url = `${YISI_API}?query=${encodeURIComponent(domain)}`;
 
@@ -121,7 +124,7 @@ export async function lookupYisi(domain: string): Promise<WhoisResult | null> {
       signal: controller.signal,
       headers: {
         Accept: "application/json",
-        "User-Agent": "Mozilla/5.0 (compatible; NextWhois/1.0; +https://github.com/zmh-program/next-whois-ui)",
+        "x-api-key": apiKey,
       },
     }).finally(() => clearTimeout(timer));
 
