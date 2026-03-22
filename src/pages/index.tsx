@@ -10,6 +10,8 @@ import {
 import { useTranslation } from "@/lib/i18n";
 import { motion } from "framer-motion";
 import { useSearchHotkeys } from "@/hooks/useSearchHotkeys";
+import { getOrigin } from "@/lib/seo";
+import type { GetServerSideProps } from "next";
 
 function XRWDisplay() {
   return (
@@ -127,3 +129,7 @@ export default function HomePage() {
     </ScrollArea>
   );
 }
+
+export const getServerSideProps: GetServerSideProps = async ({ req }) => {
+  return { props: { origin: getOrigin(req) } };
+};

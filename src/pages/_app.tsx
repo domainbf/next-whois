@@ -30,7 +30,7 @@ function AppHead({ origin }: { origin: string }) {
   const description = settings.site_description || siteDescription;
   const siteName = settings.og_site_name || settings.site_title || siteTitle;
   const canonicalUrl = settings.og_url || origin;
-  const ogImage = settings.og_image || `${origin}/banner.png`;
+  const ogImage = settings.og_image || `${origin}/bannermepng.png`;
   const twitterCard = settings.twitter_card || "summary_large_image";
 
   return (
@@ -47,6 +47,9 @@ function AppHead({ origin }: { origin: string }) {
       <meta key="og:title" property="og:title" content={title} />
       <meta key="og:description" property="og:description" content={description} />
       <meta key="og:image" property="og:image" content={ogImage} />
+      <meta key="og:image:width" property="og:image:width" content="1440" />
+      <meta key="og:image:height" property="og:image:height" content="1440" />
+      <meta key="og:image:type" property="og:image:type" content="image/png" />
       {canonicalUrl && <meta key="og:url" property="og:url" content={canonicalUrl} />}
       <meta key="og:site_name" property="og:site_name" content={siteName} />
 
@@ -103,7 +106,7 @@ function AnnouncementBanner() {
 }
 
 export default function App({ Component, pageProps: { session, ...pageProps } }: AppProps) {
-  const origin: string = pageProps.origin || "";
+  const origin: string = pageProps.origin || process.env.NEXT_PUBLIC_SITE_URL || "";
   const router = useRouter();
   const isAdminPage = router.pathname.startsWith("/admin");
 
