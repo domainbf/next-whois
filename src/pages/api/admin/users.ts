@@ -10,31 +10,44 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method === "GET") {
     try {
       const search = typeof req.query.search === "string" ? req.query.search : "";
+      const filter = typeof req.query.filter === "string" ? req.query.filter : "all";
       const limit = Math.min(parseInt(String(req.query.limit || "50")), 200);
       const offset = parseInt(String(req.query.offset || "0"));
 
-      let q = `SELECT id, email, name, created_at, updated_at, disabled, admin_notes FROM users`;
+      const conditions: string[] = [];
       const params: any[] = [];
+
       if (search) {
         params.push(`%${search}%`);
-        q += ` WHERE email ILIKE $1 OR name ILIKE $1`;
+        conditions.push(`(email ILIKE $${params.length} OR name ILIKE $${params.length})`);
       }
-      q += ` ORDER BY created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+      if (filter === "active") conditions.push("disabled = false");
+      if (filter === "disabled") conditions.push("disabled = true");
+
+      const where = conditions.length ? ` WHERE ${conditions.join(" AND ")}` : "";
+      const q = `SELECT id, email, name, created_at, updated_at, disabled, admin_notes
+                 FROM users${where}
+                 ORDER BY created_at DESC
+                 LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
       params.push(limit, offset);
 
       const users = await many(q, params);
 
-      const countQ = search
-        ? `SELECT COUNT(*) AS count FROM users WHERE email ILIKE $1 OR name ILIKE $1`
-        : `SELECT COUNT(*) AS count FROM users`;
-      const countParams = search ? [`%${search}%`] : [];
-      const countRows = await many<{ count: string }>(countQ, countParams);
-      const total = parseInt(countRows[0]?.count ?? "0");
+      const countParams = params.slice(0, params.length - 2);
+      const countRow = await one<{ count: string }>(
+        `SELECT COUNT(*) AS count FROM users${where}`,
+        countParams.length ? countParams : undefined
+      );
+      const total = parseInt(countRow?.count ?? "0");
 
-      const disabledRow = await one<{ count: string }>("SELECT COUNT(*) AS count FROM users WHERE disabled = true");
-      const disabled = parseInt(disabledRow?.count ?? "0");
+      const [disabledRow, activeRow] = await Promise.all([
+        one<{ count: string }>("SELECT COUNT(*) AS count FROM users WHERE disabled = true"),
+        one<{ count: string }>("SELECT COUNT(*) AS count FROM users WHERE disabled = false"),
+      ]);
+      const disabledCount = parseInt(disabledRow?.count ?? "0");
+      const activeCount = parseInt(activeRow?.count ?? "0");
 
-      return res.json({ users, total, disabled });
+      return res.json({ users, total, disabled: disabledCount, activeCount });
     } catch (err: any) {
       return res.status(500).json({ error: err.message });
     }

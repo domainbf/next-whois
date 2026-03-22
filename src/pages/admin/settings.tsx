@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { DEFAULT_SETTINGS, type SiteSettings } from "@/lib/site-settings";
+import { DEFAULT_SETTINGS, type SiteSettings, notifySettingsUpdated } from "@/lib/site-settings";
 import {
   RiLoader4Line, RiSaveLine, RiRefreshLine, RiImageLine,
   RiGlobalLine, RiFileTextLine, RiShareLine, RiTwitterXLine,
@@ -83,7 +83,8 @@ export default function AdminSettingsPage() {
         body: JSON.stringify(form),
       });
       if (!res.ok) throw new Error((await res.json()).error);
-      toast.success("设置已保存，刷新页面后生效");
+      notifySettingsUpdated();
+      toast.success("设置已保存，已同步到所有页面");
     } catch (e: any) {
       toast.error(e.message || "保存失败");
     } finally {

@@ -28,6 +28,8 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   twitter_card: "summary_large_image",
 };
 
+const STORAGE_KEY = "next_whois_settings_ts";
+
 const SiteSettingsContext = React.createContext<SiteSettings>(DEFAULT_SETTINGS);
 
 export function SiteSettingsProvider({
@@ -42,7 +44,7 @@ export function SiteSettingsProvider({
     ...initialSettings,
   });
 
-  React.useEffect(() => {
+  const fetchSettings = React.useCallback(() => {
     fetch("/api/admin/settings")
       .then((r) => r.json())
       .then((data) => {
@@ -53,6 +55,29 @@ export function SiteSettingsProvider({
       .catch(() => {});
   }, []);
 
+  React.useEffect(() => {
+    fetchSettings();
+
+    // Listen for cross-tab changes via localStorage
+    function onStorage(e: StorageEvent) {
+      if (e.key === STORAGE_KEY) fetchSettings();
+    }
+    window.addEventListener("storage", onStorage);
+
+    // Listen for same-tab change dispatch
+    function onUpdate() { fetchSettings(); }
+    window.addEventListener("site-settings-updated", onUpdate);
+
+    // Periodic refresh every 60s as fallback
+    const timer = setInterval(fetchSettings, 60_000);
+
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("site-settings-updated", onUpdate);
+      clearInterval(timer);
+    };
+  }, [fetchSettings]);
+
   return (
     <SiteSettingsContext.Provider value={settings}>
       {children}
@@ -62,4 +87,14 @@ export function SiteSettingsProvider({
 
 export function useSiteSettings(): SiteSettings {
   return React.useContext(SiteSettingsContext);
+}
+
+/** Call after saving settings to propagate to all tabs/windows */
+export function notifySettingsUpdated() {
+  // Same-tab dispatch
+  window.dispatchEvent(new Event("site-settings-updated"));
+  // Cross-tab via localStorage
+  try {
+    localStorage.setItem(STORAGE_KEY, String(Date.now()));
+  } catch {}
 }

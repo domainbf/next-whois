@@ -11,6 +11,7 @@ import {
   RiUserLine, RiMailLine, RiCalendarLine, RiPencilLine,
   RiUserForbidLine, RiUserFollowLine, RiCloseLine,
   RiSaveLine, RiShieldUserLine, RiFileTextLine,
+  RiFilterLine,
 } from "@remixicon/react";
 
 type User = {
@@ -22,6 +23,8 @@ type User = {
   disabled: boolean;
   admin_notes: string | null;
 };
+
+type FilterTab = "all" | "active" | "disabled";
 
 function EditModal({ user, onClose, onSaved }: {
   user: User;
@@ -35,12 +38,18 @@ function EditModal({ user, onClose, onSaved }: {
   const [saving, setSaving] = React.useState(false);
 
   async function handleSave() {
+    if (!email.trim()) { toast.error("邮箱不能为空"); return; }
     setSaving(true);
     try {
       const res = await fetch(`/api/admin/users?id=${user.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: name.trim() || null, email: email.trim(), admin_notes: notes.trim() || null, disabled }),
+        body: JSON.stringify({
+          name: name.trim() || null,
+          email: email.trim(),
+          admin_notes: notes.trim() || null,
+          disabled,
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -55,10 +64,14 @@ function EditModal({ user, onClose, onSaved }: {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+      onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="bg-background border border-border rounded-2xl shadow-xl w-full max-w-md p-6 space-y-5">
         <div className="flex items-center justify-between">
-          <h3 className="text-base font-bold">编辑用户</h3>
+          <div>
+            <h3 className="text-base font-bold">编辑用户</h3>
+            <p className="text-xs text-muted-foreground mt-0.5 font-mono">{user.id}</p>
+          </div>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
             <RiCloseLine className="w-4 h-4" />
           </button>
@@ -93,11 +106,12 @@ function EditModal({ user, onClose, onSaved }: {
           <div className="space-y-1.5">
             <Label className="text-sm font-medium flex items-center gap-1.5">
               <RiFileTextLine className="w-3.5 h-3.5 text-muted-foreground" />管理员备注
+              <span className="text-[10px] text-muted-foreground/60 ml-auto">仅管理员可见</span>
             </Label>
             <textarea
               value={notes}
               onChange={e => setNotes(e.target.value)}
-              placeholder="内部备注，仅管理员可见"
+              placeholder="内部备注…"
               rows={3}
               className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring"
             />
@@ -106,14 +120,15 @@ function EditModal({ user, onClose, onSaved }: {
           <div className="flex items-center justify-between glass-panel border border-border rounded-xl px-4 py-3">
             <div>
               <p className="text-sm font-medium">停用账户</p>
-              <p className="text-xs text-muted-foreground mt-0.5">停用后用户将无法登录</p>
+              <p className="text-xs text-muted-foreground mt-0.5">停用后用户无法登录</p>
             </div>
             <button
               onClick={() => setDisabled(v => !v)}
               className={cn(
-                "w-10 h-6 rounded-full transition-colors relative",
+                "w-10 h-6 rounded-full transition-colors relative shrink-0",
                 disabled ? "bg-red-500" : "bg-muted"
               )}
+              aria-label="切换停用状态"
             >
               <span className={cn(
                 "absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform",
@@ -127,9 +142,7 @@ function EditModal({ user, onClose, onSaved }: {
           <Button onClick={handleSave} disabled={saving} className="flex-1 rounded-xl h-10 gap-2">
             {saving ? <><RiLoader4Line className="w-4 h-4 animate-spin" />保存中…</> : <><RiSaveLine className="w-4 h-4" />保存更改</>}
           </Button>
-          <Button variant="outline" onClick={onClose} disabled={saving} className="rounded-xl h-10">
-            取消
-          </Button>
+          <Button variant="outline" onClick={onClose} disabled={saving} className="rounded-xl h-10">取消</Button>
         </div>
       </div>
     </div>
@@ -139,45 +152,56 @@ function EditModal({ user, onClose, onSaved }: {
 export default function AdminUsersPage() {
   const [users, setUsers] = React.useState<User[]>([]);
   const [total, setTotal] = React.useState(0);
-  const [disabled, setDisabled] = React.useState(0);
+  const [disabledCount, setDisabledCount] = React.useState(0);
+  const [activeCount, setActiveCount] = React.useState(0);
   const [search, setSearch] = React.useState("");
+  const [activeFilter, setActiveFilter] = React.useState<FilterTab>("all");
   const [loading, setLoading] = React.useState(false);
   const [deleting, setDeleting] = React.useState<string | null>(null);
   const [toggling, setToggling] = React.useState<string | null>(null);
   const [editUser, setEditUser] = React.useState<User | null>(null);
+  const [offset, setOffset] = React.useState(0);
+  const LIMIT = 50;
 
-  function load(q: string) {
+  function load(q: string, filter: FilterTab, off = 0) {
     setLoading(true);
-    fetch(`/api/admin/users?search=${encodeURIComponent(q)}&limit=50`)
+    fetch(`/api/admin/users?search=${encodeURIComponent(q)}&filter=${filter}&limit=${LIMIT}&offset=${off}`)
       .then(r => r.json())
       .then(data => {
-        if (data.error) toast.error(data.error);
-        else {
-          setUsers(data.users || []);
-          setTotal(data.total || 0);
-          setDisabled(data.disabled || 0);
-        }
+        if (data.error) { toast.error(data.error); return; }
+        setUsers(off === 0 ? data.users || [] : prev => [...prev, ...(data.users || [])]);
+        setTotal(data.total || 0);
+        setDisabledCount(data.disabled || 0);
+        setActiveCount(data.activeCount || 0);
+        setOffset(off);
       })
       .catch(() => toast.error("加载失败"))
       .finally(() => setLoading(false));
   }
 
-  React.useEffect(() => { load(""); }, []);
+  React.useEffect(() => { load("", "all", 0); }, []);
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
-    load(search);
+    setOffset(0);
+    load(search, activeFilter, 0);
+  }
+
+  function handleFilter(f: FilterTab) {
+    setActiveFilter(f);
+    setOffset(0);
+    load(search, f, 0);
   }
 
   async function deleteUser(id: string, email: string) {
-    if (!confirm(`确定要永久删除用户 ${email} 吗？此操作不可撤销，将同时删除其所有数据。`)) return;
+    if (!confirm(`确定要永久删除用户 ${email} 吗？\n此操作不可撤销，将同时删除其所有搜索记录和数据。`)) return;
     setDeleting(id);
     try {
       const res = await fetch(`/api/admin/users?id=${id}`, { method: "DELETE" });
       if (!res.ok) throw new Error((await res.json()).error);
       setUsers(prev => prev.filter(u => u.id !== id));
       setTotal(prev => prev - 1);
-      toast.success("用户已删除");
+      toast.success("用户已永久删除");
     } catch (e: any) {
       toast.error(e.message || "删除失败");
     } finally {
@@ -196,8 +220,9 @@ export default function AdminUsersPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       setUsers(prev => prev.map(u => u.id === user.id ? data.user : u));
-      setDisabled(prev => user.disabled ? prev - 1 : prev + 1);
-      toast.success(user.disabled ? "账户已恢复正常" : "账户已停用");
+      if (user.disabled) { setDisabledCount(v => v - 1); setActiveCount(v => v + 1); }
+      else { setDisabledCount(v => v + 1); setActiveCount(v => v - 1); }
+      toast.success(user.disabled ? "账户已恢复正常" : "账户已停用，用户无法登录");
     } catch (e: any) {
       toast.error(e.message || "操作失败");
     } finally {
@@ -209,23 +234,37 @@ export default function AdminUsersPage() {
     return new Date(d).toLocaleDateString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit" });
   }
 
+  const FILTERS: { key: FilterTab; label: string; count: number }[] = [
+    { key: "all", label: "全部", count: activeCount + disabledCount },
+    { key: "active", label: "正常", count: activeCount },
+    { key: "disabled", label: "已停用", count: disabledCount },
+  ];
+
   return (
     <AdminLayout title="用户管理">
       {editUser && (
         <EditModal
           user={editUser}
           onClose={() => setEditUser(null)}
-          onSaved={updated => setUsers(prev => prev.map(u => u.id === updated.id ? updated : u))}
+          onSaved={updated => {
+            setUsers(prev => prev.map(u => u.id === updated.id ? updated : u));
+            if (!editUser.disabled && updated.disabled) {
+              setDisabledCount(v => v + 1); setActiveCount(v => v - 1);
+            } else if (editUser.disabled && !updated.disabled) {
+              setDisabledCount(v => v - 1); setActiveCount(v => v + 1);
+            }
+          }}
         />
       )}
 
       <div className="space-y-5">
+        {/* Header */}
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
             <h2 className="text-lg font-bold">用户管理</h2>
             <p className="text-xs text-muted-foreground mt-0.5">
-              共 {total.toLocaleString()} 名用户
-              {disabled > 0 && <span className="ml-1.5 text-red-500">（{disabled} 已停用）</span>}
+              共 {(activeCount + disabledCount).toLocaleString()} 名用户
+              {disabledCount > 0 && <span className="ml-1.5 text-red-500">· {disabledCount} 已停用</span>}
             </p>
           </div>
           <form onSubmit={handleSearch} className="flex items-center gap-2">
@@ -242,7 +281,32 @@ export default function AdminUsersPage() {
           </form>
         </div>
 
-        {loading ? (
+        {/* Filter tabs */}
+        <div className="flex items-center gap-1.5 p-1 glass-panel border border-border rounded-xl w-fit">
+          <RiFilterLine className="w-3.5 h-3.5 text-muted-foreground ml-1" />
+          {FILTERS.map(f => (
+            <button
+              key={f.key}
+              onClick={() => handleFilter(f.key)}
+              className={cn(
+                "px-3 py-1.5 rounded-lg text-xs font-semibold transition-all",
+                activeFilter === f.key
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
+              )}
+            >
+              {f.label}
+              {f.count > 0 && (
+                <span className={cn(
+                  "ml-1.5 text-[10px] px-1 py-0.5 rounded",
+                  activeFilter === f.key ? "bg-white/20" : "bg-muted-foreground/10"
+                )}>{f.count}</span>
+              )}
+            </button>
+          ))}
+        </div>
+
+        {loading && offset === 0 ? (
           <div className="flex justify-center py-12">
             <RiLoader4Line className="w-5 h-5 animate-spin text-muted-foreground" />
           </div>
@@ -281,26 +345,24 @@ export default function AdminUsersPage() {
                   <div className="flex items-center gap-2 flex-wrap">
                     <p className="text-sm font-semibold truncate">{user.name || "未设置昵称"}</p>
                     {user.email === ADMIN_EMAIL && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-gradient-to-r from-violet-500/20 to-indigo-500/20 text-violet-700 dark:text-violet-300 font-semibold border border-violet-200/50 dark:border-violet-700/30">
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-gradient-to-r from-violet-500/20 to-indigo-500/20 text-violet-700 dark:text-violet-300 font-semibold border border-violet-200/50 dark:border-violet-700/30 shrink-0">
                         创始人
                       </span>
                     )}
                     {user.disabled && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-red-100 dark:bg-red-950/30 text-red-600 dark:text-red-400 font-semibold">
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-red-100 dark:bg-red-950/30 text-red-600 dark:text-red-400 font-semibold shrink-0">
                         已停用
                       </span>
                     )}
                   </div>
                   <div className="flex items-center gap-3 mt-0.5 flex-wrap">
-                    <span className="text-[11px] text-muted-foreground flex items-center gap-1">
-                      <RiMailLine className="w-3 h-3" />{user.email}
+                    <span className="text-[11px] text-muted-foreground flex items-center gap-1 truncate max-w-[200px]">
+                      <RiMailLine className="w-3 h-3 shrink-0" />{user.email}
                     </span>
-                    <span className="text-[11px] text-muted-foreground flex items-center gap-1">
+                    <span className="text-[11px] text-muted-foreground flex items-center gap-1 shrink-0">
                       <RiCalendarLine className="w-3 h-3" />{fmt(user.created_at)}
                     </span>
-                    {user.id && (
-                      <span className="text-[10px] text-muted-foreground/50 font-mono">#{user.id}</span>
-                    )}
+                    <span className="text-[10px] text-muted-foreground/40 font-mono shrink-0">#{user.id}</span>
                   </div>
                   {user.admin_notes && (
                     <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-1 truncate">
@@ -310,7 +372,7 @@ export default function AdminUsersPage() {
                 </div>
 
                 {user.email !== ADMIN_EMAIL && (
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                     <button
                       onClick={() => setEditUser(user)}
                       className="p-2 rounded-lg transition-colors text-muted-foreground hover:bg-blue-50 dark:hover:bg-blue-950/30 hover:text-blue-500"
@@ -340,7 +402,7 @@ export default function AdminUsersPage() {
                       onClick={() => deleteUser(user.id, user.email)}
                       disabled={deleting === user.id}
                       className="p-2 rounded-lg transition-colors text-muted-foreground hover:bg-red-50 dark:hover:bg-red-950/30 hover:text-red-500"
-                      title="删除用户"
+                      title="永久删除"
                     >
                       {deleting === user.id
                         ? <RiLoader4Line className="w-3.5 h-3.5 animate-spin" />
@@ -351,8 +413,21 @@ export default function AdminUsersPage() {
                 )}
               </div>
             ))}
+
+            {/* Load more */}
             {users.length < total && (
-              <p className="text-center text-xs text-muted-foreground py-2">显示前 50 条，共 {total} 条</p>
+              <div className="text-center py-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={loading}
+                  onClick={() => load(search, activeFilter, offset + LIMIT)}
+                  className="rounded-xl h-9 gap-2"
+                >
+                  {loading ? <RiLoader4Line className="w-3.5 h-3.5 animate-spin" /> : null}
+                  加载更多（还有 {total - users.length} 名用户）
+                </Button>
+              </div>
             )}
           </div>
         )}

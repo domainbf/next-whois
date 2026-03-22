@@ -68,6 +68,20 @@ function AppHead({ origin }: { origin: string }) {
   );
 }
 
+function SiteFooter() {
+  const settings = useSiteSettings();
+  const router = useRouter();
+  const footerText = settings.site_footer;
+  if (!footerText) return null;
+  // Hide on admin pages
+  if (router.pathname.startsWith("/admin")) return null;
+  return (
+    <footer className="border-t border-border/40 mt-12 py-6 px-4 text-center">
+      <p className="text-xs text-muted-foreground/60">{footerText}</p>
+    </footer>
+  );
+}
+
 function AnnouncementBanner() {
   const settings = useSiteSettings();
   const [dismissed, setDismissed] = React.useState(false);
@@ -124,6 +138,7 @@ export default function App({ Component, pageProps: { session, ...pageProps } }:
                 <Component {...pageProps} />
               </motion.div>
             </AnimatePresence>
+            <SiteFooter />
           </main>
         </div>
       </ThemeProvider>
