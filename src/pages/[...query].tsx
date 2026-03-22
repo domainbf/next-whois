@@ -2664,15 +2664,16 @@ export default function LookupPage({
 
   useEffect(() => {
     if (status) {
-      addHistory(target);
-      if (session?.user) {
-        // Determine registration status from available signals
-        const regStatus: string =
-          status && result ? "registered" :
-          dnsProbe?.registrationStatus === "unregistered" ? "unregistered" :
-          dnsProbe?.registrationStatus === "registered" ? "registered" :
-          !status ? "error" : "unknown";
+      // Determine registration status from available signals
+      const regStatus =
+        status && result ? "registered" :
+        dnsProbe?.registrationStatus === "unregistered" ? "unregistered" :
+        dnsProbe?.registrationStatus === "registered" ? "registered" :
+        !status ? "error" : "unknown";
 
+      addHistory(target, regStatus as any);
+
+      if (session?.user) {
         fetch("/api/user/search-history", {
           method: "POST",
           headers: { "Content-Type": "application/json" },

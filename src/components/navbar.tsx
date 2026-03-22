@@ -142,14 +142,24 @@ function HistoryDrawer() {
                     </span>
                     <div className="h-px flex-1 bg-border" />
                   </div>
-                  {group.items.map((item) => (
+                  {group.items.map((item) => {
+                    const rs = item.regStatus ?? "unknown";
+                    const statusCfg: Record<string, { label: string; cls: string }> = {
+                      registered:   { label: "已注册", cls: "text-emerald-600 border-emerald-300/70 bg-emerald-50 dark:bg-emerald-950/30 dark:border-emerald-700/40" },
+                      unregistered: { label: "未注册", cls: "text-sky-600 border-sky-300/70 bg-sky-50 dark:bg-sky-950/30 dark:border-sky-700/40" },
+                      reserved:     { label: "保留",   cls: "text-amber-600 border-amber-300/70 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700/40" },
+                      error:        { label: "查询失败", cls: "text-rose-600 border-rose-300/70 bg-rose-50 dark:bg-rose-950/30 dark:border-rose-700/40" },
+                      unknown:      { label: "未知",   cls: "text-muted-foreground border-border bg-muted/50" },
+                    };
+                    const cfg = statusCfg[rs] ?? statusCfg.unknown;
+                    return (
                     <DrawerClose
                       asChild
                       key={`${item.query}-${item.timestamp}`}
                     >
                       <Link
                         href={toSearchURI(item.query)}
-                        className="group flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-muted/50 active:bg-muted transition-colors touch-manipulation"
+                        className="group flex items-center gap-2.5 px-3 py-2.5 rounded-lg hover:bg-muted/50 active:bg-muted transition-colors touch-manipulation"
                       >
                         <div className="w-7 h-7 rounded-md grid place-items-center border border-border bg-muted/20 shrink-0">
                           <HistoryTypeIcon type={item.queryType} />
@@ -157,12 +167,18 @@ function HistoryDrawer() {
                         <span className="text-sm font-medium truncate flex-1 min-w-0">
                           {item.query}
                         </span>
-                        <Badge
-                          variant="outline"
-                          className="text-[8px] px-1.5 py-0 uppercase tracking-wider shrink-0"
-                        >
-                          {item.queryType}
-                        </Badge>
+                        {item.queryType === "domain" ? (
+                          <span className={`shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-md border ${cfg.cls}`}>
+                            {cfg.label}
+                          </span>
+                        ) : (
+                          <Badge
+                            variant="outline"
+                            className="text-[8px] px-1.5 py-0 uppercase tracking-wider shrink-0"
+                          >
+                            {item.queryType}
+                          </Badge>
+                        )}
                         <span className="text-[11px] text-muted-foreground tabular-nums shrink-0">
                           {format(item.timestamp, "h:mm a")}
                         </span>
@@ -174,7 +190,8 @@ function HistoryDrawer() {
                         </button>
                       </Link>
                     </DrawerClose>
-                  ))}
+                    );
+                  })}
                 </div>
               ))}
             </div>
