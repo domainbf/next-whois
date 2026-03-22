@@ -2463,14 +2463,15 @@ function QueryingDots() {
 }
 
 function ResultSkeleton() {
+  const { t } = useTranslation();
   return (
     <div className="space-y-6 mt-6">
       <div className="text-center py-6 space-y-2">
         <span className="text-shimmer text-base font-semibold tracking-wide select-none">
-          我知道你很急，但请你先别急
+          {t("loading_text")}
         </span>
         <p className="text-[13px] text-muted-foreground font-mono flex items-center justify-center gap-0.5 select-none">
-          <span>X.RW 正在全力查询中</span>
+          <span>{t("loading_querying")}</span>
           <QueryingDots />
         </p>
       </div>
@@ -3344,11 +3345,11 @@ export default function LookupPage({
                         </span>
                         <button
                           onClick={() => setFeedbackOpen(true)}
-                          title="反馈问题"
+                          title={t("feedback.issue_title")}
                           className="ml-auto flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] text-muted-foreground hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-950/30 border border-transparent hover:border-amber-300/50 transition-all"
                         >
                           <RiFlagLine className="w-3 h-3" />
-                          反馈
+                          {t("feedback.title")}
                         </button>
                       </div>
                     </div>

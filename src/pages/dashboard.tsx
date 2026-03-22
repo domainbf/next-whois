@@ -19,6 +19,7 @@ import {
 } from "@remixicon/react";
 import { ADMIN_EMAIL } from "@/lib/admin-shared";
 import type { HistoryItem } from "@/lib/history";
+import { useTranslation } from "@/lib/i18n";
 
 type Subscription = {
   id: string; domain: string; expiration_date: string | null;
@@ -247,6 +248,7 @@ function EditExpiryModal({ sub, onClose, onSaved }: { sub: Subscription; onClose
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const router = useRouter();
+  const { t } = useTranslation();
   const { data: session, status, update: updateSession } = useSession();
   const [tab, setTab] = React.useState<"subscriptions" | "stamps" | "account" | "history">("subscriptions");
   const [subscriptions, setSubscriptions] = React.useState<Subscription[]>([]);
@@ -464,7 +466,7 @@ export default function DashboardPage() {
 
   return (
     <>
-      <Head><title key="site-title">用户中心 · Next WHOIS</title></Head>
+      <Head><title key="site-title">{t("nav_dashboard")} · Next WHOIS</title></Head>
       {editingStamp && (
         <EditStampModal stamp={editingStamp} onClose={() => setEditingStamp(null)} onSaved={refreshData} />
       )}
@@ -485,10 +487,10 @@ export default function DashboardPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-bold flex items-center gap-2">
-              用户中心
+              {t("nav_dashboard")}
               {isAdminUser && (
                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-gradient-to-r from-violet-500/20 to-indigo-500/20 text-violet-700 dark:text-violet-300 font-bold border border-violet-200/50 dark:border-violet-700/30 uppercase tracking-wider">
-                  创始人
+                  {t("founder")}
                 </span>
               )}
             </h1>
@@ -499,13 +501,13 @@ export default function DashboardPage() {
               <Link href="/admin"
                 className="flex items-center gap-1.5 text-xs text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-950/30 transition-colors px-3 py-1.5 rounded-lg font-semibold">
                 <RiShieldUserLine className="w-3.5 h-3.5" />
-                管理后台
+                {t("nav_admin")}
               </Link>
             )}
             <button onClick={() => signOut({ callbackUrl: "/" })}
               className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-lg hover:bg-muted">
               <RiLogoutBoxLine className="w-3.5 h-3.5" />
-              退出登录
+              {t("sign_out")}
             </button>
           </div>
         </div>
@@ -780,7 +782,7 @@ export default function DashboardPage() {
                   <p className="text-xs text-muted-foreground truncate">{user.email}</p>
                   {isAdminUser && (
                     <span className="inline-block mt-1 text-[10px] px-2 py-0.5 rounded-full bg-gradient-to-r from-violet-500/20 to-indigo-500/20 text-violet-700 dark:text-violet-300 font-bold border border-violet-200/50 dark:border-violet-700/30 uppercase tracking-wider">
-                      创始人
+                      {t("founder")}
                     </span>
                   )}
                 </div>
@@ -949,7 +951,7 @@ export default function DashboardPage() {
               <button onClick={() => signOut({ callbackUrl: "/" })}
                 className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-red-200/50 bg-red-50/40 dark:bg-red-950/20 text-red-600 dark:text-red-400 text-sm font-semibold hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors">
                 <RiLogoutBoxLine className="w-4 h-4" />
-                退出登录
+                {t("sign_out")}
               </button>
             </motion.div>
             );

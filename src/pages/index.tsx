@@ -85,7 +85,7 @@ export default function HomePage() {
           >
             <div className="text-center py-4">
               <span className="text-shimmer text-base font-semibold tracking-wide select-none">
-                我知道你很急，但请你先别急
+                {t("loading_text")}
               </span>
             </div>
             <div className="glass-panel border border-border rounded-xl p-6 sm:p-8">

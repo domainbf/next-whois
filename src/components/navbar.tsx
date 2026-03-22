@@ -40,6 +40,7 @@ import { format } from "date-fns";
 import { useSession, signOut } from "next-auth/react";
 import { useSiteSettings } from "@/lib/site-settings";
 import { ADMIN_EMAIL } from "@/lib/admin-shared";
+import { useTranslation } from "@/lib/i18n";
 
 const TAP = { whileTap: { scale: 0.88 }, transition: { type: "spring" as const, stiffness: 500, damping: 22 } };
 
@@ -412,6 +413,7 @@ export function NavDrawer() {
 
 function UserButton() {
   const { data: session, status } = useSession();
+  const { t } = useTranslation();
   const [open, setOpen] = React.useState(false);
   const ref = React.useRef<HTMLDivElement>(null);
   const email = (session?.user as any)?.email as string | undefined;
@@ -455,7 +457,7 @@ function UserButton() {
             ? "bg-gradient-to-br from-violet-500 to-indigo-600 text-white"
             : "bg-primary text-primary-foreground"
         )}
-        aria-label="用户菜单"
+        aria-label={t("nav_dashboard")}
       >
         {initials}
       </motion.button>
@@ -471,7 +473,7 @@ function UserButton() {
             <div className="px-3 py-2 border-b border-border/50">
               <p className="text-[10px] text-muted-foreground truncate">{email}</p>
               {isAdminUser && (
-                <p className="text-[9px] font-bold text-violet-600 dark:text-violet-400 mt-0.5 uppercase tracking-wider">创始人 · 管理员</p>
+                <p className="text-[9px] font-bold text-violet-600 dark:text-violet-400 mt-0.5 uppercase tracking-wider">{t("founder")} · {t("nav_admin")}</p>
               )}
             </div>
             <Link
@@ -479,7 +481,7 @@ function UserButton() {
               onClick={() => setOpen(false)}
               className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-muted active:bg-muted/70 transition-colors touch-manipulation"
             >
-              <RiDashboardLine className="w-3.5 h-3.5 text-muted-foreground" />用户中心
+              <RiDashboardLine className="w-3.5 h-3.5 text-muted-foreground" />{t("nav_dashboard")}
             </Link>
             {isAdminUser && (
               <Link
@@ -487,14 +489,14 @@ function UserButton() {
                 onClick={() => setOpen(false)}
                 className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-violet-50 dark:hover:bg-violet-950/30 transition-colors text-violet-600 dark:text-violet-400 touch-manipulation"
               >
-                <RiShieldUserLine className="w-3.5 h-3.5" />管理后台
+                <RiShieldUserLine className="w-3.5 h-3.5" />{t("nav_admin")}
               </Link>
             )}
             <button
               onClick={() => { setOpen(false); signOut({ callbackUrl: "/" }); }}
               className="w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-muted active:bg-muted/70 transition-colors text-red-500 touch-manipulation"
             >
-              <RiLogoutBoxLine className="w-3.5 h-3.5" />退出登录
+              <RiLogoutBoxLine className="w-3.5 h-3.5" />{t("sign_out")}
             </button>
           </motion.div>
         )}
@@ -507,6 +509,7 @@ export function Navbar() {
   const isVisible = useScrollDirection();
   const settings = useSiteSettings();
   const logoText = settings.site_logo_text || "NEXT WHOIS";
+  const { t } = useTranslation();
 
   return (
     <div className="fixed top-0 left-0 right-0 z-50 flex justify-center">

@@ -9,16 +9,11 @@ import {
 import { RiCloseLine, RiFlagLine, RiCheckLine, RiLoader4Line } from "@remixicon/react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "@/lib/i18n";
 
-const ISSUE_TYPES = [
-  { key: "inaccurate", label: "数据不准确" },
-  { key: "incomplete", label: "数据不完整" },
-  { key: "outdated",   label: "数据已过期" },
-  { key: "parse_error",label: "解析错误"   },
-  { key: "other",      label: "其他"       },
-] as const;
+const ISSUE_KEYS = ["inaccurate", "incomplete", "outdated", "parse_error", "other"] as const;
 
-type IssueKey = (typeof ISSUE_TYPES)[number]["key"];
+type IssueKey = (typeof ISSUE_KEYS)[number];
 
 interface Props {
   open: boolean;
@@ -28,6 +23,7 @@ interface Props {
 }
 
 export function FeedbackDrawer({ open, onOpenChange, query, queryType }: Props) {
+  const { t } = useTranslation();
   const [selected, setSelected] = React.useState<Set<IssueKey>>(new Set());
   const [description, setDescription] = React.useState("");
   const [email, setEmail] = React.useState("");
@@ -64,7 +60,7 @@ export function FeedbackDrawer({ open, onOpenChange, query, queryType }: Props) 
 
   async function submit() {
     if (selected.size === 0) {
-      toast.warning("请选择至少一个问题类型");
+      toast.warning(t("feedback.select_required"));
       return;
     }
     setSubmitting(true);
@@ -83,12 +79,12 @@ export function FeedbackDrawer({ open, onOpenChange, query, queryType }: Props) 
       });
       const data = await res.json();
       if (!res.ok) {
-        toast.error(data?.error || "提交失败，请稍后再试");
+        toast.error(data?.error || t("feedback.submit_failed"));
         return;
       }
       setDone(true);
     } catch {
-      toast.error("提交失败，请稍后再试");
+      toast.error(t("feedback.submit_failed"));
     } finally {
       setSubmitting(false);
     }
@@ -109,16 +105,16 @@ export function FeedbackDrawer({ open, onOpenChange, query, queryType }: Props) 
             <DrawerTitle className="text-sm font-semibold flex items-center gap-1.5 min-w-0">
               <RiFlagLine className="w-3.5 h-3.5 text-amber-500 shrink-0" />
               <span className="truncate">
-                反馈 <span className="font-mono text-muted-foreground font-normal">{query}</span>
+                {t("feedback.title")} <span className="font-mono text-muted-foreground font-normal">{query}</span>
               </span>
             </DrawerTitle>
-            <p className="text-[11px] text-muted-foreground mt-0.5">报告查询结果中的问题</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">{t("feedback.subtitle")}</p>
           </div>
           <button
             type="button"
             onClick={handleClose}
             className="ml-2 shrink-0 p-1.5 rounded-lg hover:bg-muted/50 transition-colors"
-            aria-label="关闭"
+            aria-label={t("close")}
           >
             <RiCloseLine className="w-4 h-4 text-muted-foreground" />
           </button>
@@ -131,16 +127,16 @@ export function FeedbackDrawer({ open, onOpenChange, query, queryType }: Props) 
               <div className="w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-950/40 flex items-center justify-center">
                 <RiCheckLine className="w-6 h-6 text-emerald-600" />
               </div>
-              <p className="text-sm font-semibold">感谢您的反馈！</p>
+              <p className="text-sm font-semibold">{t("feedback.thanks_title")}</p>
               <p className="text-xs text-muted-foreground text-center max-w-xs">
-                我们会尽快处理您报告的问题。如果您留下了邮箱，我们会在处理后通知您。
+                {t("feedback.thanks_desc")}
               </p>
               <button
                 type="button"
                 onClick={handleClose}
                 className="mt-2 px-4 py-1.5 rounded-lg bg-muted text-sm font-medium hover:bg-muted/70 transition-colors"
               >
-                关闭
+                {t("close")}
               </button>
             </div>
           ) : (
@@ -166,9 +162,9 @@ export function FeedbackDrawer({ open, onOpenChange, query, queryType }: Props) 
 
               {/* Issue type grid — 2 columns to prevent mobile overflow */}
               <div>
-                <p className="text-xs font-semibold text-muted-foreground mb-2">选择问题类型</p>
+                <p className="text-xs font-semibold text-muted-foreground mb-2">{t("feedback.issue_type")}</p>
                 <div className="grid grid-cols-2 gap-2">
-                  {ISSUE_TYPES.map(({ key, label }) => (
+                  {ISSUE_KEYS.map((key) => (
                     <button
                       key={key}
                       type="button"
@@ -180,7 +176,7 @@ export function FeedbackDrawer({ open, onOpenChange, query, queryType }: Props) 
                           : "bg-muted/40 border-border text-foreground hover:border-primary/50"
                       )}
                     >
-                      {label}
+                      {t(`feedback.${key}` as any)}
                     </button>
                   ))}
                 </div>
@@ -190,7 +186,7 @@ export function FeedbackDrawer({ open, onOpenChange, query, queryType }: Props) 
                 <textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value.slice(0, 500))}
-                  placeholder="补充说明（可选，最多 500 字）"
+                  placeholder={t("feedback.description_placeholder")}
                   rows={3}
                   className="w-full text-sm rounded-xl border border-border bg-muted/30 px-3 py-2.5 resize-none placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary/50 transition-colors"
                 />
@@ -201,7 +197,7 @@ export function FeedbackDrawer({ open, onOpenChange, query, queryType }: Props) 
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="联系邮箱（可选，方便我们回复您）"
+                placeholder={t("feedback.email_placeholder")}
                 className="w-full text-sm rounded-xl border border-border bg-muted/30 px-3 py-2.5 placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary/50 transition-colors"
               />
 
@@ -212,7 +208,7 @@ export function FeedbackDrawer({ open, onOpenChange, query, queryType }: Props) 
                 className="w-full py-3 rounded-xl bg-primary text-primary-foreground text-sm font-semibold flex items-center justify-center gap-2 transition-opacity disabled:opacity-50 active:scale-[0.98]"
               >
                 {submitting ? <RiLoader4Line className="w-4 h-4 animate-spin" /> : null}
-                提交反馈
+                {t("feedback.submit")}
               </button>
             </div>
           )}
