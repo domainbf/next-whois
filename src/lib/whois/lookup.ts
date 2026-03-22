@@ -284,11 +284,12 @@ async function getLookupWhois(domain: string): Promise<WhoisRawResult> {
   const follow = Math.min(Math.max(MAX_WHOIS_FOLLOW, 1), 2) as 1 | 2;
   const tld = domainToQuery.split(".").slice(1).join(".");
   const tldSuffix = domainToQuery.split(".").pop() || "";
-  const customEntry =
-    (await getCustomServerEntry(tld)) || (await getCustomServerEntry(tldSuffix));
-
-  const isUserServer =
-    (await isUserManagedServer(tld)) || (await isUserManagedServer(tldSuffix));
+  const [[ce1, ce2], [us1, us2]] = await Promise.all([
+    Promise.all([getCustomServerEntry(tld), getCustomServerEntry(tldSuffix)]),
+    Promise.all([isUserManagedServer(tld), isUserManagedServer(tldSuffix)]),
+  ]);
+  const customEntry = ce1 || ce2;
+  const isUserServer = us1 || us2;
 
   if (customEntry) {
     if (isScraperEntry(customEntry)) {
@@ -470,14 +471,41 @@ export async function lookupWhoisWithCache(
   return { ...result, cached: false };
 }
 
+// After RDAP succeeds, wait at most this long for WHOIS (for raw content merging).
+// If WHOIS doesn't finish within this window we proceed without it.
+const WHOIS_MERGE_WAIT_MS = 2000;
+
 export async function lookupWhois(domain: string): Promise<WhoisResult> {
   const startTime = performance.now();
   const elapsed = () => (performance.now() - startTime) / 1000;
 
-  const [rdapSettled, whoisSettled] = await Promise.allSettled([
-    withTimeout(lookupRdap(domain), LOOKUP_TIMEOUT),
-    withTimeout(getLookupWhois(domain), LOOKUP_TIMEOUT),
+  // Start both lookups immediately in parallel
+  const rdapPromise = withTimeout(lookupRdap(domain), LOOKUP_TIMEOUT);
+  const whoisPromise = withTimeout(getLookupWhois(domain), LOOKUP_TIMEOUT);
+
+  // Race: see which finishes first
+  const first = await Promise.race([
+    rdapPromise.then(v => ({ tag: "rdap" as const, value: v }), () => null),
+    whoisPromise.then(v => ({ tag: "whois" as const, value: v }), () => null),
   ]);
+
+  let rdapSettled: PromiseSettledResult<Awaited<ReturnType<typeof lookupRdap>>>;
+  let whoisSettled: PromiseSettledResult<Awaited<ReturnType<typeof getLookupWhois>>>;
+
+  if (first?.tag === "rdap" && !first.value?.errorCode) {
+    // RDAP finished first with good data — wait briefly for WHOIS raw merging only
+    rdapSettled = { status: "fulfilled", value: first.value };
+    const whoisWithDeadline = await Promise.race([
+      whoisPromise.then(v => v, () => null),
+      new Promise<null>(resolve => setTimeout(() => resolve(null), WHOIS_MERGE_WAIT_MS)),
+    ]);
+    whoisSettled = whoisWithDeadline !== null
+      ? { status: "fulfilled", value: whoisWithDeadline }
+      : { status: "rejected", reason: new Error("WHOIS merge deadline") };
+  } else {
+    // WHOIS won first, or RDAP failed/had error — wait for both normally
+    [rdapSettled, whoisSettled] = await Promise.allSettled([rdapPromise, whoisPromise]);
+  }
 
   const rdapResult =
     rdapSettled.status === "fulfilled" ? rdapSettled.value : null;
@@ -545,15 +573,17 @@ export async function lookupWhois(domain: string): Promise<WhoisResult> {
     };
   }
 
-  // Try tian.hu then yisi.yun as fallbacks before giving up; only for domain queries.
+  // Try tian.hu and yisi.yun in parallel as fallbacks; only for domain queries.
   async function tryYisiOrFail(
     error: string,
     registryUrl?: string,
   ): Promise<WhoisResult> {
     if (isDomainQuery) {
-      const tianhuResult = await lookupTianhu(domain).catch(() => null);
+      const [tianhuResult, yisiResult] = await Promise.all([
+        lookupTianhu(domain).catch(() => null),
+        lookupYisi(domain).catch(() => null),
+      ]);
       if (tianhuResult) return tianhuResult;
-      const yisiResult = await lookupYisi(domain).catch(() => null);
       if (yisiResult) return yisiResult;
     }
     return failWithDns(error, registryUrl);
@@ -571,9 +601,11 @@ export async function lookupWhois(domain: string): Promise<WhoisResult> {
       if (whoisError || isEmptyResult(result)) {
         if (whoisError && isNotRegisteredWhoisResponse(whoisError)) {
           if (isDomainQuery) {
-            const tianhuResult = await lookupTianhu(domain).catch(() => null);
+            const [tianhuResult, yisiResult] = await Promise.all([
+              lookupTianhu(domain).catch(() => null),
+              lookupYisi(domain).catch(() => null),
+            ]);
             if (tianhuResult) return tianhuResult;
-            const yisiResult = await lookupYisi(domain).catch(() => null);
             if (yisiResult) return yisiResult;
           }
           return {
