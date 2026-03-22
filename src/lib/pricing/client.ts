@@ -64,6 +64,10 @@ async function fetchNazhumiData(
   type: NazhumiOrder,
 ): Promise<NazhumiRegistrar[]> {
   try {
+    const { getApiConfig } = await import("@/lib/api-config");
+    const cfg = await getApiConfig();
+    if (!cfg.nazhumi_enabled) return [];
+
     const url = `${NAZHUMI_API_URL}?domain=${encodeURIComponent(tld)}&order=${type}`;
     const response = await fetch(url, {
       headers: { Accept: "application/json" },
@@ -84,6 +88,10 @@ async function fetchMiqingjuData(
   type: NazhumiOrder,
 ): Promise<NazhumiRegistrar[]> {
   try {
+    const { getApiConfig } = await import("@/lib/api-config");
+    const cfg = await getApiConfig();
+    if (!cfg.miqingju_enabled) return [];
+
     const mqType = MQ_TYPE_MAP[type];
     const url = `${MIQINGJU_API_URL}?tld=${encodeURIComponent(tld)}`;
     const response = await fetch(url, {

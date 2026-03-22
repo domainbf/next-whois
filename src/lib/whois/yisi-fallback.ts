@@ -111,8 +111,10 @@ function toAnalyzeResult(r: YisiResult, domain: string): WhoisAnalyzeResult {
  * or null so the caller can fall back to the DNS probe error page.
  */
 export async function lookupYisi(domain: string): Promise<WhoisResult | null> {
-  const apiKey = process.env.YISI_API_KEY;
-  if (!apiKey) return null;
+  const { getApiConfig } = await import("@/lib/api-config");
+  const cfg = await getApiConfig();
+  if (!cfg.yisi_enabled || !cfg.yisi_key) return null;
+  const apiKey = cfg.yisi_key;
 
   try {
     const url = `${YISI_API}?query=${encodeURIComponent(domain)}`;

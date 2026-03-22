@@ -13,6 +13,7 @@ import {
   RiArrowLeftLine, RiLoader4Line,
   RiShieldUserLine, RiFeedbackLine, RiFeedbackFill,
   RiServerLine, RiServerFill,
+  RiPlugLine, RiPlugFill,
 } from "@remixicon/react";
 
 const NAV = [
@@ -22,6 +23,7 @@ const NAV = [
   { href: "/admin/reminders", label: "提醒",     icon: RiBellLine,        activeIcon: RiBellFill },
   { href: "/admin/feedback",  label: "反馈",     icon: RiFeedbackLine,    activeIcon: RiFeedbackFill },
   { href: "/admin/system",    label: "系统",     icon: RiServerLine,      activeIcon: RiServerFill },
+  { href: "/admin/api",       label: "API",      icon: RiPlugLine,        activeIcon: RiPlugFill },
   { href: "/admin/settings",  label: "设置",     icon: RiSettings4Line,   activeIcon: RiSettings4Fill },
 ];
 
