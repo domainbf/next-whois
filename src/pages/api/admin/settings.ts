@@ -3,13 +3,15 @@ import { many, run } from "@/lib/db-query";
 import { requireAdmin } from "@/lib/admin";
 import { DEFAULT_SETTINGS, type SiteSettings } from "@/lib/site-settings";
 
+const ALLOWED_KEYS = new Set(Object.keys(DEFAULT_SETTINGS));
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === "GET") {
     try {
       const rows = await many<{ key: string; value: string }>("SELECT key, value FROM site_settings");
       const settings: Record<string, string> = {};
       for (const row of rows) {
-        settings[row.key] = row.value;
+        if (ALLOWED_KEYS.has(row.key)) settings[row.key] = row.value;
       }
       return res.json({ settings: { ...DEFAULT_SETTINGS, ...settings } });
     } catch {

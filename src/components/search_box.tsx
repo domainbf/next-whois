@@ -7,6 +7,8 @@ import {
   RiHistoryLine,
   RiLinkM,
   RiErrorWarningLine,
+  RiInformationLine,
+  RiCloseLine,
 } from "@remixicon/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn, isEnter, validateAndSanitizeInput } from "@/lib/utils";
@@ -155,7 +157,7 @@ export function SearchBox({
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const [selectedGroup, setSelectedGroup] = useState(-1);
   const [isEnterPressed, setIsEnterPressed] = useState(false);
-  const [validationError, setValidationError] = useState<string | null>(null);
+  const [validationError, setValidationError] = useState<{ message: string; isWarning: boolean } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
 
@@ -458,10 +460,14 @@ export function SearchBox({
     if (!inputValue) return;
     const result = validateAndSanitizeInput(inputValue);
     if (!result.valid) {
-      setValidationError(t(result.errorKey as any, result.errorArgs as any));
+      setValidationError({ message: t(result.errorKey as any, result.errorArgs as any), isWarning: false });
       return;
     }
-    setValidationError(null);
+    if (result.isWarning && result.errorKey) {
+      setValidationError({ message: t(result.errorKey as any, result.errorArgs as any), isWarning: true });
+    } else {
+      setValidationError(null);
+    }
     onSearch(result.cleaned);
     setShowSuggestions(false);
   };
@@ -501,15 +507,33 @@ export function SearchBox({
         {validationError && (
           <motion.div
             key="validation-error"
-            initial={{ opacity: 0, y: -6, height: 0 }}
-            animate={{ opacity: 1, y: 0, height: "auto" }}
-            exit={{ opacity: 0, y: -4, height: 0 }}
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.18, ease: "easeOut" }}
             className="overflow-hidden"
           >
-            <div className="flex items-start gap-2 mt-2 px-3 py-2 rounded-lg bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200/70 dark:border-amber-800/40 text-amber-700 dark:text-amber-400">
-              <RiErrorWarningLine className="w-4 h-4 mt-0.5 shrink-0" />
-              <span className="text-sm leading-snug">{validationError}</span>
+            <div
+              className={cn(
+                "flex items-start gap-2 mt-2 px-3 py-2 rounded-lg border",
+                validationError.isWarning
+                  ? "bg-amber-50/80 dark:bg-amber-950/30 border-amber-200/70 dark:border-amber-800/40 text-amber-700 dark:text-amber-400"
+                  : "bg-red-50/80 dark:bg-red-950/30 border-red-200/70 dark:border-red-800/40 text-red-700 dark:text-red-400"
+              )}
+            >
+              {validationError.isWarning ? (
+                <RiInformationLine className="w-4 h-4 mt-0.5 shrink-0" />
+              ) : (
+                <RiErrorWarningLine className="w-4 h-4 mt-0.5 shrink-0" />
+              )}
+              <span className="text-sm leading-snug flex-1">{validationError.message}</span>
+              <button
+                onClick={() => setValidationError(null)}
+                className="shrink-0 opacity-60 hover:opacity-100 transition-opacity"
+                aria-label="dismiss"
+              >
+                <RiCloseLine className="w-4 h-4" />
+              </button>
             </div>
           </motion.div>
         )}

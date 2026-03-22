@@ -198,6 +198,8 @@ export type SearchValidationResult = {
   cleaned: string;
   errorKey?: string;
   errorArgs?: Record<string, string>;
+  /** true = show as amber warning but still allow the search to proceed */
+  isWarning?: boolean;
 };
 
 /**
@@ -269,7 +271,17 @@ export function validateAndSanitizeInput(raw: string): SearchValidationResult {
   const parsed = parse(cleaned, { allowPrivateDomains: false });
   const hasNonAsciiTld = /[^\x00-\x7F]/.test(tld); // IDN TLD — be lenient
   if (!parsed.isIcann && !hasNonAsciiTld) {
-    return { valid: false, cleaned, errorKey: "validation.unknown_tld", errorArgs: { tld: `.${tld}` } };
+    // Soft warning: show the amber notice but still allow the search to proceed.
+    // The WHOIS/RDAP server will give the authoritative answer if the TLD truly
+    // doesn't exist, and this avoids false-blocking newly-delegated gTLDs that
+    // haven't propagated to the tldts PSL snapshot yet.
+    return {
+      valid: true,
+      cleaned,
+      errorKey: "validation.unknown_tld",
+      errorArgs: { tld: `.${tld}` },
+      isWarning: true,
+    };
   }
 
   return { valid: true, cleaned };
