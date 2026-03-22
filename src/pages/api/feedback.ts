@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { sendEmail } from "@/lib/email";
+import { sendEmail, feedbackHtml } from "@/lib/email";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { ADMIN_EMAIL } from "@/lib/admin-shared";
 
@@ -60,47 +60,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const issueLabels      = validatedIssues.map((k) => ISSUE_LABELS[k]).join("、");
   const ts               = new Date().toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" });
 
-  const html = `
-<div style="font-family:Inter,sans-serif;max-width:580px;margin:auto;background:#fff;border-radius:12px;border:1px solid #e2e8f0;overflow:hidden">
-  <div style="background:#0ea5e9;padding:20px 24px">
-    <p style="margin:0;font-size:18px;font-weight:700;color:#fff">用户反馈 · Next WHOIS</p>
-    <p style="margin:4px 0 0;font-size:12px;color:#bae6fd">${ts}（北京时间）</p>
-  </div>
-  <div style="padding:24px">
-    <table style="width:100%;border-collapse:collapse;font-size:14px;line-height:1.6">
-      <tr style="border-bottom:1px solid #f1f5f9">
-        <td style="padding:8px 0;color:#64748b;width:90px;font-weight:500">查询目标</td>
-        <td style="padding:8px 0;font-weight:700;font-family:monospace;color:#0f172a">${cleanQuery}</td>
-      </tr>
-      <tr style="border-bottom:1px solid #f1f5f9">
-        <td style="padding:8px 0;color:#64748b;font-weight:500">查询类型</td>
-        <td style="padding:8px 0;color:#0f172a">${queryType || "domain"}</td>
-      </tr>
-      <tr style="${cleanDescription ? "border-bottom:1px solid #f1f5f9" : ""}">
-        <td style="padding:8px 0;color:#64748b;font-weight:500">问题类型</td>
-        <td style="padding:8px 0;color:#dc2626;font-weight:700">${issueLabels}</td>
-      </tr>
-      ${cleanDescription ? `
-      <tr style="${cleanEmail ? "border-bottom:1px solid #f1f5f9" : ""}">
-        <td style="padding:8px 0;color:#64748b;font-weight:500;vertical-align:top">补充说明</td>
-        <td style="padding:8px 0;color:#0f172a;white-space:pre-wrap">${cleanDescription}</td>
-      </tr>` : ""}
-      ${cleanEmail ? `
-      <tr>
-        <td style="padding:8px 0;color:#64748b;font-weight:500">联系邮箱</td>
-        <td style="padding:8px 0"><a href="mailto:${cleanEmail}" style="color:#0ea5e9">${cleanEmail}</a></td>
-      </tr>` : ""}
-    </table>
-  </div>
-  <div style="padding:12px 24px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:11px;color:#94a3b8">
-    IP: ${ip} · 来源：Next WHOIS 反馈系统
-  </div>
-</div>`;
-
   await sendEmail({
     to: ADMIN_EMAIL,
     subject: `[反馈] ${cleanQuery} — ${issueLabels}`,
-    html,
+    html: feedbackHtml({
+      query: cleanQuery,
+      queryType: String(queryType || "domain"),
+      issueLabels,
+      description: cleanDescription || undefined,
+      email: cleanEmail || undefined,
+      ip,
+      ts,
+    }),
   });
 
   return res.status(200).json({ ok: true });
