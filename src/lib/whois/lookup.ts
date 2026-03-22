@@ -1,6 +1,24 @@
 import { MAX_WHOIS_FOLLOW, LOOKUP_TIMEOUT } from "@/lib/env";
 import { WhoisResult, WhoisAnalyzeResult } from "@/lib/whois/types";
-import { getJsonRedisValue, setJsonRedisValue } from "@/lib/server/redis";
+import { getJsonRedisValue, setJsonRedisValue, isRedisAvailable } from "@/lib/server/redis";
+
+const MEM_CACHE_TTL_MS = 3_600_000;
+const MEM_CACHE_MAX = 500;
+type MemEntry = { value: WhoisResult; expiresAt: number };
+const _memCache = new Map<string, MemEntry>();
+function memCacheGet(key: string): WhoisResult | null {
+  const entry = _memCache.get(key);
+  if (!entry) return null;
+  if (Date.now() > entry.expiresAt) { _memCache.delete(key); return null; }
+  return entry.value;
+}
+function memCacheSet(key: string, value: WhoisResult) {
+  if (_memCache.size >= MEM_CACHE_MAX) {
+    const oldest = _memCache.keys().next().value;
+    if (oldest) _memCache.delete(oldest);
+  }
+  _memCache.set(key, { value, expiresAt: Date.now() + MEM_CACHE_TTL_MS });
+}
 import { analyzeWhois } from "@/lib/whois/common_parser";
 import { extractDomain } from "@/lib/utils";
 import { lookupRdap, convertRdapToWhoisResult } from "@/lib/whois/rdap_client";
@@ -459,14 +477,23 @@ export async function lookupWhoisWithCache(
   domain: string,
 ): Promise<WhoisResult> {
   const key = `whois:${domain}`;
-  const cached = await getJsonRedisValue<WhoisResult>(key);
-  if (cached) {
-    return { ...cached, time: 0, cached: true };
+
+  if (isRedisAvailable()) {
+    const cached = await getJsonRedisValue<WhoisResult>(key);
+    if (cached) return { ...cached, time: 0, cached: true };
+  } else {
+    const cached = memCacheGet(key);
+    if (cached) return { ...cached, time: 0, cached: true };
   }
 
   const result = await lookupWhois(domain);
+
   if (result.status) {
-    await setJsonRedisValue<WhoisResult>(key, result);
+    if (isRedisAvailable()) {
+      await setJsonRedisValue<WhoisResult>(key, result);
+    } else {
+      memCacheSet(key, result);
+    }
   }
 
   return { ...result, cached: false };

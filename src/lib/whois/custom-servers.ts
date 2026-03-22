@@ -82,6 +82,15 @@ async function readUserManagedServers(): Promise<CustomServerMap> {
   return readFileServers();
 }
 
+let _allServersCache: CustomServerMap | null = null;
+let _allServersCacheAt = 0;
+const ALL_SERVERS_TTL_MS = 30_000;
+
+function invalidateAllServersCache() {
+  _allServersCache = null;
+  _allServersCacheAt = 0;
+}
+
 async function writeDbServer(tld: string, entry: CustomServerEntry): Promise<void> {
   if (!(await isDbReady())) return;
   await run(
@@ -98,12 +107,18 @@ async function deleteDbServer(tld: string): Promise<void> {
 }
 
 export async function getAllCustomServers(): Promise<CustomServerMap> {
+  const now = Date.now();
+  if (_allServersCache && now - _allServersCacheAt < ALL_SERVERS_TTL_MS) {
+    return _allServersCache;
+  }
   const cctld = readCctldServers();
   const user  = await readUserManagedServers();
   const cctldFiltered = Object.fromEntries(
     Object.entries(cctld).filter(([, v]) => v !== null),
   ) as CustomServerMap;
-  return { ...BUILTIN_SERVERS, ...cctldFiltered, ...user };
+  _allServersCache = { ...BUILTIN_SERVERS, ...cctldFiltered, ...user };
+  _allServersCacheAt = now;
+  return _allServersCache;
 }
 
 export async function getUserManagedServers(): Promise<CustomServerMap> {
@@ -127,6 +142,7 @@ export async function getCustomServer(tld: string): Promise<string | null> {
 export async function setCustomServer(tld: string, entry: CustomServerEntry): Promise<void> {
   const normalized = tld.toLowerCase().replace(/^\./, "");
   await writeDbServer(normalized, entry);
+  invalidateAllServersCache();
 }
 
 export async function deleteCustomServer(tld: string): Promise<boolean> {
@@ -134,6 +150,7 @@ export async function deleteCustomServer(tld: string): Promise<boolean> {
   const servers = await readUserManagedServers();
   if (normalized in servers) {
     await deleteDbServer(normalized);
+    invalidateAllServersCache();
     return true;
   }
   return false;
