@@ -55,7 +55,7 @@ import {
   RiCheckboxBlankCircleLine,
 } from "@remixicon/react";
 import { getTopRegistrars, DomainPricing } from "@/lib/pricing/client";
-import { computeLifecycle, fmtDate } from "@/lib/lifecycle";
+import { computeLifecycle, fmtDate, fmtDateTime, fmtCountdown } from "@/lib/lifecycle";
 import React, { useEffect, useMemo } from "react";
 import { addHistory, detectQueryType } from "@/lib/history";
 import { useSession } from "next-auth/react";
@@ -2004,17 +2004,31 @@ function DomainReminderDialog({
                   <div className={cn("rounded-xl border overflow-hidden", phaseUI.borderClass)}>
                     {/* Expiry row */}
                     <div className={cn("flex items-center justify-between px-3.5 py-3", phaseUI.bgClass)}>
-                      <div>
+                      <div className="min-w-0">
                         <p className="text-[9px] text-muted-foreground/80 uppercase tracking-wider font-bold mb-1">
                           {isZh ? "过期日期" : "Expiry date"}
                         </p>
-                        <p className="text-[13px] font-mono font-bold text-foreground">{fmtDate(lc.expiry)}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className={cn("text-[30px] font-black tabular-nums leading-none", urgencyNum)}>
-                          {remainingDays !== null ? Math.max(0, remainingDays) : "—"}
+                        <p className="text-[12px] font-mono font-bold text-foreground leading-none">{fmtDate(lc.expiry)}</p>
+                        <p className="text-[10px] font-mono text-muted-foreground/70 mt-0.5 tabular-nums">
+                          {`${String(lc.expiry.getUTCHours()).padStart(2,"0")}:${String(lc.expiry.getUTCMinutes()).padStart(2,"0")}:${String(lc.expiry.getUTCSeconds()).padStart(2,"0")} UTC`}
                         </p>
-                        <p className="text-[10px] text-muted-foreground mt-0.5">{isZh ? "天后到期" : "days left"}</p>
+                      </div>
+                      <div className="text-right shrink-0 pl-2">
+                        {remainingDays !== null && remainingDays >= 0 && remainingDays <= 7 ? (
+                          <>
+                            <p className={cn("text-[20px] font-black tabular-nums leading-none", urgencyNum)}>
+                              {fmtCountdown(lc.expiry, isZh)}
+                            </p>
+                            <p className="text-[10px] text-muted-foreground mt-0.5">{isZh ? "后到期" : "remaining"}</p>
+                          </>
+                        ) : (
+                          <>
+                            <p className={cn("text-[30px] font-black tabular-nums leading-none", urgencyNum)}>
+                              {remainingDays !== null ? Math.max(0, remainingDays) : "—"}
+                            </p>
+                            <p className="text-[10px] text-muted-foreground mt-0.5">{isZh ? "天后到期" : "days left"}</p>
+                          </>
+                        )}
                       </div>
                     </div>
                     {/* Phase badge */}
@@ -2035,33 +2049,90 @@ function DomainReminderDialog({
                     </div>
                     {/* Timeline */}
                     <div className="px-3.5 py-2.5 border-t border-border/30 bg-muted/20">
-                      <p className="text-[9px] font-bold text-muted-foreground/70 uppercase tracking-widest mb-2">
-                        {isZh ? "生命周期时间表" : "Lifecycle timeline"}
-                      </p>
-                      <div className="space-y-1.5">
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-[9px] font-bold text-muted-foreground/70 uppercase tracking-widest">
+                          {isZh ? "生命周期时间表" : "Lifecycle timeline"}
+                        </p>
+                        {/* Confidence badge */}
+                        <span className={cn(
+                          "inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[8.5px] font-bold uppercase tracking-wide border",
+                          lc.cfg.confidence === "high"
+                            ? "bg-emerald-500/10 border-emerald-400/20 text-emerald-600 dark:text-emerald-400"
+                            : "bg-yellow-500/10 border-yellow-400/20 text-yellow-600 dark:text-yellow-400"
+                        )}>
+                          {lc.cfg.confidence === "high"
+                            ? (isZh ? "✓ 高可信度" : "✓ Verified")
+                            : (isZh ? "~ 预估数据" : "~ Estimated")}
+                        </span>
+                      </div>
+                      <div className="space-y-2">
                         {([
                           lc.cfg.grace > 0 &&
-                            { label: isZh ? "宽限期结束" : "Grace ends",      date: lc.graceEnd,      color: "text-amber-600 dark:text-amber-400" },
+                            { key: "grace",   label: isZh ? "宽限期结束" : "Grace ends",      date: lc.graceEnd,      color: "text-amber-600 dark:text-amber-400",  dotColor: "bg-amber-400" },
                           lc.cfg.redemption > 0 &&
-                            { label: isZh ? "赎回期结束" : "Redemption ends",  date: lc.redemptionEnd, color: "text-orange-600 dark:text-orange-400" },
-                          lc.cfg.pendingDelete > 0 &&
-                            { label: isZh ? "预计释放" : "Est. drop",          date: lc.dropDate,      color: "text-red-600 dark:text-red-400" },
-                        ] as (false | { label: string; date: Date; color: string })[])
+                            { key: "redemp",  label: isZh ? "赎回期结束" : "Redemption ends",  date: lc.redemptionEnd, color: "text-orange-600 dark:text-orange-400", dotColor: "bg-orange-400" },
+                          (lc.cfg.pendingDelete > 0 || (lc.cfg.grace > 0 || lc.cfg.redemption > 0)) &&
+                            { key: "drop",    label: isZh ? "预计删除"   : "Est. deletion",    date: lc.dropDate,      color: "text-red-600 dark:text-red-400",       dotColor: "bg-red-400" },
+                        ] as (false | { key: string; label: string; date: Date; color: string; dotColor: string })[])
                           .filter(Boolean)
                           .map((row) => {
                             if (!row) return null;
                             const isPast = new Date() > row.date;
                             return (
-                              <div key={row.label} className="flex items-center justify-between text-[11px]">
-                                <span className={cn("text-muted-foreground", isPast && "line-through opacity-40")}>{row.label}</span>
-                                <span className={cn("font-mono font-semibold tabular-nums", isPast ? "text-muted-foreground/40" : row.color)}>
-                                  {fmtDate(row.date)}
-                                </span>
+                              <div key={row.key}>
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="flex items-center gap-1.5 min-w-0">
+                                    <span className={cn("w-1.5 h-1.5 rounded-full shrink-0 mt-0.5", isPast ? "bg-muted-foreground/30" : row.dotColor)} />
+                                    <span className={cn("text-[10px]", isPast ? "line-through text-muted-foreground/40" : "text-muted-foreground")}>{row.label}</span>
+                                  </div>
+                                  <span className={cn("text-[10px] font-mono font-semibold tabular-nums text-right shrink-0", isPast ? "text-muted-foreground/40" : row.color)}>
+                                    {fmtDateTime(row.date, false)}
+                                  </span>
+                                </div>
+                                {!isPast && (
+                                  <p className="text-[9px] text-muted-foreground/50 pl-3 mt-0.5 tabular-nums font-mono">
+                                    UTC · {fmtCountdown(row.date, isZh)}{isZh ? "后" : " from now"}
+                                  </p>
+                                )}
                               </div>
                             );
                           })}
+
+                        {/* 预期可注册时间 — shown only when domain will drop */}
+                        {(lc.cfg.pendingDelete > 0 || lc.cfg.grace > 0 || lc.cfg.redemption > 0) && (() => {
+                          const dropIsPast = new Date() > lc.dropDate;
+                          return (
+                            <div className={cn(
+                              "rounded-lg border px-2.5 py-2 mt-1",
+                              dropIsPast
+                                ? "border-sky-400/40 bg-sky-500/10"
+                                : "border-dashed border-border/50 bg-background/50"
+                            )}>
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex items-center gap-1.5">
+                                  <RiShoppingCartLine className={cn("w-2.5 h-2.5 shrink-0", dropIsPast ? "text-sky-500" : "text-muted-foreground/40")} />
+                                  <span className={cn("text-[10px] font-semibold", dropIsPast ? "text-sky-600 dark:text-sky-400" : "text-muted-foreground/60")}>
+                                    {isZh ? "预期可注册" : "Est. available"}
+                                  </span>
+                                </div>
+                                <span className={cn(
+                                  "text-[10px] font-mono font-semibold tabular-nums text-right",
+                                  dropIsPast ? "text-sky-600 dark:text-sky-400" : "text-muted-foreground/50"
+                                )}>
+                                  {fmtDateTime(lc.dropDate, false)}
+                                </span>
+                              </div>
+                              <p className={cn("text-[9px] pl-4 mt-0.5 leading-relaxed font-mono tabular-nums", dropIsPast ? "text-sky-500/70" : "text-muted-foreground/40")}>
+                                {dropIsPast
+                                  ? (isZh ? "UTC · 域名现已可注册" : "UTC · Domain may be available now")
+                                  : `UTC · ${fmtCountdown(lc.dropDate, isZh)}${isZh ? "后可抢注" : " until drop"}`}
+                              </p>
+                            </div>
+                          );
+                        })()}
+
                         {lc.cfg.grace === 0 && lc.cfg.redemption === 0 && lc.cfg.pendingDelete === 0 && (
-                          <p className="text-[11px] text-muted-foreground/60 italic">
+                          <p className="text-[10px] text-muted-foreground/60 italic">
                             {isZh
                               ? `.${tldUpper} 域名到期后通常立即删除，无宽限期`
                               : `.${tldUpper} domains are typically deleted immediately on expiry`}

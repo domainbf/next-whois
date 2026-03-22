@@ -183,9 +183,40 @@ export const LIFECYCLE_TABLE: Record<string, TldLifecycle> = {
   lk:     { grace: 30, redemption: 0,  pendingDelete: 0,  registry: "LK Domain Registry", confidence: "est" },
   np:     { grace: 30, redemption: 0,  pendingDelete: 0,  registry: "Mercantile",   confidence: "est" },
   ir:     { grace: 0,  redemption: 0,  pendingDelete: 0,  registry: "IRNIC",  confidence: "est" },
+  iq:     { grace: 30, redemption: 0,  pendingDelete: 0,  registry: "NIC.iq",  confidence: "est" },
   il:     { grace: 60, redemption: 0,  pendingDelete: 0,  registry: "ISOC-IL", confidence: "high" },
   ae:     { grace: 30, redemption: 30, pendingDelete: 5,  registry: "aeDA",   confidence: "high" },
   sa:     { grace: 30, redemption: 0,  pendingDelete: 0,  registry: "SaudiNIC", confidence: "est" },
+  kw:     { grace: 30, redemption: 0,  pendingDelete: 0,  registry: "CITRA (Kuwait)", confidence: "est" },
+  om:     { grace: 30, redemption: 0,  pendingDelete: 0,  registry: "TRA (Oman)", confidence: "est" },
+  qa:     { grace: 30, redemption: 0,  pendingDelete: 0,  registry: "ictQATAR", confidence: "est" },
+  jo:     { grace: 30, redemption: 0,  pendingDelete: 0,  registry: "NITC (Jordan)", confidence: "est" },
+  lb:     { grace: 30, redemption: 0,  pendingDelete: 0,  registry: "OGERO (Lebanon)", confidence: "est" },
+  ye:     { grace: 30, redemption: 0,  pendingDelete: 0,  registry: "TeleYemen", confidence: "est" },
+  sy:     { grace: 30, redemption: 0,  pendingDelete: 0,  registry: "SCS-NET (Syria)", confidence: "est" },
+  ps:     { grace: 30, redemption: 0,  pendingDelete: 0,  registry: "PNINA (Palestine)", confidence: "est" },
+
+  // ── UK second-level domains (all managed by Nominet, same lifecycle as .uk)
+  "co.uk":   { grace: 92, redemption: 0, pendingDelete: 0, registry: "Nominet", confidence: "high" },
+  "org.uk":  { grace: 92, redemption: 0, pendingDelete: 0, registry: "Nominet", confidence: "high" },
+  "me.uk":   { grace: 92, redemption: 0, pendingDelete: 0, registry: "Nominet", confidence: "high" },
+  "net.uk":  { grace: 92, redemption: 0, pendingDelete: 0, registry: "Nominet", confidence: "high" },
+  "ltd.uk":  { grace: 92, redemption: 0, pendingDelete: 0, registry: "Nominet", confidence: "high" },
+  "plc.uk":  { grace: 92, redemption: 0, pendingDelete: 0, registry: "Nominet", confidence: "high" },
+  "com.au":  { grace: 30, redemption: 30, pendingDelete: 5, registry: "auDA",   confidence: "high" },
+  "net.au":  { grace: 30, redemption: 30, pendingDelete: 5, registry: "auDA",   confidence: "high" },
+  "org.au":  { grace: 30, redemption: 30, pendingDelete: 5, registry: "auDA",   confidence: "high" },
+  "com.cn":  { grace: 0,  redemption: 30, pendingDelete: 5, registry: "CNNIC",  confidence: "high" },
+  "net.cn":  { grace: 0,  redemption: 30, pendingDelete: 5, registry: "CNNIC",  confidence: "high" },
+  "org.cn":  { grace: 0,  redemption: 30, pendingDelete: 5, registry: "CNNIC",  confidence: "high" },
+  "com.hk":  { grace: 0,  redemption: 30, pendingDelete: 5, registry: "HKIRC",  confidence: "high" },
+  "com.br":  { grace: 0,  redemption: 0,  pendingDelete: 0, registry: "Registro.br", confidence: "high" },
+  "com.mx":  { grace: 30, redemption: 30, pendingDelete: 5, registry: "NIC México", confidence: "high" },
+  "com.ar":  { ...IMMEDIATE,                                 registry: "NIC Argentina" },
+  "co.jp":   { ...IMMEDIATE,                                 registry: "JPRS" },
+  "or.jp":   { ...IMMEDIATE,                                 registry: "JPRS" },
+  "ne.jp":   { ...IMMEDIATE,                                 registry: "JPRS" },
+  "co.kr":   { grace: 30, redemption: 30, pendingDelete: 5, registry: "KISA",   confidence: "high" },
 
   // ── Europe ccTLD ──────────────────────────────────────────────────────────
   uk:     { grace: 92, redemption: 0,  pendingDelete: 0,  registry: "Nominet", confidence: "high" },
@@ -388,9 +419,35 @@ export function computeLifecycle(
   return { phase, expiry, graceEnd, redemptionEnd, dropDate, cfg, tld, daysToExpiry, phaseSource };
 }
 
-/** Format a Date to a readable zh-CN date string. */
+/** Format a Date to YYYY/MM/DD (UTC). Used in emails and short displays. */
 export function fmtDate(d: Date): string {
-  return d.toLocaleDateString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit" });
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getUTCFullYear()}/${pad(d.getUTCMonth() + 1)}/${pad(d.getUTCDate())}`;
+}
+
+/** Format a Date to YYYY/MM/DD HH:mm:ss UTC (full precision). */
+export function fmtDateTime(d: Date, showTz = true): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const date = `${d.getUTCFullYear()}/${pad(d.getUTCMonth() + 1)}/${pad(d.getUTCDate())}`;
+  const time = `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}`;
+  return showTz ? `${date} ${time} UTC` : `${date} ${time}`;
+}
+
+/**
+ * Humanised countdown with hours precision when ≤ 7 days remain.
+ * Returns e.g. "40天" or "3天14小时" or "5小时20分".
+ */
+export function fmtCountdown(targetDate: Date, isZh = true): string {
+  const ms = targetDate.getTime() - Date.now();
+  if (ms <= 0) return isZh ? "已过期" : "expired";
+  const totalMins = Math.floor(ms / 60_000);
+  const days = Math.floor(totalMins / 1440);
+  const hours = Math.floor((totalMins % 1440) / 60);
+  const mins = totalMins % 60;
+  if (days >= 7) return isZh ? `${days}天` : `${days}d`;
+  if (days > 0)  return isZh ? `${days}天${hours}小时` : `${days}d ${hours}h`;
+  if (hours > 0) return isZh ? `${hours}小时${mins}分` : `${hours}h ${mins}m`;
+  return isZh ? `${mins}分钟` : `${mins}min`;
 }
 
 export const PHASE_META = {
