@@ -53,8 +53,10 @@ import {
   RiSearchLine,
   RiCheckboxCircleLine,
   RiCheckboxBlankCircleLine,
+  RiFlagLine,
 } from "@remixicon/react";
 import { getTopRegistrars, DomainPricing } from "@/lib/pricing/client";
+import { FeedbackDrawer } from "@/components/feedback-drawer";
 import { computeLifecycle, fmtDate, fmtDateTime, fmtCountdown } from "@/lib/lifecycle";
 import React, { useEffect, useMemo } from "react";
 import { addHistory, detectQueryType } from "@/lib/history";
@@ -2553,6 +2555,7 @@ export default function LookupPage({
   const router = useRouter();
   const [loading, setLoading] = React.useState(false);
   const [expandStatus, setExpandStatus] = React.useState(false);
+  const [feedbackOpen, setFeedbackOpen] = React.useState(false);
   const suppressNextLoad = React.useRef(false);
 
   useEffect(() => {
@@ -2997,7 +3000,7 @@ export default function LookupPage({
                               {queryType}
                             </Badge>
                           </div>
-                          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight mb-1">
+                          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight mb-1 uppercase">
                             {displayTarget}
                           </h2>
                           <p className="text-muted-foreground text-sm mt-2 max-w-sm leading-relaxed">
@@ -3214,7 +3217,7 @@ export default function LookupPage({
                         </Badge>
                       </div>
                       <h2
-                        className="text-3xl sm:text-4xl font-bold tracking-tight mb-1 cursor-pointer hover:opacity-80 transition-opacity"
+                        className="text-3xl sm:text-4xl font-bold tracking-tight mb-1 cursor-pointer hover:opacity-80 transition-opacity uppercase"
                         onClick={() => copy(result.domain || target)}
                       >
                         {result.domain || displayTarget}
@@ -3334,11 +3337,28 @@ export default function LookupPage({
                           )
                         ))}
                       </div>
-                      <span className="text-[10px] text-muted-foreground font-mono mt-2 block">
-                        {time.toFixed(2)}s{data.cached && ` · ${t("cached")}`}
-                        {data.source && ` · ${data.source}`}
-                      </span>
+                      <div className="flex items-center gap-2 mt-2">
+                        <span className="text-[10px] text-muted-foreground font-mono">
+                          {time.toFixed(2)}s{data.cached && ` · ${t("cached")}`}
+                          {data.source && ` · ${data.source}`}
+                        </span>
+                        <button
+                          onClick={() => setFeedbackOpen(true)}
+                          title="反馈问题"
+                          className="ml-auto flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] text-muted-foreground hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-950/30 border border-transparent hover:border-amber-300/50 transition-all"
+                        >
+                          <RiFlagLine className="w-3 h-3" />
+                          反馈
+                        </button>
+                      </div>
                     </div>
+
+                    <FeedbackDrawer
+                      open={feedbackOpen}
+                      onOpenChange={setFeedbackOpen}
+                      query={result.domain || target}
+                      queryType={queryType}
+                    />
 
                     <DomainReminderDialog
                       domain={result.domain || target}

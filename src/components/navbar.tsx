@@ -164,7 +164,7 @@ function HistoryDrawer() {
                         <div className="w-7 h-7 rounded-md grid place-items-center border border-border bg-muted/20 shrink-0">
                           <HistoryTypeIcon type={item.queryType} />
                         </div>
-                        <span className="text-sm font-medium truncate flex-1 min-w-0">
+                        <span className="text-sm font-medium truncate flex-1 min-w-0 uppercase">
                           {item.query}
                         </span>
                         {item.queryType === "domain" ? (
