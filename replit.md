@@ -104,14 +104,20 @@ The app is production-ready for Vercel and similar serverless platforms.
 ### Environment variables for production:
 | Variable | Required | Default | Description |
 |---|---|---|---|
-| `REDIS_URL` | Yes* | — | Redis connection URL (Upstash/Vercel KV/Railway) |
-| `REDIS_HOST` | Yes* | — | Alternative to REDIS_URL for self-hosted Redis |
+| `POSTGRES_URL` | **Yes** | — | Supabase/Neon PostgreSQL pooling URL |
+| `POSTGRES_URL_NON_POOLING` | **Yes** | — | Direct connection for migrations |
+| `NEXTAUTH_SECRET` | **Yes** | — | Random secret for JWT signing (`openssl rand -base64 32`) |
+| `NEXTAUTH_URL` | **Yes** | — | Production URL e.g. `https://your-app.vercel.app` |
+| `RESEND_API_KEY` | **Yes** | — | Resend API key for sending emails |
+| `RESEND_FROM_EMAIL` | **Yes** | `noreply@x.rw` | Verified sender address on Resend |
+| `NEXT_PUBLIC_BASE_URL` | Recommended | NEXTAUTH_URL | Base URL used in email links |
+| `CRON_SECRET` | Recommended | — | Protects cron jobs; Vercel sends as `Authorization: Bearer` |
 | `WHOIS_TIMEOUT_MS` | No | 10000 | WHOIS query timeout in ms (keep ≤ 8000 on Hobby plan) |
-| `REDIS_CACHE_TTL` | No | 3600 | Result cache TTL in seconds |
 | `NEXT_PUBLIC_MAX_WHOIS_FOLLOW` | No | 0 | WHOIS follow depth (0 = fastest) |
-| `ADMIN_SECRET` | No | — | Protects /api/admin/tld-servers |
+| `REDIS_URL` | No | — | Redis connection URL (optional caching) |
+| `REDIS_CACHE_TTL` | No | 3600 | Result cache TTL in seconds |
 
-*One of REDIS_URL or REDIS_HOST is required to persist custom WHOIS servers across serverless function instances.
+See `.env.example` for complete reference with comments.
 
 ### Redis storage:
 - Lookup results cached at key `whois:{query}` with TTL from `REDIS_CACHE_TTL`

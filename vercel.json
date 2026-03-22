@@ -5,6 +5,10 @@
     {
       "path": "/api/cron/ping",
       "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/remind/process",
+      "schedule": "0 9 * * *"
     }
   ],
   "functions": {
@@ -16,6 +20,9 @@
     },
     "src/pages/api/admin/tld-servers.ts": {
       "maxDuration": 10
+    },
+    "src/pages/api/remind/process.ts": {
+      "maxDuration": 60
     }
   },
   "headers": [

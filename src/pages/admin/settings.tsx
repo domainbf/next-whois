@@ -8,7 +8,7 @@ import { DEFAULT_SETTINGS, type SiteSettings, notifySettingsUpdated } from "@/li
 import {
   RiLoader4Line, RiSaveLine, RiRefreshLine, RiImageLine,
   RiGlobalLine, RiFileTextLine, RiShareLine, RiTwitterXLine,
-  RiMegaphoneLine,
+  RiMegaphoneLine, RiMailSendLine, RiCheckLine,
 } from "@remixicon/react";
 
 type FieldDef = {
@@ -63,6 +63,29 @@ export default function AdminSettingsPage() {
   const [form, setForm] = React.useState<SiteSettings>(DEFAULT_SETTINGS);
   const [loading, setLoading] = React.useState(true);
   const [saving, setSaving] = React.useState(false);
+  const [testingEmail, setTestingEmail] = React.useState(false);
+  const [emailOk, setEmailOk] = React.useState<boolean | null>(null);
+
+  async function handleTestEmail() {
+    setTestingEmail(true);
+    setEmailOk(null);
+    try {
+      const res = await fetch("/api/admin/test-email", { method: "POST" });
+      const data = await res.json();
+      if (res.ok && data.ok) {
+        setEmailOk(true);
+        toast.success(`测试邮件已发送至 ${data.to}`);
+      } else {
+        setEmailOk(false);
+        toast.error(data.error || "发送失败");
+      }
+    } catch {
+      setEmailOk(false);
+      toast.error("网络错误，发送失败");
+    } finally {
+      setTestingEmail(false);
+    }
+  }
 
   React.useEffect(() => {
     fetch("/api/admin/settings")
@@ -182,6 +205,42 @@ export default function AdminSettingsPage() {
                 </div>
               </div>
               <p className="text-[10px] text-muted-foreground">og:site_name: <span className="font-mono">{form.og_site_name || form.site_title || "—"}</span></p>
+            </div>
+
+            {/* Email test */}
+            <div className="glass-panel border border-border rounded-2xl overflow-hidden">
+              <div className="px-5 py-3 flex items-center gap-2.5 border-b border-border bg-muted/30">
+                <div className="w-6 h-6 rounded-lg flex items-center justify-center bg-sky-100 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400">
+                  <RiMailSendLine className="w-3.5 h-3.5" />
+                </div>
+                <h3 className="text-sm font-bold">邮件系统</h3>
+              </div>
+              <div className="p-4 flex items-center justify-between gap-4 flex-wrap">
+                <div>
+                  <p className="text-sm font-medium">测试邮件发送</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    向管理员邮箱发送一封测试邮件，验证 Resend API 和发件域名配置是否正常。
+                  </p>
+                  {emailOk === true && (
+                    <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1.5 flex items-center gap-1">
+                      <RiCheckLine className="w-3.5 h-3.5" />邮件发送成功，请检查收件箱
+                    </p>
+                  )}
+                  {emailOk === false && (
+                    <p className="text-xs text-destructive mt-1.5">发送失败，请检查 RESEND_API_KEY 和发件域名配置</p>
+                  )}
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={handleTestEmail}
+                  disabled={testingEmail}
+                  className="rounded-xl h-9 gap-2 shrink-0"
+                >
+                  {testingEmail
+                    ? <><RiLoader4Line className="w-4 h-4 animate-spin" />发送中…</>
+                    : <><RiMailSendLine className="w-4 h-4" />发送测试邮件</>}
+                </Button>
+              </div>
             </div>
 
             <div className="flex items-center gap-3 pt-1">

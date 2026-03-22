@@ -15,9 +15,16 @@ const THRESHOLDS = [60, 30, 10, 5, 1];
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "GET" && req.method !== "POST") return res.status(405).end();
 
-  const secret = req.headers["x-cron-secret"] || req.query.secret;
-  if (process.env.CRON_SECRET && secret !== process.env.CRON_SECRET) {
-    return res.status(401).json({ error: "Unauthorized" });
+  const cronSecret = process.env.CRON_SECRET;
+  if (cronSecret) {
+    const authHeader = req.headers.authorization;
+    const legacyHeader = req.headers["x-cron-secret"] as string | undefined;
+    const querySecret = req.query.secret as string | undefined;
+    const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : undefined;
+    const provided = bearerToken || legacyHeader || querySecret;
+    if (provided !== cronSecret) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
   }
 
   if (!(await isDbReady())) return res.status(500).json({ error: "Database unavailable" });
