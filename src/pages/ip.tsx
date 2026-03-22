@@ -157,7 +157,7 @@ export default function IpPage() {
                 value={query}
                 onChange={e => setQuery(e.target.value)}
                 placeholder="8.8.8.8 · 2001:db8:: · AS15169 · example.com"
-                className="pl-9 h-10 rounded-xl font-mono text-sm"
+                className="pl-9 h-10 rounded-xl font-mono text-base sm:text-sm"
                 autoFocus
               />
             </div>

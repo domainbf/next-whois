@@ -300,7 +300,7 @@ export default function DnsPage() {
                   value={domain}
                   onChange={e => setDomain(e.target.value)}
                   placeholder="example.com"
-                  className="pl-9 h-10 rounded-xl font-mono text-sm"
+                  className="pl-9 h-10 rounded-xl font-mono text-base sm:text-sm"
                   autoFocus
                 />
               </div>

@@ -138,7 +138,7 @@ export default function SslPage() {
                 value={hostname}
                 onChange={e => setHostname(e.target.value)}
                 placeholder="example.com 或 IP 地址"
-                className="pl-9 h-10 rounded-xl font-mono text-sm"
+                className="pl-9 h-10 rounded-xl font-mono text-base sm:text-sm"
                 autoFocus
               />
             </div>
