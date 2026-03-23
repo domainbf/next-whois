@@ -1390,7 +1390,7 @@ function CssGlobe() {
       <style>{`
         @keyframes nw-world-scroll {
           from { margin-left: -2.75em; }
-          to   { margin-left: -1.35em; }
+          to   { margin-left: -0.75em; }
         }
         .nw-globe-wrap {
           width: 120px;
@@ -2035,7 +2035,7 @@ function DomainReminderDialog({
                       isPremium ? "bg-red-500/8 dark:bg-red-500/12" : ""
                     )}>
                       <p className="text-[9px] font-bold text-muted-foreground/70 uppercase tracking-widest">
-                        {isZh ? "议价" : "Premium"}
+                        {isZh ? "溢价" : "Premium"}
                       </p>
                       <p className={cn(
                         "text-[12px] font-black leading-none",
