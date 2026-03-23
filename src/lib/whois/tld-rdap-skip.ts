@@ -16,29 +16,32 @@
 
 import { run, many, isDbReady } from "@/lib/db-query";
 
-// ─── Static list: ccTLDs with no public RDAP server ──────────────────────────
-// Derived from cross-checking IANA RDAP bootstrap (data.iana.org/rdap/dns.json)
-// and the node-rdap/rdap_client.ts override table.
-// Do NOT include TLDs that are in rdap_client.ts CCTLD_RDAP_OVERRIDES – those
-// do have working RDAP endpoints.
+// ─── Static list: ccTLDs with NO public RDAP server ──────────────────────────
+// Only include TLDs that GENUINELY have no RDAP endpoint.
+// TLDs that have RDAP via the IANA bootstrap (data.iana.org/rdap/dns.json) or
+// via CCTLD_RDAP_OVERRIDES in rdap_client.ts must NOT be listed here — doing so
+// forces them through the slower WHOIS path and defeats the point of RDAP.
+//
+// If a TLD is wrongly absent from this list (i.e., RDAP fails at runtime),
+// markRdapSkipped() is called automatically and it will be added to the DB-backed
+// runtime skip set so future queries go straight to WHOIS.
 const STATIC_NO_RDAP = new Set<string>([
-  // East Asia
-  "cn", "jp", "kr", "tw", "hk", "mo", "vn", "th", "sg", "my", "id", "ph",
-  "mm", "kh", "la", "tl",
-  // South Asia
-  "in", "bd", "lk", "np",
-  // Central Asia (not in overrides)
+  // China / Macao — CNNIC / MONIC have no public RDAP
+  "cn", "mo",
+  // Russia / CIS — no public RDAP
+  "ru", "by", "kz",
+  // Iran — no RDAP
   "ir",
-  // Middle East (not in overrides)
-  "tr", "sa", "ae", "eg", "iq", "il", "lb", "ly", "ma", "dz", "tn",
-  // Eastern Europe / CIS (not in overrides)
-  "ru", "ua", "by", "kz",
-  // Western / Central Europe
-  "de", "it", "pl", "hu", "ro", "bg", "gr", "sk", "no", "fi", "lt", "lv",
-  // Latin America
-  "mx", "ar", "co", "pe", "cl", "ve", "ec", "bo", "py", "uy",
-  // Africa (not in overrides)
-  "za", "ke", "gh", "tz", "ug", "et", "sn", "ma",
+  // Middle East — no public RDAP
+  "sa", "lb",
+  // North Africa — no RDAP
+  "eg", "ma", "dz", "tn",
+  // South Asia — no RDAP
+  "bd", "lk",
+  // Latin America — no RDAP
+  "ve", "ec", "bo", "py",
+  // Pacific — Timor-Leste, no RDAP
+  "tl",
 ]);
 
 // Runtime-learned skip set (updated by markRdapSkipped / markRdapSupported)

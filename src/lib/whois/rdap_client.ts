@@ -169,7 +169,7 @@ const CCTLD_RDAP_OVERRIDES: Record<string, string> = {
   cu: "https://rdap.nic.cu/",
 };
 
-async function tryRdapOverride(domainToQuery: string): Promise<any | null> {
+async function tryRdapOverride(domainToQuery: string, timeoutMs = 2500): Promise<any | null> {
   const tld = domainToQuery.split(".").pop()?.toLowerCase();
   if (!tld) return null;
   const base = CCTLD_RDAP_OVERRIDES[tld];
@@ -179,7 +179,7 @@ async function tryRdapOverride(domainToQuery: string): Promise<any | null> {
   try {
     const res = await fetch(url, {
       headers: { Accept: "application/rdap+json, application/json" },
-      signal: AbortSignal.timeout(12000),
+      signal: AbortSignal.timeout(timeoutMs),
     });
     if (!res.ok) return null;
     const json = await res.json();

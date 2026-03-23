@@ -531,9 +531,10 @@ export async function lookupWhoisWithCache(
 const WHOIS_MERGE_WAIT_MS = 350;
 
 // Separate timeout caps for each protocol.
-// RDAP is HTTP/JSON so 4 s is generous; WHOIS TCP can be slower.
-const RDAP_TIMEOUT  = intEnv("RDAP_TIMEOUT_MS",  4_000);
-const WHOIS_TIMEOUT = intEnv("WHOIS_TIMEOUT_MS", 8_000);
+// RDAP is HTTP/JSON (fast on Vercel's network) — 3 s is generous.
+// WHOIS TCP varies more; give legitimate slow servers 7 s before giving up.
+const RDAP_TIMEOUT  = intEnv("RDAP_TIMEOUT_MS",  3_000);
+const WHOIS_TIMEOUT = intEnv("WHOIS_TIMEOUT_MS", 7_000);
 
 export async function lookupWhois(domain: string): Promise<WhoisResult> {
   const startTime = performance.now();
