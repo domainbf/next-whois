@@ -38,6 +38,7 @@ import { lookupNicBa } from "@/lib/whois/http-scrapers/nic-ba";
 import { lookupYisi } from "@/lib/whois/yisi-fallback";
 import { lookupTianhu } from "@/lib/whois/tianhu-fallback";
 import { isTldFallbackEnabled, recordTldNativeFailure, recordTldNativeSuccess } from "@/lib/whois/tld-fallback-gate";
+import { isRdapSkipped, markRdapSkipped, markRdapSupported, initRdapSkipCache } from "@/lib/whois/tld-rdap-skip";
 
 class ScraperRequiredError extends Error {
   registryUrl: string;
@@ -508,22 +509,102 @@ const WHOIS_MERGE_WAIT_MS = 600;
 export async function lookupWhois(domain: string): Promise<WhoisResult> {
   const startTime = performance.now();
   const elapsed = () => (performance.now() - startTime) / 1000;
+  const isDomainQuery = !isIPAddress(domain) && !isASNumber(domain);
 
-  // Start both lookups immediately in parallel
-  const rdapPromise = withTimeout(lookupRdap(domain), LOOKUP_TIMEOUT);
+  // ── Initialise RDAP-skip cache (no-op after first call) ──────────────────
+  await initRdapSkipCache();
+
+  // ── Determine strategy: skip RDAP? start yisi in parallel? ───────────────
+  const tldSuffix = domain.split(".").pop()?.toLowerCase() ?? "";
+  const skipRdap = isDomainQuery && isRdapSkipped(tldSuffix);
+
+  // Check fallback gate upfront — if already enabled we race yisi/tianhu
+  // alongside native from the start rather than only as last resort.
+  const useFallbackEarly = isDomainQuery
+    ? await isTldFallbackEnabled(domain).catch(() => false)
+    : false;
+
+  // ── Build promise pool ────────────────────────────────────────────────────
+  // RDAP: only if not skipped (skipping avoids an unnecessary parallel TCP/HTTP attempt)
+  const rdapPromise: Promise<any> = skipRdap
+    ? Promise.reject(new Error("RDAP skipped for this TLD"))
+    : withTimeout(lookupRdap(domain), LOOKUP_TIMEOUT);
+
   const whoisPromise = withTimeout(getLookupWhois(domain), LOOKUP_TIMEOUT);
 
-  // Race: see which finishes first
-  const first = await Promise.race([
-    rdapPromise.then(v => ({ tag: "rdap" as const, value: v }), () => null),
-    whoisPromise.then(v => ({ tag: "whois" as const, value: v }), () => null),
-  ]);
+  // Yisi / Tianhu: started immediately when the fallback gate is already open.
+  // This lets a fast third-party response beat a slow native timeout.
+  const yisiEarlyPromise: Promise<WhoisResult | null> = useFallbackEarly
+    ? Promise.all([
+        lookupTianhu(domain).catch(() => null),
+        lookupYisi(domain).catch(() => null),
+      ]).then(([t, y]) => t ?? y)
+    : Promise.resolve(null);
 
+  // ── Race: first to produce a *tagged, non-null* result wins ──────────────
+  // Important: null resolvers (failed/skipped) must never short-circuit the
+  // race — we use a custom "first non-null" race instead of Promise.race.
+  type Tagged =
+    | { tag: "rdap"; value: any }
+    | { tag: "whois"; value: Awaited<ReturnType<typeof getLookupWhois>> }
+    | { tag: "yisi_early"; value: WhoisResult };
+
+  function firstNonNull<T>(promises: Promise<T | null>[]): Promise<T | null> {
+    return new Promise(resolve => {
+      let remaining = promises.length;
+      if (remaining === 0) { resolve(null); return; }
+      for (const p of promises) {
+        p.then(v => { if (v !== null) resolve(v); })
+         .catch(() => {})
+         .finally(() => { if (--remaining === 0) resolve(null); });
+      }
+    });
+  }
+
+  const taggedRacers: Promise<Tagged | null>[] = [
+    // Only add RDAP to the race when it's not statically skipped
+    ...(skipRdap ? [] : [
+      rdapPromise.then(
+        v => (v && !v.errorCode ? { tag: "rdap" as const, value: v } : null),
+        () => null,
+      ),
+    ]),
+    whoisPromise.then(
+      v => ({ tag: "whois" as const, value: v }),
+      () => null,
+    ),
+    ...(useFallbackEarly ? [
+      yisiEarlyPromise.then(
+        v => (v ? { tag: "yisi_early" as const, value: v } : null),
+        () => null,
+      ),
+    ] : []),
+  ];
+
+  const first = await firstNonNull(taggedRacers);
+
+  // ── Settle remaining promises depending on what won ───────────────────────
   let rdapSettled: PromiseSettledResult<Awaited<ReturnType<typeof lookupRdap>>>;
   let whoisSettled: PromiseSettledResult<Awaited<ReturnType<typeof getLookupWhois>>>;
 
-  if (first?.tag === "rdap" && !first.value?.errorCode) {
-    // RDAP finished first with good data — wait briefly for WHOIS raw merging only
+  // If yisi/tianhu won the race and produced a usable result, return early.
+  if (first?.tag === "yisi_early") {
+    // Settle quietly in background for RDAP learning only
+    if (!skipRdap) {
+      Promise.allSettled([rdapPromise]).then(([r]) => {
+        if (r.status === "fulfilled" && r.value && !r.value.errorCode) {
+          markRdapSupported(tldSuffix).catch(() => {});
+        } else if (r.status === "rejected") {
+          const msg = (r.reason as Error)?.message ?? "";
+          if (/no rdap server/i.test(msg)) markRdapSkipped(tldSuffix).catch(() => {});
+        }
+      });
+    }
+    return first.value;
+  }
+
+  if (first?.tag === "rdap") {
+    // RDAP finished first with good data — wait briefly for WHOIS raw merging
     rdapSettled = { status: "fulfilled", value: first.value };
     const whoisWithDeadline = await Promise.race([
       whoisPromise.then(v => v, () => null),
@@ -532,9 +613,43 @@ export async function lookupWhois(domain: string): Promise<WhoisResult> {
     whoisSettled = whoisWithDeadline !== null
       ? { status: "fulfilled", value: whoisWithDeadline }
       : { status: "rejected", reason: new Error("WHOIS merge deadline") };
+  } else if (first?.tag === "whois") {
+    // WHOIS finished first — use it immediately, wait briefly for RDAP enrichment
+    whoisSettled = { status: "fulfilled", value: first.value };
+    if (skipRdap) {
+      rdapSettled = { status: "rejected", reason: new Error("RDAP skipped for this TLD") };
+    } else {
+      const rdapWithDeadline = await Promise.race([
+        rdapPromise.then(v => v, () => null),
+        new Promise<null>(resolve => setTimeout(() => resolve(null), WHOIS_MERGE_WAIT_MS)),
+      ]);
+      rdapSettled = rdapWithDeadline !== null
+        ? { status: "fulfilled", value: rdapWithDeadline }
+        : { status: "rejected", reason: new Error("RDAP merge deadline") };
+    }
   } else {
-    // WHOIS won first, or RDAP failed/had error — wait for both normally
-    [rdapSettled, whoisSettled] = await Promise.allSettled([rdapPromise, whoisPromise]);
+    // All native lookups failed — settle both definitively
+    if (skipRdap) {
+      rdapSettled = { status: "rejected", reason: new Error("RDAP skipped for this TLD") };
+      whoisSettled = await whoisPromise.then(
+        v => ({ status: "fulfilled" as const, value: v }),
+        e => ({ status: "rejected" as const, reason: e }),
+      );
+    } else {
+      [rdapSettled, whoisSettled] = await Promise.allSettled([rdapPromise, whoisPromise]);
+    }
+  }
+
+  // ── Learn RDAP support status from this query ─────────────────────────────
+  if (!skipRdap) {
+    if (rdapSettled.status === "fulfilled" && rdapSettled.value && !rdapSettled.value.errorCode) {
+      markRdapSupported(tldSuffix).catch(() => {});
+    } else if (rdapSettled.status === "rejected") {
+      const msg = (rdapSettled.reason as Error)?.message ?? "";
+      if (/no rdap server/i.test(msg) || /not found/i.test(msg)) {
+        markRdapSkipped(tldSuffix).catch(() => {});
+      }
+    }
   }
 
   const rdapResult =
@@ -578,8 +693,6 @@ export async function lookupWhois(domain: string): Promise<WhoisResult> {
     } catch {}
   }
 
-  const isDomainQuery = !isIPAddress(domain) && !isASNumber(domain);
-
   const whoisError =
     whoisSettled.status === "rejected" ? whoisSettled.reason : null;
   const scraperRegistryUrl =
@@ -604,23 +717,32 @@ export async function lookupWhois(domain: string): Promise<WhoisResult> {
     };
   }
 
-  // Try tian.hu and yisi.yun in parallel as fallbacks; only for domain queries.
-  // Only triggered when the TLD has failed native lookup enough times to enable fallback.
+  /**
+   * Try yisi/tianhu as a last-resort fallback.
+   * When useFallbackEarly was already true the early promise is already
+   * settled — we await it cheaply rather than firing new requests.
+   */
   async function tryYisiOrFail(
     error: string,
     registryUrl?: string,
   ): Promise<WhoisResult> {
     if (isDomainQuery) {
-      const useFallback = await isTldFallbackEnabled(domain);
-      if (useFallback) {
-        const [tianhuResult, yisiResult] = await Promise.all([
-          lookupTianhu(domain).catch(() => null),
-          lookupYisi(domain).catch(() => null),
-        ]);
-        if (tianhuResult) return tianhuResult;
-        if (yisiResult) return yisiResult;
+      if (useFallbackEarly) {
+        // Already launched — just await the settled promise
+        const earlyResult = await yisiEarlyPromise.catch(() => null);
+        if (earlyResult) return earlyResult;
       } else {
-        recordTldNativeFailure(domain).catch(() => {});
+        const useFallback = await isTldFallbackEnabled(domain);
+        if (useFallback) {
+          const [tianhuResult, yisiResult] = await Promise.all([
+            lookupTianhu(domain).catch(() => null),
+            lookupYisi(domain).catch(() => null),
+          ]);
+          if (tianhuResult) return tianhuResult;
+          if (yisiResult) return yisiResult;
+        } else {
+          recordTldNativeFailure(domain).catch(() => {});
+        }
       }
     }
     return failWithDns(error, registryUrl);
@@ -634,10 +756,15 @@ export async function lookupWhois(domain: string): Promise<WhoisResult> {
     try {
       const result = await analyzeWhois(whoisRawData);
 
-      const whoisError = detectWhoisError(whoisRawData);
-      if (whoisError || isEmptyResult(result)) {
-        if (whoisError && isNotRegisteredWhoisResponse(whoisError)) {
-          if (isDomainQuery && await isTldFallbackEnabled(domain)) {
+      const detectedWhoisError = detectWhoisError(whoisRawData);
+      if (detectedWhoisError || isEmptyResult(result)) {
+        if (detectedWhoisError && isNotRegisteredWhoisResponse(detectedWhoisError)) {
+          // Check yisi/tianhu even for "not found" responses — some WHOIS servers
+          // return "not found" for reserved/premium domains that third parties know about.
+          if (useFallbackEarly) {
+            const earlyResult = await yisiEarlyPromise.catch(() => null);
+            if (earlyResult) return earlyResult;
+          } else if (isDomainQuery && await isTldFallbackEnabled(domain)) {
             const [tianhuResult, yisiResult] = await Promise.all([
               lookupTianhu(domain).catch(() => null),
               lookupYisi(domain).catch(() => null),
@@ -649,7 +776,7 @@ export async function lookupWhois(domain: string): Promise<WhoisResult> {
             time: elapsed(),
             status: false,
             cached: false,
-            error: whoisError,
+            error: detectedWhoisError,
             dnsProbe: {
               domain,
               registrationStatus: "unregistered",
@@ -663,7 +790,7 @@ export async function lookupWhois(domain: string): Promise<WhoisResult> {
             },
           };
         }
-        return tryYisiOrFail(whoisError || "Empty WHOIS response");
+        return tryYisiOrFail(detectedWhoisError || "Empty WHOIS response");
       }
 
       if (whoisData?.server) {

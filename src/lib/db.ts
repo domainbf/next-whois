@@ -114,8 +114,10 @@ const CREATE_TABLES = [
     tld           TEXT         PRIMARY KEY,
     fail_count    INTEGER      NOT NULL DEFAULT 0,
     use_fallback  BOOLEAN      NOT NULL DEFAULT false,
+    rdap_skip     BOOLEAN      NOT NULL DEFAULT false,
     last_fail_at  TIMESTAMPTZ
   )`,
+  `ALTER TABLE tld_fallback_stats ADD COLUMN IF NOT EXISTS rdap_skip BOOLEAN NOT NULL DEFAULT false`,
   `CREATE TABLE IF NOT EXISTS custom_whois_servers (
     tld        TEXT         PRIMARY KEY,
     entry      JSONB        NOT NULL,
