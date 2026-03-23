@@ -1,10 +1,22 @@
-# Next Whois UI — v2.2
+# Next Whois UI — v2.3
 
 A fast, modern WHOIS and RDAP lookup tool supporting domains, IPv4/IPv6, ASN, and CIDR. Also includes built-in DNS, SSL certificate, and IP/ASN geolocation tools.
 
 ---
 
 ## Changelog
+
+### v2.3 — Full 8-Locale i18n Coverage (2026-03-23)
+
+**Added missing translation keys to all 6 remaining locales (de, ja, ko, ru, fr, zh-tw):**
+- `"search"` top-level key added to all 6 locales (was only in en + zh)
+- All new nav keys added: `nav_tagline`, `nav_version_menu`, `nav_search_history`, `nav_toolbox`, `nav_login`, `nav_api_docs` + `_desc`, `nav_tlds` + `_desc`, `nav_domain_lookup` + `_desc`, `nav_dns` + `_desc`, `nav_ssl` + `_desc`, `nav_ip` + `_desc`, `nav_icp` + `_desc`, `nav_about` + `_desc`, `nav_sponsor` + `_desc` — all in native language (de/ja/ko/ru/fr/zh-tw)
+- Complete `"icp"` section added to all 6 locales (32 keys each) with fully native-language translations: German, Japanese, Korean, Russian, French, Traditional Chinese
+- All 8 locales (en, zh, de, ja, ko, ru, fr, zh-tw) now have 100% key coverage for navbar, ICP page, and search functionality — no more English fallbacks for known new keys
+
+**Key count per locale:** each grew from ~402 to ~470 lines (68+ new keys per file)
+
+---
 
 ### v2.2 — i18n Complete (2026-03-23)
 
