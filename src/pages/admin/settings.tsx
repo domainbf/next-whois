@@ -12,8 +12,150 @@ import {
   RiMegaphoneLine, RiMailSendLine, RiCheckLine, RiToggleLine,
   RiHomeLine, RiInformationLine, RiHistoryLine, RiLinksLine,
   RiHeartLine, RiBarChartLine, RiSearchLine, RiCodeBoxLine,
-  RiShieldLine, RiPaletteLine, RiEyeLine,
+  RiShieldLine, RiPaletteLine, RiEyeLine, RiUploadLine, RiCloseLine,
 } from "@remixicon/react";
+
+// ── Client-side image compression helper ────────────────────────────────────
+// Resizes to maxPx on the longest side (preserving aspect ratio) and
+// re-encodes as WebP at `quality` (0-1). Falls back to PNG for small images.
+async function compressImage(
+  file: File,
+  maxPx = 2048,
+  quality = 0.9,
+): Promise<{ dataUrl: string; originalKB: number; compressedKB: number }> {
+  const originalKB = Math.round(file.size / 1024);
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const blobUrl = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(blobUrl);
+      let { width, height } = img;
+      if (width > maxPx || height > maxPx) {
+        if (width >= height) { height = Math.round((height / width) * maxPx); width = maxPx; }
+        else                 { width = Math.round((width / height) * maxPx); height = maxPx; }
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d")!;
+      ctx.drawImage(img, 0, 0, width, height);
+      // Try WebP first (best compression); fall back to PNG for transparency
+      const webp = canvas.toDataURL("image/webp", quality);
+      const dataUrl = webp.startsWith("data:image/webp") ? webp : canvas.toDataURL("image/png");
+      const compressedKB = Math.round((dataUrl.length * 3) / 4 / 1024);
+      resolve({ dataUrl, originalKB, compressedKB });
+    };
+    img.onerror = () => { URL.revokeObjectURL(blobUrl); reject(new Error("Invalid image")); };
+    img.src = blobUrl;
+  });
+}
+
+// ── ImageUploadField component ───────────────────────────────────────────────
+function ImageUploadField({
+  value,
+  onChange,
+  placeholder,
+  hint,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder: string;
+  hint: string;
+}) {
+  const [uploading, setUploading] = React.useState(false);
+  const inputRef = React.useRef<HTMLInputElement>(null);
+
+  async function handleFile(file: File) {
+    if (!file.type.startsWith("image/")) { toast.error("请选择图片文件"); return; }
+    setUploading(true);
+    try {
+      const { dataUrl, originalKB, compressedKB } = await compressImage(file);
+      const res = await fetch("/api/admin/upload", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dataUrl, hint }),
+      });
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error || "上传失败"); }
+      const { url } = await res.json();
+      onChange(url);
+      const saved = originalKB > 0 ? Math.round((1 - compressedKB / originalKB) * 100) : 0;
+      const msg = saved > 5
+        ? `上传成功，已压缩 ${saved}%（${originalKB} KB → ${compressedKB} KB）`
+        : `上传成功（${compressedKB} KB）`;
+      toast.success(msg);
+    } catch (e: any) {
+      toast.error(e.message || "上传失败");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  function onInputChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) handleFile(file);
+    e.target.value = "";
+  }
+
+  function onDrop(e: React.DragEvent) {
+    e.preventDefault();
+    const file = e.dataTransfer.files?.[0];
+    if (file) handleFile(file);
+  }
+
+  const isDataUrl = value.startsWith("data:image/");
+  const previewSrc = value && (value.startsWith("/") || value.startsWith("http") || isDataUrl) ? value : null;
+
+  return (
+    <div className="space-y-2">
+      <div className="flex gap-2">
+        <Input
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          placeholder={placeholder}
+          className="h-9 rounded-xl text-sm flex-1 min-w-0"
+        />
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={onInputChange}
+        />
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-9 rounded-xl px-3 gap-1.5 shrink-0 text-xs"
+          disabled={uploading}
+          onClick={() => inputRef.current?.click()}
+          onDrop={onDrop}
+          onDragOver={e => e.preventDefault()}
+        >
+          {uploading
+            ? <RiLoader4Line className="w-3.5 h-3.5 animate-spin" />
+            : <RiUploadLine className="w-3.5 h-3.5" />}
+          {uploading ? "压缩中…" : "上传"}
+        </Button>
+      </div>
+      {previewSrc && (
+        <div className="relative inline-block group">
+          <img
+            src={previewSrc}
+            alt="preview"
+            className="h-16 max-w-[200px] rounded-lg border border-border object-contain bg-muted/30"
+          />
+          <button
+            type="button"
+            onClick={() => onChange("")}
+            className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-destructive text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+          >
+            <RiCloseLine className="w-3 h-3" />
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 type FieldDef = {
   key: keyof SiteSettings;
@@ -22,6 +164,7 @@ type FieldDef = {
   placeholder: string;
   icon: React.ElementType;
   multiline?: boolean;
+  isImage?: boolean;
 };
 
 type ToggleDef = {
@@ -53,7 +196,7 @@ const SECTIONS: Section[] = [
       { key: "site_description", label: "网站描述 (SEO)", desc: "搜索引擎结果中显示的描述文字", placeholder: "快速查询域名、IP、ASN、CIDR...", icon: RiFileTextLine },
       { key: "site_keywords", label: "搜索关键词 (SEO)", desc: "meta keywords 标签内容，多个关键词用英文逗号分隔", placeholder: "Whois, RDAP, Lookup, Domain, IPv4, ASN", icon: RiSearchLine },
       { key: "site_footer", label: "页脚文字", desc: "页面底部显示的版权/说明文字", placeholder: "© 2024 Next Whois", icon: RiFileTextLine },
-      { key: "site_icon_url", label: "网站图标 URL", desc: "Favicon 图标的外部链接（留空使用默认图标）", placeholder: "https://example.com/favicon.ico", icon: RiImageLine },
+      { key: "site_icon_url", label: "网站图标", desc: "Favicon 图标（支持直接上传，留空使用默认图标）", placeholder: "https://example.com/favicon.ico", icon: RiImageLine, isImage: true },
     ],
   },
   {
@@ -87,7 +230,7 @@ const SECTIONS: Section[] = [
     fields: [
       { key: "og_site_name", label: "og:site_name", desc: "链接预览中显示的站点名称", placeholder: "Next Whois", icon: RiShareLine },
       { key: "og_url", label: "规范链接 (og:url)", desc: "网站主域名，用于 og:url 和 canonical 标签", placeholder: "https://whois.example.com", icon: RiGlobalLine },
-      { key: "og_image", label: "分享图片 URL", desc: "社交分享时显示的图片（留空使用 /banner.png）", placeholder: "https://example.com/og-image.png", icon: RiImageLine },
+      { key: "og_image", label: "分享图片", desc: "社交分享时显示的图片（支持直接上传，留空使用 /banner.png）", placeholder: "https://example.com/og-image.png", icon: RiImageLine, isImage: true },
       { key: "twitter_card", label: "Twitter Card 类型", desc: "summary 或 summary_large_image（推荐大图）", placeholder: "summary_large_image", icon: RiTwitterXLine },
     ],
   },
@@ -128,8 +271,8 @@ const SECTIONS: Section[] = [
     fields: [
       { key: "sponsor_page_title", label: "赞助页面标题", desc: "赞助页面的主标题文字", placeholder: "赞助支持", icon: RiHeartLine },
       { key: "sponsor_page_desc", label: "赞助页面描述", desc: "赞助页面的描述/说明文字", placeholder: "感谢您对本项目的支持！", icon: RiFileTextLine, multiline: true },
-      { key: "sponsor_alipay_qr", label: "支付宝收款码 URL", desc: "支付宝收款二维码图片链接", placeholder: "https://example.com/alipay-qr.png", icon: RiImageLine },
-      { key: "sponsor_wechat_qr", label: "微信收款码 URL", desc: "微信收款二维码图片链接", placeholder: "https://example.com/wechat-qr.png", icon: RiImageLine },
+      { key: "sponsor_alipay_qr", label: "支付宝收款码", desc: "支付宝收款二维码（支持直接上传）", placeholder: "https://example.com/alipay-qr.png", icon: RiImageLine, isImage: true },
+      { key: "sponsor_wechat_qr", label: "微信收款码", desc: "微信收款二维码（支持直接上传）", placeholder: "https://example.com/wechat-qr.png", icon: RiImageLine, isImage: true },
       { key: "sponsor_github_url", label: "GitHub Sponsors 链接", desc: "GitHub Sponsors 主页链接（显示 GitHub 赞助按钮）", placeholder: "https://github.com/sponsors/yourname", icon: RiLinksLine },
       { key: "sponsor_extra_links", label: "其他赞助方式 (JSON)", desc: `额外赞助链接，JSON 格式：[{"label":"Ko-fi","url":"https://ko-fi.com/..."}]`, placeholder: `[{"label":"Ko-fi","url":"https://ko-fi.com/..."}]`, icon: RiLinksLine },
     ],
@@ -360,7 +503,7 @@ export default function AdminSettingsPage() {
                         <h3 className="text-sm font-bold">{section.title}</h3>
                       </div>
                       <div className="p-5 space-y-5">
-                        {section.fields?.map(({ key, label, desc, placeholder, icon: Icon, multiline }) => (
+                        {section.fields?.map(({ key, label, desc, placeholder, icon: Icon, multiline, isImage }) => (
                           <div key={key} className="space-y-1.5">
                             <div className="flex items-start gap-1.5">
                               <Icon className="w-3.5 h-3.5 text-muted-foreground mt-0.5 shrink-0" />
@@ -369,7 +512,14 @@ export default function AdminSettingsPage() {
                                 <p className="text-[11px] text-muted-foreground mt-0.5">{desc}</p>
                               </div>
                             </div>
-                            {multiline ? (
+                            {isImage ? (
+                              <ImageUploadField
+                                value={form[key]}
+                                onChange={v => set(key, v)}
+                                placeholder={placeholder}
+                                hint={key}
+                              />
+                            ) : multiline ? (
                               <TextArea
                                 value={form[key]}
                                 onChange={e => set(key, e.target.value)}
