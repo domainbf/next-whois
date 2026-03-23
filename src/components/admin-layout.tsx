@@ -17,7 +17,7 @@ import {
   RiSearchLine, RiSearchFill,
   RiRadarLine, RiHeart3Line, RiHeart3Fill,
   RiKeyLine, RiKeyFill,
-  RiLinksLine, RiTimeLine, RiHistoryLine,
+  RiLinksLine, RiTimeLine, RiHistoryLine, RiImageLine,
 } from "@remixicon/react";
 
 const NAV = [
@@ -31,6 +31,7 @@ const NAV = [
   { href: "/admin/invite-codes",    label: "邀请", icon: RiKeyLine,         activeIcon: RiKeyFill },
   { href: "/admin/links",           label: "链接", icon: RiLinksLine,       activeIcon: RiLinksLine },
   { href: "/admin/tld-lifecycle",   label: "规则", icon: RiTimeLine,        activeIcon: RiTimeLine },
+  { href: "/admin/og-styles",       label: "OG卡片",icon: RiImageLine,       activeIcon: RiImageLine },
   { href: "/admin/changelog",       label: "日志", icon: RiHistoryLine,     activeIcon: RiHistoryLine },
   { href: "/admin/sponsors",        label: "赞助", icon: RiHeart3Line,      activeIcon: RiHeart3Fill },
   { href: "/admin/system",          label: "系统", icon: RiServerLine,      activeIcon: RiServerFill },

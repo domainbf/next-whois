@@ -43,9 +43,23 @@ interface DynamicEntry {
 
 const VERSIONS: Version[] = [
   {
-    version: "2.1",
+    version: "2.2",
     date: "2026-03",
     highlight: true,
+    changes: [
+      { type: "new", zh: "OG 图片 8 种视觉样式：极简网格、渐变侧栏、终端暗色、品牌顶栏、极致留白、工程蓝图、报刊版式、类型渐变", en: "8 distinct OG image styles: Minimal Grid, Gradient Panel, Terminal Dark, Header Bar, Premium Dark, Blueprint, Editorial Frame, Type Gradient" },
+      { type: "new", zh: "后台 OG 卡片样式管理：预览全部样式、一键启用/停用、多选配置，按域名哈希随机选取已启用样式", en: "Admin OG style management: preview all styles, enable/disable individually, hash-based random selection from enabled styles" },
+      { type: "new", zh: "OG 预览模式（?preview=1）：跳过 WHOIS 查询加速后台预览加载，5 分钟缓存减少数据库压力", en: "OG preview mode (?preview=1): skip WHOIS lookup for fast admin preview with 5-minute DB cache" },
+      { type: "new", zh: "OG 样式通过 ?style=0-7 参数精确指定，方便外部调用与测试", en: "OG style override via ?style=0-7 param for precise external control and testing" },
+      { type: "improve", zh: "工程蓝图样式：深蓝网格背景 + 青色四角标记 + 等宽字体，独特的技术蓝图质感", en: "Blueprint style: deep-blue grid background, cyan corner marks, monospace font — unique engineering aesthetic" },
+      { type: "improve", zh: "报刊版式样式：米白底色 + 黑色内嵌边框 + 全大写域名，呈现经典印刷排版感", en: "Editorial Frame style: off-white background, inset black border, uppercase domain — classic print typography" },
+      { type: "improve", zh: "类型渐变样式：按查询类型（域名/IPv4/IPv6/ASN/CIDR）自动切换配色渐变背景", en: "Type Gradient style: gradient background auto-switches by query type (DOMAIN/IPv4/IPv6/ASN/CIDR)" },
+    ],
+  },
+  {
+    version: "2.1",
+    date: "2026-03",
+    highlight: false,
     changes: [
       { type: "new", zh: "ICP 备案查询：支持网站 / APP / 小程序 / 快应用及对应违规类型，分页展示全量结果", en: "ICP filing query: supports website/app/mini-program/quick-app and blacklist types with paginated results" },
       { type: "new", zh: "ICP 查询实时状态检测：页面顶部 API 健康徽章（在线/离线/检测中），离线时自动显示提示横幅", en: "ICP query health badge: real-time online/offline/checking indicator in page header with offline warning banner" },

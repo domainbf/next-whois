@@ -78,6 +78,8 @@ export interface SiteSettings {
   captcha_provider: string;
   captcha_site_key: string;
   captcha_secret_key: string;
+  // OG image styles
+  og_enabled_styles: string;
 }
 
 export const DEFAULT_SETTINGS: SiteSettings = {
@@ -146,6 +148,7 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   captcha_provider: "",
   captcha_site_key: "",
   captcha_secret_key: "",
+  og_enabled_styles: "0,1,2,3,4,5,6,7",
 };
 
 const STORAGE_KEY = "next_whois_settings_ts";

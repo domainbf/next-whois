@@ -1,0 +1,392 @@
+import React from "react";
+import Head from "next/head";
+import { GetServerSideProps } from "next";
+import { AdminLayout } from "@/components/admin-layout";
+import { Button } from "@/components/ui/button";
+import {
+  RiLoader4Line,
+  RiSaveLine,
+  RiRefreshLine,
+  RiCheckLine,
+  RiCloseLine,
+  RiImageLine,
+  RiEyeLine,
+  RiMoonLine,
+  RiSunLine,
+  RiShuffleLine,
+} from "@remixicon/react";
+import { toast } from "sonner";
+import { requireAdmin } from "@/lib/admin";
+import { many } from "@/lib/db-query";
+import { cn } from "@/lib/utils";
+
+const TOTAL_STYLES = 8;
+
+const STYLE_META: { id: number; name: string; desc: string; emoji: string }[] =
+  [
+    {
+      id: 0,
+      name: "极简网格",
+      desc: "点阵背景，域名居中，两端页脚",
+      emoji: "◎",
+    },
+    {
+      id: 1,
+      name: "渐变侧栏",
+      desc: "蓝紫渐变左列，右侧大字",
+      emoji: "▌",
+    },
+    {
+      id: 2,
+      name: "终端暗色",
+      desc: "全黑终端风，等宽字体，绿色标签",
+      emoji: ">_",
+    },
+    {
+      id: 3,
+      name: "品牌顶栏",
+      desc: "蓝色全宽顶栏，内容居中",
+      emoji: "▀",
+    },
+    {
+      id: 4,
+      name: "极致留白",
+      desc: "极深底色，顶部蓝线，超大字体",
+      emoji: "─",
+    },
+    {
+      id: 5,
+      name: "工程蓝图",
+      desc: "深蓝网格，青色标注，四角标记",
+      emoji: "⊹",
+    },
+    {
+      id: 6,
+      name: "报刊版式",
+      desc: "米白底色，黑色边框，全大写",
+      emoji: "▦",
+    },
+    {
+      id: 7,
+      name: "类型渐变",
+      desc: "按查询类型变色，全白文字",
+      emoji: "◈",
+    },
+  ];
+
+interface Props {
+  initialEnabledStyles: number[];
+}
+
+export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
+  const stop = await requireAdmin(
+    ctx.req as never,
+    ctx.res as never,
+  );
+  if (stop) return { props: { initialEnabledStyles: [] } };
+
+  try {
+    const rows = await many<{ key: string; value: string }>(
+      "SELECT key, value FROM site_settings WHERE key = 'og_enabled_styles'",
+    );
+    const raw = rows[0]?.value || "";
+    const parsed = raw
+      .split(",")
+      .map((s) => parseInt(s.trim(), 10))
+      .filter((n) => !isNaN(n) && n >= 0 && n < TOTAL_STYLES);
+    const enabled =
+      parsed.length > 0
+        ? parsed
+        : Array.from({ length: TOTAL_STYLES }, (_, i) => i);
+    return { props: { initialEnabledStyles: enabled } };
+  } catch {
+    return {
+      props: {
+        initialEnabledStyles: Array.from(
+          { length: TOTAL_STYLES },
+          (_, i) => i,
+        ),
+      },
+    };
+  }
+};
+
+export default function OgStylesPage({ initialEnabledStyles }: Props) {
+  const [enabled, setEnabled] = React.useState<Set<number>>(
+    new Set(initialEnabledStyles),
+  );
+  const [saving, setSaving] = React.useState(false);
+  const [previewTheme, setPreviewTheme] = React.useState<"light" | "dark">(
+    "dark",
+  );
+  const [previewQuery, setPreviewQuery] = React.useState("example.com");
+  const [loadedImages, setLoadedImages] = React.useState<
+    Record<number, boolean>
+  >({});
+  const [errorImages, setErrorImages] = React.useState<
+    Record<number, boolean>
+  >({});
+  const [imgKey, setImgKey] = React.useState(0);
+
+  function toggle(id: number) {
+    setEnabled((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        if (next.size <= 1) {
+          toast.error("至少需要保留一种样式");
+          return prev;
+        }
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }
+
+  function selectAll() {
+    setEnabled(new Set(Array.from({ length: TOTAL_STYLES }, (_, i) => i)));
+  }
+
+  function selectNone() {
+    if (enabled.size <= 1) {
+      toast.error("至少需要保留一种样式");
+      return;
+    }
+    setEnabled(new Set([0]));
+  }
+
+  function refreshPreviews() {
+    setLoadedImages({});
+    setErrorImages({});
+    setImgKey((k) => k + 1);
+  }
+
+  async function save() {
+    setSaving(true);
+    try {
+      const value = Array.from(enabled).sort((a, b) => a - b).join(",");
+      const res = await fetch("/api/admin/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key: "og_enabled_styles", value }),
+      });
+      if (!res.ok) throw new Error("保存失败");
+      toast.success("已保存 OG 样式配置");
+    } catch {
+      toast.error("保存失败，请重试");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const previewUrl = (id: number) =>
+    `/api/og?style=${id}&query=${encodeURIComponent(previewQuery)}&theme=${previewTheme}&preview=1&_k=${imgKey}`;
+
+  const enabledCount = enabled.size;
+
+  return (
+    <AdminLayout>
+      <Head>
+        <title>OG 卡片样式 · 管理后台</title>
+      </Head>
+
+      <div className="max-w-5xl mx-auto space-y-6 pb-10">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div>
+            <h1 className="text-xl font-bold">OG 卡片样式</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              管理动态 Open Graph 图片的视觉风格，已启用{" "}
+              <span className="font-semibold text-foreground">
+                {enabledCount}
+              </span>{" "}
+              / {TOTAL_STYLES} 种，默认按域名哈希随机选取
+            </p>
+          </div>
+          <Button
+            onClick={save}
+            disabled={saving}
+            className="gap-2"
+          >
+            {saving ? (
+              <RiLoader4Line className="size-4 animate-spin" />
+            ) : (
+              <RiSaveLine className="size-4" />
+            )}
+            保存配置
+          </Button>
+        </div>
+
+        <div className="flex items-center gap-3 flex-wrap p-4 bg-muted/40 rounded-xl border border-border">
+          <RiEyeLine className="size-4 text-muted-foreground shrink-0" />
+          <span className="text-sm text-muted-foreground">预览设置：</span>
+
+          <input
+            className="border border-border rounded-md px-3 py-1.5 text-sm bg-background w-44 focus:outline-none focus:ring-2 focus:ring-ring"
+            placeholder="预览域名"
+            value={previewQuery}
+            onChange={(e) => setPreviewQuery(e.target.value)}
+          />
+
+          <button
+            onClick={() =>
+              setPreviewTheme((t) => (t === "dark" ? "light" : "dark"))
+            }
+            className={cn(
+              "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm border transition-colors",
+              "border-border hover:bg-accent",
+            )}
+          >
+            {previewTheme === "dark" ? (
+              <RiMoonLine className="size-3.5" />
+            ) : (
+              <RiSunLine className="size-3.5" />
+            )}
+            {previewTheme === "dark" ? "深色" : "浅色"}
+          </button>
+
+          <button
+            onClick={refreshPreviews}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm border border-border hover:bg-accent transition-colors"
+          >
+            <RiRefreshLine className="size-3.5" />
+            刷新预览
+          </button>
+
+          <div className="ml-auto flex items-center gap-2">
+            <button
+              onClick={selectAll}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors px-2"
+            >
+              全选
+            </button>
+            <span className="text-muted-foreground/40 text-xs">|</span>
+            <button
+              onClick={selectNone}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors px-2"
+            >
+              仅保留 #0
+            </button>
+          </div>
+        </div>
+
+        {enabledCount === 1 && (
+          <div className="flex items-center gap-2 px-4 py-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 text-sm">
+            <RiShuffleLine className="size-4 shrink-0" />
+            当前仅启用 1 种样式，所有查询将固定使用该样式（无随机）
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          {STYLE_META.map((meta) => {
+            const isOn = enabled.has(meta.id);
+            const loaded = loadedImages[meta.id];
+            const errored = errorImages[meta.id];
+            return (
+              <div
+                key={meta.id}
+                className={cn(
+                  "rounded-xl border-2 overflow-hidden transition-all duration-200 cursor-pointer group",
+                  isOn
+                    ? "border-primary ring-2 ring-primary/20"
+                    : "border-border opacity-60 hover:opacity-80",
+                )}
+                onClick={() => toggle(meta.id)}
+              >
+                <div className="relative bg-muted/30 aspect-[1200/630]">
+                  {!loaded && !errored && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <RiLoader4Line className="size-6 text-muted-foreground animate-spin" />
+                    </div>
+                  )}
+                  {errored && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                      <RiImageLine className="size-8 opacity-40" />
+                      <span className="text-xs opacity-60">预览加载失败</span>
+                    </div>
+                  )}
+                  <img
+                    src={previewUrl(meta.id)}
+                    alt={`样式 ${meta.id} 预览`}
+                    className={cn(
+                      "w-full h-full object-cover transition-opacity duration-300",
+                      loaded ? "opacity-100" : "opacity-0",
+                    )}
+                    onLoad={() =>
+                      setLoadedImages((prev) => ({ ...prev, [meta.id]: true }))
+                    }
+                    onError={() =>
+                      setErrorImages((prev) => ({ ...prev, [meta.id]: true }))
+                    }
+                  />
+
+                  <div className="absolute top-2 left-2">
+                    <span className="bg-background/80 backdrop-blur-sm text-foreground text-[10px] font-bold px-2 py-0.5 rounded-full border border-border">
+                      #{meta.id}
+                    </span>
+                  </div>
+
+                  <div
+                    className={cn(
+                      "absolute top-2 right-2 size-6 rounded-full flex items-center justify-center transition-colors",
+                      isOn
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-background/80 backdrop-blur-sm border border-border text-muted-foreground",
+                    )}
+                  >
+                    {isOn ? (
+                      <RiCheckLine className="size-3.5" />
+                    ) : (
+                      <RiCloseLine className="size-3.5" />
+                    )}
+                  </div>
+                </div>
+
+                <div className="px-4 py-3 flex items-center justify-between gap-3 bg-background">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span className="text-base shrink-0 select-none">
+                      {meta.emoji}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold truncate">
+                        {meta.name}
+                      </p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {meta.desc}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggle(meta.id);
+                    }}
+                    className={cn(
+                      "shrink-0 px-3 py-1 rounded-md text-xs font-semibold transition-colors",
+                      isOn
+                        ? "bg-primary/10 text-primary hover:bg-destructive/10 hover:text-destructive"
+                        : "bg-muted text-muted-foreground hover:bg-primary/10 hover:text-primary",
+                    )}
+                  >
+                    {isOn ? "已启用" : "已停用"}
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="flex justify-end pt-2">
+          <Button onClick={save} disabled={saving} className="gap-2">
+            {saving ? (
+              <RiLoader4Line className="size-4 animate-spin" />
+            ) : (
+              <RiSaveLine className="size-4" />
+            )}
+            保存配置
+          </Button>
+        </div>
+      </div>
+    </AdminLayout>
+  );
+}
