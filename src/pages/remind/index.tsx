@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import {
   RiCalendarLine, RiMailLine, RiSearchLine, RiShieldCheckLine,
-  RiArrowRightLine, RiCheckLine, RiGlobalLine, RiTimeLine,
+  RiArrowRightLine, RiCheckLine, RiGlobalLine, RiTimeLine, RiTimerLine,
   RiLoader4Line, RiDeleteBinLine, RiEdit2Line, RiExternalLinkLine,
   RiArrowLeftLine, RiBellLine, RiAlertLine,
 } from "@remixicon/react";
@@ -102,7 +102,7 @@ export default function RemindPage() {
       <div className="max-w-2xl mx-auto px-4 py-8 space-y-8">
         {/* Back */}
         <Link href="/dashboard" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
-          <RiArrowLeftLine className="w-3.5 h-3.5" />返回 Dashboard
+          <RiArrowLeftLine className="w-3.5 h-3.5" />返回用户中心
         </Link>
 
         {/* Hero */}
@@ -127,7 +127,7 @@ export default function RemindPage() {
             <Input
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              placeholder="输入你的域名，如 example.com"
+              placeholder="输入你的域名，如 x.rw"
               className="h-10 rounded-xl text-sm font-mono flex-1"
               autoComplete="off"
             />
@@ -143,27 +143,38 @@ export default function RemindPage() {
           <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">在这里找到入口</p>
           <div className="relative rounded-2xl border border-border bg-muted/10 p-4">
             <span className="absolute top-3 right-3 text-[9px] font-bold uppercase tracking-widest text-muted-foreground/50 bg-muted/60 px-2 py-0.5 rounded-full">预览</span>
-            {/* Mini domain card replica */}
             <div className="rounded-xl border border-border bg-background shadow-sm overflow-hidden">
               <div className="px-4 pt-3.5 pb-2 space-y-1.5">
                 <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground/50">DOMAIN</p>
-                <p className="text-sm font-bold font-mono tracking-tight">EXAMPLE.COM</p>
+                <p className="text-sm font-bold font-mono tracking-tight">X.RW</p>
                 <div className="flex items-center gap-2">
                   <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />Active
                   </span>
-                  <span className="text-[10px] text-muted-foreground">⏱ 2 years</span>
+                  <span className="text-[10px] text-muted-foreground">⏱ 2y</span>
                 </div>
               </div>
-              <div className="px-4 pb-3.5 flex items-center gap-2">
-                <div className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium border bg-muted/40 border-border/50 text-muted-foreground/50">
+              {/* Mobile: circular icon buttons */}
+              <div className="px-4 pb-3.5 flex items-center gap-2 sm:hidden">
+                <div className="flex items-center justify-center w-6 h-6 rounded-full border bg-muted/40 border-border/50 text-muted-foreground/60">
                   <RiShieldCheckLine className="w-3 h-3" />
-                  品牌认领
                 </div>
-                {/* Highlighted subscribe button */}
+                <div className="relative flex items-center justify-center w-6 h-6 rounded-full border bg-sky-50 dark:bg-sky-950/40 border-sky-400/60 text-sky-500">
+                  <RiTimerLine className="w-3 h-3" />
+                  <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-60" />
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-sky-500" />
+                  </span>
+                </div>
+                <span className="text-[9px] text-muted-foreground ml-1">← 点击订阅按钮</span>
+              </div>
+              {/* Desktop: text pill buttons */}
+              <div className="px-4 pb-3.5 hidden sm:flex items-center gap-2">
+                <div className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium border bg-muted/40 border-border/50 text-muted-foreground/50">
+                  <RiShieldCheckLine className="w-3 h-3" />品牌认领
+                </div>
                 <div className="relative flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold border bg-sky-100 dark:bg-sky-950/50 border-sky-400/70 text-sky-600 dark:text-sky-400 shadow-sm ring-2 ring-sky-400/20">
-                  <RiTimeLine className="w-3 h-3" />
-                  域名订阅
+                  <RiTimeLine className="w-3 h-3" />域名订阅
                   <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-60" />
                     <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-sky-500" />
@@ -171,7 +182,10 @@ export default function RemindPage() {
                 </div>
               </div>
             </div>
-            <p className="text-[10px] text-muted-foreground text-center mt-2.5">↑ 在域名查询结果顶部点击「域名订阅」</p>
+            <p className="text-[10px] text-muted-foreground text-center mt-2.5">
+              <span className="sm:hidden">↑ 点击圆形订阅图标（计时器）</span>
+              <span className="hidden sm:inline">↑ 在域名查询结果顶部点击「域名订阅」</span>
+            </p>
           </div>
         </div>
 
@@ -225,7 +239,7 @@ export default function RemindPage() {
             <div className="flex items-center justify-between">
               <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">我的订阅</p>
               <Link href="/dashboard" className="text-xs text-primary hover:underline">
-                前往 Dashboard →
+                前往用户中心 →
               </Link>
             </div>
 

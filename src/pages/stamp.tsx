@@ -196,7 +196,7 @@ function StampLandingPage() {
       <div className="max-w-lg mx-auto px-4 py-8 pb-10 space-y-6">
         {/* Back */}
         <Link href="/dashboard" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
-          <RiArrowLeftLine className="w-3.5 h-3.5" />返回 Dashboard
+          <RiArrowLeftLine className="w-3.5 h-3.5" />返回用户中心
         </Link>
 
         {/* Hero */}

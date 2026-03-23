@@ -305,9 +305,21 @@ function GuideModalShell({ onClose, icon, iconBg, title, subtitle, children }: {
 }
 
 function MiniMockup({ highlightClaim }: { highlightClaim: boolean }) {
+  const claimColor = highlightClaim
+    ? "bg-violet-50 dark:bg-violet-950/40 border-violet-400/60 text-violet-500"
+    : "bg-muted/40 border-border/50 text-muted-foreground/60";
+  const subColor = !highlightClaim
+    ? "bg-sky-50 dark:bg-sky-950/40 border-sky-400/60 text-sky-500"
+    : "bg-muted/40 border-border/50 text-muted-foreground/60";
+  const label = highlightClaim ? "认领" : "订阅";
+
   return (
     <div className="rounded-xl bg-muted/20 border border-border p-3">
-      <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/50 mb-2">实际效果预览（手机）</p>
+      <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/50 mb-2">
+        实际效果预览
+        <span className="sm:hidden normal-case tracking-normal font-normal">（手机）</span>
+        <span className="hidden sm:inline normal-case tracking-normal font-normal">（桌面）</span>
+      </p>
       <div className="rounded-lg border border-border bg-background shadow-sm">
         <div className="px-3 pt-2.5 pb-1.5">
           <p className="text-[8px] font-bold uppercase tracking-wider text-muted-foreground/40 mb-1">DOMAIN</p>
@@ -319,13 +331,9 @@ function MiniMockup({ highlightClaim }: { highlightClaim: boolean }) {
             <span className="text-[8px] text-muted-foreground">⏱ 2y</span>
           </div>
         </div>
-        <div className="px-3 pb-2.5 flex items-center gap-1.5">
-          <div className={cn(
-            "relative flex items-center justify-center w-5 h-5 rounded-full border",
-            highlightClaim
-              ? "bg-violet-50 dark:bg-violet-950/40 border-violet-400/60 text-violet-500"
-              : "bg-muted/40 border-border/50 text-muted-foreground/60"
-          )}>
+        {/* Mobile: small circle icon buttons */}
+        <div className="px-3 pb-2.5 flex items-center gap-1.5 sm:hidden">
+          <div className={cn("relative flex items-center justify-center w-5 h-5 rounded-full border", claimColor)}>
             <RiShieldCheckLine className="w-2.5 h-2.5" />
             {highlightClaim && (
               <span className="absolute -top-0.5 -right-0.5 flex h-1.5 w-1.5">
@@ -334,12 +342,7 @@ function MiniMockup({ highlightClaim }: { highlightClaim: boolean }) {
               </span>
             )}
           </div>
-          <div className={cn(
-            "relative flex items-center justify-center w-5 h-5 rounded-full border",
-            !highlightClaim
-              ? "bg-sky-50 dark:bg-sky-950/40 border-sky-400/60 text-sky-500"
-              : "bg-muted/40 border-border/50 text-muted-foreground/60"
-          )}>
+          <div className={cn("relative flex items-center justify-center w-5 h-5 rounded-full border", subColor)}>
             <RiTimerLine className="w-2.5 h-2.5" />
             {!highlightClaim && (
               <span className="absolute -top-0.5 -right-0.5 flex h-1.5 w-1.5">
@@ -348,9 +351,29 @@ function MiniMockup({ highlightClaim }: { highlightClaim: boolean }) {
               </span>
             )}
           </div>
-          <span className="text-[8px] text-muted-foreground ml-0.5">
-            ← 点击{highlightClaim ? "认领" : "订阅"}按钮
-          </span>
+          <span className="text-[8px] text-muted-foreground ml-0.5">← 点击{label}按钮</span>
+        </div>
+        {/* Desktop: text pill buttons */}
+        <div className="px-3 pb-2.5 hidden sm:flex items-center gap-1.5">
+          <div className={cn("relative flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border", highlightClaim ? "bg-violet-100 dark:bg-violet-950/50 border-violet-400/70 text-violet-600 dark:text-violet-400 ring-1 ring-violet-400/20" : "bg-muted/40 border-border/50 text-muted-foreground/50 font-medium")}>
+            <RiShieldCheckLine className="w-2.5 h-2.5" />品牌认领
+            {highlightClaim && (
+              <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-violet-400 opacity-60" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-violet-500" />
+              </span>
+            )}
+          </div>
+          <div className={cn("relative flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border", !highlightClaim ? "bg-sky-100 dark:bg-sky-950/50 border-sky-400/70 text-sky-600 dark:text-sky-400 ring-1 ring-sky-400/20" : "bg-muted/40 border-border/50 text-muted-foreground/50 font-medium")}>
+            <RiTimeLine className="w-2.5 h-2.5" />域名订阅
+            {!highlightClaim && (
+              <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-60" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-sky-500" />
+              </span>
+            )}
+          </div>
+          <span className="text-[8px] text-muted-foreground ml-0.5">← 点击{label}按钮</span>
         </div>
       </div>
     </div>
