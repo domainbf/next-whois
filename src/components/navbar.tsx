@@ -21,6 +21,7 @@ import {
   RiMapPinLine,
   RiInformationLine,
   RiHeart3Line,
+  RiFileList2Line,
 } from "@remixicon/react";
 import { useTheme } from "next-themes";
 import { motion, AnimatePresence } from "framer-motion";
@@ -319,6 +320,13 @@ const navItems: NavItem[] = [
     href: "/ip",
     icon: <RiMapPinLine className="h-6 w-6" />,
     description: "IP 归属地与 ASN 自治系统",
+  },
+  {
+    label: "ICP 备案",
+    labelEn: "ICP Filing",
+    href: "/icp",
+    icon: <RiFileList2Line className="h-6 w-6" />,
+    description: "网站 / APP / 小程序备案信息查询",
   },
   {
     label: "关于项目",

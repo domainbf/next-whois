@@ -11,6 +11,7 @@ import {
   RiArrowLeftSLine, RiFileCopyLine,
   RiGlobalLine, RiImageLine, RiSignalWifiLine,
   RiShieldCheckLine, RiMapPinLine, RiListCheck2,
+  RiFileList2Line,
 } from "@remixicon/react";
 import { VERSION } from "@/lib/env";
 import { useClipboard } from "@/lib/utils";
@@ -251,6 +252,7 @@ export default function DocsPage({ origin }: { origin: string }) {
               <NavPill href="#ssl"><RiShieldCheckLine className="w-3 h-3" />SSL 证书</NavPill>
               <NavPill href="#ip"><RiMapPinLine className="w-3 h-3" />IP / ASN</NavPill>
               <NavPill href="#og"><RiImageLine className="w-3 h-3" />OG 卡片</NavPill>
+              <NavPill href="#icp"><RiFileList2Line className="w-3 h-3" />ICP 备案</NavPill>
               <NavPill href="#rate-limit">限流规则</NavPill>
             </div>
             <ScrollBar orientation="horizontal" />
@@ -730,6 +732,169 @@ curl "https://your-domain.com/api/og?query=example.com&w=1200&h=600" -o card.png
             </Card>
 
             {/* ══════════════════════════════════════════
+                ICP 备案查询
+            ══════════════════════════════════════════ */}
+            <SectionHeader icon={RiFileList2Line} label="ICP 备案查询" color="bg-rose-500/10 text-rose-500" />
+
+            <Card id="icp">
+              <CardHeader className="pb-4">
+                <EndpointTitle method="GET" path="/api/icp/query" />
+                <p className="text-sm text-muted-foreground mt-1">
+                  查询中国工信部 ICP 备案信息，支持网站、APP、小程序、快应用及对应违法违规数据库，可按域名、备案号或企业名称搜索，结果支持分页。
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-6">
+
+                <div>
+                  <SubHead label={t("docs.parameters")} />
+                  <ParamsTable t={t} params={[
+                    { name: "type", type: "string", required: true, description: "查询类型（见下表）：web · app · mapp · kapp · bweb · bapp · bmapp · bkapp" },
+                    { name: "search", type: "string", required: true, description: "搜索内容：域名（如 baidu.com）、ICP备案号（如 京ICP证030173号）或企业名称" },
+                    { name: "pageNum", type: "number", required: false, default: "1", description: "页码（从 1 开始）" },
+                    { name: "pageSize", type: "number", required: false, default: "10", description: "每页条数（最大 50）" },
+                  ]} />
+                </div>
+
+                <div>
+                  <SubHead label="查询类型说明" />
+                  <div className="rounded-lg border border-border/60 overflow-hidden text-xs">
+                    <table className="w-full">
+                      <thead className="bg-muted/40 border-b border-border/60">
+                        <tr>
+                          <th className="text-left py-2 px-3 font-semibold text-muted-foreground">type</th>
+                          <th className="text-left py-2 px-3 font-semibold text-muted-foreground">说明</th>
+                          <th className="text-left py-2 px-3 font-semibold text-muted-foreground">数据库</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border/40">
+                        {[
+                          ["web",   "网站",       "正常备案"],
+                          ["app",   "APP",        "正常备案"],
+                          ["mapp",  "小程序",     "正常备案"],
+                          ["kapp",  "快应用",     "正常备案"],
+                          ["bweb",  "违法违规网站",  "黑名单"],
+                          ["bapp",  "违法违规APP",   "黑名单"],
+                          ["bmapp", "违法违规小程序", "黑名单"],
+                          ["bkapp", "违法违规快应用", "黑名单"],
+                        ].map(([id, label, db]) => (
+                          <tr key={id}>
+                            <td className="py-2 px-3 font-mono text-foreground">{id}</td>
+                            <td className="py-2 px-3 text-muted-foreground">{label}</td>
+                            <td className="py-2 px-3">
+                              <span className={db === "黑名单"
+                                ? "text-red-500 text-[10px] font-medium"
+                                : "text-emerald-600 dark:text-emerald-400 text-[10px] font-medium"
+                              }>{db}</span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div>
+                  <SubHead label={t("docs.example_request")} />
+                  <div className="space-y-2">
+                    <div>
+                      <p className="text-[11px] font-semibold text-muted-foreground mb-1.5 uppercase tracking-wide">按域名查询网站备案</p>
+                      <CodeBlock>{`curl "https://your-domain.com/api/icp/query?type=web&search=baidu.com"`}</CodeBlock>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-semibold text-muted-foreground mb-1.5 uppercase tracking-wide">按备案号查询</p>
+                      <CodeBlock>{`curl "https://your-domain.com/api/icp/query?type=web&search=京ICP证030173号"`}</CodeBlock>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-semibold text-muted-foreground mb-1.5 uppercase tracking-wide">按企业名称查询（分页）</p>
+                      <CodeBlock>{`curl "https://your-domain.com/api/icp/query?type=web&search=深圳市腾讯计算机系统有限公司&pageNum=2&pageSize=20"`}</CodeBlock>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-semibold text-muted-foreground mb-1.5 uppercase tracking-wide">查询违法违规 APP</p>
+                      <CodeBlock>{`curl "https://your-domain.com/api/icp/query?type=bapp&search=example"`}</CodeBlock>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <SubHead label={t("docs.success_response")} />
+                  <CodeBlock>{`{
+  "ok": true,
+  "type": "web",
+  "search": "baidu.com",
+  "pageNum": 1,
+  "pageSize": 10,
+  "total": 1,
+  "pages": 1,
+  "list": [
+    {
+      "domain": "baidu.com",
+      "domainId": "12345678",
+      "limitAccess": false,
+      "mainLicence": "京ICP证030173号",
+      "natureName": "企业",
+      "serviceLicence": "京ICP备030173号",
+      "unitName": "北京百度网讯科技有限公司",
+      "updateRecordTime": "2023-09-01",
+      "contentTypeName": "信息服务",
+      "mainUnitAddress": "北京市海淀区上地十街10号",
+      "cityId": "110100",
+      "countyId": "110108"
+    }
+  ]
+}`}</CodeBlock>
+                </div>
+
+                <div>
+                  <SubHead label="响应字段说明" />
+                  <div className="rounded-lg border border-border/60 overflow-hidden text-xs">
+                    <table className="w-full">
+                      <thead className="bg-muted/40 border-b border-border/60">
+                        <tr>
+                          <th className="text-left py-2 px-3 font-semibold text-muted-foreground">字段</th>
+                          <th className="text-left py-2 px-3 font-semibold text-muted-foreground">说明</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border/40">
+                        {[
+                          ["total / pages", "总记录数 / 总页数"],
+                          ["domain", "备案的域名"],
+                          ["domainId", "域名 ID"],
+                          ["limitAccess", "是否限制接入"],
+                          ["mainLicence", "ICP 备案主体许可证号"],
+                          ["serviceLicence", "ICP 备案服务许可证号"],
+                          ["natureName", "主办单位性质（企业 / 事业单位 / 个人等）"],
+                          ["unitName", "主办单位名称"],
+                          ["updateRecordTime", "审核通过日期"],
+                          ["contentTypeName", "服务前置审批项 / 内容类型"],
+                          ["mainUnitAddress", "主体地址"],
+                          ["serviceName", "服务名称（APP、小程序或快应用名称）"],
+                          ["version", "服务版本"],
+                          ["blackListLevel", "威胁等级（仅违规类型返回，值为 2 表示暂无违规信息）"],
+                        ].map(([field, desc]) => (
+                          <tr key={field}>
+                            <td className="py-2 px-3 font-mono text-foreground">{field}</td>
+                            <td className="py-2 px-3 text-muted-foreground">{desc}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div>
+                  <SubHead label="注意事项" />
+                  <Notes items={[
+                    "数据来源：工业和信息化部 ICP/IP 地址/域名信息备案管理系统",
+                    <>违规类型（bweb / bapp 等）返回的 <code className="font-mono text-xs">blackListLevel</code> 字段：值为 2 表示暂无违法违规信息</>,
+                    "接口无限流，但上游数据源响应时间约 1–5 秒，请勿频繁轮询",
+                    "支持按域名、备案号（如 京ICP证030173号）或企业全称三种搜索方式",
+                  ]} />
+                </div>
+
+              </CardContent>
+            </Card>
+
+            {/* ══════════════════════════════════════════
                 限流规则
             ══════════════════════════════════════════ */}
             <Card id="rate-limit">
@@ -770,6 +935,11 @@ curl "https://your-domain.com/api/og?query=example.com&w=1200&h=600" -o card.png
                       <tr>
                         <td className="py-2 px-3 font-mono">/api/ip/lookup</td>
                         <td className="py-2 px-3">受上游 ip-api.com 限制（45 次/分钟）</td>
+                        <td className="py-2 px-3"><code className="font-mono">no-store</code></td>
+                      </tr>
+                      <tr>
+                        <td className="py-2 px-3 font-mono">/api/icp/query</td>
+                        <td className="py-2 px-3">无限流（受上游 api.ong 限制）</td>
                         <td className="py-2 px-3"><code className="font-mono">no-store</code></td>
                       </tr>
                       <tr>

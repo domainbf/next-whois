@@ -32,7 +32,7 @@ export default function HomePage() {
   const [loading, setLoading] = React.useState(false);
 
   useEffect(() => {
-    const STATIC_PATHS = ["/", "/docs", "/tools", "/tlds", "/whois-servers", "/stamp", "/remind", "/api", "/login", "/register", "/dashboard", "/dns", "/ssl", "/ip", "/about", "/sponsor", "/links", "/changelog", "/admin", "/feedback"];
+    const STATIC_PATHS = ["/", "/docs", "/tools", "/tlds", "/whois-servers", "/stamp", "/remind", "/api", "/login", "/register", "/dashboard", "/dns", "/ssl", "/ip", "/icp", "/about", "/sponsor", "/links", "/changelog", "/admin", "/feedback"];
     const isSearchRoute = (url: string) => {
       const clean = url.split("?")[0].replace(/^\/(en|zh|zh-tw|de|ru|ja|fr|ko)(\/|$)/, "/");
       return !STATIC_PATHS.some((p) => clean === p || clean.startsWith(p + "/"));
