@@ -115,19 +115,12 @@ import { useSearchHotkeys } from "@/hooks/useSearchHotkeys";
 
 const CARD_CONTAINER_VARIANTS = {
   hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.06, delayChildren: 0.02 },
-  },
+  visible: { opacity: 1, transition: { duration: 0.15 } },
 };
 
 const CARD_ITEM_VARIANTS = {
-  hidden: { opacity: 0, y: 12 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.32, ease: [0.22, 1, 0.36, 1] },
-  },
+  hidden: { opacity: 1 },
+  visible: { opacity: 1 },
 };
 
 const REGISTRAR_ICONS: Record<string, { slug: string | null; color: string }> =
@@ -2514,25 +2507,15 @@ function AvailableDomainCard({ domain, locale }: { domain: string; locale: strin
           </div>
 
           {/* Status badge */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.15, duration: 0.4, ease: "backOut" }}
-            className="mb-4"
-          >
+          <div className="mb-4">
             <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/50 border border-emerald-300/60 dark:border-emerald-600/40 rounded-full px-3 py-1">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               {isZh ? "可注册" : "Available"}
             </span>
-          </motion.div>
+          </div>
 
           {/* Domain name display */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.2, duration: 0.5 }}
-            className="mb-3"
-          >
+          <div className="mb-3">
             <div className="flex items-baseline justify-center flex-wrap gap-0">
               <span className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground break-all">
                 {sldForDisplay}
@@ -2541,7 +2524,7 @@ function AvailableDomainCard({ domain, locale }: { domain: string; locale: strin
                 {tldForDisplay}
               </span>
             </div>
-          </motion.div>
+          </div>
 
           <p className="text-sm text-muted-foreground max-w-sm">
             {isZh
@@ -2551,20 +2534,17 @@ function AvailableDomainCard({ domain, locale }: { domain: string; locale: strin
 
           {/* Quick register CTA */}
           {!loadingPrices && bestRegistrar && (
-            <motion.a
+            <a
               href={bestRegistrar.registrarweb}
               target="_blank"
               rel="noopener noreferrer"
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.35, duration: 0.35 }}
               className="mt-5 inline-flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white font-semibold text-sm px-6 py-2.5 rounded-lg shadow-md shadow-emerald-500/25 transition-colors duration-150"
             >
               <RiShoppingCartLine className="w-4 h-4" />
               {isZh
                 ? `立即注册 · ${formatPrice(bestRegistrar.new as number, bestRegistrar.currency)}/${isZh ? "首年" : "yr"}`
                 : `Register Now · ${formatPrice(bestRegistrar.new as number, bestRegistrar.currency)}/yr`}
-            </motion.a>
+            </a>
           )}
         </div>
       </div>
@@ -3678,9 +3658,9 @@ export default function LookupPage({
 
                     {tianhuTranslation && tianhuTranslation.dst && (
                       <motion.div
-                        initial={{ opacity: 0, y: -4 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.25, ease: "easeOut" }}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ duration: 0.2 }}
                         className="flex flex-wrap items-center gap-x-3 gap-y-1.5 mt-3 px-3 py-2 rounded-lg bg-violet-50/60 dark:bg-violet-950/20 border border-violet-200/50 dark:border-violet-800/30"
                       >
                         <span className="text-[11px] font-mono text-muted-foreground/60 shrink-0">

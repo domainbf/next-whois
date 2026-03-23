@@ -7,23 +7,11 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { siteTitle, siteDescription, siteKeywords } from "@/lib/seo";
 import { Navbar } from "@/components/navbar";
 import { useRouter } from "next/router";
-import { AnimatePresence, motion } from "framer-motion";
 import { SessionProvider } from "next-auth/react";
 import { LocaleProvider } from "@/lib/locale-context";
 import { SiteSettingsProvider, useSiteSettings } from "@/lib/site-settings";
 import { RiMegaphoneLine, RiCloseLine, RiWrenchLine } from "@remixicon/react";
 import { ADMIN_EMAIL } from "@/lib/admin-shared";
-
-const pageVariants = {
-  initial: { opacity: 0 },
-  animate: { opacity: 1 },
-  exit:    { opacity: 0 },
-};
-
-const pageTransition = {
-  duration: 0.15,
-  ease: "easeOut",
-};
 
 // ── Top route-loading bar (gives immediate tap feedback on mobile) ──────────
 function RouteLoadingBar() {
@@ -235,18 +223,9 @@ export default function App({ Component, pageProps: { session, ...pageProps } }:
             {isAdminPage ? (
               <Component {...pageProps} />
             ) : (
-              <AnimatePresence mode="sync" initial={false}>
-                <motion.div
-                  key={animationKey}
-                  variants={pageVariants}
-                  initial="initial"
-                  animate="animate"
-                  exit="exit"
-                  transition={pageTransition}
-                >
-                  <Component {...pageProps} />
-                </motion.div>
-              </AnimatePresence>
+              <div key={animationKey} className="page-enter">
+                <Component {...pageProps} />
+              </div>
             )}
             {!isAdminPage && <SiteFooter />}
           </main>

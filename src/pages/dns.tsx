@@ -130,9 +130,9 @@ function ResultCard({ result, index = 0 }: { result: DnsResult; index?: number }
   if (!result.found) {
     return (
       <motion.div
-        initial={{ opacity: 0, y: 4 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: index * 0.03, duration: 0.18 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.18 }}
         className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl border border-border/60 bg-muted/5"
       >
         <RecordTypeBadge type={result.type} />
@@ -146,9 +146,9 @@ function ResultCard({ result, index = 0 }: { result: DnsResult; index?: number }
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 4 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.03, duration: 0.18 }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.18 }}
       className="glass-panel border border-border rounded-2xl overflow-hidden"
     >
       <div className="flex items-center gap-2.5 px-4 py-2 border-b border-border/50 bg-muted/20">

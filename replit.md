@@ -1,10 +1,33 @@
-# Next Whois UI — v3.5
+# Next Whois UI — v3.6
 
 A fast, modern WHOIS and RDAP lookup tool supporting domains, IPv4/IPv6, ASN, and CIDR. Also includes built-in DNS, SSL certificate, and IP/ASN geolocation tools.
 
 ---
 
 ## Changelog
+
+### v3.6 — Mobile Animation Fix: No More Flash/Jitter (2026-03-23)
+
+**Scope:** Eliminated all sources of mobile page-transition flash and result-card jitter.
+
+**Root causes fixed:**
+1. `AnimatePresence mode="sync"` in `_app.tsx` caused old and new pages to overlap during navigation, making the background "bleed through" and flash white/dark between pages.
+2. `CARD_ITEM_VARIANTS` with `y: 12` + `staggerChildren: 0.06` in `[...query].tsx` made result cards appear to jump upward one-by-one, visually jittery on mobile.
+3. "Available domain" hero section in `[...query].tsx` had `delay: 0.15 / 0.2 / 0.35` on motion elements, causing content to pop in piece-by-piece.
+4. `dns.tsx` result cards had `y: 4` + `delay: index * 0.03` stagger, causing visible card cascade on mobile.
+
+**Changes:**
+
+| File | Change | Detail |
+|---|---|---|
+| `src/styles/globals.css` | Added `.page-enter` CSS class | Pure opacity fade-in (0.12 s ease-out) using `@keyframes page-enter`. No transform, no `will-change`. |
+| `src/pages/_app.tsx` | Removed `AnimatePresence` + `motion.div` page wrapper | Replaced with a plain `<div key={animationKey} className="page-enter">`. React unmounts old div, mounts new div with CSS animation — zero overlap, zero background flash. Also removed unused `pageVariants`, `pageTransition` constants and framer-motion import from this file. |
+| `src/pages/[...query].tsx` | `CARD_CONTAINER_VARIANTS`: removed stagger | Changed from `staggerChildren: 0.06, delayChildren: 0.02` to a simple `duration: 0.15` fade-in for the entire container. |
+| `src/pages/[...query].tsx` | `CARD_ITEM_VARIANTS`: removed y-axis movement | Items are now `opacity: 1` in both hidden and visible states — the container fade handles the appearance. No per-item stagger or y-offset. |
+| `src/pages/[...query].tsx` | "Available domain" hero: removed delayed animations | Replaced `motion.div` (scale: 0.8→1, delay 0.15) for status badge, `motion.div` (delay 0.2) for domain name, and `motion.a` (scale: 0.95→1, delay 0.35) for CTA button with static `div`/`a` elements. Content appears instantly. |
+| `src/pages/[...query].tsx` | Translation pill: removed y-axis offset | Changed `initial={{ opacity: 0, y: -4 }}` to `initial={{ opacity: 0 }}` only. |
+| `src/pages/dns.tsx` | Removed `y: 4` stagger from result cards | Both `found` and `not-found` result cards now animate opacity-only (`initial={{ opacity: 0 }}`) with no per-index delay. |
+| `src/lib/env.ts` | VERSION bumped to "3.6" | |
 
 ### v3.5 — Anonymous History Cap + Enriched Admin Backend (2026-03-23)
 
