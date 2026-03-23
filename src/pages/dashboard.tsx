@@ -890,6 +890,20 @@ export default function DashboardPage() {
           {/* ── Subscriptions ── */}
           {tab === "subscriptions" && (
             <motion.div key="subscriptions" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.18 }} className="space-y-3">
+              {!(user as any).subscriptionAccess && (
+                <div className="flex flex-col items-center justify-center text-center py-10 space-y-4">
+                  <div className="w-14 h-14 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-700/40 flex items-center justify-center">
+                    <RiLockLine className="w-6 h-6 text-amber-500" />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-sm font-bold">需要邀请码</p>
+                    <p className="text-xs text-muted-foreground leading-relaxed max-w-[220px] mx-auto">
+                      域名订阅功能需要邀请码才能使用。<br/>请联系管理员获取邀请码后重新注册。
+                    </p>
+                  </div>
+                </div>
+              )}
+              {(user as any).subscriptionAccess && <>
               <div className="flex items-center justify-between gap-2">
                 <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">域名到期提醒</p>
                 <div className="flex items-center gap-2">
@@ -1053,6 +1067,7 @@ export default function DashboardPage() {
                   </div>
                 );
               })}
+              </>}
             </motion.div>
           )}
 

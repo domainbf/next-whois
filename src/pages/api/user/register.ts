@@ -7,7 +7,7 @@ import { sendEmail, welcomeHtml } from "@/lib/email";
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).end();
 
-  const { email, password, name } = req.body;
+  const { email, password, name, inviteCode } = req.body;
   if (!email || !password) return res.status(400).json({ error: "邮箱和密码不能为空" });
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
     return res.status(400).json({ error: "邮箱格式不正确" });
@@ -20,20 +20,38 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const allowReg = !regSetting || regSetting.value === "1";
   if (!allowReg) return res.status(403).json({ error: "注册已暂停，请联系管理员" });
 
-  const cleanEmail = String(email).toLowerCase().trim();
+  const requireInvite = await one<{ value: string }>("SELECT value FROM site_settings WHERE key = 'require_invite_code'");
+  const needsInvite = requireInvite?.value === "1";
 
+  let codeRow: { id: string; is_active: boolean; use_count: number; max_uses: number } | null = null;
+  if (needsInvite) {
+    if (!inviteCode?.trim()) return res.status(400).json({ error: "注册需要邀请码" });
+    codeRow = await one<{ id: string; is_active: boolean; use_count: number; max_uses: number }>(
+      "SELECT id, is_active, use_count, max_uses FROM invite_codes WHERE code = $1",
+      [String(inviteCode).trim().toUpperCase()]
+    );
+    if (!codeRow) return res.status(400).json({ error: "邀请码无效" });
+    if (!codeRow.is_active) return res.status(400).json({ error: "邀请码已停用" });
+    if (codeRow.use_count >= codeRow.max_uses) return res.status(400).json({ error: "邀请码已达使用上限" });
+  }
+
+  const cleanEmail = String(email).toLowerCase().trim();
   const existing = await one("SELECT id FROM users WHERE email = $1", [cleanEmail]);
   if (existing) return res.status(409).json({ error: "该邮箱已注册" });
 
   const id = randomBytes(8).toString("hex");
   const passwordHash = await hash(String(password), 12);
   const cleanName = name ? String(name).trim().slice(0, 50) || null : null;
+  const subscriptionAccess = codeRow !== null;
 
   try {
     await run(
-      "INSERT INTO users (id, email, password_hash, name) VALUES ($1, $2, $3, $4)",
-      [id, cleanEmail, passwordHash, cleanName],
+      "INSERT INTO users (id, email, password_hash, name, subscription_access, invite_code_used) VALUES ($1, $2, $3, $4, $5, $6)",
+      [id, cleanEmail, passwordHash, cleanName, subscriptionAccess, codeRow ? String(inviteCode).trim().toUpperCase() : null],
     );
+    if (codeRow) {
+      await run("UPDATE invite_codes SET use_count = use_count + 1 WHERE id = $1", [codeRow.id]);
+    }
   } catch (err: any) {
     console.error("[register] insert error:", err.message);
     return res.status(500).json({ error: "注册失败，请稍后重试" });

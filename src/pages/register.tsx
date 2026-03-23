@@ -10,7 +10,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   RiLoader4Line, RiUserAddLine, RiMailLine,
   RiLockLine, RiEyeLine, RiEyeOffLine, RiUserLine,
-  RiAlertLine, RiCheckLine, RiShieldCheckLine,
+  RiAlertLine, RiCheckLine, RiShieldCheckLine, RiKeyLine,
 } from "@remixicon/react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -39,6 +39,7 @@ export default function RegisterPage() {
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [confirm, setConfirm] = React.useState("");
+  const [inviteCode, setInviteCode] = React.useState("");
   const [showPwd, setShowPwd] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -67,6 +68,7 @@ export default function RegisterPage() {
           email: email.trim().toLowerCase(),
           password,
           name: name.trim() || undefined,
+          inviteCode: inviteCode.trim() || undefined,
         }),
       });
       const data = await res.json();
@@ -272,6 +274,28 @@ export default function RegisterPage() {
                     )}
                   </AnimatePresence>
                 </div>
+              </div>
+
+              {/* Invite code */}
+              <div className="space-y-1.5">
+                <Label htmlFor="inviteCode" className="text-xs font-semibold">
+                  邀请码 <span className="text-muted-foreground font-normal">（如有）</span>
+                </Label>
+                <div className="relative">
+                  <RiKeyLine className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/60" />
+                  <Input
+                    id="inviteCode"
+                    type="text"
+                    placeholder="XXXXXX-XXXXXX-XXXXXX"
+                    value={inviteCode}
+                    onChange={e => { setInviteCode(e.target.value.toUpperCase()); setError(null); }}
+                    className="pl-9 h-10 rounded-xl font-mono text-sm tracking-wider"
+                    disabled={loading}
+                    maxLength={24}
+                    autoComplete="off"
+                  />
+                </div>
+                <p className="text-[10px] text-muted-foreground px-0.5">填写邀请码可解锁域名到期提醒订阅功能</p>
               </div>
 
               {/* Error */}

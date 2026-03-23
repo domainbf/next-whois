@@ -142,6 +142,16 @@ const CREATE_TABLES = [
     platform     TEXT,
     created_at   TIMESTAMPTZ  NOT NULL DEFAULT NOW()
   )`,
+  `CREATE TABLE IF NOT EXISTS invite_codes (
+    id           VARCHAR(16)  PRIMARY KEY,
+    code         TEXT         UNIQUE NOT NULL,
+    description  TEXT,
+    is_active    BOOLEAN      NOT NULL DEFAULT true,
+    max_uses     INTEGER      NOT NULL DEFAULT 1,
+    use_count    INTEGER      NOT NULL DEFAULT 0,
+    created_by   VARCHAR(16)  REFERENCES users(id) ON DELETE SET NULL,
+    created_at   TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+  )`,
 ];
 
 const ALTER_COLUMNS = [
@@ -157,6 +167,8 @@ const ALTER_COLUMNS = [
   `ALTER TABLE users         ADD COLUMN IF NOT EXISTS email_verified      BOOLEAN NOT NULL DEFAULT false`,
   `ALTER TABLE users         ADD COLUMN IF NOT EXISTS email_verify_token  TEXT`,
   `ALTER TABLE users         ADD COLUMN IF NOT EXISTS email_verify_expires TIMESTAMPTZ`,
+  `ALTER TABLE users         ADD COLUMN IF NOT EXISTS subscription_access BOOLEAN NOT NULL DEFAULT false`,
+  `ALTER TABLE users         ADD COLUMN IF NOT EXISTS invite_code_used    TEXT`,
 ];
 
 function getConnectionString(): { url: string; source: string } | null {

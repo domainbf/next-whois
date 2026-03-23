@@ -3290,6 +3290,10 @@ export default function LookupPage({
                               router.push(`/login?callbackUrl=${encodeURIComponent(`/${result.domain || target}`)}`);
                               return;
                             }
+                            if (!(session?.user as any)?.subscriptionAccess) {
+                              toast.info(isChinese ? "需要邀请码才能使用域名订阅，请在注册时填写邀请码" : "Invite code required to subscribe. Please register with an invite code.");
+                              return;
+                            }
                             setReminderDialogOpen(true);
                           }}
                           title={isChinese ? "域名订阅" : "Subscribe"}
@@ -3430,6 +3434,10 @@ export default function LookupPage({
                             if (!session) {
                               toast.info(isChinese ? "请先登录再订阅域名提醒" : "Please log in to subscribe for reminders");
                               router.push(`/login?callbackUrl=${encodeURIComponent(`/${result.domain || target}`)}`);
+                              return;
+                            }
+                            if (!(session?.user as any)?.subscriptionAccess) {
+                              toast.info(isChinese ? "需要邀请码才能使用域名订阅，请在注册时填写邀请码" : "Invite code required to subscribe. Please register with an invite code.");
                               return;
                             }
                             setReminderDialogOpen(true);

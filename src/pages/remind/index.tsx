@@ -11,7 +11,7 @@ import {
   RiCalendarLine, RiMailLine, RiSearchLine, RiShieldCheckLine,
   RiArrowRightLine, RiCheckLine, RiGlobalLine, RiTimeLine, RiTimerLine,
   RiLoader4Line, RiDeleteBinLine, RiEdit2Line, RiExternalLinkLine,
-  RiArrowLeftLine, RiBellLine, RiAlertLine,
+  RiArrowLeftLine, RiBellLine, RiAlertLine, RiLockLine,
 } from "@remixicon/react";
 
 type Subscription = {
@@ -243,6 +243,22 @@ export default function RemindPage() {
               </Link>
             </div>
 
+            {!(session?.user as any)?.subscriptionAccess && (
+              <div className="flex flex-col items-center text-center py-8 space-y-3">
+                <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-700/40 flex items-center justify-center">
+                  <RiLockLine className="w-5 h-5 text-amber-500" />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm font-bold">需要邀请码</p>
+                  <p className="text-xs text-muted-foreground leading-relaxed max-w-[200px] mx-auto">
+                    域名订阅功能需要邀请码才能使用，请联系管理员获取。
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {(session?.user as any)?.subscriptionAccess && <>
+
             {loadingSubs ? (
               <div className="flex justify-center py-6">
                 <RiLoader4Line className="w-5 h-5 animate-spin text-muted-foreground" />
@@ -300,6 +316,7 @@ export default function RemindPage() {
                 })}
               </div>
             )}
+            </>}
           </div>
         )}
 

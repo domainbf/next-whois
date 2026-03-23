@@ -16,6 +16,7 @@ import {
   RiPlugLine, RiPlugFill,
   RiSearchLine, RiSearchFill,
   RiRadarLine, RiHeart3Line, RiHeart3Fill,
+  RiKeyLine, RiKeyFill,
 } from "@remixicon/react";
 
 const NAV = [
@@ -26,6 +27,7 @@ const NAV = [
   { href: "/admin/search-records",  label: "查询", icon: RiSearchLine,      activeIcon: RiSearchFill },
   { href: "/admin/feedback",        label: "反馈", icon: RiFeedbackLine,    activeIcon: RiFeedbackFill },
   { href: "/admin/tld-fallback",    label: "兜底", icon: RiRadarLine,       activeIcon: RiRadarLine },
+  { href: "/admin/invite-codes",    label: "邀请", icon: RiKeyLine,         activeIcon: RiKeyFill },
   { href: "/admin/sponsors",        label: "赞助", icon: RiHeart3Line,      activeIcon: RiHeart3Fill },
   { href: "/admin/system",          label: "系统", icon: RiServerLine,      activeIcon: RiServerFill },
   { href: "/admin/api",             label: "API",  icon: RiPlugLine,        activeIcon: RiPlugFill },
