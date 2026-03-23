@@ -136,7 +136,43 @@ export default function RemindPage() {
               <RiArrowRightLine className="w-3.5 h-3.5" />
             </Button>
           </form>
-          <p className="text-xs text-muted-foreground">搜索后在域名详情页点击「订阅提醒」按钮完成订阅</p>
+        </div>
+
+        {/* Visual mockup — shows where to click */}
+        <div className="space-y-2">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">在这里找到入口</p>
+          <div className="relative rounded-2xl border border-border bg-muted/10 p-4">
+            <span className="absolute top-3 right-3 text-[9px] font-bold uppercase tracking-widest text-muted-foreground/50 bg-muted/60 px-2 py-0.5 rounded-full">预览</span>
+            {/* Mini domain card replica */}
+            <div className="rounded-xl border border-border bg-background shadow-sm overflow-hidden">
+              <div className="px-4 pt-3.5 pb-2 space-y-1.5">
+                <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground/50">DOMAIN</p>
+                <p className="text-sm font-bold font-mono tracking-tight">EXAMPLE.COM</p>
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />Active
+                  </span>
+                  <span className="text-[10px] text-muted-foreground">⏱ 2 years</span>
+                </div>
+              </div>
+              <div className="px-4 pb-3.5 flex items-center gap-2">
+                <div className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium border bg-muted/40 border-border/50 text-muted-foreground/50">
+                  <RiShieldCheckLine className="w-3 h-3" />
+                  品牌认领
+                </div>
+                {/* Highlighted subscribe button */}
+                <div className="relative flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold border bg-sky-100 dark:bg-sky-950/50 border-sky-400/70 text-sky-600 dark:text-sky-400 shadow-sm ring-2 ring-sky-400/20">
+                  <RiTimeLine className="w-3 h-3" />
+                  域名订阅
+                  <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-60" />
+                    <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-sky-500" />
+                  </span>
+                </div>
+              </div>
+            </div>
+            <p className="text-[10px] text-muted-foreground text-center mt-2.5">↑ 在域名查询结果顶部点击「域名订阅」</p>
+          </div>
         </div>
 
         {/* How it works */}
@@ -262,12 +298,12 @@ export default function RemindPage() {
               <p className="text-xs text-muted-foreground mt-1">登录后可查看所有订阅记录并随时取消</p>
             </div>
             <div className="flex gap-2 justify-center">
-              <Link href="/login">
+              <Link href="/login?callbackUrl=%2Fremind">
                 <Button size="sm" className="rounded-xl h-9 gap-1.5 text-xs">
                   登录
                 </Button>
               </Link>
-              <Link href="/register">
+              <Link href="/register?callbackUrl=%2Fremind">
                 <Button size="sm" variant="outline" className="rounded-xl h-9 gap-1.5 text-xs">
                   注册账号
                 </Button>

@@ -3253,7 +3253,7 @@ export default function LookupPage({
                           onClick={() => {
                             if (!session) {
                               toast.info(isChinese ? "请先登录再订阅域名提醒" : "Please log in to subscribe for reminders");
-                              router.push(`/login`);
+                              router.push(`/login?callbackUrl=${encodeURIComponent(`/${result.domain || target}`)}`);
                               return;
                             }
                             setReminderDialogOpen(true);
@@ -3393,7 +3393,7 @@ export default function LookupPage({
                           onClick={() => {
                             if (!session) {
                               toast.info(isChinese ? "请先登录再订阅域名提醒" : "Please log in to subscribe for reminders");
-                              router.push(`/login`);
+                              router.push(`/login?callbackUrl=${encodeURIComponent(`/${result.domain || target}`)}`);
                               return;
                             }
                             setReminderDialogOpen(true);

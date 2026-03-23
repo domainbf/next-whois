@@ -1,5 +1,6 @@
 import React from "react";
 import Head from "next/head";
+import Link from "next/link";
 import { useRouter } from "next/router";
 import { useSession } from "next-auth/react";
 import { useTranslation, TranslationKey } from "@/lib/i18n";
@@ -30,6 +31,7 @@ import {
   RiFileTextLine,
   RiLinksLine,
   RiCheckboxCircleLine,
+  RiSearchLine,
 } from "@remixicon/react";
 import { toast } from "sonner";
 
@@ -154,6 +156,166 @@ const TAG_ID_KEY_MAP: Record<string, StampKey> = {
   verified: "tag_verified", partner: "tag_partner", dev: "tag_dev",
   warning: "tag_warning", premium: "tag_premium",
 };
+
+// ── No-domain landing page ─────────────────────────────────────────────────────
+function StampLandingPage() {
+  const router = useRouter();
+  const [query, setQuery] = React.useState("");
+
+  function handleSearch(e: React.FormEvent) {
+    e.preventDefault();
+    const q = query.trim();
+    if (!q) return;
+    router.push(`/stamp?domain=${encodeURIComponent(q)}`);
+  }
+
+  const steps = [
+    {
+      icon: RiSearchLine,
+      color: "bg-blue-100 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400",
+      title: "搜索你的域名",
+      desc: "在首页搜索框或下方输入框中输入你拥有的域名",
+    },
+    {
+      icon: RiShieldCheckLine,
+      color: "bg-violet-100 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400",
+      title: "点击「品牌认领」按钮",
+      desc: "在域名 WHOIS 详情页顶部，找到紫色盾牌按钮并点击",
+    },
+    {
+      icon: RiWifiLine,
+      color: "bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400",
+      title: "完成 DNS / 文件验证",
+      desc: "添加 TXT 记录或上传验证文件，证明你是域名所有者",
+    },
+    {
+      icon: RiCheckboxCircleLine,
+      color: "bg-amber-100 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400",
+      title: "获得品牌认证标签",
+      desc: "验证通过后，WHOIS 查询页将显示你的品牌名称和认证标签",
+    },
+  ];
+
+  return (
+    <>
+      <Head>
+        <title key="site-title">品牌认领 · Next WHOIS</title>
+        <meta name="description" content="认领你拥有的域名，在 WHOIS 查询结果中展示你的品牌信息。" />
+      </Head>
+      <div className="max-w-lg mx-auto px-4 py-8 pb-20 space-y-6">
+        {/* Back */}
+        <Link href="/dashboard" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
+          <RiArrowLeftLine className="w-3.5 h-3.5" />返回 Dashboard
+        </Link>
+
+        {/* Hero */}
+        <div className="relative rounded-2xl overflow-hidden border border-violet-200/40 dark:border-violet-800/30">
+          <div className="absolute inset-0 bg-gradient-to-br from-violet-500/8 via-transparent to-fuchsia-500/5 dark:from-violet-500/15 dark:to-fuchsia-500/8" />
+          <div className="relative px-5 py-5 flex items-center gap-4">
+            <div className="shrink-0 w-12 h-12 rounded-2xl bg-violet-500/10 border border-violet-300/30 dark:border-violet-700/40 flex items-center justify-center">
+              <RiShieldCheckLine className="w-6 h-6 text-violet-500" />
+            </div>
+            <div>
+              <h1 className="text-lg font-bold">品牌认领</h1>
+              <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                认领你拥有的域名，在 WHOIS 查询结果中<br />展示你的品牌名称和认证标签
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Visual mockup — shows where to click */}
+        <div className="space-y-2">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-1">在这里找到入口</p>
+          <div className="relative rounded-2xl border border-border bg-muted/10 p-4">
+            <span className="absolute top-3 right-3 text-[9px] font-bold uppercase tracking-widest text-muted-foreground/50 bg-muted/60 px-2 py-0.5 rounded-full">预览</span>
+            {/* Mini domain card replica */}
+            <div className="rounded-xl border border-border bg-background shadow-sm overflow-hidden">
+              <div className="px-4 pt-3.5 pb-2 space-y-1.5">
+                <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground/50">DOMAIN</p>
+                <p className="text-sm font-bold font-mono tracking-tight">EXAMPLE.COM</p>
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />Active
+                  </span>
+                  <span className="text-[10px] text-muted-foreground">⏱ 2 years</span>
+                </div>
+              </div>
+              <div className="px-4 pb-3.5 flex items-center gap-2">
+                {/* Highlighted claim button */}
+                <div className="relative flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold border bg-violet-100 dark:bg-violet-950/50 border-violet-400/70 text-violet-600 dark:text-violet-400 shadow-sm ring-2 ring-violet-400/20">
+                  <RiShieldCheckLine className="w-3 h-3" />
+                  品牌认领
+                  <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-violet-400 opacity-60" />
+                    <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-violet-500" />
+                  </span>
+                </div>
+                <div className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium border bg-muted/40 border-border/50 text-muted-foreground/50">
+                  <RiTimeLine className="w-3 h-3" />
+                  域名订阅
+                </div>
+              </div>
+            </div>
+            <p className="text-[10px] text-muted-foreground text-center mt-2.5">↑ 在域名查询结果顶部点击「品牌认领」</p>
+          </div>
+        </div>
+
+        {/* Search to enter flow */}
+        <div className="border border-border rounded-2xl p-4 space-y-3 bg-muted/10">
+          <div className="flex items-center gap-2">
+            <RiSearchLine className="w-4 h-4 text-primary" />
+            <p className="text-sm font-bold">直接输入域名开始认领</p>
+          </div>
+          <form onSubmit={handleSearch} className="flex gap-2">
+            <Input
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              placeholder="输入你的域名，如 example.com"
+              className="h-10 rounded-xl text-sm font-mono flex-1"
+              autoComplete="off"
+              autoFocus
+            />
+            <Button type="submit" className="h-10 rounded-xl gap-1.5 px-4 shrink-0">
+              认领
+              <RiArrowRightLine className="w-3.5 h-3.5" />
+            </Button>
+          </form>
+          <p className="text-xs text-muted-foreground">将跳转到该域名的品牌认领流程</p>
+        </div>
+
+        {/* Steps */}
+        <div className="space-y-3">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-1">如何使用</p>
+          <div className="grid gap-2.5">
+            {steps.map((step, i) => (
+              <div key={i} className="flex items-start gap-3 p-3.5 rounded-xl border border-border bg-muted/10">
+                <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center shrink-0", step.color)}>
+                  <step.icon className="w-4 h-4" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5 mb-0.5">
+                    <span className="text-[9px] font-bold text-muted-foreground/40 uppercase tracking-widest">步骤 {i + 1}</span>
+                  </div>
+                  <p className="text-xs font-semibold">{step.title}</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">{step.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Info note */}
+        <div className="flex items-start gap-2 px-3 py-3 rounded-xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/40">
+          <RiAlertLine className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
+          <p className="text-[11px] text-muted-foreground">
+            品牌认领需通过 DNS TXT 记录或指定文件路径验证，以确认域名归属权。验证过程通常在几分钟内完成。
+          </p>
+        </div>
+      </div>
+    </>
+  );
+}
 
 export default function StampPage() {
   const router = useRouter();
@@ -529,6 +691,11 @@ export default function StampPage() {
   // Don't render the page content while checking auth or redirecting.
   if (authStatus === "loading" || authStatus === "unauthenticated") {
     return null;
+  }
+
+  // No domain specified — show a rich landing/guide page
+  if (!domain) {
+    return <StampLandingPage />;
   }
 
   return (

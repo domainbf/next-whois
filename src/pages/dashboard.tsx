@@ -309,6 +309,36 @@ function ClaimGuideModal({ onClose }: { onClose: () => void }) {
         </div>
 
         <div className="p-5 space-y-4">
+          {/* Visual mockup */}
+          <div className="relative rounded-xl border border-border bg-muted/10 p-3">
+            <span className="absolute top-2 right-2 text-[9px] font-bold uppercase tracking-widest text-muted-foreground/40 bg-muted/60 px-1.5 py-0.5 rounded-full">预览</span>
+            <div className="rounded-lg border border-border bg-background shadow-sm overflow-hidden">
+              <div className="px-3 pt-3 pb-1.5 space-y-1">
+                <p className="text-[8px] font-bold uppercase tracking-wider text-muted-foreground/50">DOMAIN</p>
+                <p className="text-xs font-bold font-mono">EXAMPLE.COM</p>
+                <div className="flex items-center gap-1.5">
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400">
+                    <span className="w-1 h-1 rounded-full bg-emerald-500" />Active
+                  </span>
+                  <span className="text-[9px] text-muted-foreground">⏱ 2 years</span>
+                </div>
+              </div>
+              <div className="px-3 pb-3 flex items-center gap-1.5">
+                <div className="relative flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border bg-violet-100 dark:bg-violet-950/50 border-violet-400/70 text-violet-600 dark:text-violet-400 ring-1 ring-violet-400/25">
+                  <RiShieldCheckLine className="w-2.5 h-2.5" />品牌认领
+                  <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-violet-400 opacity-60" />
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-violet-500" />
+                  </span>
+                </div>
+                <div className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border bg-muted/40 border-border/50 text-muted-foreground/50">
+                  <RiTimeLine className="w-2.5 h-2.5" />域名订阅
+                </div>
+              </div>
+            </div>
+            <p className="text-[9px] text-muted-foreground text-center mt-2">↑ 点击域名详情页顶部的「品牌认领」按钮</p>
+          </div>
+
           {/* Steps */}
           <div className="space-y-2">
             {steps.map((step, i) => (
@@ -412,6 +442,36 @@ function SubscribeGuideModal({ onClose }: { onClose: () => void }) {
         </div>
 
         <div className="p-5 space-y-4">
+          {/* Visual mockup */}
+          <div className="relative rounded-xl border border-border bg-muted/10 p-3">
+            <span className="absolute top-2 right-2 text-[9px] font-bold uppercase tracking-widest text-muted-foreground/40 bg-muted/60 px-1.5 py-0.5 rounded-full">预览</span>
+            <div className="rounded-lg border border-border bg-background shadow-sm overflow-hidden">
+              <div className="px-3 pt-3 pb-1.5 space-y-1">
+                <p className="text-[8px] font-bold uppercase tracking-wider text-muted-foreground/50">DOMAIN</p>
+                <p className="text-xs font-bold font-mono">EXAMPLE.COM</p>
+                <div className="flex items-center gap-1.5">
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400">
+                    <span className="w-1 h-1 rounded-full bg-emerald-500" />Active
+                  </span>
+                  <span className="text-[9px] text-muted-foreground">⏱ 2 years</span>
+                </div>
+              </div>
+              <div className="px-3 pb-3 flex items-center gap-1.5">
+                <div className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border bg-muted/40 border-border/50 text-muted-foreground/50">
+                  <RiShieldCheckLine className="w-2.5 h-2.5" />品牌认领
+                </div>
+                <div className="relative flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border bg-sky-100 dark:bg-sky-950/50 border-sky-400/70 text-sky-600 dark:text-sky-400 ring-1 ring-sky-400/25">
+                  <RiTimeLine className="w-2.5 h-2.5" />域名订阅
+                  <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-60" />
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-sky-500" />
+                  </span>
+                </div>
+              </div>
+            </div>
+            <p className="text-[9px] text-muted-foreground text-center mt-2">↑ 点击域名详情页顶部的「域名订阅」按钮</p>
+          </div>
+
           {/* Steps */}
           <div className="space-y-2">
             {steps.map((step, i) => (
