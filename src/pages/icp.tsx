@@ -18,18 +18,19 @@ import {
 } from "@remixicon/react";
 import type { IcpRecord, IcpResponse } from "@/pages/api/icp/query";
 import type { IcpHealthResponse } from "@/pages/api/icp/health";
+import { useTranslation } from "@/lib/i18n";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const ICP_TYPES = [
-  { id: "web",   label: "网站",       icon: RiGlobalLine,        color: "text-blue-600 dark:text-blue-400",     bg: "bg-blue-500/10 border-blue-400/40",      blacklist: false },
-  { id: "app",   label: "APP",        icon: RiSmartphoneLine,    color: "text-violet-600 dark:text-violet-400", bg: "bg-violet-500/10 border-violet-400/40",   blacklist: false },
-  { id: "mapp",  label: "小程序",     icon: RiAppsLine,          color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-500/10 border-emerald-400/40", blacklist: false },
-  { id: "kapp",  label: "快应用",     icon: RiThunderstormsLine, color: "text-amber-600 dark:text-amber-400",   bg: "bg-amber-500/10 border-amber-400/40",     blacklist: false },
-  { id: "bweb",  label: "违规网站",   icon: RiGlobalLine,        color: "text-red-600 dark:text-red-400",       bg: "bg-red-500/10 border-red-400/40",         blacklist: true  },
-  { id: "bapp",  label: "违规APP",    icon: RiSmartphoneLine,    color: "text-red-600 dark:text-red-400",       bg: "bg-red-500/10 border-red-400/40",         blacklist: true  },
-  { id: "bmapp", label: "违规小程序", icon: RiAppsLine,          color: "text-red-600 dark:text-red-400",       bg: "bg-red-500/10 border-red-400/40",         blacklist: true  },
-  { id: "bkapp", label: "违规快应用", icon: RiThunderstormsLine, color: "text-red-600 dark:text-red-400",       bg: "bg-red-500/10 border-red-400/40",         blacklist: true  },
+  { id: "web",   tabKey: "icp.tab_web",   icon: RiGlobalLine,        color: "text-blue-600 dark:text-blue-400",     bg: "bg-blue-500/10 border-blue-400/40",      blacklist: false },
+  { id: "app",   tabKey: "icp.tab_app",   icon: RiSmartphoneLine,    color: "text-violet-600 dark:text-violet-400", bg: "bg-violet-500/10 border-violet-400/40",   blacklist: false },
+  { id: "mapp",  tabKey: "icp.tab_mapp",  icon: RiAppsLine,          color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-500/10 border-emerald-400/40", blacklist: false },
+  { id: "kapp",  tabKey: "icp.tab_kapp",  icon: RiThunderstormsLine, color: "text-amber-600 dark:text-amber-400",   bg: "bg-amber-500/10 border-amber-400/40",     blacklist: false },
+  { id: "bweb",  tabKey: "icp.tab_bweb",  icon: RiGlobalLine,        color: "text-red-600 dark:text-red-400",       bg: "bg-red-500/10 border-red-400/40",         blacklist: true  },
+  { id: "bapp",  tabKey: "icp.tab_bapp",  icon: RiSmartphoneLine,    color: "text-red-600 dark:text-red-400",       bg: "bg-red-500/10 border-red-400/40",         blacklist: true  },
+  { id: "bmapp", tabKey: "icp.tab_bmapp", icon: RiAppsLine,          color: "text-red-600 dark:text-red-400",       bg: "bg-red-500/10 border-red-400/40",         blacklist: true  },
+  { id: "bkapp", tabKey: "icp.tab_bkapp", icon: RiThunderstormsLine, color: "text-red-600 dark:text-red-400",       bg: "bg-red-500/10 border-red-400/40",         blacklist: true  },
 ] as const;
 
 type IcpTypeId = typeof ICP_TYPES[number]["id"];
@@ -40,6 +41,7 @@ const EXAMPLE_HINTS = ["baidu.com", "京ICP证030173号", "深圳市腾讯计算
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = React.useState(false);
+  const { t } = useTranslation();
   return (
     <button
       onClick={() => {
@@ -48,7 +50,7 @@ function CopyButton({ text }: { text: string }) {
         setTimeout(() => setCopied(false), 1400);
       }}
       className="p-1 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground shrink-0"
-      title="复制"
+      title={t("icp.copy")}
     >
       {copied
         ? <RiCheckLine className="w-3 h-3 text-emerald-500" />
@@ -74,16 +76,17 @@ function InfoRow({ label, value, mono }: {
 }
 
 function BlackListBadge({ level }: { level?: string | number | null }) {
+  const { t } = useTranslation();
   if (level === null || level === undefined) return null;
   const n = Number(level);
   if (n === 2) return (
     <Badge className="text-[9px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-0 px-1.5 shrink-0">
-      暂无违规
+      {t("icp.threat_none")}
     </Badge>
   );
   return (
     <Badge className="text-[9px] bg-red-500/10 text-red-500 border-0 px-1.5 shrink-0">
-      威胁等级 {level}
+      {t("icp.threat_level", { level: String(level) })}
     </Badge>
   );
 }
@@ -91,6 +94,7 @@ function BlackListBadge({ level }: { level?: string | number | null }) {
 function RecordCard({ record, isBlacklist, index }: {
   record: IcpRecord; isBlacklist: boolean; index: number;
 }) {
+  const { t } = useTranslation();
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -114,22 +118,22 @@ function RecordCard({ record, isBlacklist, index }: {
         <div className="flex items-center gap-1.5 shrink-0">
           {isBlacklist && <BlackListBadge level={record.blackListLevel} />}
           {(record.limitAccess === true || record.limitAccess === "是" || record.limitAccess === "1") && (
-            <Badge className="text-[9px] bg-orange-500/10 text-orange-500 border-0 shrink-0">限制接入</Badge>
+            <Badge className="text-[9px] bg-orange-500/10 text-orange-500 border-0 shrink-0">{t("icp.field_limit")}</Badge>
           )}
         </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6">
-        <InfoRow label="主办单位" value={record.unitName} />
-        <InfoRow label="单位性质" value={record.natureName} />
-        <InfoRow label="ICP 备案号" value={record.mainLicence} mono />
-        <InfoRow label="服务许可证" value={record.serviceLicence} mono />
+        <InfoRow label={t("icp.field_company")} value={record.unitName} />
+        <InfoRow label={t("icp.field_nature")} value={record.natureName} />
+        <InfoRow label={t("icp.field_icp")} value={record.mainLicence} mono />
+        <InfoRow label={t("icp.field_service_license")} value={record.serviceLicence} mono />
         {record.serviceName && record.serviceName !== record.domain && (
-          <InfoRow label="服务名称" value={record.serviceName} />
+          <InfoRow label={t("icp.field_name")} value={record.serviceName} />
         )}
-        <InfoRow label="内容类型" value={record.contentTypeName} />
-        <InfoRow label="审核通过日期" value={record.updateRecordTime} />
-        <InfoRow label="主体地址" value={record.mainUnitAddress} />
+        <InfoRow label={t("icp.field_type")} value={record.contentTypeName} />
+        <InfoRow label={t("icp.field_verify_time")} value={record.updateRecordTime} />
+        <InfoRow label={t("icp.field_domain")} value={record.mainUnitAddress} />
       </div>
     </motion.div>
   );
@@ -141,13 +145,14 @@ function Pagination({ pageNum, pages, total, pageSize, hasNextPage, hasPreviousP
   pageNum: number; pages: number; total: number; pageSize: number;
   hasNextPage: boolean; hasPreviousPage: boolean; onPage: (p: number) => void;
 }) {
+  const { t } = useTranslation();
   if (pages <= 1) return null;
   const start = (pageNum - 1) * pageSize + 1;
   const end = Math.min(pageNum * pageSize, total);
   return (
     <div className="flex items-center justify-between gap-2 pt-3 flex-wrap">
       <span className="text-xs text-muted-foreground">
-        第 {start}–{end} 条 / 共 {total} 条
+        {start}–{end} / {t("icp.results_count", { count: String(total) })}
       </span>
       <div className="flex items-center gap-1.5">
         <button
@@ -158,7 +163,7 @@ function Pagination({ pageNum, pages, total, pageSize, hasNextPage, hasPreviousP
           <RiArrowLeftSFill className="w-4 h-4" />
         </button>
         <span className="text-xs font-mono px-2.5 py-1 rounded-lg border border-border/60 bg-muted/30 min-w-[4.5rem] text-center">
-          {pageNum} / {pages}
+          {t("icp.page_of", { current: String(pageNum), total: String(pages) })}
         </span>
         <button
           onClick={() => onPage(pageNum + 1)}
@@ -207,14 +212,15 @@ function ApiStatusBadge({ status, latency, error, checking, onRefresh }: {
   status: HealthStatus; latency: number | null; error?: string;
   checking: boolean; onRefresh: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <button
       onClick={onRefresh}
       disabled={checking}
       title={
-        checking ? "正在检测…"
-          : status === "online" ? `服务在线，延迟 ${latency}ms，点击刷新`
-          : `服务离线${error ? `：${error}` : ""}，点击重新检测`
+        checking ? t("icp.check_status")
+          : status === "online" ? `${t("icp.check_status")} · ${latency}ms`
+          : `${t("icp.offline")}${error ? `: ${error}` : ""}`
       }
       className={cn(
         "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-medium border transition-all select-none",
@@ -231,10 +237,10 @@ function ApiStatusBadge({ status, latency, error, checking, onRefresh }: {
         ? <RiWifiLine className="w-3 h-3" />
         : <RiWifiOffLine className="w-3 h-3" />}
       {checking
-        ? "检测中…"
+        ? t("icp.check_status")
         : status === "online"
-        ? `在线${latency != null ? ` · ${latency}ms` : ""}`
-        : `离线${error ? ` · ${error}` : ""}`}
+        ? `${t("icp.check_status")}${latency != null ? ` · ${latency}ms` : ""}`
+        : `${t("icp.offline")}${error ? ` · ${error}` : ""}`}
       {!checking && status === "offline" && <RiRefreshLine className="w-3 h-3 opacity-70" />}
     </button>
   );
@@ -244,6 +250,7 @@ function ApiStatusBadge({ status, latency, error, checking, onRefresh }: {
 
 export default function IcpPage() {
   const router = useRouter();
+  const { t } = useTranslation();
   const [query, setQuery] = React.useState("");
   const [selectedType, setSelectedType] = React.useState<IcpTypeId>("web");
   const [loading, setLoading] = React.useState(false);
@@ -267,33 +274,33 @@ export default function IcpPage() {
     searchQuery?: string, type?: IcpTypeId, page = 1
   ) => {
     const q = (searchQuery ?? query).trim();
-    const t = type ?? selectedType;
-    if (!q) { toast.error("请输入查询内容"); inputRef.current?.focus(); return; }
+    const tp = type ?? selectedType;
+    if (!q) { toast.error(t("icp.search_placeholder")); inputRef.current?.focus(); return; }
 
     setLoading(true);
     setCurrentPage(page);
-    router.replace({ pathname: "/icp", query: { q, type: t } }, undefined, { shallow: true });
+    router.replace({ pathname: "/icp", query: { q, type: tp } }, undefined, { shallow: true });
 
     try {
-      const url = `/api/icp/query?type=${encodeURIComponent(t)}&search=${encodeURIComponent(q)}&pageNum=${page}&pageSize=10`;
+      const url = `/api/icp/query?type=${encodeURIComponent(tp)}&search=${encodeURIComponent(q)}&pageNum=${page}&pageSize=10`;
       const res = await fetch(url);
       const data: IcpResponse = await res.json();
       setResult(data);
-      if (!data.ok) toast.error(data.error || "查询失败");
+      if (!data.ok) toast.error(data.error || t("icp.no_data"));
     } catch {
-      toast.error("网络错误，请稍后重试");
+      toast.error(t("icp.offline_desc"));
       setResult(null);
     } finally {
       setLoading(false);
     }
-  }, [query, selectedType, router]);
+  }, [query, selectedType, router, t]);
 
   const handlePage = (p: number) => {
     handleSearch(query, selectedType, p);
   };
 
-  const handleTypeChange = (t: IcpTypeId) => {
-    setSelectedType(t);
+  const handleTypeChange = (tp: IcpTypeId) => {
+    setSelectedType(tp);
     setResult(null);
     setCurrentPage(1);
   };
@@ -305,7 +312,7 @@ export default function IcpPage() {
   return (
     <>
       <Head>
-        <title key="site-title">ICP 备案查询 - Next Whois</title>
+        <title key="site-title">{`${t("icp.page_title")} - Next Whois`}</title>
       </Head>
       <ScrollArea className="w-full h-[calc(100vh-4rem)]">
         <main className="w-full max-w-3xl mx-auto px-4 sm:px-6 py-6">
@@ -321,8 +328,8 @@ export default function IcpPage() {
               <RiFileList2Line className="w-5 h-5" />
             </div>
             <div className="flex-1 min-w-0">
-              <h1 className="text-lg font-bold leading-none">ICP 备案查询</h1>
-              <p className="text-[11px] text-muted-foreground mt-0.5">网站 · APP · 小程序 · 快应用</p>
+              <h1 className="text-lg font-bold leading-none">{t("icp.page_title")}</h1>
+              <p className="text-[11px] text-muted-foreground mt-0.5">{t("icp.page_subtitle")}</p>
             </div>
             <ApiStatusBadge
               status={apiStatus}
@@ -347,14 +354,14 @@ export default function IcpPage() {
                 <div className="flex items-start gap-2.5 rounded-xl border border-orange-500/20 bg-orange-500/5 px-4 py-3 text-sm">
                   <RiAlertLine className="w-4 h-4 text-orange-400 shrink-0 mt-0.5" />
                   <span className="flex-1 text-muted-foreground">
-                    <span className="font-medium text-orange-600 dark:text-orange-400">备案数据服务当前不可用</span>
-                    {" · "}{apiError || "服务可能正在维护"}，查询可能失败。
+                    <span className="font-medium text-orange-600 dark:text-orange-400">{t("icp.offline")}</span>
+                    {" · "}{apiError || t("icp.offline_desc")}
                   </span>
                   <button
                     onClick={recheckApi}
                     className="text-xs text-orange-500 hover:text-orange-600 shrink-0 font-medium flex items-center gap-1"
                   >
-                    <RiRefreshLine className="w-3.5 h-3.5" />重试
+                    <RiRefreshLine className="w-3.5 h-3.5" />{t("icp.check_status")}
                   </button>
                 </div>
               </motion.div>
@@ -364,23 +371,23 @@ export default function IcpPage() {
           {/* Type selector */}
           <div className="mb-4">
             <div className="flex flex-wrap gap-1.5">
-              {ICP_TYPES.map(t => {
-                const Icon = t.icon;
-                const active = selectedType === t.id;
+              {ICP_TYPES.map(typeItem => {
+                const Icon = typeItem.icon;
+                const active = selectedType === typeItem.id;
                 return (
                   <button
-                    key={t.id}
-                    onClick={() => handleTypeChange(t.id as IcpTypeId)}
+                    key={typeItem.id}
+                    onClick={() => handleTypeChange(typeItem.id as IcpTypeId)}
                     className={cn(
                       "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all duration-150",
                       active
-                        ? cn(t.bg, t.color)
+                        ? cn(typeItem.bg, typeItem.color)
                         : "border-border/50 text-muted-foreground hover:border-border hover:text-foreground bg-transparent",
-                      t.blacklist && !active && "border-dashed",
+                      typeItem.blacklist && !active && "border-dashed",
                     )}
                   >
                     <Icon className="w-3 h-3" />
-                    {t.label}
+                    {t(typeItem.tabKey as Parameters<typeof t>[0])}
                   </button>
                 );
               })}
@@ -388,7 +395,7 @@ export default function IcpPage() {
             {isBlacklist && (
               <p className="flex items-center gap-1.5 mt-2 text-[11px] text-red-500/80">
                 <RiAlertLine className="w-3.5 h-3.5 shrink-0" />
-                当前查询违法违规应用数据库
+                {t("icp.hint_china_only")}
               </p>
             )}
           </div>
@@ -404,11 +411,7 @@ export default function IcpPage() {
                 ref={inputRef}
                 value={query}
                 onChange={e => setQuery(e.target.value)}
-                placeholder={
-                  selectedType.startsWith("b")
-                    ? "输入域名、APP 名称或企业名称..."
-                    : "输入域名、备案号或企业名称..."
-                }
+                placeholder={t("icp.search_placeholder")}
                 className="pl-9 text-sm"
               />
             </div>
@@ -416,7 +419,7 @@ export default function IcpPage() {
               {loading
                 ? <RiLoader4Line className="w-4 h-4 animate-spin" />
                 : <RiSearchLine className="w-4 h-4" />}
-              <span className="hidden sm:inline">查询</span>
+              <span className="hidden sm:inline">{t("search")}</span>
             </Button>
           </form>
 
@@ -453,7 +456,7 @@ export default function IcpPage() {
                   className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 text-muted-foreground bg-background/60 backdrop-blur-sm rounded-xl"
                 >
                   <RiLoader4Line className="w-7 h-7 animate-spin" />
-                  <span className="text-sm">正在查询备案信息…</span>
+                  <span className="text-sm">{t("icp.loading")}</span>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -462,8 +465,8 @@ export default function IcpPage() {
             {!loading && result && !result.ok && (
               <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-8 text-center">
                 <RiAlertLine className="w-8 h-8 text-red-400 mx-auto mb-2" />
-                <p className="text-sm font-medium text-red-600 dark:text-red-400">{result.error || "查询失败"}</p>
-                <p className="text-xs text-muted-foreground mt-1">请检查输入内容后重试</p>
+                <p className="text-sm font-medium text-red-600 dark:text-red-400">{result.error || t("icp.no_data")}</p>
+                <p className="text-xs text-muted-foreground mt-1">{t("icp.no_data_hint")}</p>
               </div>
             )}
 
@@ -471,10 +474,9 @@ export default function IcpPage() {
             {!loading && result?.ok && result.list.length === 0 && (
               <div className="rounded-xl border border-border/50 p-10 text-center">
                 <RiFileList2Line className="w-8 h-8 text-muted-foreground/30 mx-auto mb-3" />
-                <p className="text-sm font-medium">未找到相关备案信息</p>
+                <p className="text-sm font-medium">{t("icp.no_data")}</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  在 <span className="font-medium">{typeInfo.label}</span> 数据库中未找到
-                  <span className="font-mono ml-1">{result.search}</span>
+                  <span className="font-mono">{result.search}</span>
                 </p>
               </div>
             )}
@@ -486,9 +488,9 @@ export default function IcpPage() {
                 <div className="flex items-center justify-between flex-wrap gap-2">
                   <div className="flex items-center gap-2">
                     <span className="text-sm">
-                      共 <span className="font-bold text-foreground">{result.total}</span> 条记录
+                      {t("icp.results_count", { count: String(result.total) })}
                     </span>
-                    <Badge variant="outline" className="text-[9px]">{typeInfo.label}</Badge>
+                    <Badge variant="outline" className="text-[9px]">{t(typeInfo.tabKey as Parameters<typeof t>[0])}</Badge>
                   </div>
                   <span className="text-xs text-muted-foreground font-mono truncate max-w-[18rem]">
                     {result.search}
@@ -512,7 +514,7 @@ export default function IcpPage() {
                 />
 
                 <p className="text-[10px] text-muted-foreground/40 text-center pt-1">
-                  数据来源：工业和信息化部 ICP/IP 地址/域名信息备案管理系统
+                  {t("icp.hint_china_only")}
                 </p>
               </div>
             )}

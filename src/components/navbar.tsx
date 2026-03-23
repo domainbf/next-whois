@@ -43,7 +43,7 @@ import { format } from "date-fns";
 import { useSession, signOut } from "next-auth/react";
 import { useSiteSettings } from "@/lib/site-settings";
 import { ADMIN_EMAIL } from "@/lib/admin-shared";
-import { useTranslation } from "@/lib/i18n";
+import { useTranslation, TranslationKey } from "@/lib/i18n";
 
 const TAP = { whileTap: { scale: 0.88 }, transition: { type: "spring" as const, stiffness: 500, damping: 22 } };
 
@@ -66,6 +66,8 @@ function HistoryDrawer() {
   const [open, setOpen] = React.useState(false);
   const [mounted, setMounted] = React.useState(false);
   const [refreshTick, setRefreshTick] = React.useState(0);
+  const { t, locale } = useTranslation();
+  const isChinese = locale === "zh" || locale === "zh-tw";
 
   React.useEffect(() => {
     setMounted(true);
@@ -87,14 +89,20 @@ function HistoryDrawer() {
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       const yesterday = new Date(today.getTime() - 86400000);
       const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-      let label =
-        d.getTime() === today.getTime()
-          ? "今天"
-          : d.getTime() === yesterday.getTime()
-            ? "昨天"
-            : date.getFullYear() === now.getFullYear()
-              ? format(date, "M月d日")
-              : format(date, "yyyy年M月d日");
+      let label: string;
+      if (d.getTime() === today.getTime()) {
+        label = t("today");
+      } else if (d.getTime() === yesterday.getTime()) {
+        label = t("yesterday");
+      } else if (isChinese) {
+        label = date.getFullYear() === now.getFullYear()
+          ? format(date, "M月d日")
+          : format(date, "yyyy年M月d日");
+      } else {
+        label = date.getFullYear() === now.getFullYear()
+          ? format(date, "MMM d")
+          : format(date, "MMM d, yyyy");
+      }
       if (label !== curLabel) {
         if (curItems.length) groups.push({ label: curLabel, items: curItems });
         curLabel = label;
@@ -105,7 +113,7 @@ function HistoryDrawer() {
     }
     if (curItems.length) groups.push({ label: curLabel, items: curItems });
     return groups;
-  }, [allHistory]);
+  }, [allHistory, isChinese, t]);
 
   const handleDelete = React.useCallback(
     (e: React.MouseEvent, query: string) => {
@@ -124,7 +132,7 @@ function HistoryDrawer() {
           type="button"
           className="p-2 pr-0 inline-flex items-center justify-center touch-manipulation"
           {...TAP}
-          aria-label="搜索记录"
+          aria-label={t("nav_search_history")}
         >
           <RiHistoryLine className="h-[1rem] w-[1rem]" />
         </motion.button>
@@ -132,7 +140,7 @@ function HistoryDrawer() {
 
       <DrawerContent className="max-h-[82vh]">
         <div className="flex items-center justify-between px-4 pt-4 pb-2">
-          <DrawerTitle className="text-sm font-semibold">搜索记录</DrawerTitle>
+          <DrawerTitle className="text-sm font-semibold">{t("nav_search_history")}</DrawerTitle>
           <DrawerClose asChild>
             <button className="p-1.5 rounded-lg hover:bg-muted/50 transition-colors touch-manipulation">
               <RiCloseLine className="w-4 h-4 text-muted-foreground" />
@@ -154,11 +162,11 @@ function HistoryDrawer() {
                   {group.items.map((item) => {
                     const rs = item.regStatus ?? "unknown";
                     const statusCfg: Record<string, { label: string; cls: string }> = {
-                      registered:   { label: "已注册", cls: "text-emerald-600 border-emerald-300/70 bg-emerald-50 dark:bg-emerald-950/30 dark:border-emerald-700/40" },
-                      unregistered: { label: "未注册", cls: "text-sky-600 border-sky-300/70 bg-sky-50 dark:bg-sky-950/30 dark:border-sky-700/40" },
-                      reserved:     { label: "保留",   cls: "text-amber-600 border-amber-300/70 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700/40" },
-                      error:        { label: "查询失败", cls: "text-rose-600 border-rose-300/70 bg-rose-50 dark:bg-rose-950/30 dark:border-rose-700/40" },
-                      unknown:      { label: "未知",   cls: "text-muted-foreground border-border bg-muted/50" },
+                      registered:   { label: t("history_registered"),   cls: "text-emerald-600 border-emerald-300/70 bg-emerald-50 dark:bg-emerald-950/30 dark:border-emerald-700/40" },
+                      unregistered: { label: t("history_unregistered"), cls: "text-sky-600 border-sky-300/70 bg-sky-50 dark:bg-sky-950/30 dark:border-sky-700/40" },
+                      reserved:     { label: t("history_reserved"),     cls: "text-amber-600 border-amber-300/70 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700/40" },
+                      error:        { label: t("history_error"),        cls: "text-rose-600 border-rose-300/70 bg-rose-50 dark:bg-rose-950/30 dark:border-rose-700/40" },
+                      unknown:      { label: t("history_unknown"),      cls: "text-muted-foreground border-border bg-muted/50" },
                     };
                     const cfg = statusCfg[rs] ?? statusCfg.unknown;
                     return (
@@ -207,9 +215,9 @@ function HistoryDrawer() {
           ) : (
             <div className="text-center py-12">
               <RiHistoryLine className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
-              <p className="text-sm text-muted-foreground">暂无搜索记录</p>
+              <p className="text-sm text-muted-foreground">{t("no_history_title")}</p>
               <p className="text-xs text-muted-foreground/60 mt-1">
-                搜索域名、IP、ASN 后将显示在这里
+                {t("no_history_description")}
               </p>
             </div>
           )}
@@ -269,85 +277,30 @@ export function ThemeToggle() {
 }
 
 interface NavItem {
-  label: string;
-  labelEn: string;
+  labelKey: TranslationKey;
+  descKey: TranslationKey;
   href: string;
   icon: React.ReactNode;
   external?: boolean;
-  description: string;
   settingKey?: string;
 }
 
 const navItems: NavItem[] = [
-  {
-    label: "API 文档",
-    labelEn: "API Docs",
-    href: "/docs",
-    icon: <RiCodeSSlashLine className="h-6 w-6" />,
-    description: "查看接口文档与使用示例",
-  },
-  {
-    label: "TLD / 服务器",
-    labelEn: "TLDs / Servers",
-    href: "/tlds",
-    icon: <RiServerLine className="h-6 w-6" />,
-    description: "IANA 后缀列表与 WHOIS 服务器配置",
-  },
-  {
-    label: "域名查询",
-    labelEn: "Domain Lookup",
-    href: "/",
-    icon: <RiGlobalLine className="h-6 w-6" />,
-    description: "查询域名、IP、ASN 等信息",
-  },
-  {
-    label: "DNS 查询",
-    labelEn: "DNS Lookup",
-    href: "/dns",
-    icon: <RiServerLine className="h-6 w-6" />,
-    description: "A/MX/TXT/SPF/DMARC 多解析器",
-  },
-  {
-    label: "SSL 证书",
-    labelEn: "SSL Cert",
-    href: "/ssl",
-    icon: <RiLockLine className="h-6 w-6" />,
-    description: "直连检测 HTTPS 证书详情",
-  },
-  {
-    label: "IP / ASN",
-    labelEn: "IP / ASN",
-    href: "/ip",
-    icon: <RiMapPinLine className="h-6 w-6" />,
-    description: "IP 归属地与 ASN 自治系统",
-  },
-  {
-    label: "ICP 备案",
-    labelEn: "ICP Filing",
-    href: "/icp",
-    icon: <RiFileList2Line className="h-6 w-6" />,
-    description: "网站 / APP / 小程序备案信息查询",
-  },
-  {
-    label: "关于项目",
-    labelEn: "About",
-    href: "/about",
-    icon: <RiInformationLine className="h-6 w-6" />,
-    description: "更新记录、支持后缀、友情链接",
-  },
-  {
-    label: "赞助支持",
-    labelEn: "Sponsor",
-    href: "/sponsor",
-    icon: <RiHeart3Line className="h-6 w-6" />,
-    description: "支持项目持续运营",
-    settingKey: "enable_sponsor",
-  },
+  { labelKey: "nav_api_docs",      descKey: "nav_api_docs_desc",      href: "/docs",    icon: <RiCodeSSlashLine className="h-6 w-6" /> },
+  { labelKey: "nav_tlds",          descKey: "nav_tlds_desc",          href: "/tlds",    icon: <RiServerLine className="h-6 w-6" /> },
+  { labelKey: "nav_domain_lookup", descKey: "nav_domain_lookup_desc", href: "/",        icon: <RiGlobalLine className="h-6 w-6" /> },
+  { labelKey: "nav_dns",           descKey: "nav_dns_desc",           href: "/dns",     icon: <RiServerLine className="h-6 w-6" /> },
+  { labelKey: "nav_ssl",           descKey: "nav_ssl_desc",           href: "/ssl",     icon: <RiLockLine className="h-6 w-6" /> },
+  { labelKey: "nav_ip",            descKey: "nav_ip_desc",            href: "/ip",      icon: <RiMapPinLine className="h-6 w-6" /> },
+  { labelKey: "nav_icp",           descKey: "nav_icp_desc",           href: "/icp",     icon: <RiFileList2Line className="h-6 w-6" /> },
+  { labelKey: "nav_about",         descKey: "nav_about_desc",         href: "/about",   icon: <RiInformationLine className="h-6 w-6" /> },
+  { labelKey: "nav_sponsor",       descKey: "nav_sponsor_desc",       href: "/sponsor", icon: <RiHeart3Line className="h-6 w-6" />, settingKey: "enable_sponsor" },
 ];
 
 export function NavDrawer() {
   const [open, setOpen] = React.useState(false);
   const settings = useSiteSettings();
+  const { t } = useTranslation();
   const logoText = settings.site_logo_text || "NEXT WHOIS";
   const visibleNavItems = navItems.filter(item =>
     !item.settingKey || !!(settings as unknown as Record<string, string>)[item.settingKey]
@@ -388,7 +341,7 @@ export function NavDrawer() {
                 {logoText}
               </p>
               <p className="text-xs text-muted-foreground mt-0.5">
-                版本 {VERSION} · 导航菜单
+                {t("nav_version_menu", { version: VERSION })}
               </p>
             </div>
             <DrawerClose asChild>
@@ -417,10 +370,10 @@ export function NavDrawer() {
                     </div>
                     <div>
                       <p className="text-xs font-medium leading-tight">
-                        {item.label}
+                        {t(item.labelKey)}
                       </p>
                       <p className="text-[10px] text-muted-foreground mt-0.5 leading-tight hidden sm:block">
-                        {item.description}
+                        {t(item.descKey)}
                       </p>
                     </div>
                   </motion.div>
@@ -431,7 +384,7 @@ export function NavDrawer() {
 
           <div className="mt-5 pt-4 border-t border-border/40">
             <p className="text-[11px] text-muted-foreground text-center">
-              域名 · IPv4 · IPv6 · ASN · CIDR 全能查询工具
+              {t("nav_tagline")}
             </p>
           </div>
         </div>
@@ -477,7 +430,7 @@ function UserButton() {
         <Link
           href="/login"
           className="p-2 inline-flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors touch-manipulation"
-          aria-label="登录"
+          aria-label={t("nav_login")}
         >
           <RiUserLine className="h-[1rem] w-[1rem]" />
         </Link>
@@ -587,7 +540,7 @@ export function Navbar() {
             <Link
               href="/tools"
               className="p-2 pr-0 inline-flex items-center justify-center touch-manipulation"
-              aria-label="域名工具箱"
+              aria-label={t("nav_toolbox")}
             >
               <RiToolsLine className="h-[1rem] w-[1rem]" />
             </Link>

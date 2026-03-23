@@ -1,8 +1,35 @@
-# Next Whois UI — v2.0
+# Next Whois UI — v2.2
 
 A fast, modern WHOIS and RDAP lookup tool supporting domains, IPv4/IPv6, ASN, and CIDR. Also includes built-in DNS, SSL certificate, and IP/ASN geolocation tools.
 
-## Recent Changes (v2.0)
+---
+
+## Changelog
+
+### v2.2 — i18n Complete (2026-03-23)
+
+**Navbar i18n (HistoryDrawer, NavDrawer, UserButton, Navbar):**
+- `HistoryDrawer`: DrawerTitle, trigger `aria-label`, status label map (registered/unregistered/reserved/error/unknown), and empty-state title + description all use `t()` — no hardcoded Chinese
+- `NavDrawer`: Removed `label`/`labelEn`/`description` fields; replaced with `labelKey`/`descKey` (TranslationKey) referencing `nav_api_docs`, `nav_tlds`, `nav_domain_lookup`, `nav_dns`, `nav_ssl`, `nav_ip`, `nav_icp`, `nav_about`, `nav_sponsor` and their `_desc` variants; version subtitle uses `t("nav_version_menu", {version})`; footer uses `t("nav_tagline")`
+- `UserButton`: `aria-label` uses `t("nav_login")`
+- `Navbar`: toolbox `aria-label` uses `t("nav_toolbox")`
+
+**ICP page i18n (`src/pages/icp.tsx`):**
+- `ICP_TYPES` array: replaced `label` with `tabKey` (`"icp.tab_web"` etc.) — rendered with `t(typeItem.tabKey)`
+- `CopyButton`: `title` uses `t("icp.copy")`
+- `BlackListBadge`: uses `t("icp.threat_none")` and `t("icp.threat_level", {level})`
+- `RecordCard`: all `InfoRow` labels use `t("icp.field_*")` keys; "限制接入" badge uses `t("icp.field_limit")`
+- `Pagination`: counter uses `t("icp.results_count", {count})`; page indicator uses `t("icp.page_of", {current, total})`
+- `ApiStatusBadge`: all status text uses `t("icp.offline")` / `t("icp.check_status")`
+- `IcpPage`: `<title>`, header h1/subtitle, offline banner, type-selector blacklist hint, search placeholder, search button (`t("search")`), loading overlay, error/empty states, results summary badge — all translated
+- Added `t` dependency to `handleSearch` useCallback; renamed local `t`/`type` vars to `tp` to avoid shadowing
+
+**Locale additions:**
+- `locales/en.json` + `locales/zh.json`: Added `"search"` key at top level (`"Search"` / `"查询"`)
+
+---
+
+## Recent Changes (v2.0 → v2.1)
 
 - **Page transitions**: y-axis slide (y:8→0 enter, y:0→-4 exit) with custom cubic-bezier [0.22,1,0.36,1] at 0.22s for silky-smooth feel
 - **Result card stagger**: Main grid uses `CARD_CONTAINER_VARIANTS` (staggerChildren:0.06s) — left and right columns animate in sequence with `CARD_ITEM_VARIANTS` (y:12→0, duration:0.32s)
