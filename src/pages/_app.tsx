@@ -15,14 +15,14 @@ import { RiMegaphoneLine, RiCloseLine, RiWrenchLine } from "@remixicon/react";
 import { ADMIN_EMAIL } from "@/lib/admin-shared";
 
 const pageVariants = {
-  initial: { opacity: 0, y: 8 },
+  initial: { opacity: 0, y: 6 },
   animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -4 },
+  exit: { opacity: 0, y: -3 },
 };
 
 const pageTransition = {
-  duration: 0.22,
-  ease: [0.22, 1, 0.36, 1],
+  duration: 0.18,
+  ease: [0.4, 0, 0.2, 1],
 };
 
 function AppHead({ origin }: { origin: string }) {
@@ -144,9 +144,13 @@ function MaintenanceGate({ children }: { children: React.ReactNode }) {
   );
 }
 
-// Pages that manage their own query state via shallow routing — use pathname only
-// so URL query param changes don't trigger full page exit/enter animation.
-const CLIENT_SEARCH_PAGES = new Set(["/dns", "/ip", "/ssl", "/icp", "/tools", "/feedback"]);
+// Pages that manage their own query state — use pathname only so that query
+// param changes (shallow routing) or domain path changes on the same page
+// don't trigger a full exit/enter animation cycle.
+const CLIENT_SEARCH_PAGES = new Set([
+  "/dns", "/ip", "/ssl", "/icp", "/tools", "/feedback",
+  "/[...query]",   // domain / WHOIS results — path changes per query
+]);
 
 export default function App({ Component, pageProps: { session, ...pageProps } }: AppProps) {
   const origin: string = pageProps.origin || process.env.NEXT_PUBLIC_SITE_URL || "";
@@ -183,7 +187,7 @@ export default function App({ Component, pageProps: { session, ...pageProps } }:
             {isAdminPage ? (
               <Component {...pageProps} />
             ) : (
-              <AnimatePresence mode="wait" initial={false}>
+              <AnimatePresence mode="sync" initial={false}>
                 <motion.div
                   key={animationKey}
                   variants={pageVariants}
