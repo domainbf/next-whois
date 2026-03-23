@@ -7,11 +7,16 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { RiArrowLeftSLine, RiFileCopyLine } from "@remixicon/react";
+import {
+  RiArrowLeftSLine, RiFileCopyLine,
+  RiGlobalLine, RiImageLine, RiSignalWifiLine,
+  RiShieldCheckLine, RiMapPinLine, RiListCheck2,
+} from "@remixicon/react";
 import { VERSION } from "@/lib/env";
 import { useClipboard } from "@/lib/utils";
 import { useTranslation, TranslationKey } from "@/lib/i18n";
 
+// ── Syntax-highlighted JSON block ────────────────────────────────────────────
 function JsonHighlight({ content }: { content: string }) {
   const lines = content.split("\n");
   return (
@@ -29,140 +34,84 @@ function JsonHighlight({ content }: { content: string }) {
             keyIdx++;
             continue;
           }
-
-          const keyMatch = remaining.match(
-            /^(\s*)"((?:[^"\\]|\\.)+)"(\s*:\s*)/,
-          );
+          const keyMatch = remaining.match(/^(\s*)"((?:[^"\\]|\\.)+)"(\s*:\s*)/);
           if (keyMatch) {
             parts.push(<span key={`ws-${keyIdx}`}>{keyMatch[1]}</span>);
-            parts.push(
-              <span key={`k-${keyIdx}`} className="text-sky-400">
-                &quot;{keyMatch[2]}&quot;
-              </span>,
-            );
+            parts.push(<span key={`k-${keyIdx}`} className="text-sky-400">&quot;{keyMatch[2]}&quot;</span>);
             parts.push(<span key={`c-${keyIdx}`}>{keyMatch[3]}</span>);
             remaining = remaining.slice(keyMatch[0].length);
             keyIdx++;
             continue;
           }
-
           const strMatch = remaining.match(/^"((?:[^"\\]|\\.)*)"(,?\s*)/);
           if (strMatch) {
-            if (strMatch[1] === "..." || strMatch[1].length > 60) {
-              parts.push(
-                <span key={`s-${keyIdx}`} className="text-zinc-500">
-                  &quot;{strMatch[1]}&quot;
-                </span>,
-              );
-            } else {
-              parts.push(
-                <span key={`s-${keyIdx}`} className="text-emerald-400">
-                  &quot;{strMatch[1]}&quot;
-                </span>,
-              );
-            }
+            parts.push(
+              <span key={`s-${keyIdx}`} className={strMatch[1] === "..." || strMatch[1].length > 60 ? "text-zinc-500" : "text-emerald-400"}>
+                &quot;{strMatch[1]}&quot;
+              </span>
+            );
             parts.push(<span key={`sc-${keyIdx}`}>{strMatch[2]}</span>);
             remaining = remaining.slice(strMatch[0].length);
             keyIdx++;
             continue;
           }
-
           const numMatch = remaining.match(/^(-?\d+\.?\d*)(,?\s*)/);
           if (numMatch) {
-            parts.push(
-              <span key={`n-${keyIdx}`} className="text-amber-400">
-                {numMatch[1]}
-              </span>,
-            );
+            parts.push(<span key={`n-${keyIdx}`} className="text-amber-400">{numMatch[1]}</span>);
             parts.push(<span key={`nc-${keyIdx}`}>{numMatch[2]}</span>);
             remaining = remaining.slice(numMatch[0].length);
             keyIdx++;
             continue;
           }
-
           const boolMatch = remaining.match(/^(true|false|null)(,?\s*)/);
           if (boolMatch) {
-            parts.push(
-              <span key={`b-${keyIdx}`} className="text-purple-400">
-                {boolMatch[1]}
-              </span>,
-            );
+            parts.push(<span key={`b-${keyIdx}`} className="text-purple-400">{boolMatch[1]}</span>);
             parts.push(<span key={`bc-${keyIdx}`}>{boolMatch[2]}</span>);
             remaining = remaining.slice(boolMatch[0].length);
             keyIdx++;
             continue;
           }
-
           const bracketMatch = remaining.match(/^([{}\[\],])(.*)/);
           if (bracketMatch) {
-            parts.push(
-              <span key={`br-${keyIdx}`} className="text-zinc-500">
-                {bracketMatch[1]}
-              </span>,
-            );
+            parts.push(<span key={`br-${keyIdx}`} className="text-zinc-500">{bracketMatch[1]}</span>);
             remaining = bracketMatch[2];
             keyIdx++;
             continue;
           }
-
           parts.push(<span key={`r-${keyIdx}`}>{remaining}</span>);
           break;
         }
-
-        return (
-          <div key={i} className="whitespace-pre">
-            {parts.length > 0 ? parts : " "}
-          </div>
-        );
+        return <div key={i} className="whitespace-pre">{parts.length > 0 ? parts : " "}</div>;
       })}
     </>
   );
 }
 
-function CodeBlock({
-  children,
-  language,
-}: {
-  children: string;
-  language?: string;
-}) {
+function CodeBlock({ children, language }: { children: string; language?: string }) {
   const copy = useClipboard();
   const isJson = language === "json" || children.trimStart().startsWith("{");
   return (
     <div className="relative group">
       <ScrollArea className="w-full rounded-lg border border-zinc-800/70 bg-zinc-950">
         <pre className="w-max min-w-full text-zinc-200 p-3 sm:p-4 text-[10px] sm:text-xs font-mono leading-relaxed">
-          <code className="block">
-            {isJson ? <JsonHighlight content={children} /> : children}
-          </code>
+          <code className="block">{isJson ? <JsonHighlight content={children} /> : children}</code>
         </pre>
         <ScrollBar orientation="horizontal" />
       </ScrollArea>
       <button
         onClick={() => copy(children)}
-        className="absolute top-2 right-2 p-1.5 rounded-md bg-zinc-800 text-zinc-400 opacity-0 group-hover:opacity-100 transition-opacity hover:text-zinc-200"
-      >
+        className="absolute top-2 right-2 p-1.5 rounded-md bg-zinc-800 text-zinc-400 opacity-0 group-hover:opacity-100 transition-opacity hover:text-zinc-200">
         <RiFileCopyLine className="w-3.5 h-3.5" />
       </button>
     </div>
   );
 }
 
-function InlineCodeScroll({
-  children,
-  codeClassName,
-}: {
-  children: string;
-  codeClassName?: string;
-}) {
+function InlineCodeScroll({ children, codeClassName }: { children: string; codeClassName?: string }) {
   return (
     <div className="inline-block max-w-full align-middle">
       <ScrollArea className="max-w-full rounded-md">
-        <code
-          className={`block whitespace-nowrap ${
-            codeClassName || "font-mono text-xs bg-muted px-1 py-0.5 rounded"
-          }`}
-        >
+        <code className={`block whitespace-nowrap ${codeClassName || "font-mono text-xs bg-muted px-1 py-0.5 rounded"}`}>
           {children}
         </code>
         <ScrollBar orientation="horizontal" />
@@ -171,17 +120,8 @@ function InlineCodeScroll({
   );
 }
 
-function ParamsTable({
-  params,
-  t,
-}: {
-  params: {
-    name: string;
-    type: string;
-    required: boolean;
-    description: string;
-    default?: string;
-  }[];
+function ParamsTable({ params, t }: {
+  params: { name: string; type: string; required: boolean; description: string; default?: string }[];
   t: (key: TranslationKey) => string;
 }) {
   return (
@@ -189,44 +129,24 @@ function ParamsTable({
       <table className="min-w-[680px] w-full text-xs">
         <thead>
           <tr className="border-b border-border">
-            <th className="text-left py-2 pr-4 pl-3 font-medium text-muted-foreground">
-              {t("docs.parameter")}
-            </th>
-            <th className="text-left py-2 pr-4 font-medium text-muted-foreground">
-              {t("type")}
-            </th>
-            <th className="text-left py-2 pr-4 font-medium text-muted-foreground">
-              {t("docs.required")}
-            </th>
-            <th className="text-left py-2 pr-4 font-medium text-muted-foreground">
-              {t("docs.default")}
-            </th>
-            <th className="text-left py-2 font-medium text-muted-foreground">
-              {t("docs.description_col")}
-            </th>
+            <th className="text-left py-2 pr-4 pl-3 font-medium text-muted-foreground">{t("docs.parameter")}</th>
+            <th className="text-left py-2 pr-4 font-medium text-muted-foreground">{t("type")}</th>
+            <th className="text-left py-2 pr-4 font-medium text-muted-foreground">{t("docs.required")}</th>
+            <th className="text-left py-2 pr-4 font-medium text-muted-foreground">{t("docs.default")}</th>
+            <th className="text-left py-2 font-medium text-muted-foreground">{t("docs.description_col")}</th>
           </tr>
         </thead>
         <tbody>
-          {params.map((p) => (
+          {params.map(p => (
             <tr key={p.name} className="border-b border-border/50">
-              <td className="py-2 pr-4 pl-3 font-mono text-foreground">
-                {p.name}
-              </td>
+              <td className="py-2 pr-4 pl-3 font-mono text-foreground">{p.name}</td>
               <td className="py-2 pr-4 text-muted-foreground">{p.type}</td>
               <td className="py-2 pr-4">
-                {p.required ? (
-                  <Badge className="text-[9px] bg-red-500/10 text-red-500 hover:bg-red-500/20 border-0">
-                    {t("docs.required")}
-                  </Badge>
-                ) : (
-                  <Badge variant="outline" className="text-[9px]">
-                    {t("docs.optional")}
-                  </Badge>
-                )}
+                {p.required
+                  ? <Badge className="text-[9px] bg-red-500/10 text-red-500 hover:bg-red-500/20 border-0">{t("docs.required")}</Badge>
+                  : <Badge variant="outline" className="text-[9px]">{t("docs.optional")}</Badge>}
               </td>
-              <td className="py-2 pr-4 font-mono text-muted-foreground">
-                {p.default || "—"}
-              </td>
+              <td className="py-2 pr-4 font-mono text-muted-foreground">{p.default || "—"}</td>
               <td className="py-2 text-muted-foreground">{p.description}</td>
             </tr>
           ))}
@@ -237,103 +157,157 @@ function ParamsTable({
   );
 }
 
+// ── Section divider with category label ─────────────────────────────────────
+function SectionHeader({ icon: Icon, label, color }: {
+  icon: typeof RiGlobalLine; label: string; color: string;
+}) {
+  return (
+    <div className="flex items-center gap-3 pt-2">
+      <div className={`p-1.5 rounded-lg ${color}`}><Icon className="w-4 h-4" /></div>
+      <span className="text-sm font-bold">{label}</span>
+      <div className="flex-1 h-px bg-border/50" />
+    </div>
+  );
+}
+
+// ── Endpoint anchor card title ───────────────────────────────────────────────
+function EndpointTitle({ method, path }: { method: string; path: string }) {
+  return (
+    <CardTitle className="flex items-center gap-2 text-base flex-wrap">
+      <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 border-0 text-xs font-bold">
+        {method}
+      </Badge>
+      <InlineCodeScroll codeClassName="font-mono text-sm">{path}</InlineCodeScroll>
+    </CardTitle>
+  );
+}
+
+// ── Sub-section heading ──────────────────────────────────────────────────────
+function SubHead({ label }: { label: string }) {
+  return (
+    <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">{label}</h3>
+  );
+}
+
+// ── Notes list ──────────────────────────────────────────────────────────────
+function Notes({ items }: { items: React.ReactNode[] }) {
+  return (
+    <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
+      {items.map((item, i) => <li key={i}>{item}</li>)}
+    </ul>
+  );
+}
+
+// ── Quick nav pill ───────────────────────────────────────────────────────────
+function NavPill({ href, children }: { href: string; children: React.ReactNode }) {
+  return (
+    <a href={href} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border border-border/60 bg-muted/40 hover:bg-muted/80 hover:border-border transition-all whitespace-nowrap text-foreground/80 hover:text-foreground">
+      {children}
+    </a>
+  );
+}
+
 export async function getServerSideProps(context: GetServerSidePropsContext) {
   return { props: { origin: getOrigin(context.req) } };
 }
 
 export default function DocsPage({ origin }: { origin: string }) {
   const { t } = useTranslation();
+
   return (
     <>
       <Head>
         <title key="site-title">{t("docs.title")} - Next Whois</title>
-        <meta
-          key="og:title"
-          property="og:title"
-          content={`${t("docs.title")} - Next Whois`}
-        />
-        <meta
-          key="og:image"
-          property="og:image"
-          content={`${origin}/banner.png`}
-        />
-        <meta
-          key="twitter:title"
-          name="twitter:title"
-          content={`${t("docs.title")} - Next Whois`}
-        />
-        <meta
-          key="twitter:image"
-          name="twitter:image"
-          content={`${origin}/banner.png`}
-        />
+        <meta key="og:title" property="og:title" content={`${t("docs.title")} - Next Whois`} />
+        <meta key="og:image" property="og:image" content={`${origin}/banner.png`} />
+        <meta key="twitter:title" name="twitter:title" content={`${t("docs.title")} - Next Whois`} />
+        <meta key="twitter:image" name="twitter:image" content={`${origin}/banner.png`} />
       </Head>
       <div className="w-full h-[calc(100vh-4rem)] overflow-y-auto overflow-x-hidden">
         <main className="w-full max-w-4xl mx-auto px-4 sm:px-6 py-6 min-h-[calc(100vh-4rem)]">
-          <div className="flex items-center gap-3 mb-8">
+
+          {/* Header */}
+          <div className="flex items-center gap-3 mb-6">
             <Link href="/">
               <Button variant="ghost" size="icon-sm" className="shrink-0">
                 <RiArrowLeftSLine className="w-4 h-4" />
               </Button>
             </Link>
             <div>
-              <h1 className="text-2xl font-bold tracking-tight">
-                {t("docs.title")}
-              </h1>
-              <p className="text-xs text-muted-foreground font-mono mt-0.5">
-                v{VERSION}
-              </p>
+              <h1 className="text-2xl font-bold tracking-tight">{t("docs.title")}</h1>
+              <p className="text-xs text-muted-foreground font-mono mt-0.5">v{VERSION}</p>
             </div>
           </div>
 
-          <div className="space-y-8">
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              {t("docs.description")}
-            </p>
+          {/* Description */}
+          <p className="text-sm text-muted-foreground leading-relaxed mb-6">{t("docs.description")}</p>
 
-            <Card>
+          {/* Quick navigation */}
+          <ScrollArea className="w-full mb-8">
+            <div className="flex items-center gap-2 pb-2">
+              <NavPill href="#whois"><RiGlobalLine className="w-3 h-3" />WHOIS / 查询</NavPill>
+              <NavPill href="#dns-records"><RiSignalWifiLine className="w-3 h-3" />DNS 记录</NavPill>
+              <NavPill href="#dns-txt"><RiListCheck2 className="w-3 h-3" />DNS TXT</NavPill>
+              <NavPill href="#ssl"><RiShieldCheckLine className="w-3 h-3" />SSL 证书</NavPill>
+              <NavPill href="#ip"><RiMapPinLine className="w-3 h-3" />IP / ASN</NavPill>
+              <NavPill href="#og"><RiImageLine className="w-3 h-3" />OG 卡片</NavPill>
+              <NavPill href="#rate-limit">限流规则</NavPill>
+            </div>
+            <ScrollBar orientation="horizontal" />
+          </ScrollArea>
+
+          <div className="space-y-8">
+
+            {/* ══════════════════════════════════════════
+                WHOIS & 查询
+            ══════════════════════════════════════════ */}
+            <SectionHeader icon={RiGlobalLine} label="WHOIS & 查询" color="bg-blue-500/10 text-blue-500" />
+
+            <Card id="whois">
               <CardHeader className="pb-4">
-                <CardTitle className="flex items-center gap-2 text-base flex-wrap">
-                  <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 border-0 text-xs font-bold">
-                    GET
-                  </Badge>
-                  <InlineCodeScroll codeClassName="font-mono text-sm">
-                    /api/lookup
-                  </InlineCodeScroll>
-                </CardTitle>
+                <EndpointTitle method="GET" path="/api/lookup" />
                 <p className="text-sm text-muted-foreground mt-1">
-                  {t("docs.lookup_description")}
+                  统一查询入口，支持域名 WHOIS/RDAP、IPv4、IPv6、ASN（自治系统）、CIDR 网段五种查询类型，自动识别输入格式并路由到对应协议。
                 </p>
               </CardHeader>
               <CardContent className="space-y-6">
+
                 <div>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">
-                    {t("docs.parameters")}
-                  </h3>
-                  <ParamsTable
-                    t={t}
-                    params={[
-                      {
-                        name: "query",
-                        type: "string",
-                        required: true,
-                        description: t("docs.lookup_query_desc"),
-                      },
-                    ]}
-                  />
+                  <SubHead label={t("docs.parameters")} />
+                  <ParamsTable t={t} params={[
+                    { name: "query", type: "string", required: true, description: "查询内容：域名 / IPv4 / IPv6 / ASN（如 AS15169）/ CIDR（如 1.1.1.0/24）" },
+                  ]} />
+                </div>
+
+                {/* Query type examples */}
+                <div>
+                  <SubHead label="查询类型 · 示例请求" />
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-[11px] font-semibold text-muted-foreground mb-1.5 uppercase tracking-wide">域名（WHOIS / RDAP 优先）</p>
+                      <CodeBlock>{`curl "https://your-domain.com/api/lookup?query=google.com"`}</CodeBlock>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-semibold text-muted-foreground mb-1.5 uppercase tracking-wide">IPv4 地址</p>
+                      <CodeBlock>{`curl "https://your-domain.com/api/lookup?query=8.8.8.8"`}</CodeBlock>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-semibold text-muted-foreground mb-1.5 uppercase tracking-wide">IPv6 地址</p>
+                      <CodeBlock>{`curl "https://your-domain.com/api/lookup?query=2001:4860:4860::8888"`}</CodeBlock>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-semibold text-muted-foreground mb-1.5 uppercase tracking-wide">ASN（自治系统号）</p>
+                      <CodeBlock>{`curl "https://your-domain.com/api/lookup?query=AS15169"`}</CodeBlock>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-semibold text-muted-foreground mb-1.5 uppercase tracking-wide">CIDR 网段</p>
+                      <CodeBlock>{`curl "https://your-domain.com/api/lookup?query=1.1.1.0/24"`}</CodeBlock>
+                    </div>
+                  </div>
                 </div>
 
                 <div>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">
-                    {t("docs.example_request")}
-                  </h3>
-                  <CodeBlock>{`curl "https://your-domain.com/api/lookup?query=google.com"`}</CodeBlock>
-                </div>
-
-                <div>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">
-                    {t("docs.success_response")}
-                  </h3>
+                  <SubHead label={`${t("docs.success_response")} — 域名查询`} />
                   <CodeBlock>{`{
   "status": true,
   "time": 1.23,
@@ -356,141 +330,83 @@ export default function DocsPage({ origin }: { origin: string }) {
     "dnssec": "unsigned",
     "domainAge": 28,
     "remainingDays": 945,
-    "rawWhoisContent": "Domain Name: GOOGLE.COM\\nRegistry Domain ID: ...",
-    "rawRdapContent": "{\\n  \\"objectClassName\\": \\"domain\\",\\n  ...\\n}"
+    "rawWhoisContent": "Domain Name: GOOGLE.COM\nRegistry Domain ID: ...",
+    "rawRdapContent": "{\n  \"objectClassName\": \"domain\",\n  ...\n}"
   }
 }`}</CodeBlock>
                 </div>
 
                 <div>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">
-                    {t("docs.error_response")}
-                  </h3>
+                  <SubHead label={`${t("docs.success_response")} — IP / ASN 查询`} />
+                  <CodeBlock>{`{
+  "status": true,
+  "time": 0.87,
+  "cached": false,
+  "source": "rdap",
+  "result": {
+    "domain": "8.8.8.8",
+    "registrar": "ARIN",
+    "cidr": "8.8.8.0/24",
+    "country": "US",
+    "creationDate": "1992-12-01T00:00:00Z",
+    "status": [{ "status": "active", "url": "" }],
+    "nameServers": [],
+    "rawRdapContent": "..."
+  }
+}`}</CodeBlock>
+                </div>
+
+                <div>
+                  <SubHead label={t("docs.error_response")} />
                   <CodeBlock>{`{
   "status": false,
   "time": 0.45,
-  "error": "No match for domain \\"EXAMPLE.INVALID\\""
+  "error": "No match for domain \"EXAMPLE.INVALID\""
 }`}</CodeBlock>
                 </div>
+
+                <div>
+                  <SubHead label="注意事项" />
+                  <Notes items={[
+                    <>域名查询优先使用 RDAP 协议，失败时自动回退到 WHOIS；<code className="font-mono text-xs">source</code> 字段指示实际使用的协议</>,
+                    <>缓存命中时 <code className="font-mono text-xs">cached: true</code>，<code className="font-mono text-xs">time: 0</code>；缓存 TTL：<code className="font-mono text-xs">s-maxage=3600</code></>,
+                    <>IP / ASN / CIDR 查询通过 IANA RDAP bootstrap 路由到对应地区注册局（ARIN / RIPE / APNIC 等）</>,
+                    <>接口限流：每 IP 每分钟最多 <strong>40 次</strong>请求，超出返回 HTTP 429</>,
+                  ]} />
+                </div>
               </CardContent>
             </Card>
 
-            <Card>
+            {/* ══════════════════════════════════════════
+                DNS 工具
+            ══════════════════════════════════════════ */}
+            <SectionHeader icon={RiSignalWifiLine} label="DNS 工具" color="bg-violet-500/10 text-violet-500" />
+
+            <Card id="dns-records">
               <CardHeader className="pb-4">
-                <CardTitle className="flex items-center gap-2 text-base flex-wrap">
-                  <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 border-0 text-xs font-bold">
-                    GET
-                  </Badge>
-                  <InlineCodeScroll codeClassName="font-mono text-sm">
-                    /api/og
-                  </InlineCodeScroll>
-                </CardTitle>
+                <EndpointTitle method="GET" path="/api/dns/records" />
                 <p className="text-sm text-muted-foreground mt-1">
-                  {t("docs.og_description")}
+                  通过 Google、Cloudflare、Quad9、AdGuard 四个 DoH（DNS over HTTPS）解析器并行查询任意 DNS 记录，返回去重合并结果及每个解析器的延迟。
                 </p>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">
-                    {t("docs.parameters")}
-                  </h3>
-                  <ParamsTable
-                    t={t}
-                    params={[
-                      {
-                        name: "query",
-                        type: "string",
-                        required: false,
-                        description: t("docs.og_query_desc"),
-                        default: "—",
-                      },
-                      {
-                        name: "w",
-                        type: "number",
-                        required: false,
-                        description: t("docs.og_width_desc"),
-                        default: "1200",
-                      },
-                      {
-                        name: "h",
-                        type: "number",
-                        required: false,
-                        description: t("docs.og_height_desc"),
-                        default: "630",
-                      },
-                      {
-                        name: "theme",
-                        type: "string",
-                        required: false,
-                        description: t("docs.og_theme_desc"),
-                        default: "light",
-                      },
-                    ]}
-                  />
+                  <SubHead label={t("docs.parameters")} />
+                  <ParamsTable t={t} params={[
+                    { name: "name", type: "string", required: true, description: "要查询的域名，如 google.com 或 _dmarc.google.com" },
+                    { name: "type", type: "string", required: false, default: "A", description: "记录类型：A · AAAA · MX · NS · CNAME · TXT · SOA · CAA · SRV" },
+                  ]} />
                 </div>
-
                 <div>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">
-                    {t("docs.example_request")}
-                  </h3>
-                  <CodeBlock>{`curl "https://your-domain.com/api/og?query=google.com&theme=dark" -o og.png`}</CodeBlock>
-                </div>
-
-                <div>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">
-                    {t("docs.preview")}
-                  </h3>
-                  <div className="rounded-lg border overflow-hidden bg-muted/30">
-                    <img
-                      src="/api/og?query=google.com"
-                      alt="OG Image Preview"
-                      className="w-full h-auto"
-                    />
+                  <SubHead label={t("docs.example_request")} />
+                  <div className="space-y-2">
+                    <CodeBlock>{`curl "https://your-domain.com/api/dns/records?name=google.com&type=MX"`}</CodeBlock>
+                    <CodeBlock>{`curl "https://your-domain.com/api/dns/records?name=google.com&type=AAAA"`}</CodeBlock>
+                    <CodeBlock>{`curl "https://your-domain.com/api/dns/records?name=_dmarc.google.com&type=TXT"`}</CodeBlock>
                   </div>
-                  <p className="text-[10px] text-muted-foreground mt-2 font-mono">
-                    /api/og?query=google.com
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-4">
-                <CardTitle className="flex items-center gap-2 text-base flex-wrap">
-                  <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 border-0 text-xs font-bold">
-                    GET
-                  </Badge>
-                  <InlineCodeScroll codeClassName="font-mono text-sm">
-                    /api/dns/records
-                  </InlineCodeScroll>
-                </CardTitle>
-                <p className="text-sm text-muted-foreground mt-1">
-                  通过 4 个 DoH（DNS over HTTPS）解析器并行查询 DNS 记录，返回去重合并结果及每个解析器的状态与延迟。
-                </p>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">
-                    {t("docs.parameters")}
-                  </h3>
-                  <ParamsTable
-                    t={t}
-                    params={[
-                      { name: "name", type: "string", required: true, description: "要查询的域名，如 google.com 或 _dmarc.google.com" },
-                      { name: "type", type: "string", required: false, default: "A", description: "记录类型：A · AAAA · MX · NS · CNAME · TXT · SOA · CAA" },
-                    ]}
-                  />
                 </div>
                 <div>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">
-                    {t("docs.example_request")}
-                  </h3>
-                  <CodeBlock>{`curl "https://your-domain.com/api/dns/records?name=google.com&type=MX"`}</CodeBlock>
-                </div>
-                <div>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">
-                    {t("docs.success_response")}
-                  </h3>
+                  <SubHead label={t("docs.success_response")} />
                   <CodeBlock>{`{
   "name": "google.com",
   "type": "MX",
@@ -500,65 +416,151 @@ export default function DocsPage({ origin }: { origin: string }) {
   ],
   "flat": ["10 smtp.google.com"],
   "resolvers": [
-    { "name": "Google DoH", "kind": "doh", "records": [...], "flat": [...], "latencyMs": 42 },
+    { "name": "Google DoH",     "kind": "doh", "records": [...], "flat": [...], "latencyMs": 42 },
     { "name": "Cloudflare DoH", "kind": "doh", "records": [...], "flat": [...], "latencyMs": 38 },
-    { "name": "Quad9 DoH", "kind": "doh", "records": [...], "flat": [...], "latencyMs": 55 },
-    { "name": "AdGuard DoH", "kind": "doh", "records": [...], "flat": [...], "latencyMs": 61 }
+    { "name": "Quad9 DoH",      "kind": "doh", "records": [...], "flat": [...], "latencyMs": 55 },
+    { "name": "AdGuard DoH",    "kind": "doh", "records": [...], "flat": [...], "latencyMs": 61 }
   ],
   "latencyMs": 63
 }`}</CodeBlock>
                 </div>
                 <div>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">
-                    注意事项
-                  </h3>
-                  <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-                    <li>所有请求不缓存（<code className="font-mono text-xs">Cache-Control: no-store</code>），数据实时获取</li>
-                    <li>TXT 记录原始值返回，调用方可自行解析 SPF / DMARC / DKIM / BIMI</li>
-                    <li>当记录不存在时，<code className="font-mono text-xs">found: false</code>，<code className="font-mono text-xs">flat: []</code></li>
-                    <li>超时 7 秒每个解析器，4 个并行执行，整体超时约 20 秒</li>
-                  </ul>
+                  <SubHead label="注意事项" />
+                  <Notes items={[
+                    <>请求不缓存（<code className="font-mono text-xs">Cache-Control: no-store</code>），数据实时获取</>,
+                    <>TXT 记录返回原始值，可自行解析 SPF / DMARC / DKIM / BIMI</>,
+                    <>记录不存在时 <code className="font-mono text-xs">found: false</code>，<code className="font-mono text-xs">flat: []</code></>,
+                    "单个解析器超时 7 秒，四个并行执行，整体通常在 1–2 秒内完成",
+                  ]} />
                 </div>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card id="dns-txt">
               <CardHeader className="pb-4">
-                <CardTitle className="flex items-center gap-2 text-base flex-wrap">
-                  <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 border-0 text-xs font-bold">
-                    GET
-                  </Badge>
-                  <InlineCodeScroll codeClassName="font-mono text-sm">
-                    /api/ssl/cert
-                  </InlineCodeScroll>
-                </CardTitle>
+                <EndpointTitle method="GET" path="/api/dns/txt" />
                 <p className="text-sm text-muted-foreground mt-1">
-                  直连目标主机（默认端口 443），执行 TLS 握手并返回 SSL 证书详情：有效期、颁发者、SAN 列表、证书链、密码套件等。
+                  专用 TXT 记录查询，通过 Google、Cloudflare、Quad9、OpenDNS 四个标准 DNS 解析器（系统 DNS，非 DoH）并行解析，适合验证 SPF、DMARC、DKIM 等邮件安全配置。
                 </p>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">
-                    {t("docs.parameters")}
-                  </h3>
-                  <ParamsTable
-                    t={t}
-                    params={[
-                      { name: "hostname", type: "string", required: true, description: "目标主机名或 IP，如 google.com 或 1.1.1.1" },
-                      { name: "port", type: "number", required: false, default: "443", description: "目标端口（默认 443）" },
-                    ]}
-                  />
+                  <SubHead label={t("docs.parameters")} />
+                  <ParamsTable t={t} params={[
+                    { name: "name", type: "string", required: true, description: "要查询的域名或子域，如 google.com 或 _dmarc.example.com" },
+                  ]} />
                 </div>
                 <div>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">
-                    {t("docs.example_request")}
-                  </h3>
-                  <CodeBlock>{`curl "https://your-domain.com/api/ssl/cert?hostname=github.com"`}</CodeBlock>
+                  <SubHead label={t("docs.example_request")} />
+                  <div className="space-y-2">
+                    <CodeBlock>{`# 查询 SPF 记录
+curl "https://your-domain.com/api/dns/txt?name=google.com"`}</CodeBlock>
+                    <CodeBlock>{`# 查询 DMARC 记录
+curl "https://your-domain.com/api/dns/txt?name=_dmarc.google.com"`}</CodeBlock>
+                    <CodeBlock>{`# 查询 DKIM 记录
+curl "https://your-domain.com/api/dns/txt?name=google._domainkey.gmail.com"`}</CodeBlock>
+                  </div>
                 </div>
                 <div>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">
-                    {t("docs.success_response")}
-                  </h3>
+                  <SubHead label={t("docs.success_response")} />
+                  <CodeBlock>{`{
+  "name": "google.com",
+  "found": true,
+  "records": [
+    ["v=spf1 include:_spf.google.com ~all"],
+    ["docusign=1b0a6754-49b1-4db5-8540-d2c12664b289"],
+    ["globalsign-smime-dv=CDYX+XFHUw2wml6/Gb8+59BsH31KzUr6c1l2BPvqKX8="]
+  ],
+  "flat": [
+    "v=spf1 include:_spf.google.com ~all",
+    "docusign=1b0a6754-49b1-4db5-8540-d2c12664b289",
+    "globalsign-smime-dv=CDYX+XFHUw2wml6/Gb8+59BsH31KzUr6c1l2BPvqKX8="
+  ],
+  "resolvers": [
+    { "name": "Google DNS",  "records": [...], "flat": [...], "latencyMs": 18 },
+    { "name": "Cloudflare",  "records": [...], "flat": [...], "latencyMs": 15 },
+    { "name": "Quad9",       "records": [...], "flat": [...], "latencyMs": 23 },
+    { "name": "OpenDNS",     "records": [...], "flat": [...], "latencyMs": 31 }
+  ],
+  "latencyMs": 35
+}`}</CodeBlock>
+                </div>
+                <div>
+                  <SubHead label={`${t("docs.error_response")} / 未找到`} />
+                  <CodeBlock>{`{
+  "name": "_dmarc.example.invalid",
+  "found": false,
+  "records": [],
+  "flat": [],
+  "resolvers": [...],
+  "latencyMs": 42,
+  "error": "ENOTFOUND"
+}`}</CodeBlock>
+                </div>
+                <div>
+                  <SubHead label="与 /api/dns/records?type=TXT 的区别" />
+                  <div className="rounded-lg border border-border/60 overflow-hidden text-xs">
+                    <table className="w-full">
+                      <thead className="bg-muted/40 border-b border-border/60">
+                        <tr>
+                          <th className="text-left py-2 px-3 font-semibold text-muted-foreground">特性</th>
+                          <th className="text-left py-2 px-3 font-semibold text-violet-600 dark:text-violet-400">/api/dns/txt</th>
+                          <th className="text-left py-2 px-3 font-semibold text-muted-foreground">/api/dns/records?type=TXT</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border/40">
+                        <tr>
+                          <td className="py-2 px-3 text-muted-foreground">解析协议</td>
+                          <td className="py-2 px-3">标准 DNS（UDP/TCP）</td>
+                          <td className="py-2 px-3">DoH（HTTPS 封装）</td>
+                        </tr>
+                        <tr>
+                          <td className="py-2 px-3 text-muted-foreground">解析器</td>
+                          <td className="py-2 px-3">8.8.8.8 / 1.1.1.1 / 9.9.9.9 / 208.67.222.222</td>
+                          <td className="py-2 px-3">Google / Cloudflare / Quad9 / AdGuard DoH</td>
+                        </tr>
+                        <tr>
+                          <td className="py-2 px-3 text-muted-foreground">适用场景</td>
+                          <td className="py-2 px-3">邮件安全验证（SPF/DMARC/DKIM）</td>
+                          <td className="py-2 px-3">通用 DNS 记录查询，支持更多类型</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* ══════════════════════════════════════════
+                SSL 证书
+            ══════════════════════════════════════════ */}
+            <SectionHeader icon={RiShieldCheckLine} label="SSL 证书检测" color="bg-emerald-500/10 text-emerald-500" />
+
+            <Card id="ssl">
+              <CardHeader className="pb-4">
+                <EndpointTitle method="GET" path="/api/ssl/cert" />
+                <p className="text-sm text-muted-foreground mt-1">
+                  直连目标主机（默认 443 端口），执行 TLS 握手并返回 SSL 证书详情：有效期、颁发机构、SAN 列表、证书链、密码套件、剩余有效天数等。
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div>
+                  <SubHead label={t("docs.parameters")} />
+                  <ParamsTable t={t} params={[
+                    { name: "hostname", type: "string", required: true, description: "目标主机名或 IP，如 google.com、github.com 或 1.1.1.1" },
+                    { name: "port", type: "number", required: false, default: "443", description: "目标 TLS 端口（默认 443，SMTPS 用 465，IMAPS 用 993 等）" },
+                  ]} />
+                </div>
+                <div>
+                  <SubHead label={t("docs.example_request")} />
+                  <div className="space-y-2">
+                    <CodeBlock>{`curl "https://your-domain.com/api/ssl/cert?hostname=github.com"`}</CodeBlock>
+                    <CodeBlock>{`# 检测非标准端口
+curl "https://your-domain.com/api/ssl/cert?hostname=mail.example.com&port=465"`}</CodeBlock>
+                  </div>
+                </div>
+                <div>
+                  <SubHead label={t("docs.success_response")} />
                   <CodeBlock>{`{
   "ok": true,
   "hostname": "github.com",
@@ -580,62 +582,70 @@ export default function DocsPage({ origin }: { origin: string }) {
     { "type": "DNS", "value": "github.com" },
     { "type": "DNS", "value": "www.github.com" }
   ],
-  "chain": [...],
+  "chain": [
+    { "subject": "CN=DigiCert...", "issuer": "CN=...", "valid_to": "..." }
+  ],
   "latencyMs": 185
 }`}</CodeBlock>
                 </div>
                 <div>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">
-                    {t("docs.error_response")}
-                  </h3>
+                  <SubHead label={t("docs.error_response")} />
                   <CodeBlock>{`{
   "ok": false,
   "hostname": "expired.badssl.com",
   "port": 443,
+  "authorized": false,
+  "authError": "certificate has expired",
   "error": "certificate has expired",
   "latencyMs": 210
 }`}</CodeBlock>
                 </div>
+                <div>
+                  <SubHead label="注意事项" />
+                  <Notes items={[
+                    <><code className="font-mono text-xs">authorized: false</code> 表示证书验证失败（过期 / 自签名 / 域名不匹配等），<code className="font-mono text-xs">authError</code> 包含具体原因</>,
+                    <><code className="font-mono text-xs">is_expiring_soon</code> 在证书剩余有效期 ≤ 30 天时为 <code className="font-mono text-xs">true</code></>,
+                    "证书链（chain）包含从服务器到根 CA 的完整中间证书信息",
+                    "连接超时 10 秒，对方主机不可达时返回 ok: false + error 字段",
+                  ]} />
+                </div>
               </CardContent>
             </Card>
 
-            <Card>
+            {/* ══════════════════════════════════════════
+                IP & ASN
+            ══════════════════════════════════════════ */}
+            <SectionHeader icon={RiMapPinLine} label="IP & ASN 归属查询" color="bg-orange-500/10 text-orange-500" />
+
+            <Card id="ip">
               <CardHeader className="pb-4">
-                <CardTitle className="flex items-center gap-2 text-base flex-wrap">
-                  <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 border-0 text-xs font-bold">
-                    GET
-                  </Badge>
-                  <InlineCodeScroll codeClassName="font-mono text-sm">
-                    /api/ip/lookup
-                  </InlineCodeScroll>
-                </CardTitle>
+                <EndpointTitle method="GET" path="/api/ip/lookup" />
                 <p className="text-sm text-muted-foreground mt-1">
-                  查询 IP 地址、主机名或 ASN 的归属地、ISP、时区、代理检测，以及 RDAP 注册信息。支持 IPv4、IPv6 和 ASN。
+                  查询 IP 地址、主机名或 ASN 的归属地、ISP、时区、代理检测，并附加 RDAP 注册信息。支持 IPv4、IPv6、ASN 和主机名（自动 DNS 解析）。
                 </p>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">
-                    {t("docs.parameters")}
-                  </h3>
-                  <ParamsTable
-                    t={t}
-                    params={[
-                      { name: "q", type: "string", required: true, description: "IPv4 / IPv6 地址、主机名（自动解析）或 ASN（如 AS15169）" },
-                    ]}
-                  />
+                  <SubHead label={t("docs.parameters")} />
+                  <ParamsTable t={t} params={[
+                    { name: "q", type: "string", required: true, description: "IPv4 地址、IPv6 地址、主机名（自动 DNS 解析），或 ASN（如 AS15169）" },
+                  ]} />
                 </div>
                 <div>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">
-                    {t("docs.example_request")}
-                  </h3>
-                  <CodeBlock>{`curl "https://your-domain.com/api/ip/lookup?q=8.8.8.8"
+                  <SubHead label={t("docs.example_request")} />
+                  <div className="space-y-2">
+                    <CodeBlock>{`# IPv4 地址
+curl "https://your-domain.com/api/ip/lookup?q=8.8.8.8"`}</CodeBlock>
+                    <CodeBlock>{`# IPv6 地址
+curl "https://your-domain.com/api/ip/lookup?q=2001:4860:4860::8888"`}</CodeBlock>
+                    <CodeBlock>{`# 主机名（自动解析为 IP 再查询）
+curl "https://your-domain.com/api/ip/lookup?q=dns.google"`}</CodeBlock>
+                    <CodeBlock>{`# ASN 归属网段
 curl "https://your-domain.com/api/ip/lookup?q=AS15169"`}</CodeBlock>
+                  </div>
                 </div>
                 <div>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">
-                    {t("docs.success_response")}
-                  </h3>
+                  <SubHead label={t("docs.success_response")} />
                   <CodeBlock>{`{
   "type": "ipv4",
   "query": "8.8.8.8",
@@ -668,53 +678,126 @@ curl "https://your-domain.com/api/ip/lookup?q=AS15169"`}</CodeBlock>
 }`}</CodeBlock>
                 </div>
                 <div>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">
-                    注意事项
-                  </h3>
-                  <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-                    <li>归属地数据来源：<code className="font-mono text-xs">ip-api.com</code>（免费版每分钟限 45 次）</li>
-                    <li>RDAP 数据来源：ARIN / RIPE / APNIC 官方 API，实时查询</li>
-                    <li>代理 / 托管检测仅供参考，准确率因 IP 而异</li>
-                    <li>主机名输入时先通过 DNS 解析为 IP，再查询归属地</li>
-                  </ul>
+                  <SubHead label="注意事项" />
+                  <Notes items={[
+                    <>归属地数据源：<code className="font-mono text-xs">ip-api.com</code>（免费版每分钟限 45 次，建议自建或使用付费版）</>,
+                    "RDAP 数据来源于 ARIN / RIPE / APNIC 等官方注册局，实时查询",
+                    <>主机名输入时先通过系统 DNS 解析为 IP，<code className="font-mono text-xs">resolvedFrom</code> 字段记录原始主机名</>,
+                    <><code className="font-mono text-xs">mobile</code>、<code className="font-mono text-xs">proxy</code>、<code className="font-mono text-xs">hosting</code> 检测仅供参考，准确率因 IP 数据库而异</>,
+                  ]} />
                 </div>
               </CardContent>
             </Card>
 
-            <Card>
+            {/* ══════════════════════════════════════════
+                工具 API
+            ══════════════════════════════════════════ */}
+            <SectionHeader icon={RiImageLine} label="工具 API" color="bg-pink-500/10 text-pink-500" />
+
+            <Card id="og">
               <CardHeader className="pb-4">
-                <CardTitle className="text-base">
-                  {t("docs.rate_limiting")}
-                </CardTitle>
+                <EndpointTitle method="GET" path="/api/og" />
+                <p className="text-sm text-muted-foreground mt-1">
+                  {t("docs.og_description")}
+                </p>
               </CardHeader>
-              <CardContent className="space-y-3 text-sm text-muted-foreground">
-                <div className="flex flex-wrap items-center gap-x-1 gap-y-1">
-                  <span>{t("docs.rate_limiting_desc1")}</span>
-                  <InlineCodeScroll>
-                    Cache-Control: s-maxage=3600, stale-while-revalidate=86400
-                  </InlineCodeScroll>
-                  <span>{t("docs.rate_limiting_desc2")}</span>
+              <CardContent className="space-y-6">
+                <div>
+                  <SubHead label={t("docs.parameters")} />
+                  <ParamsTable t={t} params={[
+                    { name: "query", type: "string", required: false, description: t("docs.og_query_desc"), default: "—" },
+                    { name: "w", type: "number", required: false, description: t("docs.og_width_desc"), default: "1200" },
+                    { name: "h", type: "number", required: false, description: t("docs.og_height_desc"), default: "630" },
+                    { name: "theme", type: "string", required: false, description: t("docs.og_theme_desc"), default: "light" },
+                  ]} />
                 </div>
-                <div className="flex flex-wrap items-center gap-x-1 gap-y-1">
-                  <span>{t("docs.rate_limiting_cached")}</span>
-                  <InlineCodeScroll>{`"cached": true`}</InlineCodeScroll>
-                  <span>{t("docs.rate_limiting_time")}</span>
-                  <InlineCodeScroll>{`"time": 0`}</InlineCodeScroll>
-                  <span>.</span>
+                <div>
+                  <SubHead label={t("docs.example_request")} />
+                  <div className="space-y-2">
+                    <CodeBlock>{`curl "https://your-domain.com/api/og?query=google.com&theme=dark" -o og.png`}</CodeBlock>
+                    <CodeBlock>{`# 自定义尺寸（适合 Twitter Card）
+curl "https://your-domain.com/api/og?query=example.com&w=1200&h=600" -o card.png`}</CodeBlock>
+                  </div>
+                </div>
+                <div>
+                  <SubHead label={t("docs.preview")} />
+                  <div className="rounded-lg border overflow-hidden bg-muted/30">
+                    <img src="/api/og?query=google.com" alt="OG Image Preview" className="w-full h-auto" />
+                  </div>
+                  <p className="text-[10px] text-muted-foreground mt-2 font-mono">/api/og?query=google.com</p>
                 </div>
               </CardContent>
             </Card>
+
+            {/* ══════════════════════════════════════════
+                限流规则
+            ══════════════════════════════════════════ */}
+            <Card id="rate-limit">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-base">{t("docs.rate_limiting")}</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4 text-sm text-muted-foreground">
+                <div className="rounded-lg border border-border/60 overflow-hidden text-xs">
+                  <table className="w-full">
+                    <thead className="bg-muted/40 border-b border-border/60">
+                      <tr>
+                        <th className="text-left py-2 px-3 font-semibold text-muted-foreground">接口</th>
+                        <th className="text-left py-2 px-3 font-semibold text-muted-foreground">限流规则</th>
+                        <th className="text-left py-2 px-3 font-semibold text-muted-foreground">缓存</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/40">
+                      <tr>
+                        <td className="py-2 px-3 font-mono">/api/lookup</td>
+                        <td className="py-2 px-3">每 IP 每分钟 <strong>40 次</strong>（滑动窗口）</td>
+                        <td className="py-2 px-3"><code className="font-mono">s-maxage=3600</code></td>
+                      </tr>
+                      <tr>
+                        <td className="py-2 px-3 font-mono">/api/dns/records</td>
+                        <td className="py-2 px-3">无限流</td>
+                        <td className="py-2 px-3"><code className="font-mono">no-store</code></td>
+                      </tr>
+                      <tr>
+                        <td className="py-2 px-3 font-mono">/api/dns/txt</td>
+                        <td className="py-2 px-3">无限流</td>
+                        <td className="py-2 px-3"><code className="font-mono">no-store</code></td>
+                      </tr>
+                      <tr>
+                        <td className="py-2 px-3 font-mono">/api/ssl/cert</td>
+                        <td className="py-2 px-3">无限流</td>
+                        <td className="py-2 px-3"><code className="font-mono">no-store</code></td>
+                      </tr>
+                      <tr>
+                        <td className="py-2 px-3 font-mono">/api/ip/lookup</td>
+                        <td className="py-2 px-3">受上游 ip-api.com 限制（45 次/分钟）</td>
+                        <td className="py-2 px-3"><code className="font-mono">no-store</code></td>
+                      </tr>
+                      <tr>
+                        <td className="py-2 px-3 font-mono">/api/og</td>
+                        <td className="py-2 px-3">无限流</td>
+                        <td className="py-2 px-3"><code className="font-mono">s-maxage=86400</code></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div className="flex flex-wrap items-center gap-x-1 gap-y-1">
+                  <span>/api/lookup 命中缓存时：</span>
+                  <InlineCodeScroll>{`"cached": true`}</InlineCodeScroll>
+                  <span>且</span>
+                  <InlineCodeScroll>{`"time": 0`}</InlineCodeScroll>
+                  <span>。超出限流返回 HTTP 429，响应头包含</span>
+                  <InlineCodeScroll>X-RateLimit-Limit / Remaining / Reset</InlineCodeScroll>
+                  <span>。</span>
+                </div>
+              </CardContent>
+            </Card>
+
           </div>
 
           <div className="mt-12 mb-8 text-center">
             <p className="text-xs text-muted-foreground">
               Next Whois v{VERSION} ·{" "}
-              <a
-                href="https://github.com/zmh-program/next-whois-ui"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:text-foreground transition-colors"
-              >
+              <a href="https://github.com/zmh-program/next-whois-ui" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors">
                 GitHub
               </a>
             </p>
