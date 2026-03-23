@@ -11,6 +11,7 @@ import {
   RiLoader4Line, RiUserAddLine, RiMailLine,
   RiLockLine, RiEyeLine, RiEyeOffLine, RiUserLine,
   RiAlertLine, RiCheckLine, RiShieldCheckLine, RiKeyLine,
+  RiSendPlaneLine, RiShieldKeyholeLine,
 } from "@remixicon/react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -40,6 +41,10 @@ export default function RegisterPage() {
   const [password, setPassword] = React.useState("");
   const [confirm, setConfirm] = React.useState("");
   const [inviteCode, setInviteCode] = React.useState("");
+  const [verifyCode, setVerifyCode] = React.useState("");
+  const [codeSent, setCodeSent] = React.useState(false);
+  const [codeCooldown, setCodeCooldown] = React.useState(0);
+  const [sendingCode, setSendingCode] = React.useState(false);
   const [showPwd, setShowPwd] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -47,6 +52,35 @@ export default function RegisterPage() {
   React.useEffect(() => {
     if (status === "authenticated") router.replace("/dashboard");
   }, [status, router]);
+
+  React.useEffect(() => {
+    if (codeCooldown <= 0) return;
+    const t = setInterval(() => setCodeCooldown(c => c - 1), 1000);
+    return () => clearInterval(t);
+  }, [codeCooldown]);
+
+  async function handleSendCode() {
+    if (!email.trim()) { setError("请先填写邮箱地址"); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) { setError("邮箱格式不正确"); return; }
+    setSendingCode(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/user/send-verify-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim().toLowerCase() }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error || "发送失败，请稍后重试"); return; }
+      setCodeSent(true);
+      setCodeCooldown(60);
+      toast.success("验证码已发送，请查收邮件");
+    } catch {
+      setError("网络错误，请稍后重试");
+    } finally {
+      setSendingCode(false);
+    }
+  }
 
   const strength = getStrength(password);
   const passwordsMatch = confirm && password === confirm;
@@ -69,6 +103,7 @@ export default function RegisterPage() {
           password,
           name: name.trim() || undefined,
           inviteCode: inviteCode.trim() || undefined,
+          verifyCode: verifyCode.trim() || undefined,
         }),
       });
       const data = await res.json();
@@ -160,20 +195,78 @@ export default function RegisterPage() {
               {/* Email */}
               <div className="space-y-1.5">
                 <Label htmlFor="email" className="text-xs font-semibold">邮箱地址</Label>
-                <div className="relative">
-                  <RiMailLine className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/60" />
-                  <Input
-                    id="email"
-                    type="email"
-                    autoComplete="email"
-                    placeholder="you@example.com"
-                    value={email}
-                    onChange={e => { setEmail(e.target.value); setError(null); }}
-                    className="pl-9 h-10 rounded-xl"
-                    disabled={loading}
-                  />
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <RiMailLine className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/60" />
+                    <Input
+                      id="email"
+                      type="email"
+                      autoComplete="email"
+                      placeholder="you@example.com"
+                      value={email}
+                      onChange={e => { setEmail(e.target.value); setError(null); setCodeSent(false); }}
+                      className="pl-9 h-10 rounded-xl"
+                      disabled={loading || sendingCode}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleSendCode}
+                    disabled={sendingCode || codeCooldown > 0 || loading}
+                    className={cn(
+                      "shrink-0 h-10 px-3 rounded-xl text-xs font-semibold border transition-all whitespace-nowrap",
+                      codeCooldown > 0
+                        ? "border-border text-muted-foreground cursor-not-allowed"
+                        : codeSent
+                        ? "border-emerald-400/60 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/20"
+                        : "border-primary/40 text-primary hover:bg-primary/5"
+                    )}
+                  >
+                    {sendingCode
+                      ? <RiLoader4Line className="w-3.5 h-3.5 animate-spin" />
+                      : codeCooldown > 0
+                      ? `${codeCooldown}s`
+                      : codeSent
+                      ? "重新发送"
+                      : <><RiSendPlaneLine className="inline w-3 h-3 mr-1" />发送验证码</>
+                    }
+                  </button>
                 </div>
               </div>
+
+              {/* Email verification code */}
+              <AnimatePresence>
+                {codeSent && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="space-y-1.5">
+                      <Label htmlFor="verifyCode" className="text-xs font-semibold flex items-center gap-1.5">
+                        <RiShieldKeyholeLine className="w-3.5 h-3.5 text-primary" />
+                        邮箱验证码
+                      </Label>
+                      <div className="relative">
+                        <Input
+                          id="verifyCode"
+                          type="text"
+                          inputMode="numeric"
+                          placeholder="6 位验证码"
+                          value={verifyCode}
+                          onChange={e => { setVerifyCode(e.target.value.replace(/\D/g, "").slice(0, 6)); setError(null); }}
+                          className="h-10 rounded-xl font-mono text-sm text-center tracking-[0.35em] font-semibold"
+                          disabled={loading}
+                          autoComplete="one-time-code"
+                          maxLength={6}
+                        />
+                      </div>
+                      <p className="text-[10px] text-muted-foreground px-0.5">验证码已发送至 {email.trim()}，10 分钟内有效</p>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               {/* Password */}
               <div className="space-y-1.5">

@@ -18,7 +18,7 @@ import {
   RiEyeLine, RiEyeOffLine, RiPaletteLine, RiArrowRightLine,
   RiBellLine, RiFileTextLine, RiWifiLine,
   RiDownloadLine, RiFilterLine, RiDeleteBack2Line, RiFireLine,
-  RiTimerLine, RiBarChartLine,
+  RiTimerLine, RiBarChartLine, RiKeyLine,
 } from "@remixicon/react";
 import { ADMIN_EMAIL } from "@/lib/admin-shared";
 import type { HistoryItem } from "@/lib/history";
@@ -501,6 +501,8 @@ export default function DashboardPage() {
   const [deletingStamp, setDeletingStamp] = React.useState<string | null>(null);
   const [showClaimGuide, setShowClaimGuide] = React.useState(false);
   const [showSubscribeGuide, setShowSubscribeGuide] = React.useState(false);
+  const [inviteCodeInput, setInviteCodeInput] = React.useState("");
+  const [applyingCode, setApplyingCode] = React.useState(false);
   const [editingName, setEditingName] = React.useState(false);
   const [nameValue, setNameValue] = React.useState("");
   const [savingName, setSavingName] = React.useState(false);
@@ -725,6 +727,27 @@ export default function DashboardPage() {
     }
   }
 
+  async function handleApplyInviteCode(e: React.FormEvent) {
+    e.preventDefault();
+    if (!inviteCodeInput.trim()) { toast.error("请输入邀请码"); return; }
+    setApplyingCode(true);
+    try {
+      const res = await fetch("/api/user/apply-invite-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ inviteCode: inviteCodeInput.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) { toast.error(data.error || "邀请码验证失败"); return; }
+      toast.success("邀请码验证成功，已解锁订阅功能！");
+      await updateSession({ subscriptionAccess: true });
+    } catch {
+      toast.error("操作失败，请稍后重试");
+    } finally {
+      setApplyingCode(false);
+    }
+  }
+
   if (status === "loading" || status === "unauthenticated") {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -891,16 +914,44 @@ export default function DashboardPage() {
           {tab === "subscriptions" && (
             <motion.div key="subscriptions" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.18 }} className="space-y-3">
               {!(user as any).subscriptionAccess && (
-                <div className="flex flex-col items-center justify-center text-center py-10 space-y-4">
-                  <div className="w-14 h-14 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-700/40 flex items-center justify-center">
-                    <RiLockLine className="w-6 h-6 text-amber-500" />
+                <div className="space-y-5 py-4">
+                  <div className="flex flex-col items-center text-center space-y-3">
+                    <div className="w-14 h-14 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-700/40 flex items-center justify-center">
+                      <RiLockLine className="w-6 h-6 text-amber-500" />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm font-bold">需要邀请码</p>
+                      <p className="text-xs text-muted-foreground leading-relaxed max-w-[220px] mx-auto">
+                        域名订阅功能需要邀请码才能解锁，输入邀请码立即生效，无需重新注册。
+                      </p>
+                    </div>
                   </div>
-                  <div className="space-y-1">
-                    <p className="text-sm font-bold">需要邀请码</p>
-                    <p className="text-xs text-muted-foreground leading-relaxed max-w-[220px] mx-auto">
-                      域名订阅功能需要邀请码才能使用。<br/>请联系管理员获取邀请码后重新注册。
-                    </p>
-                  </div>
+                  <form onSubmit={handleApplyInviteCode} className="space-y-2">
+                    <div className="relative">
+                      <RiKeyLine className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50" />
+                      <input
+                        type="text"
+                        placeholder="输入邀请码，如 XXXXXX-XXXXXX-XXXXXX"
+                        value={inviteCodeInput}
+                        onChange={e => setInviteCodeInput(e.target.value.toUpperCase())}
+                        disabled={applyingCode}
+                        maxLength={24}
+                        autoComplete="off"
+                        className="w-full h-10 pl-9 pr-3 rounded-xl border border-border bg-muted/30 text-xs font-mono font-semibold tracking-wider focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition disabled:opacity-50"
+                      />
+                    </div>
+                    <Button
+                      type="submit"
+                      disabled={applyingCode || !inviteCodeInput.trim()}
+                      size="sm"
+                      className="w-full h-9 rounded-xl gap-1.5 text-xs"
+                    >
+                      {applyingCode
+                        ? <><RiLoader4Line className="w-3.5 h-3.5 animate-spin" />验证中…</>
+                        : <><RiKeyLine className="w-3.5 h-3.5" />验证并解锁</>
+                      }
+                    </Button>
+                  </form>
                 </div>
               )}
               {(user as any).subscriptionAccess && <>

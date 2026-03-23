@@ -3,11 +3,12 @@ import { hash } from "bcryptjs";
 import { randomBytes } from "crypto";
 import { one, run, isDbReady } from "@/lib/db-query";
 import { sendEmail, welcomeHtml } from "@/lib/email";
+import { getRedisValue, deleteRedisValue } from "@/lib/server/redis";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).end();
 
-  const { email, password, name, inviteCode } = req.body;
+  const { email, password, name, inviteCode, verifyCode } = req.body;
   if (!email || !password) return res.status(400).json({ error: "邮箱和密码不能为空" });
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
     return res.status(400).json({ error: "邮箱格式不正确" });
@@ -39,6 +40,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const existing = await one("SELECT id FROM users WHERE email = $1", [cleanEmail]);
   if (existing) return res.status(409).json({ error: "该邮箱已注册" });
 
+  const storedCode = await getRedisValue(`verify:register:${cleanEmail}`);
+  if (storedCode !== null) {
+    if (!verifyCode?.trim()) return res.status(400).json({ error: "请填写邮箱验证码" });
+    if (String(verifyCode).trim() !== storedCode)
+      return res.status(400).json({ error: "验证码错误或已过期" });
+  }
+
   const id = randomBytes(8).toString("hex");
   const passwordHash = await hash(String(password), 12);
   const cleanName = name ? String(name).trim().slice(0, 50) || null : null;
@@ -51,6 +59,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     );
     if (codeRow) {
       await run("UPDATE invite_codes SET use_count = use_count + 1 WHERE id = $1", [codeRow.id]);
+    }
+    if (storedCode !== null) {
+      await deleteRedisValue(`verify:register:${cleanEmail}`);
     }
   } catch (err: any) {
     console.error("[register] insert error:", err.message);

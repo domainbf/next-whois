@@ -568,3 +568,31 @@ export async function sendEmail({
     }
   }
 }
+
+// ──────────────────────────────────────────────────────────────────────────────
+// 8. Email verification code
+// ──────────────────────────────────────────────────────────────────────────────
+export function verifyCodeHtml({ code, email }: { code: string; email: string }): string {
+  return emailLayout(`
+    ${darkHeader("账号注册", "邮箱验证码", "请在注册页面填写以下验证码完成账号创建")}
+    ${section(`
+      <p style="margin:0 0 24px;font-size:14px;color:#475569;line-height:1.7">
+        你正在注册 <strong style="color:#1e293b">Next WHOIS</strong> 账号，邮箱地址为：<br/>
+        <span style="font-family:monospace;font-size:13px;color:#7c3aed;font-weight:600">${email}</span>
+      </p>
+      <div style="background:#f8fafc;border:2px dashed #c4b5fd;border-radius:16px;padding:28px;text-align:center;margin-bottom:24px">
+        <p style="margin:0 0 8px;font-size:11px;font-weight:700;letter-spacing:3px;color:#94a3b8;text-transform:uppercase">验证码</p>
+        <p style="margin:0;font-size:40px;font-weight:800;letter-spacing:12px;color:#7c3aed;font-family:ui-monospace,'Fira Code',monospace">${code}</p>
+        <p style="margin:12px 0 0;font-size:12px;color:#94a3b8">10 分钟内有效</p>
+      </div>
+      <p style="margin:0;font-size:12px;color:#94a3b8;line-height:1.6">
+        如果你没有在 Next WHOIS 发起注册请求，请忽略此邮件。<br/>
+        请勿将验证码分享给任何人。
+      </p>
+    `)}
+    ${divider()}
+    <div style="padding:16px 32px;text-align:center">
+      <p style="margin:0;font-size:11px;color:#cbd5e1">© ${new Date().getFullYear()} Next WHOIS · 此邮件由系统自动发送</p>
+    </div>
+  `);
+}
