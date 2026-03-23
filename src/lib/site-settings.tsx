@@ -66,6 +66,12 @@ export interface SiteSettings {
   analytics_umami: string;
   analytics_umami_src: string;
   custom_head_script: string;
+  // Invite code
+  require_invite_code: string;
+  // CAPTCHA / Human verification
+  captcha_provider: string;
+  captcha_site_key: string;
+  captcha_secret_key: string;
 }
 
 export const DEFAULT_SETTINGS: SiteSettings = {
@@ -124,6 +130,10 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   analytics_umami: "",
   analytics_umami_src: "",
   custom_head_script: "",
+  require_invite_code: "",
+  captcha_provider: "",
+  captcha_site_key: "",
+  captcha_secret_key: "",
 };
 
 const STORAGE_KEY = "next_whois_settings_ts";

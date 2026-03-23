@@ -46,18 +46,23 @@ async function saveAnonymousSearchRecord(
 ): Promise<void> {
   if (!(await isDbReady())) return;
   try {
-    const id = randomBytes(8).toString("hex");
+    const cleanQuery = query.toLowerCase().trim();
     const queryType = result.cidr && result.cidr !== "Unknown" ? "ip" : "domain";
     const regStatus = deriveRegStatus(result, dnsProbe);
 
     await run(
       `INSERT INTO search_history
          (id, user_id, query, query_type, reg_status, expiration_date, remaining_days)
-       VALUES ($1, NULL, $2, $3, $4, $5, $6)
-       ON CONFLICT DO NOTHING`,
+       SELECT $1, NULL, $2, $3, $4, $5, $6
+       WHERE NOT EXISTS (
+         SELECT 1 FROM search_history
+         WHERE user_id IS NULL
+           AND LOWER(query) = $2
+           AND created_at >= NOW() - INTERVAL '24 hours'
+       )`,
       [
-        id,
-        query.toLowerCase().trim(),
+        randomBytes(8).toString("hex"),
+        cleanQuery,
         queryType,
         regStatus,
         result.expirationDate && result.expirationDate !== "Unknown" ? result.expirationDate : null,

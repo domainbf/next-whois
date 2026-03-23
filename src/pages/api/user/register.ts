@@ -4,11 +4,12 @@ import { randomBytes } from "crypto";
 import { one, run, isDbReady } from "@/lib/db-query";
 import { sendEmail, welcomeHtml } from "@/lib/email";
 import { getRedisValue, deleteRedisValue } from "@/lib/server/redis";
+import { getCaptchaConfig, verifyCaptchaToken } from "@/lib/server/captcha";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).end();
 
-  const { email, password, name, inviteCode, verifyCode } = req.body;
+  const { email, password, name, inviteCode, verifyCode, captchaToken } = req.body;
   if (!email || !password) return res.status(400).json({ error: "邮箱和密码不能为空" });
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
     return res.status(400).json({ error: "邮箱格式不正确" });
@@ -20,6 +21,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const regSetting = await one<{ value: string }>("SELECT value FROM site_settings WHERE key = 'allow_registration'");
   const allowReg = !regSetting || regSetting.value === "1";
   if (!allowReg) return res.status(403).json({ error: "注册已暂停，请联系管理员" });
+
+  const captchaConfig = await getCaptchaConfig();
+  if (captchaConfig.provider && captchaConfig.secretKey) {
+    if (!captchaToken?.trim()) return res.status(400).json({ error: "请完成人机验证" });
+    const captchaOk = await verifyCaptchaToken(String(captchaToken), captchaConfig.provider, captchaConfig.secretKey);
+    if (!captchaOk) return res.status(400).json({ error: "人机验证失败，请重试" });
+  }
 
   const requireInvite = await one<{ value: string }>("SELECT value FROM site_settings WHERE key = 'require_invite_code'");
   const needsInvite = requireInvite?.value === "1";

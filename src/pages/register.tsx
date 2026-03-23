@@ -48,6 +48,9 @@ export default function RegisterPage() {
   const [showPwd, setShowPwd] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [captchaToken, setCaptchaToken] = React.useState("");
+  const captchaRef = React.useRef<HTMLDivElement>(null);
+  const captchaWidgetId = React.useRef<unknown>(null);
 
   React.useEffect(() => {
     if (status === "authenticated") router.replace("/dashboard");
@@ -58,6 +61,64 @@ export default function RegisterPage() {
     const t = setInterval(() => setCodeCooldown(c => c - 1), 1000);
     return () => clearInterval(t);
   }, [codeCooldown]);
+
+  const captchaProvider = settings.captcha_provider;
+  const captchaSiteKey = settings.captcha_site_key;
+
+  React.useEffect(() => {
+    if (!captchaProvider || !captchaSiteKey) return;
+    const scriptId = `captcha-script-${captchaProvider}`;
+    if (!document.getElementById(scriptId)) {
+      const scriptUrls: Record<string, string> = {
+        turnstile: "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit",
+        hcaptcha: "https://js.hcaptcha.com/1/api.js?render=explicit",
+      };
+      const script = document.createElement("script");
+      script.id = scriptId;
+      script.src = scriptUrls[captchaProvider] || "";
+      script.async = true;
+      script.defer = true;
+      script.onload = () => renderCaptcha();
+      document.head.appendChild(script);
+    } else {
+      renderCaptcha();
+    }
+    function renderCaptcha() {
+      setTimeout(() => {
+        if (!captchaRef.current || captchaWidgetId.current !== null) return;
+        const w = window as unknown as Record<string, unknown>;
+        if (captchaProvider === "turnstile" && w.turnstile) {
+          captchaWidgetId.current = (w.turnstile as {
+            render: (el: HTMLElement, opts: Record<string, unknown>) => unknown;
+          }).render(captchaRef.current, {
+            sitekey: captchaSiteKey,
+            callback: (t: string) => setCaptchaToken(t),
+            "expired-callback": () => setCaptchaToken(""),
+            "error-callback": () => setCaptchaToken(""),
+          });
+        } else if (captchaProvider === "hcaptcha" && w.hcaptcha) {
+          captchaWidgetId.current = (w.hcaptcha as {
+            render: (el: HTMLElement, opts: Record<string, unknown>) => unknown;
+          }).render(captchaRef.current, {
+            sitekey: captchaSiteKey,
+            callback: (t: string) => setCaptchaToken(t),
+            "expired-callback": () => setCaptchaToken(""),
+            "error-callback": () => setCaptchaToken(""),
+          });
+        }
+      }, 200);
+    }
+  }, [captchaProvider, captchaSiteKey]);
+
+  function resetCaptcha() {
+    const w = window as unknown as Record<string, unknown>;
+    if (captchaProvider === "turnstile" && w.turnstile && captchaWidgetId.current !== null) {
+      (w.turnstile as { reset: (id: unknown) => void }).reset(captchaWidgetId.current);
+    } else if (captchaProvider === "hcaptcha" && w.hcaptcha && captchaWidgetId.current !== null) {
+      (w.hcaptcha as { reset: (id: unknown) => void }).reset(captchaWidgetId.current);
+    }
+    setCaptchaToken("");
+  }
 
   async function handleSendCode() {
     if (!email.trim()) { setError("请先填写邮箱地址"); return; }
@@ -93,6 +154,10 @@ export default function RegisterPage() {
     if (!password) { setError("请输入密码"); return; }
     if (password.length < 8) { setError("密码至少 8 位"); return; }
     if (password !== confirm) { setError("两次密码输入不一致"); return; }
+    if (captchaProvider && captchaSiteKey && !captchaToken) {
+      setError("请完成人机验证");
+      return;
+    }
     setLoading(true);
     try {
       const res = await fetch("/api/user/register", {
@@ -104,10 +169,15 @@ export default function RegisterPage() {
           name: name.trim() || undefined,
           inviteCode: inviteCode.trim() || undefined,
           verifyCode: verifyCode.trim() || undefined,
+          captchaToken: captchaToken || undefined,
         }),
       });
       const data = await res.json();
-      if (!res.ok) { setError(data.error || "注册失败，请稍后重试"); return; }
+      if (!res.ok) {
+        setError(data.error || "注册失败，请稍后重试");
+        resetCaptcha();
+        return;
+      }
       toast.success("注册成功！正在自动登录…");
       const loginRes = await signIn("credentials", {
         redirect: false,
@@ -121,6 +191,7 @@ export default function RegisterPage() {
       }
     } catch {
       setError("网络错误，请稍后重试");
+      resetCaptcha();
     } finally {
       setLoading(false);
     }
@@ -390,6 +461,25 @@ export default function RegisterPage() {
                 </div>
                 <p className="text-[10px] text-muted-foreground px-0.5">填写邀请码可解锁域名到期提醒订阅功能</p>
               </div>
+
+              {/* CAPTCHA widget */}
+              {captchaProvider && captchaSiteKey && (
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <RiShieldKeyholeLine className="w-3.5 h-3.5 text-muted-foreground/70" />
+                    <span className="text-xs font-semibold">人机验证</span>
+                  </div>
+                  <div ref={captchaRef} className="w-full" />
+                  {!captchaToken && (
+                    <p className="text-[10px] text-muted-foreground px-0.5">请完成上方的人机验证以继续</p>
+                  )}
+                  {captchaToken && (
+                    <p className="text-[10px] text-emerald-600 dark:text-emerald-400 px-0.5 flex items-center gap-1">
+                      <RiCheckLine className="w-3 h-3" />验证通过
+                    </p>
+                  )}
+                </div>
+              )}
 
               {/* Error */}
               <AnimatePresence>

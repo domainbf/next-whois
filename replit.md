@@ -329,3 +329,27 @@ All persistent state lives in PostgreSQL (`src/lib/db.ts`). Tables auto-created 
 | System Status | `/admin/system` |
 | API Keys | `/admin/api` |
 | Site Settings | `/admin/settings` |
+| Invite Codes | `/admin/invite-codes` |
+
+## Registration Security (v2.0)
+
+### Invite Code System
+- `invite_codes` table: `XXXXXX-XXXXXX-XXXXXX` uppercase codes, single-use
+- `require_invite_code = "1"` site setting gates registration behind invite codes
+- `subscription_access` + `invite_code_used` columns on users
+- Existing users can apply codes from Dashboard → Subscription tab
+- Admin API: `/api/admin/invite-codes` (GET list, POST create, DELETE by id)
+
+### Email OTP Verification
+- `/api/user/send-verify-code` — sends 6-digit code via Resend, stored in Redis (`verify:register:{email}`)
+- 10-minute TTL, 60-second resend rate limit (`verify:rate:{email}`)
+- Register page shows email field + "发送验证码" button with 60s countdown
+- OTP input appears after code is sent; register API validates before creating account
+
+### CAPTCHA (Human Verification)
+- Provider, site key, secret key stored in `site_settings` (`captcha_provider`, `captcha_site_key`, `captcha_secret_key`)
+- `captcha_secret_key` filtered from public GET; returned only for admin session
+- `src/lib/server/captcha.ts` — `getCaptchaConfig()` + `verifyCaptchaToken()` supporting Turnstile and hCaptcha
+- Register page: loads CAPTCHA script dynamically (explicit render mode), shows widget after invite code field
+- Register API: verifies token server-side before account creation
+- Admin Settings → 人机验证: provider dropdown, site key input, secret key (password) input

@@ -1,17 +1,36 @@
 import type { NextApiRequest, NextApiResponse } from "next";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/pages/api/auth/[...nextauth]";
 import { many, run } from "@/lib/db-query";
 import { requireAdmin } from "@/lib/admin";
+import { ADMIN_EMAIL } from "@/lib/admin-shared";
 import { DEFAULT_SETTINGS, type SiteSettings } from "@/lib/site-settings";
 
 const ALLOWED_KEYS = new Set(Object.keys(DEFAULT_SETTINGS));
+const SERVER_ONLY_KEYS = new Set(["captcha_secret_key"]);
+
+async function isAdmin(req: NextApiRequest, res: NextApiResponse): Promise<boolean> {
+  try {
+    const session = await getServerSession(req, res, authOptions);
+    const email = (session?.user as any)?.email?.toLowerCase?.()?.trim?.() ?? "";
+    return email === ADMIN_EMAIL.toLowerCase().trim();
+  } catch {
+    return false;
+  }
+}
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === "GET") {
     try {
+      const admin = await isAdmin(req, res);
       const rows = await many<{ key: string; value: string }>("SELECT key, value FROM site_settings");
       const settings: Record<string, string> = {};
       for (const row of rows) {
-        if (ALLOWED_KEYS.has(row.key)) settings[row.key] = row.value;
+        if (ALLOWED_KEYS.has(row.key)) {
+          if (!SERVER_ONLY_KEYS.has(row.key) || admin) {
+            settings[row.key] = row.value;
+          }
+        }
       }
       return res.json({ settings: { ...DEFAULT_SETTINGS, ...settings } });
     } catch {
