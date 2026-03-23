@@ -4,7 +4,8 @@ import { AdminLayout } from "@/components/admin-layout";
 import {
   RiUserLine, RiShieldCheckLine, RiBellLine, RiSearchLine,
   RiSettings4Line, RiLoader4Line, RiArrowRightLine, RiUserForbidLine,
-  RiFeedbackLine, RiTimeLine,
+  RiFeedbackLine, RiTimeLine, RiGhostLine, RiVipCrownLine,
+  RiAddLine, RiBarChartLine,
 } from "@remixicon/react";
 
 type Stats = {
@@ -15,11 +16,15 @@ type Stats = {
   activeReminders: number;
   searches: number;
   feedback: number;
+  anonSearches: number;
+  todaySearches: number;
+  todayUsers: number;
+  subscribedUsers: number;
   recentUsers: { id: string; email: string; name: string | null; created_at: string; disabled: boolean }[];
-  recentSearches: { id: string; query: string; query_type: string; created_at: string }[];
+  recentSearches: { id: string; query: string; query_type: string; created_at: string; user_id: string | null }[];
 };
 
-function StatCard({ icon: Icon, label, value, sub, subValue, href, color }: {
+function StatCard({ icon: Icon, label, value, sub, subValue, href, color, badge }: {
   icon: React.ElementType;
   label: string;
   value: number | undefined;
@@ -27,6 +32,7 @@ function StatCard({ icon: Icon, label, value, sub, subValue, href, color }: {
   subValue?: number;
   href: string;
   color: string;
+  badge?: { label: string; value: number; color: string };
 }) {
   const router = useRouter();
   return (
@@ -45,6 +51,11 @@ function StatCard({ icon: Icon, label, value, sub, subValue, href, color }: {
         </p>
         {sub && subValue !== undefined && subValue > 0 && (
           <p className="text-[10px] text-muted-foreground/70 mt-0.5">{sub}: {subValue.toLocaleString()}</p>
+        )}
+        {badge && badge.value > 0 && (
+          <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-semibold mt-1 inline-block ${badge.color}`}>
+            {badge.label} {badge.value}
+          </span>
         )}
       </div>
       <RiArrowRightLine className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors mt-1" />
@@ -82,9 +93,9 @@ export default function AdminIndexPage() {
   }, []);
 
   const QUICK_ACTIONS = [
-    { href: "/admin/search-records", label: "查询记录", desc: "查看统计、分类、清理记录" },
+    { href: "/admin/search-records", label: "查询记录", desc: "查看统计、分类、逐条清理" },
     { href: "/admin/settings",       label: "网站设置", desc: "标题、OG标签、公告" },
-    { href: "/admin/users",          label: "用户管理", desc: "编辑、停用、删除用户" },
+    { href: "/admin/users",          label: "用户管理", desc: "编辑、订阅、停用、删除" },
     { href: "/admin/stamps",         label: "品牌审核", desc: "审核品牌认领申请" },
     { href: "/admin/reminders",      label: "提醒管理", desc: "管理域名到期订阅" },
     { href: "/admin/feedback",       label: "用户反馈", desc: "查看用户提交的反馈" },
@@ -106,12 +117,38 @@ export default function AdminIndexPage() {
           </div>
         )}
 
+        {/* Today quick stats bar */}
+        {stats && (stats.todayUsers > 0 || stats.todaySearches > 0) && (
+          <div className="glass-panel border border-primary/20 bg-primary/5 rounded-xl px-4 py-3 flex items-center gap-4 flex-wrap">
+            <span className="text-xs font-semibold text-primary">今日动态</span>
+            {stats.todayUsers > 0 && (
+              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                <RiAddLine className="w-3 h-3 text-emerald-500" />
+                <span className="font-semibold text-foreground">{stats.todayUsers}</span> 新用户
+              </span>
+            )}
+            {stats.todaySearches > 0 && (
+              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                <RiSearchLine className="w-3 h-3 text-blue-500" />
+                <span className="font-semibold text-foreground">{stats.todaySearches}</span> 次查询
+              </span>
+            )}
+            {stats.anonSearches > 0 && (
+              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                <RiGhostLine className="w-3 h-3 text-muted-foreground" />
+                <span className="font-semibold text-foreground">{stats.anonSearches}</span> 条匿名记录
+              </span>
+            )}
+          </div>
+        )}
+
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <StatCard
             icon={RiUserLine} label="注册用户" value={stats?.users}
             sub="已停用" subValue={stats?.disabledUsers}
             href="/admin/users"
             color="bg-blue-100 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400"
+            badge={stats?.subscribedUsers ? { label: "订阅用户", value: stats.subscribedUsers, color: "bg-amber-100 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400" } : undefined}
           />
           <StatCard
             icon={RiShieldCheckLine} label="品牌认领" value={stats?.stamps}
@@ -120,14 +157,15 @@ export default function AdminIndexPage() {
             color="bg-violet-100 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400"
           />
           <StatCard
+            icon={RiSearchLine} label="全部查询" value={stats?.searches}
+            sub="匿名记录" subValue={stats?.anonSearches}
+            href="/admin/search-records"
+            color="bg-orange-100 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400"
+          />
+          <StatCard
             icon={RiBellLine} label="活跃订阅" value={stats?.activeReminders}
             href="/admin/reminders"
             color="bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400"
-          />
-          <StatCard
-            icon={RiSearchLine} label="查询记录" value={stats?.searches}
-            href="/admin/search-records"
-            color="bg-orange-100 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400"
           />
           <StatCard
             icon={RiFeedbackLine} label="用户反馈" value={stats?.feedback}
@@ -135,9 +173,9 @@ export default function AdminIndexPage() {
             color="bg-pink-100 dark:bg-pink-950/40 text-pink-600 dark:text-pink-400"
           />
           <StatCard
-            icon={RiUserForbidLine} label="停用账户" value={stats?.disabledUsers}
+            icon={RiVipCrownLine} label="订阅用户" value={stats?.subscribedUsers}
             href="/admin/users"
-            color="bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400"
+            color="bg-amber-100 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400"
           />
         </div>
 
@@ -175,12 +213,16 @@ export default function AdminIndexPage() {
         {/* Recent searches */}
         {stats?.recentSearches && stats.recentSearches.length > 0 && (
           <div className="glass-panel border border-border rounded-2xl p-5 space-y-3">
-            <h3 className="text-sm font-bold flex items-center gap-2">
-              <RiSearchLine className="w-4 h-4 text-primary" />最近查询
-            </h3>
+            <div className="flex items-center gap-2 justify-between">
+              <h3 className="text-sm font-bold flex items-center gap-2">
+                <RiSearchLine className="w-4 h-4 text-primary" />最近查询
+              </h3>
+              <button onClick={() => router.push("/admin/search-records", undefined, { locale: false })} className="text-xs text-primary hover:underline">查看全部</button>
+            </div>
             <div className="flex flex-wrap gap-2">
               {stats.recentSearches.map(s => (
                 <div key={s.id} className="flex items-center gap-1.5 glass-panel border border-border/60 rounded-lg px-2.5 py-1.5">
+                  {!s.user_id && <RiGhostLine className="w-2.5 h-2.5 text-muted-foreground/50 shrink-0" />}
                   <span className="text-[10px] text-muted-foreground uppercase font-medium shrink-0">{s.query_type}</span>
                   <span className="text-xs font-mono font-semibold truncate max-w-[120px]">{s.query}</span>
                   <span className="text-[10px] text-muted-foreground shrink-0">{fmt(s.created_at)}</span>

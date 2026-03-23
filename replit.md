@@ -1,10 +1,29 @@
-# Next Whois UI — v3.4
+# Next Whois UI — v3.5
 
 A fast, modern WHOIS and RDAP lookup tool supporting domains, IPv4/IPv6, ASN, and CIDR. Also includes built-in DNS, SSL certificate, and IP/ASN geolocation tools.
 
 ---
 
 ## Changelog
+
+### v3.5 — Anonymous History Cap + Enriched Admin Backend (2026-03-23)
+
+**Scope:** Anonymous query history capped at 50 (new replaces old). Admin backend fully enriched: user management gains subscription_access/email_verified toggles and per-user stats; search records gains individual-row delete, anonymous filter, and DB-tier badges; dashboard gains today's counters and richer stats; admin stats API expanded.
+
+**Changes:**
+
+| File | Change | Detail |
+|---|---|---|
+| `src/pages/api/lookup.ts` | Anonymous history: 50-cap + replace semantics | `saveAnonymousSearchRecord()` now: DELETE existing record for same query (user_id IS NULL), INSERT new record, then trim to `MAX_ANON_HISTORY = 50` (keep newest 50). Replaces the old 24-hour dedup approach. |
+| `src/pages/api/admin/users.ts` | Added `subscription_access`, `email_verified` to SELECT/PATCH | All GET responses now include `subscription_access`, `email_verified`, `search_count`, `stamp_count`, `reminder_count` per user. PATCH accepts `subscription_access` and `email_verified`. New `subscribedCount` and `verifiedCount` summary counts in GET response. |
+| `src/pages/api/admin/users.ts` | Added `subscribed` and `verified` filter options | Filter by `?filter=subscribed` or `?filter=verified` to show only users with subscription access or verified email. |
+| `src/pages/api/admin/search-records.ts` | Individual record DELETE via `?id=xxx` | `DELETE /api/admin/search-records?id={id}` removes a single record. Also added `period=anonymous` and `user_id=null` bulk-delete options. |
+| `src/pages/api/admin/search-records.ts` | Anonymous filter + anon/logged stats | `?filter=anonymous` returns only `user_id IS NULL` records. Stats response now includes `anonymous` and `logged` counts. Daily stats include `anon` column. Value tier now read from DB column (no recompute). |
+| `src/pages/api/admin/stats.ts` | Added `anonSearches`, `todaySearches`, `todayUsers`, `subscribedUsers` | Dashboard overview can show today's activity pulse and subscription user count. |
+| `src/pages/admin/index.tsx` | Today's activity bar + subscription stat card | Shows "今日动态" bar with new users / queries / anon count. Added "订阅用户" stat card. Recent searches show ghost icon for anonymous. |
+| `src/pages/admin/users.tsx` | Full user management enrichment | Edit modal: subscription_access toggle (amber), email_verified toggle (emerald), disabled toggle (red), per-user stat mini-cards (searches / stamps / subscriptions). User list: VIP crown icon for subscription users, verified badge, stat chips, subscription quick-toggle button. Filter tabs: added "已订阅" and "已验证". |
+| `src/pages/admin/search-records.tsx` | Individual delete + anonymous filter + DB tier badge | Each row has a delete button (appears on hover). New "匿名查询" filter tab. Stats strip expanded to 8 cards (anon + logged). Bulk delete adds "清空匿名记录". Value tier badge now reads from DB (no client-side score recompute). User/anon breakdown bar chart added to stats panel. |
+| `src/lib/env.ts` | VERSION bumped to "3.5" | |
 
 ### v3.4 — Mobile UX: Instant Nav Feedback + Tiered History Retention + Pagination (2026-03-23)
 

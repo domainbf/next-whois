@@ -40,6 +40,8 @@ function deriveRegStatus(
   return null;
 }
 
+const MAX_ANON_HISTORY = 50;
+
 async function saveAnonymousSearchRecord(
   query: string,
   result: WhoisAnalyzeResult,
@@ -50,25 +52,34 @@ async function saveAnonymousSearchRecord(
     const cleanQuery = query.toLowerCase().trim();
     const queryType = result.cidr && result.cidr !== "Unknown" ? "ip" : "domain";
     const regStatus = deriveRegStatus(result, dnsProbe);
+    const expDate = result.expirationDate && result.expirationDate !== "Unknown" ? result.expirationDate : null;
+    const remDays = result.remainingDays ?? null;
 
+    // Delete existing anonymous record for same query (new replaces old)
+    await run(
+      `DELETE FROM search_history WHERE user_id IS NULL AND LOWER(query) = $1`,
+      [cleanQuery],
+    );
+
+    // Insert new record
     await run(
       `INSERT INTO search_history
          (id, user_id, query, query_type, reg_status, expiration_date, remaining_days)
-       SELECT $1, NULL, $2, $3, $4, $5, $6
-       WHERE NOT EXISTS (
-         SELECT 1 FROM search_history
-         WHERE user_id IS NULL
-           AND LOWER(query) = $2
-           AND created_at >= NOW() - INTERVAL '24 hours'
-       )`,
-      [
-        randomBytes(8).toString("hex"),
-        cleanQuery,
-        queryType,
-        regStatus,
-        result.expirationDate && result.expirationDate !== "Unknown" ? result.expirationDate : null,
-        result.remainingDays ?? null,
-      ],
+       VALUES ($1, NULL, $2, $3, $4, $5, $6)`,
+      [randomBytes(8).toString("hex"), cleanQuery, queryType, regStatus, expDate, remDays],
+    );
+
+    // Trim anonymous records to MAX_ANON_HISTORY (keep newest, delete oldest)
+    await run(
+      `DELETE FROM search_history
+       WHERE user_id IS NULL
+         AND id NOT IN (
+           SELECT id FROM search_history
+           WHERE user_id IS NULL
+           ORDER BY created_at DESC
+           LIMIT $1
+         )`,
+      [MAX_ANON_HISTORY],
     );
   } catch {}
 }

@@ -12,7 +12,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!session) return;
 
   try {
-    const [users, disabledUsers, stamps, verifiedStamps, reminders, history, feedback] = await Promise.all([
+    const [
+      users, disabledUsers, stamps, verifiedStamps, reminders, history, feedback,
+      anonSearches, todaySearches, todayUsers, subscribedUsers,
+    ] = await Promise.all([
       one<{ count: string }>("SELECT COUNT(*) AS count FROM users"),
       one<{ count: string }>("SELECT COUNT(*) AS count FROM users WHERE disabled = true"),
       one<{ count: string }>("SELECT COUNT(*) AS count FROM stamps"),
@@ -20,14 +23,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       one<{ count: string }>("SELECT COUNT(*) AS count FROM reminders WHERE active = true"),
       one<{ count: string }>("SELECT COUNT(*) AS count FROM search_history"),
       one<{ count: string }>("SELECT COUNT(*) AS count FROM feedback").catch(() => ({ count: "0" })),
+      one<{ count: string }>("SELECT COUNT(*) AS count FROM search_history WHERE user_id IS NULL"),
+      one<{ count: string }>("SELECT COUNT(*) AS count FROM search_history WHERE created_at >= NOW() - INTERVAL '1 day'"),
+      one<{ count: string }>("SELECT COUNT(*) AS count FROM users WHERE created_at >= NOW() - INTERVAL '1 day'"),
+      one<{ count: string }>("SELECT COUNT(*) AS count FROM users WHERE subscription_access = true").catch(() => ({ count: "0" })),
     ]);
 
     const [recentUsers, recentSearches] = await Promise.all([
       many<{ id: string; email: string; name: string | null; created_at: string; disabled: boolean }>(
         "SELECT id, email, name, created_at, disabled FROM users ORDER BY created_at DESC LIMIT 5"
       ),
-      many<{ id: string; query: string; query_type: string; created_at: string }>(
-        "SELECT id, query, query_type, created_at FROM search_history ORDER BY created_at DESC LIMIT 8"
+      many<{ id: string; query: string; query_type: string; created_at: string; user_id: string | null }>(
+        "SELECT id, query, query_type, created_at, user_id FROM search_history ORDER BY created_at DESC LIMIT 10"
       ),
     ]);
 
@@ -39,6 +46,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       activeReminders: parseInt(reminders?.count ?? "0"),
       searches: parseInt(history?.count ?? "0"),
       feedback: parseInt(feedback?.count ?? "0"),
+      anonSearches: parseInt(anonSearches?.count ?? "0"),
+      todaySearches: parseInt(todaySearches?.count ?? "0"),
+      todayUsers: parseInt(todayUsers?.count ?? "0"),
+      subscribedUsers: parseInt(subscribedUsers?.count ?? "0"),
       recentUsers,
       recentSearches,
     });
