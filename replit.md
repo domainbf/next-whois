@@ -1,10 +1,70 @@
-# Next Whois UI — v2.7
+# Next Whois UI — v2.8
 
 A fast, modern WHOIS and RDAP lookup tool supporting domains, IPv4/IPv6, ASN, and CIDR. Also includes built-in DNS, SSL certificate, and IP/ASN geolocation tools.
 
 ---
 
 ## Changelog
+
+### v2.8 — CN Reserved Second-Level Domain Detection (2026-03-23)
+
+**Problem:** CNNIC reserves 43 second-level domain labels under `.cn` for official use — 34 provincial administrative codes (bj.cn, sh.cn…), 7 functional suffixes (gov.cn, edu.cn…), and 2 system domains (nic.cn, cnnic.cn). Previously, these were either showing as "已注册" (incorrect) or as a misleading "该域名已注册但注册机构未提供公开的WHOIS/RDAP服务" fallback. The WHOIS lookup took 2.4s+ and returned no useful information.
+
+**New file: `src/lib/whois/cn-reserved-sld.ts`**
+
+Comprehensive database of all 43 reserved CN SLDs with bilingual descriptions, organized into three maps:
+
+| Category | Count | Example |
+|---|---|---|
+| `CN_PROVINCE_SLDS` — 34 provincial codes | 34 | `bj` → 北京市, `gd` → 广东省 |
+| `CN_FUNCTIONAL_SLDS` — sector suffixes | 7 | `gov` → 政府机构, `edu` → 教育机构 |
+| `CN_SYSTEM_RESERVED` — exact domains | 2 | `nic.cn`, `cnnic.cn` |
+
+`getCnReservedSldInfo(domain)` checks these in priority order and returns a typed `CnReservedInfo` object (or `null` for non-reserved domains).
+
+**Three-layer interception — in priority order:**
+
+1. **`getServerSideProps` pre-check** (`src/pages/[...query].tsx` line ~1315) — intercepts the raw URL query BEFORE `cleanDomain()` runs. Critical because the lib's `specialDomains` map rewrites functional SLDs (e.g. `gov.cn → www.gov.cn`) to make WHOIS lookups work — without this early check, SSR would look up `www.gov.cn` (a real registered domain) instead of showing "保留域名".
+
+2. **`lookupWhoisWithCache` pre-check** (`src/lib/whois/lookup.ts` line ~504) — the first thing called in the function, before any L1/L2 cache lookup. Ensures no stale Redis-cached result for these domains ever overrides the correct synthetic result.
+
+3. **`/api/lookup` pre-check** (`src/pages/api/lookup.ts` line ~115) — catches client-side searches (typed into the search bar after page load) that hit the API directly.
+
+**Synthetic result format:**
+
+All three interception points return the same structure:
+```typescript
+{
+  time: 0, status: true, cached: false, source: "whois",
+  result: {
+    domain: "gov.cn",
+    status: [{ status: "registry-reserved", url: "" }],
+    rawWhoisContent: "[CN Reserved] GOV.CN 是 CNNIC 保留的功能性二级域名...",
+    // all other fields: Unknown / null (from initialWhoisAnalyzeResult)
+  }
+}
+```
+
+**UI updates:**
+
+- `DomainStatusInfoCard` now accepts `customDesc?: { zh: string; en: string }` to override the generic "保留域名" description with the domain-specific CNNIC explanation (e.g. "BJ.CN 是 CNNIC 为北京市保留的省级行政区划域名（共34个）...")
+- The call site passes `cnInfo` to the card when `regStatus.type === "reserved"`
+- Cache header for CN reserved responses: `s-maxage=86400, stale-while-revalidate=604800` (24h/7d)
+
+**Verified results:**
+
+| Domain | Before | After |
+|---|---|---|
+| `bj.cn` (Beijing province) | ● 已注册 + "no WHOIS" fallback, 2.4s | ● 保留域名 + "BJ.CN 是 CNNIC 为北京市保留…" **0ms** |
+| `sh.cn` (Shanghai) | ● 已注册 + "no WHOIS" fallback | ● 保留域名 + specific description **0ms** |
+| `gov.cn` (Government) | ● 正常 (showing www.gov.cn data!) | ● 保留域名 + "GOV.CN 是 CNNIC 保留的功能性二级域名…" **0ms** |
+| `edu.cn` (Education) | ● 正常 (showing www.edu.cn data!) | ● 保留域名 + "EDU.CN 是 CNNIC 保留的功能性二级域名…" **0ms** |
+| `nic.cn` (CNNIC system) | ● 已注册 + "no WHOIS" fallback | ● 保留域名 + "nic.cn 为 CNNIC 系统保留域名…" **0ms** |
+| `google.cn` (normal domain) | ● 正常 ✓ | ● 正常 ✓ (no false positive) |
+
+All 43 reserved SLDs now return the correct badge and description in **0ms** with no WHOIS/RDAP network query.
+
+---
 
 ### v2.7 — Enhanced Domain Status Detection: Reserved / Prohibited / Suspended (2026-03-23)
 

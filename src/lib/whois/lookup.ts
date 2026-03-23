@@ -5,7 +5,7 @@ function intEnv(name: string, def: number): number {
   const n = v ? parseInt(v, 10) : NaN;
   return isNaN(n) ? def : n;
 }
-import { WhoisResult, WhoisAnalyzeResult } from "@/lib/whois/types";
+import { WhoisResult, WhoisAnalyzeResult, initialWhoisAnalyzeResult } from "@/lib/whois/types";
 import { getJsonRedisValue, setJsonRedisValue, isRedisAvailable } from "@/lib/server/redis";
 
 const L1_TTL_MS = 30_000;
@@ -53,6 +53,7 @@ import { lookupYisi } from "@/lib/whois/yisi-fallback";
 import { lookupTianhu } from "@/lib/whois/tianhu-fallback";
 import { isTldFallbackEnabled, recordTldNativeFailure, recordTldNativeSuccess, forceTldFallback } from "@/lib/whois/tld-fallback-gate";
 import { isRdapSkipped, markRdapSkipped, markRdapSupported, initRdapSkipCache } from "@/lib/whois/tld-rdap-skip";
+import { getCnReservedSldInfo } from "@/lib/whois/cn-reserved-sld";
 
 class ScraperRequiredError extends Error {
   registryUrl: string;
@@ -500,6 +501,27 @@ function mergeResults(
 export async function lookupWhoisWithCache(
   domain: string,
 ): Promise<WhoisResult> {
+  // ── CN Reserved SLD short-circuit ──────────────────────────────────────────
+  // Province, functional, and system-reserved .cn second-level domains are
+  // managed by CNNIC and are never directly registerable.  Return a synthetic
+  // "registry-reserved" result instantly — checked BEFORE the cache so that
+  // stale cached WHOIS results (e.g. from Redis) never override this.
+  const cnReserved = getCnReservedSldInfo(domain);
+  if (cnReserved) {
+    return {
+      time: 0,
+      status: true,
+      cached: false,
+      source: "whois",
+      result: {
+        ...initialWhoisAnalyzeResult,
+        domain,
+        status: [{ status: "registry-reserved", url: "" }],
+        rawWhoisContent: `[CN Reserved] ${cnReserved.descZh}`,
+      },
+    };
+  }
+
   const key = `whois:${domain}`;
 
   const l1Hit = l1Get(key);

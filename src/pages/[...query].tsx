@@ -71,7 +71,8 @@ import { addHistory, detectQueryType } from "@/lib/history";
 import { useSession } from "next-auth/react";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { WhoisAnalyzeResult, WhoisResult } from "@/lib/whois/types";
+import { WhoisAnalyzeResult, WhoisResult, initialWhoisAnalyzeResult } from "@/lib/whois/types";
+import { getCnReservedSldInfo } from "@/lib/whois/cn-reserved-sld";
 import {
   getEppStatusInfo,
   getEppStatusColor,
@@ -1307,6 +1308,36 @@ function targetToDisplayName(target: string): string {
 export async function getServerSideProps(context: GetServerSidePropsContext) {
   const querySegments: string[] = (context.params?.query as string[]) ?? [];
   const origin = getOrigin(context.req);
+
+  // ── CN Reserved SLD early-return (before cleanDomain rewrites the query) ──
+  // Some .cn functional SLDs (gov.cn, edu.cn, etc.) are mapped by the WHOIS
+  // lib to their www.* equivalents so the lookup works.  We must intercept
+  // BEFORE that mapping so the user sees "保留域名" instead of www.gov.cn data.
+  const rawQuery = querySegments.join("/").toLowerCase().trim();
+  const cnReservedSsr = getCnReservedSldInfo(rawQuery);
+  if (cnReservedSsr) {
+    const syntheticData: WhoisResult = {
+      time: 0,
+      status: true,
+      cached: false,
+      source: "whois",
+      result: {
+        ...initialWhoisAnalyzeResult,
+        domain: rawQuery,
+        status: [{ status: "registry-reserved", url: "" }],
+        rawWhoisContent: `[CN Reserved] ${cnReservedSsr.descZh}`,
+      },
+    };
+    return {
+      props: {
+        data: JSON.parse(JSON.stringify(syntheticData)),
+        target: rawQuery,
+        displayTarget: targetToDisplayName(rawQuery),
+        origin,
+      },
+    };
+  }
+
   const target = cleanDomain(querySegments.join("/"));
   const displayTarget = targetToDisplayName(target);
 
@@ -1756,13 +1787,18 @@ const STATUS_INFO: Record<
 function DomainStatusInfoCard({
   type,
   locale,
+  customDesc,
 }: {
   type: RegistrationStatusType;
   locale: string;
+  customDesc?: { zh: string; en: string };
 }) {
   if (type === "registered") return null;
   const info = STATUS_INFO[type];
   const isZh = locale.startsWith("zh");
+  const desc = customDesc
+    ? (isZh ? customDesc.zh : customDesc.en)
+    : (isZh ? info.descZh : info.descEn);
   return (
     <div
       className={cn(
@@ -1786,7 +1822,7 @@ function DomainStatusInfoCard({
           {isZh ? info.titleZh : info.titleEn}
         </p>
         <p className={cn("text-xs mt-1 leading-relaxed", info.descText)}>
-          {isZh ? info.descZh : info.descEn}
+          {desc}
         </p>
       </div>
     </div>
@@ -3700,9 +3736,19 @@ export default function LookupPage({
                     {result.remainingDays === null &&
                       (() => {
                         const regStatus = getDomainRegistrationStatus(result, locale);
-                        return regStatus.type !== "registered" ? (
-                          <DomainStatusInfoCard type={regStatus.type} locale={locale} />
-                        ) : null;
+                        if (regStatus.type === "registered") return null;
+                        const cnInfo = getCnReservedSldInfo(result.domain);
+                        return (
+                          <DomainStatusInfoCard
+                            type={regStatus.type}
+                            locale={locale}
+                            customDesc={
+                              cnInfo && regStatus.type === "reserved"
+                                ? { zh: cnInfo.descZh, en: cnInfo.descEn }
+                                : undefined
+                            }
+                          />
+                        );
                       })()}
 
                     {(result.creationDate !== "Unknown" ||

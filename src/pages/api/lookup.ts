@@ -1,10 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { lookupWhoisWithCache } from "@/lib/whois/lookup";
-import { WhoisAnalyzeResult } from "@/lib/whois/types";
+import { WhoisAnalyzeResult, initialWhoisAnalyzeResult } from "@/lib/whois/types";
 import { DnsProbeResult } from "@/lib/whois/dns-check";
 import { run, isDbReady } from "@/lib/db-query";
 import { randomBytes } from "crypto";
 import { rateLimit, getClientIp } from "@/lib/server/rate-limit";
+import { getCnReservedSldInfo } from "@/lib/whois/cn-reserved-sld";
 
 export const config = {
   maxDuration: 30,
@@ -106,6 +107,29 @@ export default async function handler(
   // Reject obviously non-sensical characters (null bytes, control chars)
   if (/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/.test(trimmed)) {
     return res.status(400).json({ time: -1, status: false, error: "Invalid characters in query" });
+  }
+
+  // ── CN Reserved SLD short-circuit ─────────────────────────────────────────
+  // Province, functional, and system-reserved .cn second-level domains are
+  // managed by CNNIC and are never directly registerable. Skip the WHOIS/RDAP
+  // network query and return a synthetic "registry-reserved" result instantly.
+  const cnReserved = getCnReservedSldInfo(trimmed);
+  if (cnReserved) {
+    const syntheticResult: WhoisAnalyzeResult = {
+      ...initialWhoisAnalyzeResult,
+      domain: trimmed,
+      status: [{ status: "registry-reserved", url: "" }],
+      rawWhoisContent: `[CN Reserved] ${cnReserved.descZh}`,
+    };
+    saveAnonymousSearchRecord(trimmed, syntheticResult).catch(() => {});
+    res.setHeader("Cache-Control", "s-maxage=86400, stale-while-revalidate=604800");
+    return res.status(200).json({
+      time: 0,
+      status: true,
+      cached: false,
+      source: "whois" as const,
+      result: syntheticResult,
+    });
   }
 
   const { time, status, result, error, cached, source, dnsProbe, registryUrl } =
