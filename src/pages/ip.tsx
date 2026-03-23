@@ -376,6 +376,9 @@ export default function IpPage() {
                     <div className="flex items-start gap-2 text-[10px] text-muted-foreground/60">
                       <RiAlertLine className="w-3 h-3 shrink-0 mt-0.5" />
                       <span>归属地由 ip-api.com 提供；RDAP 数据来自 ARIN/RIPE/APNIC 官方接口。代理检测仅供参考。</span>
+                      <Link href={`/feedback?type=ip&q=${encodeURIComponent(result!.query)}`} className="ml-auto shrink-0 hover:text-foreground transition-colors">
+                        意见反馈
+                      </Link>
                     </div>
                   </>
                 )}

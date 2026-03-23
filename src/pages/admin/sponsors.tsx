@@ -10,9 +10,89 @@ import {
   RiHeart3Fill, RiUserLine, RiCalendarLine, RiCopperCoinLine,
   RiSaveLine, RiCloseLine, RiEyeLine, RiEyeOffLine,
   RiAlipayLine, RiWechatLine, RiGithubLine, RiImageLine,
-  RiMessage2Line, RiExternalLinkLine,
+  RiMessage2Line, RiExternalLinkLine, RiPaypalLine, RiBitCoinLine,
+  RiUploadLine, RiCheckLine,
 } from "@remixicon/react";
 import { DEFAULT_SETTINGS, type SiteSettings, notifySettingsUpdated } from "@/lib/site-settings";
+
+function ImageUploadField({
+  value,
+  onChange,
+  label,
+  hint,
+  accept = "image/*",
+}: {
+  value: string;
+  onChange: (url: string) => void;
+  label: string;
+  hint?: string;
+  accept?: string;
+}) {
+  const [uploading, setUploading] = React.useState(false);
+  const [preview, setPreview] = React.useState<string | null>(null);
+  const fileRef = React.useRef<HTMLInputElement>(null);
+
+  async function handleFile(file: File) {
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const dataUrl = e.target?.result as string;
+      setPreview(dataUrl);
+      setUploading(true);
+      try {
+        const res = await fetch("/api/admin/upload", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ dataUrl, hint }),
+        });
+        const data = await res.json();
+        if (data.url) { onChange(data.url); toast.success("上传成功"); }
+        else toast.error(data.error || "上传失败");
+      } catch { toast.error("上传失败"); }
+      finally { setUploading(false); }
+    };
+    reader.readAsDataURL(file);
+  }
+
+  const imgSrc = preview || value;
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <div className="flex-1">
+          <Input
+            value={value}
+            onChange={e => { onChange(e.target.value); setPreview(null); }}
+            placeholder="https://... 或点击上传"
+            className="h-8 text-xs font-mono"
+          />
+        </div>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          disabled={uploading}
+          onClick={() => fileRef.current?.click()}
+          className="h-8 px-2 text-xs gap-1 shrink-0"
+        >
+          {uploading ? <RiLoader4Line className="w-3 h-3 animate-spin" /> : <RiUploadLine className="w-3 h-3" />}
+          {uploading ? "上传中…" : "上传图片"}
+        </Button>
+        <input
+          ref={fileRef}
+          type="file"
+          accept={accept}
+          className="hidden"
+          onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ""; }}
+        />
+      </div>
+      {imgSrc && (
+        <div className="w-32 h-32 rounded-xl border border-border overflow-hidden bg-muted/30 flex items-center justify-center">
+          <img src={imgSrc} alt={label} className="w-full h-full object-contain" />
+        </div>
+      )}
+    </div>
+  );
+}
 
 type Sponsor = {
   id: string;
@@ -141,12 +221,17 @@ function SponsorSettingsPanel() {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          enable_sponsor: settings.enable_sponsor,
-          sponsor_page_title: settings.sponsor_page_title,
-          sponsor_page_desc: settings.sponsor_page_desc,
-          sponsor_alipay_qr: settings.sponsor_alipay_qr,
-          sponsor_wechat_qr: settings.sponsor_wechat_qr,
-          sponsor_github_url: settings.sponsor_github_url,
+          enable_sponsor:      settings.enable_sponsor,
+          sponsor_page_title:  settings.sponsor_page_title,
+          sponsor_page_desc:   settings.sponsor_page_desc,
+          sponsor_alipay_qr:   settings.sponsor_alipay_qr,
+          sponsor_wechat_qr:   settings.sponsor_wechat_qr,
+          sponsor_github_url:  settings.sponsor_github_url,
+          sponsor_paypal_url:  settings.sponsor_paypal_url,
+          sponsor_crypto_btc:  settings.sponsor_crypto_btc,
+          sponsor_crypto_eth:  settings.sponsor_crypto_eth,
+          sponsor_crypto_usdt: settings.sponsor_crypto_usdt,
+          sponsor_crypto_okx:  settings.sponsor_crypto_okx,
           sponsor_extra_links: settings.sponsor_extra_links,
         }),
       });
@@ -158,25 +243,24 @@ function SponsorSettingsPanel() {
   }
 
   return (
-    <div className="space-y-4 p-5 rounded-xl border border-border bg-card">
+    <div className="space-y-5 p-5 rounded-xl border border-border bg-card">
       <h3 className="text-sm font-semibold flex items-center gap-2">
         <RiHeart3Fill className="w-4 h-4 text-rose-500" /> 赞助页面配置
       </h3>
 
-      <div className="flex items-center gap-3">
-        <label className="flex items-center gap-2 cursor-pointer text-sm font-medium">
-          <input type="checkbox" checked={!!settings.enable_sponsor} onChange={e => set("enable_sponsor", e.target.checked ? "1" : "")} className="rounded" />
-          启用赞助页面（显示在导航）
-        </label>
-      </div>
+      <label className="flex items-center gap-2 cursor-pointer text-sm font-medium">
+        <input type="checkbox" checked={!!settings.enable_sponsor} onChange={e => set("enable_sponsor", e.target.checked ? "1" : "")} className="rounded" />
+        启用赞助页面（显示在导航）
+      </label>
 
+      {/* Page text */}
       <div className="grid grid-cols-1 gap-3">
         <div>
-          <Label className="text-xs mb-1 block flex items-center gap-1"><RiMessage2Line className="w-3.5 h-3.5" /> 页面标题</Label>
+          <Label className="text-xs mb-1.5 flex items-center gap-1"><RiMessage2Line className="w-3.5 h-3.5" /> 页面标题</Label>
           <Input value={settings.sponsor_page_title || ""} onChange={e => set("sponsor_page_title", e.target.value)} placeholder="赞助支持" className="h-8 text-sm" />
         </div>
         <div>
-          <Label className="text-xs mb-1 block">页面描述</Label>
+          <Label className="text-xs mb-1.5 block">页面描述</Label>
           <textarea
             value={settings.sponsor_page_desc || ""}
             onChange={e => set("sponsor_page_desc", e.target.value)}
@@ -185,23 +269,90 @@ function SponsorSettingsPanel() {
             className="w-full text-sm rounded-md border border-input bg-background px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-ring"
           />
         </div>
-        <div>
-          <Label className="text-xs mb-1 block flex items-center gap-1"><RiAlipayLine className="w-3.5 h-3.5 text-blue-500" /> 支付宝收款码 URL</Label>
-          <Input value={settings.sponsor_alipay_qr || ""} onChange={e => set("sponsor_alipay_qr", e.target.value)} placeholder="https://..." className="h-8 text-sm" />
+      </div>
+
+      {/* QR codes */}
+      <div className="space-y-3 pt-2 border-t border-border/50">
+        <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+          <RiImageLine className="w-3.5 h-3.5" />扫码支付（支付宝 / 微信）
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <Label className="text-xs mb-1.5 flex items-center gap-1 text-blue-600 dark:text-blue-400">
+              <RiAlipayLine className="w-3.5 h-3.5" /> 支付宝收款码
+            </Label>
+            <ImageUploadField
+              label="支付宝收款码"
+              value={settings.sponsor_alipay_qr || ""}
+              onChange={v => set("sponsor_alipay_qr", v)}
+              hint="alipay_qr"
+            />
+          </div>
+          <div>
+            <Label className="text-xs mb-1.5 flex items-center gap-1 text-green-600 dark:text-green-400">
+              <RiWechatLine className="w-3.5 h-3.5" /> 微信收款码
+            </Label>
+            <ImageUploadField
+              label="微信收款码"
+              value={settings.sponsor_wechat_qr || ""}
+              onChange={v => set("sponsor_wechat_qr", v)}
+              hint="wechat_qr"
+            />
+          </div>
         </div>
-        <div>
-          <Label className="text-xs mb-1 block flex items-center gap-1"><RiWechatLine className="w-3.5 h-3.5 text-green-500" /> 微信收款码 URL</Label>
-          <Input value={settings.sponsor_wechat_qr || ""} onChange={e => set("sponsor_wechat_qr", e.target.value)} placeholder="https://..." className="h-8 text-sm" />
+      </div>
+
+      {/* Link payments */}
+      <div className="space-y-3 pt-2 border-t border-border/50">
+        <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+          <RiPaypalLine className="w-3.5 h-3.5" />链接支付（GitHub / PayPal）
+        </p>
+        <div className="grid grid-cols-1 gap-3">
+          <div>
+            <Label className="text-xs mb-1.5 flex items-center gap-1">
+              <RiGithubLine className="w-3.5 h-3.5" /> GitHub Sponsors URL
+            </Label>
+            <Input value={settings.sponsor_github_url || ""} onChange={e => set("sponsor_github_url", e.target.value)} placeholder="https://github.com/sponsors/yourname" className="h-8 text-sm" />
+          </div>
+          <div>
+            <Label className="text-xs mb-1.5 flex items-center gap-1 text-[#003087] dark:text-blue-400">
+              <RiPaypalLine className="w-3.5 h-3.5" /> PayPal 收款链接
+            </Label>
+            <Input value={settings.sponsor_paypal_url || ""} onChange={e => set("sponsor_paypal_url", e.target.value)} placeholder="https://paypal.me/yourname" className="h-8 text-sm" />
+          </div>
         </div>
-        <div>
-          <Label className="text-xs mb-1 block flex items-center gap-1"><RiGithubLine className="w-3.5 h-3.5" /> GitHub Sponsors URL</Label>
-          <Input value={settings.sponsor_github_url || ""} onChange={e => set("sponsor_github_url", e.target.value)} placeholder="https://github.com/sponsors/..." className="h-8 text-sm" />
+      </div>
+
+      {/* Crypto */}
+      <div className="space-y-3 pt-2 border-t border-border/50">
+        <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+          <RiBitCoinLine className="w-3.5 h-3.5" />加密货币收款地址（留空则隐藏）
+        </p>
+        <div className="grid grid-cols-1 gap-3">
+          {([
+            { key: "sponsor_crypto_btc",  label: "BTC (Bitcoin)", placeholder: "bc1q...", color: "text-amber-600 dark:text-amber-400" },
+            { key: "sponsor_crypto_eth",  label: "ETH (Ethereum)", placeholder: "0x...", color: "text-indigo-600 dark:text-indigo-400" },
+            { key: "sponsor_crypto_usdt", label: "USDT (TRC20/ERC20)", placeholder: "T... 或 0x...", color: "text-teal-600 dark:text-teal-400" },
+            { key: "sponsor_crypto_okx",  label: "OKX / Web3 钱包", placeholder: "0x...", color: "text-slate-600 dark:text-slate-400" },
+          ] as const).map(({ key, label, placeholder, color }) => (
+            <div key={key}>
+              <Label className={cn("text-xs mb-1.5 flex items-center gap-1", color)}>
+                <RiBitCoinLine className="w-3 h-3" />{label}
+              </Label>
+              <Input
+                value={(settings as any)[key] || ""}
+                onChange={e => set(key, e.target.value)}
+                placeholder={placeholder}
+                className="h-8 text-xs font-mono"
+              />
+            </div>
+          ))}
         </div>
       </div>
 
       <Button size="sm" onClick={save} disabled={saving} className="gap-1.5 text-xs">
         {saving ? <RiLoader4Line className="w-3.5 h-3.5 animate-spin" /> : <RiSaveLine className="w-3.5 h-3.5" />}
-        保存配置
+        保存赞助配置
       </Button>
     </div>
   );

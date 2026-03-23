@@ -6,11 +6,28 @@ import { run, isDbReady } from "@/lib/db-query";
 import { randomBytes } from "crypto";
 
 const ISSUE_LABELS: Record<string, string> = {
-  inaccurate: "数据不准确",
-  incomplete: "数据不完整",
-  outdated:   "数据已过期",
-  parse_error:"解析错误",
-  other:      "其他",
+  // Domain / WHOIS
+  inaccurate:      "数据不准确",
+  incomplete:      "数据不完整",
+  outdated:        "数据已过期",
+  parse_error:     "解析错误",
+  // DNS
+  resolve_failed:  "查询失败/超时",
+  wrong_result:    "结果不正确",
+  missing_record:  "记录缺失",
+  // SSL
+  cert_error:      "证书错误/不受信任",
+  chain_error:     "证书链错误",
+  expired_wrong:   "过期时间有误",
+  // IP / ASN
+  wrong_location:  "归属地不准确",
+  wrong_isp:       "ISP/运营商有误",
+  wrong_asn:       "ASN信息有误",
+  // General
+  feature_request: "功能建议",
+  bug_report:      "程序错误",
+  question:        "使用问题",
+  other:           "其他",
 };
 
 const VALID_ISSUE_KEYS = new Set(Object.keys(ISSUE_LABELS));

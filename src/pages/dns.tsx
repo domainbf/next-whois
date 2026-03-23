@@ -547,6 +547,9 @@ export default function DnsPage() {
             <span className="flex items-center gap-1"><RiTimeLine className="w-3 h-3" />数据实时获取，不缓存</span>
             <span>|</span>
             <span>DoH: Google · Cloudflare · Quad9 · AdGuard</span>
+            <Link href={`/feedback?type=dns${queried ? `&q=${encodeURIComponent(queried)}` : ""}`} className="ml-auto hover:text-foreground transition-colors">
+              意见反馈
+            </Link>
           </div>
         </main>
       </ScrollArea>

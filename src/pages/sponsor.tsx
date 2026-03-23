@@ -590,7 +590,7 @@ export default function SponsorPage() {
 
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }} className="mt-6 text-center">
             <p className="text-xs text-muted-foreground/60">
-              赞助记录未显示？请<Link href="/about" className="text-rose-500 hover:underline mx-0.5">联系我们</Link>确认。感谢每一位支持者！
+              赞助记录未显示？请<Link href="/feedback?type=general&source=sponsor" className="text-rose-500 hover:underline mx-0.5">联系我们</Link>确认。感谢每一位支持者！
             </p>
             <div className="flex items-center justify-center gap-1 mt-2 text-[10px] text-muted-foreground/40">
               <RiShieldLine className="w-3 h-3" />

@@ -362,6 +362,9 @@ export default function SslPage() {
             <span className="flex items-center gap-1"><RiTimeLine className="w-3 h-3" />直连检测，数据不缓存</span>
             <span>|</span>
             <span>Node.js TLS · 无第三方依赖</span>
+            <Link href={`/feedback?type=ssl${result?.hostname ? `&q=${encodeURIComponent(result.hostname)}` : ""}`} className="ml-auto hover:text-foreground transition-colors">
+              意见反馈
+            </Link>
           </div>
         </main>
       </ScrollArea>
