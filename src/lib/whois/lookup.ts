@@ -502,8 +502,8 @@ export async function lookupWhoisWithCache(
 }
 
 // After RDAP succeeds, wait at most this long for WHOIS (for raw content merging).
-// If WHOIS doesn't finish within this window we proceed without it.
-const WHOIS_MERGE_WAIT_MS = 2000;
+// Kept short: WHOIS raw is supplementary — don't hold up a good RDAP result.
+const WHOIS_MERGE_WAIT_MS = 600;
 
 export async function lookupWhois(domain: string): Promise<WhoisResult> {
   const startTime = performance.now();

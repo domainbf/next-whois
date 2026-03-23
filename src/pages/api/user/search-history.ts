@@ -58,13 +58,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method === "GET") {
     const rows = await many(
-      `SELECT query, query_type, created_at, reg_status, expiration_date, remaining_days
+      `SELECT id, query, query_type, created_at, reg_status, expiration_date, remaining_days
        FROM search_history WHERE user_id = $1
        ORDER BY created_at DESC LIMIT $2`,
       [userId, MAX_HISTORY],
     );
     return res.status(200).json({
       history: rows.map((r) => ({
+        id: r.id,
         query: r.query,
         queryType: r.query_type,
         timestamp: new Date(r.created_at).getTime(),
@@ -148,6 +149,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     return res.status(200).json({ ok: true });
+  }
+
+  if (req.method === "DELETE") {
+    const { id } = req.query;
+    if (id === "all") {
+      await run("DELETE FROM search_history WHERE user_id = $1", [userId]);
+      return res.status(200).json({ ok: true });
+    }
+    if (typeof id === "string" && id) {
+      await run("DELETE FROM search_history WHERE id = $1 AND user_id = $2", [id, userId]);
+      return res.status(200).json({ ok: true });
+    }
+    return res.status(400).json({ error: "missing id" });
   }
 
   return res.status(405).end();

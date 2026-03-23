@@ -17,6 +17,8 @@ import {
   RiEdit2Line, RiShieldUserLine, RiLockLine, RiMailLine,
   RiEyeLine, RiEyeOffLine, RiPaletteLine, RiArrowRightLine,
   RiBellLine, RiFileTextLine, RiWifiLine,
+  RiDownloadLine, RiFilterLine, RiDeleteBack2Line, RiFireLine,
+  RiTimerLine, RiBarChartLine,
 } from "@remixicon/react";
 import { ADMIN_EMAIL } from "@/lib/admin-shared";
 import type { HistoryItem } from "@/lib/history";
@@ -30,6 +32,7 @@ type Subscription = {
 type RegStatus = "registered" | "unregistered" | "reserved" | "error" | "unknown";
 
 type ServerHistoryItem = {
+  id?: string;
   query: string;
   queryType: string;
   timestamp: number;
@@ -492,6 +495,8 @@ export default function DashboardPage() {
   const [avatarColor, setAvatarColor] = React.useState("violet");
   const [editingAvatar, setEditingAvatar] = React.useState(false);
   const [savingAvatar, setSavingAvatar] = React.useState(false);
+  const [historySearch, setHistorySearch] = React.useState("");
+  const [clearingHistory, setClearingHistory] = React.useState(false);
 
   React.useEffect(() => {
     if (status === "unauthenticated") router.replace("/login");
@@ -555,6 +560,45 @@ export default function DashboardPage() {
     } finally {
       setDeletingStamp(null);
     }
+  }
+
+  async function clearAllHistory() {
+    setClearingHistory(true);
+    try {
+      await fetch("/api/user/search-history?id=all", { method: "DELETE" });
+      setSearchHistory([]);
+      toast.success("搜索历史已清空");
+    } catch {
+      toast.error("操作失败");
+    } finally {
+      setClearingHistory(false);
+    }
+  }
+
+  function exportSubscriptionsCSV() {
+    const activeSubs = subscriptions.filter(s => s.active);
+    if (activeSubs.length === 0) { toast.info("没有有效订阅可导出"); return; }
+    const rows = [
+      ["域名", "到期日期", "订阅时间"],
+      ...activeSubs.map(s => [
+        s.domain,
+        s.expiration_date ? new Date(s.expiration_date).toLocaleDateString("zh-CN") : "未知",
+        new Date(s.created_at).toLocaleDateString("zh-CN"),
+      ]),
+    ];
+    const csv = rows.map(r => r.map(c => `"${c}"`).join(",")).join("\n");
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = "domain-subscriptions.csv"; a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`已导出 ${activeSubs.length} 条订阅记录`);
+  }
+
+  function daysUntilExpiry(sub: Subscription): number | null {
+    if (!sub.expiration_date) return null;
+    const diff = new Date(sub.expiration_date).getTime() - Date.now();
+    return Math.ceil(diff / 86_400_000);
   }
 
   const AVATAR_COLORS: { key: string; bg: string; text: string; label: string }[] = [
@@ -669,10 +713,23 @@ export default function DashboardPage() {
 
   const user = session!.user!;
   const isAdminUser = (user as any)?.email?.toLowerCase?.()?.trim?.() === ADMIN_EMAIL;
+
+  // Computed stats
+  const activeSubs = subscriptions.filter(s => s.active);
+  const expiringSoon = activeSubs.filter(s => {
+    const d = daysUntilExpiry(s);
+    return d !== null && d >= 0 && d <= 30;
+  });
+  const urgentSubs = activeSubs.filter(s => {
+    const d = daysUntilExpiry(s);
+    return d !== null && d >= 0 && d <= 7;
+  });
+  const verifiedStamps = stamps.filter(s => s.verified);
+
   const TABS = [
-    { key: "subscriptions" as const, label: "域名订阅", icon: <RiCalendarLine className="w-3.5 h-3.5" /> },
-    { key: "stamps" as const, label: "品牌认领", icon: <RiShieldCheckLine className="w-3.5 h-3.5" /> },
-    { key: "history" as const, label: "搜索历史", icon: <RiHistoryLine className="w-3.5 h-3.5" /> },
+    { key: "subscriptions" as const, label: "域名订阅", icon: <RiCalendarLine className="w-3.5 h-3.5" />, count: activeSubs.length || undefined },
+    { key: "stamps" as const, label: "品牌认领", icon: <RiShieldCheckLine className="w-3.5 h-3.5" />, count: stamps.length || undefined },
+    { key: "history" as const, label: "搜索历史", icon: <RiHistoryLine className="w-3.5 h-3.5" />, count: searchHistory.length || undefined },
     { key: "account" as const, label: "账户", icon: <RiUserLine className="w-3.5 h-3.5" /> },
   ];
 
@@ -730,6 +787,61 @@ export default function DashboardPage() {
           </div>
         </div>
 
+        {/* Stats overview bar */}
+        {!loadingData && (activeSubs.length > 0 || stamps.length > 0) && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div className="glass-panel border border-border rounded-xl px-3 py-2.5 flex items-center gap-2.5">
+              <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                <RiCalendarLine className="w-3.5 h-3.5 text-primary" />
+              </div>
+              <div>
+                <p className="text-base font-bold leading-none">{activeSubs.length}</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">有效订阅</p>
+              </div>
+            </div>
+            <div className={cn(
+              "glass-panel border rounded-xl px-3 py-2.5 flex items-center gap-2.5",
+              urgentSubs.length > 0 ? "border-red-300/60 bg-red-50/40 dark:bg-red-950/20" :
+              expiringSoon.length > 0 ? "border-amber-300/60 bg-amber-50/40 dark:bg-amber-950/20" : "border-border"
+            )}>
+              <div className={cn("w-7 h-7 rounded-lg flex items-center justify-center shrink-0",
+                urgentSubs.length > 0 ? "bg-red-100 dark:bg-red-950/40" :
+                expiringSoon.length > 0 ? "bg-amber-100 dark:bg-amber-950/40" : "bg-muted"
+              )}>
+                <RiFireLine className={cn("w-3.5 h-3.5",
+                  urgentSubs.length > 0 ? "text-red-500" :
+                  expiringSoon.length > 0 ? "text-amber-500" : "text-muted-foreground"
+                )} />
+              </div>
+              <div>
+                <p className={cn("text-base font-bold leading-none",
+                  urgentSubs.length > 0 ? "text-red-600 dark:text-red-400" :
+                  expiringSoon.length > 0 ? "text-amber-600 dark:text-amber-400" : ""
+                )}>{expiringSoon.length}</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">30天内到期</p>
+              </div>
+            </div>
+            <div className="glass-panel border border-border rounded-xl px-3 py-2.5 flex items-center gap-2.5">
+              <div className="w-7 h-7 rounded-lg bg-emerald-100 dark:bg-emerald-950/40 flex items-center justify-center shrink-0">
+                <RiShieldCheckLine className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <div>
+                <p className="text-base font-bold leading-none">{verifiedStamps.length}</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">已验证品牌</p>
+              </div>
+            </div>
+            <div className="glass-panel border border-border rounded-xl px-3 py-2.5 flex items-center gap-2.5">
+              <div className="w-7 h-7 rounded-lg bg-violet-100 dark:bg-violet-950/40 flex items-center justify-center shrink-0">
+                <RiBarChartLine className="w-3.5 h-3.5 text-violet-600 dark:text-violet-400" />
+              </div>
+              <div>
+                <p className="text-base font-bold leading-none">{searchHistory.length}</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">历史查询</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Tab switcher */}
         <div className="flex rounded-xl bg-muted/40 border border-border/50 p-1 gap-1">
           {TABS.map(t => (
@@ -740,7 +852,14 @@ export default function DashboardPage() {
                   ? "bg-background shadow-sm text-foreground border border-border/60"
                   : "text-muted-foreground hover:text-foreground"
               )}>
-              {t.icon}<span className="hidden sm:inline">{t.label}</span>
+              {t.icon}
+              <span className="hidden sm:inline">{t.label}</span>
+              {t.count !== undefined && (
+                <span className={cn(
+                  "text-[10px] font-bold px-1 py-0 rounded-full min-w-[16px] text-center leading-4",
+                  tab === t.key ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"
+                )}>{t.count}</span>
+              )}
             </button>
           ))}
         </div>
@@ -749,15 +868,35 @@ export default function DashboardPage() {
           {/* ── Subscriptions ── */}
           {tab === "subscriptions" && (
             <motion.div key="subscriptions" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.18 }} className="space-y-3">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">域名到期提醒订阅</p>
-                <button
-                  onClick={() => setShowSubscribeGuide(true)}
-                  className="text-xs text-primary hover:underline flex items-center gap-1"
-                >
-                  <RiCalendarLine className="w-3 h-3" />新增订阅
-                </button>
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">域名到期提醒</p>
+                <div className="flex items-center gap-2">
+                  {activeSubs.length > 0 && (
+                    <button
+                      onClick={exportSubscriptionsCSV}
+                      className="text-[11px] text-muted-foreground hover:text-foreground flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-muted transition-colors"
+                    >
+                      <RiDownloadLine className="w-3 h-3" />导出 CSV
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setShowSubscribeGuide(true)}
+                    className="text-[11px] text-primary hover:underline flex items-center gap-1"
+                  >
+                    <RiCalendarLine className="w-3 h-3" />新增订阅
+                  </button>
+                </div>
               </div>
+
+              {/* Urgent alert */}
+              {urgentSubs.length > 0 && (
+                <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200/60 dark:border-red-800/40">
+                  <RiFireLine className="w-4 h-4 text-red-500 shrink-0" />
+                  <p className="text-xs text-red-700 dark:text-red-300 font-medium">
+                    <strong>{urgentSubs.length}</strong> 个域名将在 7 天内到期，请尽快续费！
+                  </p>
+                </div>
+              )}
               {loadingData ? (
                 <div className="flex justify-center py-8"><RiLoader4Line className="w-5 h-5 animate-spin text-muted-foreground" /></div>
               ) : subscriptions.length === 0 ? (
@@ -785,27 +924,56 @@ export default function DashboardPage() {
                     </Link>
                   </div>
                 </div>
-              ) : subscriptions.map(sub => {
+              ) : [...subscriptions]
+                .sort((a, b) => {
+                  if (!a.active && b.active) return 1;
+                  if (a.active && !b.active) return -1;
+                  const da = daysUntilExpiry(a) ?? 9999;
+                  const db = daysUntilExpiry(b) ?? 9999;
+                  return da - db;
+                })
+                .map(sub => {
                 const lifecycle = sub.expiration_date
                   ? getDomainLifecycle(sub.domain, new Date(sub.expiration_date))
                   : null;
                 const phase = lifecycle?.phase;
                 const phaseInfo = phase ? PHASE_LABEL[phase] : null;
+                const days = daysUntilExpiry(sub);
+                const isUrgent = sub.active && days !== null && days >= 0 && days <= 7;
+                const isWarn = sub.active && days !== null && days >= 0 && days <= 30 && !isUrgent;
 
                 return (
                   <div key={sub.id} className={cn(
                     "glass-panel border rounded-2xl p-4 space-y-3 transition-all",
-                    sub.active ? "border-border" : "border-border/40 opacity-60"
+                    !sub.active ? "border-border/40 opacity-60" :
+                    isUrgent ? "border-red-300/60 dark:border-red-700/50" :
+                    isWarn ? "border-amber-300/60 dark:border-amber-700/50" : "border-border"
                   )}>
                     <div className="flex items-start gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-                        <RiGlobalLine className="w-4 h-4 text-primary" />
+                      <div className={cn(
+                        "w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5",
+                        isUrgent ? "bg-red-100 dark:bg-red-950/40" :
+                        isWarn ? "bg-amber-100 dark:bg-amber-950/40" : "bg-primary/10"
+                      )}>
+                        {isUrgent ? <RiFireLine className="w-4 h-4 text-red-500" /> :
+                         isWarn ? <RiTimerLine className="w-4 h-4 text-amber-500" /> :
+                         <RiGlobalLine className="w-4 h-4 text-primary" />}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <p className="text-sm font-semibold truncate">{sub.domain}</p>
                           {!sub.active && <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">已取消</span>}
-                          {phaseInfo && phase !== "active" && (
+                          {isUrgent && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400 font-semibold border border-red-300/50">
+                              {days === 0 ? "今日到期" : `${days}天后到期`}
+                            </span>
+                          )}
+                          {isWarn && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 font-semibold border border-amber-300/50">
+                              {days}天后到期
+                            </span>
+                          )}
+                          {phaseInfo && phase !== "active" && !isUrgent && !isWarn && (
                             <span className={cn("text-[10px] font-semibold", phaseInfo.color)}>{phaseInfo.label}</span>
                           )}
                         </div>
@@ -962,55 +1130,107 @@ export default function DashboardPage() {
           )}
 
           {/* ── Search History ── */}
-          {tab === "history" && (
-            <motion.div key="history" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }} className="space-y-3">
-              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">搜索历史（最近 50 条）</p>
-              {loadingHistory ? (
-                <div className="flex justify-center py-8"><RiLoader4Line className="w-5 h-5 animate-spin text-muted-foreground" /></div>
-              ) : searchHistory.length === 0 ? (
-                <div className="text-center py-12 space-y-3">
-                  <RiHistoryLine className="w-10 h-10 text-muted-foreground/30 mx-auto" />
-                  <p className="text-sm text-muted-foreground">暂无搜索记录</p>
+          {tab === "history" && (() => {
+            const STATUS_CFG: Record<string, { label: string; cls: string }> = {
+              registered:   { label: "已注册", cls: "text-emerald-600 bg-emerald-50 border-emerald-300/60 dark:bg-emerald-950/30 dark:border-emerald-700/40" },
+              unregistered: { label: "未注册", cls: "text-sky-600 bg-sky-50 border-sky-300/60 dark:bg-sky-950/30 dark:border-sky-700/40" },
+              reserved:     { label: "保留",   cls: "text-amber-600 bg-amber-50 border-amber-300/60 dark:bg-amber-950/30 dark:border-amber-700/40" },
+              error:        { label: "查询失败", cls: "text-rose-600 bg-rose-50 border-rose-300/60 dark:bg-rose-950/30 dark:border-rose-700/40" },
+              unknown:      { label: "未知",   cls: "text-muted-foreground bg-muted border-border" },
+            };
+            const q = historySearch.trim().toLowerCase();
+            const filtered = q ? searchHistory.filter(h => h.query.toLowerCase().includes(q)) : searchHistory;
+            return (
+              <motion.div key="history" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }} className="space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground shrink-0">搜索历史</p>
+                  {searchHistory.length > 0 && (
+                    <button
+                      onClick={clearAllHistory}
+                      disabled={clearingHistory}
+                      className="text-[11px] text-muted-foreground hover:text-red-500 flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-muted transition-colors"
+                    >
+                      {clearingHistory ? <RiLoader4Line className="w-3 h-3 animate-spin" /> : <RiDeleteBack2Line className="w-3 h-3" />}
+                      清空全部
+                    </button>
+                  )}
                 </div>
-              ) : (
-                <div className="glass-panel border border-border rounded-2xl divide-y divide-border/50">
-                  {searchHistory.map((item, i) => {
-                    const rs = item.regStatus ?? "unknown";
-                    const statusCfg: Record<string, { label: string; cls: string }> = {
-                      registered:   { label: "已注册", cls: "text-emerald-600 bg-emerald-50 border-emerald-300/60 dark:bg-emerald-950/30 dark:border-emerald-700/40" },
-                      unregistered: { label: "未注册", cls: "text-sky-600 bg-sky-50 border-sky-300/60 dark:bg-sky-950/30 dark:border-sky-700/40" },
-                      reserved:     { label: "保留",   cls: "text-amber-600 bg-amber-50 border-amber-300/60 dark:bg-amber-950/30 dark:border-amber-700/40" },
-                      error:        { label: "查询失败", cls: "text-rose-600 bg-rose-50 border-rose-300/60 dark:bg-rose-950/30 dark:border-rose-700/40" },
-                      unknown:      { label: "未知",   cls: "text-muted-foreground bg-muted border-border" },
-                    };
-                    const cfg = statusCfg[rs] ?? statusCfg.unknown;
-                    const d = new Date(item.timestamp);
-                    const ts = `${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-                    return (
-                      <Link key={i} href={`/${item.query}`}
-                        className="flex items-center gap-2.5 px-3.5 py-2.5 hover:bg-muted/40 transition-colors first:rounded-t-2xl last:rounded-b-2xl">
-                        <div className="w-6 h-6 rounded-md bg-muted flex items-center justify-center shrink-0">
-                          <RiSearchLine className="w-3 h-3 text-muted-foreground" />
+
+                {/* Search filter */}
+                {searchHistory.length > 4 && (
+                  <div className="relative">
+                    <RiFilterLine className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+                    <input
+                      type="text"
+                      value={historySearch}
+                      onChange={e => setHistorySearch(e.target.value)}
+                      placeholder="筛选历史记录…"
+                      className="w-full pl-8 pr-3 py-2 text-sm bg-muted/50 border border-border/60 rounded-xl outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all"
+                    />
+                    {historySearch && (
+                      <button onClick={() => setHistorySearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                        ×
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {loadingHistory ? (
+                  <div className="flex justify-center py-8"><RiLoader4Line className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+                ) : searchHistory.length === 0 ? (
+                  <div className="text-center py-12 space-y-3">
+                    <RiHistoryLine className="w-10 h-10 text-muted-foreground/30 mx-auto" />
+                    <p className="text-sm text-muted-foreground">暂无搜索记录</p>
+                  </div>
+                ) : filtered.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-sm text-muted-foreground">没有匹配「{historySearch}」的记录</p>
+                  </div>
+                ) : (
+                  <div className="glass-panel border border-border rounded-2xl divide-y divide-border/50">
+                    {filtered.map((item, i) => {
+                      const rs = item.regStatus ?? "unknown";
+                      const cfg = STATUS_CFG[rs] ?? STATUS_CFG.unknown;
+                      const d = new Date(item.timestamp);
+                      const ts = `${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+                      return (
+                        <div key={i} className="flex items-center gap-2 px-3 py-2.5 hover:bg-muted/40 transition-colors first:rounded-t-2xl last:rounded-b-2xl group">
+                          <div className="w-6 h-6 rounded-md bg-muted flex items-center justify-center shrink-0">
+                            <RiSearchLine className="w-3 h-3 text-muted-foreground" />
+                          </div>
+                          <Link href={`/${item.query}`} className="flex items-center gap-2 flex-1 min-w-0 overflow-hidden">
+                            <span className="text-sm font-mono truncate flex-1 min-w-0">{item.query}</span>
+                            {item.queryType === "domain" && (
+                              <span className={`shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-md border ${cfg.cls}`}>
+                                {cfg.label}
+                              </span>
+                            )}
+                            <span className="shrink-0 text-[11px] text-muted-foreground tabular-nums whitespace-nowrap">
+                              {QUERY_TYPE_LABEL[item.queryType] ?? item.queryType}{" · "}{ts}
+                            </span>
+                          </Link>
+                          <button
+                            onClick={async () => {
+                              if (!item.id) return;
+                              await fetch(`/api/user/search-history?id=${item.id}`, { method: "DELETE" });
+                              setSearchHistory(prev => prev.filter((_, idx) => idx !== i));
+                            }}
+                            className="p-1 rounded-md text-muted-foreground/40 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors opacity-0 group-hover:opacity-100 shrink-0"
+                            title="删除此条记录"
+                          >
+                            <RiDeleteBack2Line className="w-3 h-3" />
+                          </button>
                         </div>
-                        <span className="text-sm font-mono truncate flex-1 min-w-0">{item.query}</span>
-                        {item.queryType === "domain" && (
-                          <span className={`shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-md border ${cfg.cls}`}>
-                            {cfg.label}
-                          </span>
-                        )}
-                        <span className="shrink-0 text-[11px] text-muted-foreground tabular-nums whitespace-nowrap">
-                          {QUERY_TYPE_LABEL[item.queryType] ?? item.queryType}
-                          {" · "}
-                          {ts}
-                        </span>
-                        <RiExternalLinkLine className="w-3 h-3 text-muted-foreground/50 shrink-0" />
-                      </Link>
-                    );
-                  })}
-                </div>
-              )}
-            </motion.div>
-          )}
+                      );
+                    })}
+                  </div>
+                )}
+                {!q && searchHistory.length > 0 && (
+                  <p className="text-[10px] text-center text-muted-foreground/60">最近 50 条记录</p>
+                )}
+              </motion.div>
+            );
+          })()}
 
           {/* ── Account ── */}
           {tab === "account" && (() => {
