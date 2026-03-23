@@ -5,6 +5,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useSiteSettings } from "@/lib/site-settings";
+import { useTranslation } from "@/lib/i18n";
 import { useRouter } from "next/router";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -35,6 +36,7 @@ const CURRENCY_SYMBOL: Record<string, string> = {
 };
 
 function CopyButton({ text, label }: { text: string; label?: string }) {
+  const { t } = useTranslation();
   const [copied, setCopied] = React.useState(false);
   return (
     <button
@@ -47,15 +49,16 @@ function CopyButton({ text, label }: { text: string; label?: string }) {
       )}
     >
       {copied ? <RiCheckLine className="w-3 h-3" /> : <RiFileCopyLine className="w-3 h-3" />}
-      {copied ? "已复制！" : (label || "复制")}
+      {copied ? t("sponsor.copied") : (label || t("sponsor.copy"))}
     </button>
   );
 }
 
 function SponsorCard({ s, index }: { s: Sponsor; index: number }) {
+  const { t } = useTranslation();
   const symbol = CURRENCY_SYMBOL[s.currency] || s.currency;
-  const displayName = s.is_anonymous ? "匿名赞助者 🫧" : s.name;
-  const initial = displayName.replace(/^匿名/, "?").charAt(0).toUpperCase();
+  const displayName = s.is_anonymous ? t("sponsor.anonymous_name") : s.name;
+  const initial = s.is_anonymous ? "?" : displayName.charAt(0).toUpperCase();
 
   return (
     <motion.div
@@ -107,6 +110,10 @@ function QrCard({ title, url, icon, accentClass, subtitle }: {
   title: string; url: string; icon: React.ReactNode;
   accentClass: string; subtitle?: string;
 }) {
+  const { t } = useTranslation();
+  const qrMissing = t("sponsor.qr_missing");
+  const qrUploadHint = t("sponsor.qr_upload_hint");
+
   return (
     <div className={cn("flex flex-col items-center gap-3 p-5 rounded-2xl border bg-card shadow-sm transition-all", accentClass)}>
       <div className="w-11 h-11 rounded-xl flex items-center justify-center bg-muted shadow-sm">
@@ -119,16 +126,18 @@ function QrCard({ title, url, icon, accentClass, subtitle }: {
       <div className="w-40 h-40 rounded-xl border border-border bg-muted/30 flex items-center justify-center overflow-hidden">
         <img
           src={url}
-          alt={`${title} 收款码`}
+          alt={title}
           className="w-full h-full object-contain"
           onError={(e) => {
-            const t = e.target as HTMLImageElement;
-            t.style.display = "none";
-            t.parentElement!.innerHTML = `<div class="text-center text-muted-foreground/40 text-xs px-4"><p class="mb-1">二维码未配置</p><p>管理员可在设置中上传</p></div>`;
+            const target = e.target as HTMLImageElement;
+            target.style.display = "none";
+            if (target.parentElement) {
+              target.parentElement.innerHTML = `<div class="text-center text-muted-foreground/40 text-xs px-4"><p class="mb-1">${qrMissing}</p><p>${qrUploadHint}</p></div>`;
+            }
           }}
         />
       </div>
-      <p className="text-[11px] text-muted-foreground text-center">扫码赞助 · 感谢支持</p>
+      <p className="text-[11px] text-muted-foreground text-center">{t("sponsor.scan_hint")}</p>
     </div>
   );
 }
@@ -161,18 +170,26 @@ type SubmitForm = {
 };
 
 function PostPaymentForm({ defaultPlatform, onDone }: { defaultPlatform?: string; onDone: () => void }) {
+  const { t } = useTranslation();
   const [form, setForm] = React.useState<SubmitForm>({
     name: "", message: "", amount: "", currency: "CNY", platform: defaultPlatform || "", is_anonymous: false,
   });
   const [submitting, setSubmitting] = React.useState(false);
   const [done, setDone] = React.useState(false);
 
-  const platforms = ["支付宝", "微信支付", "PayPal", "加密货币", "GitHub Sponsors", "其他"];
+  const platforms = [
+    t("sponsor.platform_alipay"),
+    t("sponsor.platform_wechat"),
+    "PayPal",
+    t("sponsor.crypto_section"),
+    "GitHub Sponsors",
+    t("sponsor.platform_other"),
+  ];
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!form.name.trim() && !form.is_anonymous) {
-      toast.error("请填写您的名字，或选择匿名");
+      toast.error(t("sponsor.err_name"));
       return;
     }
     setSubmitting(true);
@@ -187,7 +204,7 @@ function PostPaymentForm({ defaultPlatform, onDone }: { defaultPlatform?: string
       setDone(true);
       setTimeout(onDone, 3000);
     } catch (e: any) {
-      toast.error(e.message || "提交失败，请稍后再试");
+      toast.error(e.message || t("sponsor.err_submit"));
     } finally {
       setSubmitting(false);
     }
@@ -197,9 +214,9 @@ function PostPaymentForm({ defaultPlatform, onDone }: { defaultPlatform?: string
     return (
       <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-8 space-y-3">
         <div className="text-5xl">🎉</div>
-        <p className="font-bold text-lg">感谢您的赞助！</p>
-        <p className="text-sm text-muted-foreground">您的留言已提交，待管理员审核后将显示在赞助者列表中。</p>
-        <p className="text-xs text-muted-foreground/60">您的支持是我们最大的动力 ❤️</p>
+        <p className="font-bold text-lg">{t("sponsor.done_title")}</p>
+        <p className="text-sm text-muted-foreground">{t("sponsor.done_body")}</p>
+        <p className="text-xs text-muted-foreground/60">{t("sponsor.done_motivate")}</p>
       </motion.div>
     );
   }
@@ -214,19 +231,19 @@ function PostPaymentForm({ defaultPlatform, onDone }: { defaultPlatform?: string
             onChange={e => setForm(f => ({ ...f, is_anonymous: e.target.checked, name: e.target.checked ? "" : f.name }))}
             className="rounded"
           />
-          <span className="text-sm text-muted-foreground">匿名赞助</span>
+          <span className="text-sm text-muted-foreground">{t("sponsor.anonymous_check")}</span>
         </label>
       </div>
 
       {!form.is_anonymous && (
         <div className="space-y-1.5">
-          <label className="text-xs font-medium text-muted-foreground">您的名字 *</label>
+          <label className="text-xs font-medium text-muted-foreground">{t("sponsor.name_label")}</label>
           <div className="relative">
             <RiUser3Line className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/60" />
             <Input
               value={form.name}
               onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-              placeholder="您想让大家怎么称呼您？"
+              placeholder={t("sponsor.name_placeholder")}
               className="pl-9 h-9 text-sm rounded-xl"
               maxLength={50}
             />
@@ -235,11 +252,11 @@ function PostPaymentForm({ defaultPlatform, onDone }: { defaultPlatform?: string
       )}
 
       <div className="space-y-1.5">
-        <label className="text-xs font-medium text-muted-foreground">留言（可选）</label>
+        <label className="text-xs font-medium text-muted-foreground">{t("sponsor.message_label")}</label>
         <textarea
           value={form.message}
           onChange={e => setForm(f => ({ ...f, message: e.target.value }))}
-          placeholder="想对项目说点什么？一句鼓励、一个想法都好 ✨"
+          placeholder={t("sponsor.message_placeholder")}
           className="w-full text-sm rounded-xl border border-input bg-background px-3 py-2 resize-none min-h-[80px] focus:outline-none focus:ring-1 focus:ring-ring"
           maxLength={200}
         />
@@ -248,11 +265,11 @@ function PostPaymentForm({ defaultPlatform, onDone }: { defaultPlatform?: string
 
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5">
-          <label className="text-xs font-medium text-muted-foreground">赞助金额（可选）</label>
+          <label className="text-xs font-medium text-muted-foreground">{t("sponsor.amount_label")}</label>
           <Input
             value={form.amount}
             onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
-            placeholder="如 10"
+            placeholder={t("sponsor.amount_placeholder")}
             type="number"
             min="0"
             step="0.01"
@@ -260,7 +277,7 @@ function PostPaymentForm({ defaultPlatform, onDone }: { defaultPlatform?: string
           />
         </div>
         <div className="space-y-1.5">
-          <label className="text-xs font-medium text-muted-foreground">货币</label>
+          <label className="text-xs font-medium text-muted-foreground">{t("sponsor.currency_label")}</label>
           <select
             value={form.currency}
             onChange={e => setForm(f => ({ ...f, currency: e.target.value }))}
@@ -279,7 +296,7 @@ function PostPaymentForm({ defaultPlatform, onDone }: { defaultPlatform?: string
       </div>
 
       <div className="space-y-1.5">
-        <label className="text-xs font-medium text-muted-foreground">赞助渠道</label>
+        <label className="text-xs font-medium text-muted-foreground">{t("sponsor.platform_label")}</label>
         <div className="flex flex-wrap gap-1.5">
           {platforms.map(p => (
             <button
@@ -301,10 +318,10 @@ function PostPaymentForm({ defaultPlatform, onDone }: { defaultPlatform?: string
 
       <Button type="submit" disabled={submitting} className="w-full gap-2 h-10 rounded-xl">
         {submitting ? <RiLoader4Line className="w-4 h-4 animate-spin" /> : <RiHeart3Fill className="w-4 h-4" />}
-        {submitting ? "提交中…" : "提交留言 · 让大家认识你"}
+        {submitting ? t("sponsor.submitting") : t("sponsor.submit")}
       </Button>
       <p className="text-[10px] text-muted-foreground/50 text-center">
-        留言将在管理员审核后显示在赞助者名单中 · 不包含任何敏感信息
+        {t("sponsor.form_note")}
       </p>
     </form>
   );
@@ -312,8 +329,8 @@ function PostPaymentForm({ defaultPlatform, onDone }: { defaultPlatform?: string
 
 export default function SponsorPage() {
   const settings = useSiteSettings();
+  const { t } = useTranslation();
   const router = useRouter();
-  const isChinese = router.locale !== "en";
   const siteName = settings.site_title || "Next Whois";
 
   const [sponsors, setSponsors] = React.useState<Sponsor[]>([]);
@@ -338,8 +355,8 @@ export default function SponsorPage() {
     setTimeout(() => setFloatingHearts(prev => prev.filter(h => h.id !== id)), 1800);
   }
 
-  const pageTitle = settings.sponsor_page_title || "赞助支持";
-  const pageDesc = settings.sponsor_page_desc || "感谢您对本项目的支持！您的赞助将帮助我们持续维护和改进服务。";
+  const pageTitle = settings.sponsor_page_title || t("sponsor.page_title_default");
+  const pageDesc = settings.sponsor_page_desc || t("sponsor.page_desc_default");
   const alipayQr = settings.sponsor_alipay_qr;
   const wechatQr = settings.sponsor_wechat_qr;
   const githubUrl = settings.sponsor_github_url;
@@ -360,7 +377,7 @@ export default function SponsorPage() {
   return (
     <>
       <Head>
-        <title>{`${isChinese ? pageTitle : "Sponsor"} — ${siteName}`}</title>
+        <title>{`${pageTitle} — ${siteName}`}</title>
         <meta name="description" content={pageDesc} />
       </Head>
       <ScrollArea className="w-full h-[calc(100vh-4rem)]">
@@ -375,7 +392,6 @@ export default function SponsorPage() {
               >
                 <RiHeart3Fill className="w-8 h-8 text-rose-500" />
               </button>
-              {/* Floating hearts */}
               <AnimatePresence>
                 {floatingHearts.map(h => (
                   <motion.div
@@ -404,8 +420,8 @@ export default function SponsorPage() {
                 className="mt-5 inline-flex items-center gap-3 text-sm font-medium text-rose-500 bg-rose-50 dark:bg-rose-950/30 px-5 py-2 rounded-full border border-rose-100 dark:border-rose-800/30"
               >
                 <RiSparkling2Line className="w-4 h-4" />
-                {sponsors.length} 位赞助者
-                {totalAmount > 0 && <span>· 累计 ¥{totalAmount.toFixed(0)}</span>}
+                {t("sponsor.count").replace("{{count}}", String(sponsors.length))}
+                {totalAmount > 0 && <span>· {t("sponsor.total")} ¥{totalAmount.toFixed(0)}</span>}
                 <RiSparkling2Line className="w-4 h-4" />
               </motion.div>
             )}
@@ -416,7 +432,7 @@ export default function SponsorPage() {
             <motion.section initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, duration: 0.3 }} className="mb-8 space-y-5">
               <div className="flex items-center gap-2 mb-4">
                 <div className="h-px flex-1 bg-border/60" />
-                <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground px-2">赞助方式</p>
+                <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground px-2">{t("sponsor.methods_section")}</p>
                 <div className="h-px flex-1 bg-border/60" />
               </div>
 
@@ -424,11 +440,11 @@ export default function SponsorPage() {
               {hasQrPayment && (
                 <div className="flex flex-wrap justify-center gap-5">
                   {alipayQr && (
-                    <QrCard title="支付宝" url={alipayQr} subtitle="扫码完成支付" accentClass="hover:border-blue-200 dark:hover:border-blue-800/60 hover:shadow-md"
+                    <QrCard title={t("sponsor.alipay_title")} url={alipayQr} accentClass="hover:border-blue-200 dark:hover:border-blue-800/60 hover:shadow-md"
                       icon={<RiAlipayLine className="w-6 h-6 text-blue-500" />} />
                   )}
                   {wechatQr && (
-                    <QrCard title="微信支付" url={wechatQr} subtitle="扫码完成支付" accentClass="hover:border-green-200 dark:hover:border-green-800/60 hover:shadow-md"
+                    <QrCard title={t("sponsor.wechat_title")} url={wechatQr} accentClass="hover:border-green-200 dark:hover:border-green-800/60 hover:shadow-md"
                       icon={<RiWechatLine className="w-6 h-6 text-green-500" />} />
                   )}
                 </div>
@@ -440,7 +456,7 @@ export default function SponsorPage() {
                   {paypalUrl && (
                     <a href={paypalUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-2xl bg-[#003087] text-white font-semibold hover:bg-[#002070] transition-colors shadow-sm flex-1 max-w-xs mx-auto sm:mx-0">
                       <RiPaypalLine className="w-5 h-5" />
-                      PayPal 赞助
+                      {t("sponsor.paypal_btn")}
                       <RiExternalLinkLine className="w-3.5 h-3.5 opacity-70" />
                     </a>
                   )}
@@ -458,13 +474,13 @@ export default function SponsorPage() {
               {hasCrypto && (
                 <div className="space-y-3">
                   <p className="text-xs font-semibold text-muted-foreground flex items-center gap-2">
-                    <RiBitCoinLine className="w-4 h-4" />加密货币
+                    <RiBitCoinLine className="w-4 h-4" />{t("sponsor.crypto_section")}
                   </p>
                   <div className="grid gap-2.5">
                     {btcAddr && <CryptoCard symbol="BTC" name="Bitcoin" address={btcAddr} color="hover:border-amber-200 dark:hover:border-amber-800/40" icon={<RiBitCoinLine className="w-5 h-5 text-amber-500" />} />}
                     {ethAddr && <CryptoCard symbol="ETH" name="Ethereum" address={ethAddr} color="hover:border-indigo-200 dark:hover:border-indigo-800/40" icon={<RiBitCoinLine className="w-5 h-5 text-indigo-500" />} />}
                     {usdtAddr && <CryptoCard symbol="USDT" name="Tether (TRC20)" address={usdtAddr} color="hover:border-teal-200 dark:hover:border-teal-800/40" icon={<RiBitCoinLine className="w-5 h-5 text-teal-500" />} />}
-                    {okxAddr && <CryptoCard symbol="OKX" name="OKX / Web3 钱包" address={okxAddr} color="hover:border-slate-300 dark:hover:border-slate-600" icon={<RiBitCoinLine className="w-5 h-5 text-slate-500" />} />}
+                    {okxAddr && <CryptoCard symbol="OKX" name={`OKX / ${t("sponsor.wallet")}`} address={okxAddr} color="hover:border-slate-300 dark:hover:border-slate-600" icon={<RiBitCoinLine className="w-5 h-5 text-slate-500" />} />}
                   </div>
                 </div>
               )}
@@ -480,7 +496,7 @@ export default function SponsorPage() {
                           className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl border-2 border-dashed border-rose-200 dark:border-rose-800/50 text-rose-500 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-colors font-medium text-sm touch-manipulation"
                         >
                           <RiHeart3Line className="w-4 h-4" />
-                          我已完成赞助，留下我的名字和心声
+                          {t("sponsor.cta_done")}
                           <RiArrowRightLine className="w-4 h-4" />
                         </button>
                       </motion.div>
@@ -496,7 +512,7 @@ export default function SponsorPage() {
                         <div className="rounded-2xl border border-rose-200 dark:border-rose-800/50 bg-rose-50/50 dark:bg-rose-950/10 p-5">
                           <div className="flex items-center gap-2 mb-5">
                             <RiHeart3Fill className="w-4 h-4 text-rose-500" />
-                            <h3 className="text-sm font-bold">感谢您的赞助！留下您的印记 ✨</h3>
+                            <h3 className="text-sm font-bold">{t("sponsor.form_title")}</h3>
                           </div>
                           <PostPaymentForm
                             defaultPlatform={postPaymentPlatform}
@@ -517,7 +533,7 @@ export default function SponsorPage() {
               <div className="flex items-center gap-2 mb-4">
                 <div className="h-px flex-1 bg-border/60" />
                 <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground px-2 flex items-center gap-1">
-                  <RiStarFill className="w-3 h-3 text-amber-400" />赞助者名单<RiStarFill className="w-3 h-3 text-amber-400" />
+                  <RiStarFill className="w-3 h-3 text-amber-400" />{t("sponsor.list_section")}<RiStarFill className="w-3 h-3 text-amber-400" />
                 </p>
                 <div className="h-px flex-1 bg-border/60" />
               </div>
@@ -531,8 +547,8 @@ export default function SponsorPage() {
               ) : sponsors.length === 0 ? (
                 <div className="text-center py-12 text-muted-foreground text-sm">
                   <RiHeart3Line className="w-10 h-10 mx-auto mb-3 opacity-20" />
-                  <p className="font-medium">暂无赞助记录</p>
-                  <p className="text-xs mt-1 opacity-60">成为第一位赞助者，永远记录在这里 ❤️</p>
+                  <p className="font-medium">{t("sponsor.no_sponsors")}</p>
+                  <p className="text-xs mt-1 opacity-60">{t("sponsor.no_sponsors_cta")}</p>
                 </div>
               ) : (
                 <>
@@ -546,7 +562,7 @@ export default function SponsorPage() {
                   {sponsors.length > 12 && (
                     <div className="text-center mt-4">
                       <Button variant="outline" size="sm" onClick={() => setShowAll(!showAll)} className="rounded-xl">
-                        {showAll ? "收起" : `查看全部 ${sponsors.length} 位赞助者`}
+                        {showAll ? t("sponsor.collapse") : t("sponsor.show_all").replace("{{count}}", String(sponsors.length))}
                       </Button>
                     </div>
                   )}
@@ -569,9 +585,9 @@ export default function SponsorPage() {
             <div className="hidden dark:block absolute inset-0 rounded-3xl bg-gradient-to-br from-rose-950/20 to-purple-950/20 border border-rose-800/20" />
             <div className="relative z-10 space-y-3">
               <div className="text-3xl">🌟</div>
-              <p className="font-bold text-base">每一份支持都意义非凡</p>
+              <p className="font-bold text-base">{t("sponsor.thank_you_title")}</p>
               <p className="text-sm text-muted-foreground leading-relaxed max-w-sm mx-auto">
-                无论金额大小，您的支持都是这个项目得以持续运转的动力。感谢每一位愿意为开源项目付出的人。
+                {t("sponsor.thank_you_body")}
               </p>
               <div className="flex items-center justify-center gap-1 mt-3">
                 {(["❤️", "🧡", "💛", "💚", "💙", "💜"] as const).map((e, i) => (
@@ -590,11 +606,11 @@ export default function SponsorPage() {
 
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }} className="mt-6 text-center">
             <p className="text-xs text-muted-foreground/60">
-              赞助记录未显示？请<Link href="/feedback?type=general&source=sponsor" className="text-rose-500 hover:underline mx-0.5">联系我们</Link>确认。感谢每一位支持者！
+              {t("sponsor.not_showing")}<Link href="/feedback?type=general&source=sponsor" className="text-rose-500 hover:underline mx-0.5">{t("sponsor.contact_us")}</Link>{t("sponsor.not_showing_suffix")}
             </p>
             <div className="flex items-center justify-center gap-1 mt-2 text-[10px] text-muted-foreground/40">
               <RiShieldLine className="w-3 h-3" />
-              <span>赞助信息由管理员审核后才会公开展示</span>
+              <span>{t("sponsor.admin_note")}</span>
             </div>
           </motion.div>
 

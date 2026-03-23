@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSiteSettings } from "@/lib/site-settings";
+import { useTranslation } from "@/lib/i18n";
 import {
   RiArrowLeftSLine, RiFlagLine, RiCheckLine, RiLoader4Line,
   RiServerLine, RiLockLine, RiGlobalLine,
@@ -17,92 +18,12 @@ import {
 
 type QueryType = "domain" | "dns" | "ssl" | "ip" | "general";
 
-interface IssueOption {
-  key: string;
-  label: string;
-  labelEn?: string;
-}
-
-const ISSUE_OPTIONS: Record<QueryType, IssueOption[]> = {
-  domain: [
-    { key: "inaccurate",   label: "数据不准确" },
-    { key: "incomplete",   label: "数据不完整" },
-    { key: "outdated",     label: "数据已过期" },
-    { key: "parse_error",  label: "解析错误" },
-    { key: "other",        label: "其他问题" },
-  ],
-  dns: [
-    { key: "resolve_failed",  label: "查询失败 / 超时" },
-    { key: "wrong_result",    label: "结果不正确" },
-    { key: "missing_record",  label: "记录缺失" },
-    { key: "inaccurate",      label: "数据不准确" },
-    { key: "other",           label: "其他问题" },
-  ],
-  ssl: [
-    { key: "cert_error",     label: "证书错误 / 不受信任" },
-    { key: "chain_error",    label: "证书链错误" },
-    { key: "expired_wrong",  label: "过期时间显示有误" },
-    { key: "wrong_result",   label: "结果不正确" },
-    { key: "other",          label: "其他问题" },
-  ],
-  ip: [
-    { key: "wrong_location", label: "归属地不准确" },
-    { key: "wrong_isp",      label: "ISP / 运营商有误" },
-    { key: "wrong_asn",      label: "ASN 信息有误" },
-    { key: "inaccurate",     label: "数据不准确" },
-    { key: "other",          label: "其他问题" },
-  ],
-  general: [
-    { key: "feature_request", label: "功能建议" },
-    { key: "bug_report",      label: "程序错误" },
-    { key: "question",        label: "使用问题" },
-    { key: "other",           label: "其他反馈" },
-  ],
-};
-
-const TYPE_META: Record<QueryType, { label: string; desc: string; icon: React.ElementType; color: string; placeholder: string }> = {
-  domain: {
-    label: "WHOIS / 域名数据反馈",
-    desc: "帮助我们改进域名查询数据的准确性和完整性",
-    icon: RiGlobalLine,
-    color: "text-primary bg-primary/10",
-    placeholder: "输入域名，如 google.com",
-  },
-  dns: {
-    label: "DNS 查询问题反馈",
-    desc: "反馈 DNS 记录查询结果的问题",
-    icon: RiServerLine,
-    color: "text-blue-600 dark:text-blue-400 bg-blue-500/10",
-    placeholder: "输入域名，如 example.com",
-  },
-  ssl: {
-    label: "SSL 证书检测反馈",
-    desc: "反馈证书检测结果的问题",
-    icon: RiLockLine,
-    color: "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10",
-    placeholder: "输入域名或 IP，如 github.com",
-  },
-  ip: {
-    label: "IP / ASN 查询反馈",
-    desc: "反馈 IP 归属地、ISP 或 ASN 信息的问题",
-    icon: RiGlobalLine,
-    color: "text-violet-600 dark:text-violet-400 bg-violet-500/10",
-    placeholder: "输入 IP 或 ASN，如 8.8.8.8",
-  },
-  general: {
-    label: "联系我们 / 意见反馈",
-    desc: "功能建议、问题报告或其他任何反馈",
-    icon: RiSparkling2Line,
-    color: "text-rose-600 dark:text-rose-400 bg-rose-500/10",
-    placeholder: "描述您的问题或需求（可选）",
-  },
-};
-
 const FADE = { duration: 0.18, ease: "easeOut" as const };
 
 export default function FeedbackPage() {
   const router = useRouter();
   const settings = useSiteSettings();
+  const { t } = useTranslation();
 
   const rawType = (router.query.type as string) || "general";
   const queryType: QueryType = ["domain", "dns", "ssl", "ip", "general"].includes(rawType)
@@ -110,6 +31,81 @@ export default function FeedbackPage() {
     : "general";
   const initQuery = (router.query.q as string) || "";
   const source    = (router.query.source as string) || "";
+
+  const ISSUE_OPTIONS: Record<QueryType, { key: string; label: string }[]> = {
+    domain: [
+      { key: "inaccurate",   label: t("feedback.inaccurate") },
+      { key: "incomplete",   label: t("feedback.incomplete") },
+      { key: "outdated",     label: t("feedback.outdated") },
+      { key: "parse_error",  label: t("feedback.parse_error") },
+      { key: "other",        label: t("feedback.other_issue") },
+    ],
+    dns: [
+      { key: "resolve_failed",  label: t("feedback.resolve_failed") },
+      { key: "wrong_result",    label: t("feedback.wrong_result") },
+      { key: "missing_record",  label: t("feedback.missing_record") },
+      { key: "inaccurate",      label: t("feedback.inaccurate") },
+      { key: "other",           label: t("feedback.other_issue") },
+    ],
+    ssl: [
+      { key: "cert_error",     label: t("feedback.cert_error") },
+      { key: "chain_error",    label: t("feedback.chain_error") },
+      { key: "expired_wrong",  label: t("feedback.expired_wrong") },
+      { key: "wrong_result",   label: t("feedback.wrong_result") },
+      { key: "other",          label: t("feedback.other_issue") },
+    ],
+    ip: [
+      { key: "wrong_location", label: t("feedback.wrong_location") },
+      { key: "wrong_isp",      label: t("feedback.wrong_isp") },
+      { key: "wrong_asn",      label: t("feedback.wrong_asn") },
+      { key: "inaccurate",     label: t("feedback.inaccurate") },
+      { key: "other",          label: t("feedback.other_issue") },
+    ],
+    general: [
+      { key: "feature_request", label: t("feedback.feature_request") },
+      { key: "bug_report",      label: t("feedback.bug_report") },
+      { key: "question",        label: t("feedback.question") },
+      { key: "other",           label: t("feedback.other_general") },
+    ],
+  };
+
+  const TYPE_META: Record<QueryType, { label: string; desc: string; icon: React.ElementType; color: string; placeholder: string }> = {
+    domain: {
+      label: t("feedback.page_title_domain"),
+      desc: t("feedback.page_desc_domain"),
+      icon: RiGlobalLine,
+      color: "text-primary bg-primary/10",
+      placeholder: t("feedback.placeholder_domain"),
+    },
+    dns: {
+      label: t("feedback.page_title_dns"),
+      desc: t("feedback.page_desc_dns"),
+      icon: RiServerLine,
+      color: "text-blue-600 dark:text-blue-400 bg-blue-500/10",
+      placeholder: t("feedback.placeholder_dns"),
+    },
+    ssl: {
+      label: t("feedback.page_title_ssl"),
+      desc: t("feedback.page_desc_ssl"),
+      icon: RiLockLine,
+      color: "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10",
+      placeholder: t("feedback.placeholder_ssl"),
+    },
+    ip: {
+      label: t("feedback.page_title_ip"),
+      desc: t("feedback.page_desc_ip"),
+      icon: RiGlobalLine,
+      color: "text-violet-600 dark:text-violet-400 bg-violet-500/10",
+      placeholder: t("feedback.placeholder_ip"),
+    },
+    general: {
+      label: t("feedback.page_title_general"),
+      desc: t("feedback.page_desc_general"),
+      icon: RiSparkling2Line,
+      color: "text-rose-600 dark:text-rose-400 bg-rose-500/10",
+      placeholder: "",
+    },
+  };
 
   const meta = TYPE_META[queryType];
   const Icon = meta.icon;
@@ -143,11 +139,11 @@ export default function FeedbackPage() {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (queryType !== "general" && !query.trim()) {
-      toast.error("请填写查询目标");
+      toast.error(t("feedback.err_no_query"));
       return;
     }
     if (selected.size === 0) {
-      toast.error("请至少选择一个问题类型");
+      toast.error(t("feedback.err_no_type"));
       return;
     }
     setSubmitting(true);
@@ -166,10 +162,10 @@ export default function FeedbackPage() {
         }),
       });
       const data = await res.json();
-      if (!res.ok) { toast.error(data?.error || "提交失败，请稍后再试"); return; }
+      if (!res.ok) { toast.error(data?.error || t("feedback.err_failed")); return; }
       setDone(true);
     } catch {
-      toast.error("提交失败，请检查网络连接");
+      toast.error(t("feedback.err_network"));
     } finally {
       setSubmitting(false);
     }
@@ -212,8 +208,8 @@ export default function FeedbackPage() {
             <div className="flex items-start gap-3 rounded-2xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 p-4 mb-4 text-sm text-amber-800 dark:text-amber-300">
               <RiCloseCircleLine className="w-5 h-5 shrink-0 mt-0.5" />
               <div>
-                <p className="font-semibold">反馈功能已关闭</p>
-                <p className="text-xs mt-0.5 opacity-80">管理员暂时关闭了反馈提交，请稍后再试。</p>
+                <p className="font-semibold">{t("feedback.disabled_title")}</p>
+                <p className="text-xs mt-0.5 opacity-80">{t("feedback.disabled_desc")}</p>
               </div>
             </div>
           )}
@@ -232,17 +228,17 @@ export default function FeedbackPage() {
                   <RiCheckLine className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
                 </div>
                 <div>
-                  <p className="text-xl font-bold">感谢您的反馈！</p>
+                  <p className="text-xl font-bold">{t("feedback.thanks_title")}</p>
                   <p className="text-sm text-muted-foreground mt-1">
-                    我们已收到您的反馈，会尽快进行处理和改进。
+                    {t("feedback.thanks_body")}
                   </p>
                 </div>
                 <div className="flex justify-center gap-3 pt-2">
                   <Button variant="outline" onClick={() => { setDone(false); setSelected(new Set()); setDescription(""); setQuery(""); }} className="rounded-xl gap-2">
-                    <RiFlagLine className="w-4 h-4" />再提交一条
+                    <RiFlagLine className="w-4 h-4" />{t("feedback.resubmit")}
                   </Button>
                   <Button onClick={() => router.push(backHref)} className="rounded-xl">
-                    返回
+                    {t("feedback.back_btn")}
                   </Button>
                 </div>
               </motion.div>
@@ -256,10 +252,9 @@ export default function FeedbackPage() {
                 onSubmit={submit}
                 className="space-y-5"
               >
-                {/* Query input — hidden for general type */}
                 {queryType !== "general" && (
                   <div className="glass-panel border border-border rounded-2xl p-4 space-y-3">
-                    <label className="text-xs font-semibold text-muted-foreground">查询目标</label>
+                    <label className="text-xs font-semibold text-muted-foreground">{t("feedback.query_target")}</label>
                     <Input
                       value={query}
                       onChange={e => setQuery(e.target.value)}
@@ -270,10 +265,9 @@ export default function FeedbackPage() {
                   </div>
                 )}
 
-                {/* Issue type selector */}
                 <div className="glass-panel border border-border rounded-2xl p-4 space-y-3">
                   <label className="text-xs font-semibold text-muted-foreground">
-                    问题类型 <span className="text-red-500">*</span>
+                    {t("feedback.issue_type_label")} <span className="text-red-500">*</span>
                   </label>
                   <div className="grid grid-cols-2 gap-2">
                     {options.map(opt => (
@@ -294,22 +288,20 @@ export default function FeedbackPage() {
                   </div>
                 </div>
 
-                {/* Description */}
                 <div className="glass-panel border border-border rounded-2xl p-4 space-y-3">
-                  <label className="text-xs font-semibold text-muted-foreground">详细描述（可选）</label>
+                  <label className="text-xs font-semibold text-muted-foreground">{t("feedback.detail_label")}</label>
                   <textarea
                     value={description}
                     onChange={e => setDescription(e.target.value.slice(0, 500))}
-                    placeholder={queryType === "general" ? "请告诉我们您的建议、需求或遇到的问题…" : "请描述您遇到的具体问题，例如正确的数据应该是什么…"}
+                    placeholder={queryType === "general" ? t("feedback.detail_placeholder_general") : t("feedback.detail_placeholder_specific")}
                     rows={4}
                     className="w-full text-sm rounded-xl border border-border bg-muted/20 px-3 py-2.5 resize-none placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary/50 transition-colors"
                   />
                   <p className="text-[10px] text-muted-foreground text-right">{description.length}/500</p>
                 </div>
 
-                {/* Email */}
                 <div className="glass-panel border border-border rounded-2xl p-4 space-y-3">
-                  <label className="text-xs font-semibold text-muted-foreground">联系邮箱（可选，用于回复）</label>
+                  <label className="text-xs font-semibold text-muted-foreground">{t("feedback.email_label")}</label>
                   <Input
                     type="email"
                     value={email}
@@ -319,7 +311,6 @@ export default function FeedbackPage() {
                   />
                 </div>
 
-                {/* Honeypot — hidden */}
                 <div style={{ display: "none" }} aria-hidden>
                   <input tabIndex={-1} value={hp} onChange={e => setHp(e.target.value)} autoComplete="off" />
                 </div>
@@ -333,11 +324,11 @@ export default function FeedbackPage() {
                     ? <RiLoader4Line className="w-4 h-4 animate-spin" />
                     : <RiFlagLine className="w-4 h-4" />
                   }
-                  {submitting ? "提交中…" : "提交反馈"}
+                  {submitting ? t("feedback.submitting") : t("feedback.submit_btn")}
                 </Button>
 
                 <p className="text-[10px] text-muted-foreground/50 text-center leading-relaxed">
-                  提交即代表您同意我们将此反馈用于改进服务 · 不会公开您的邮箱地址
+                  {t("feedback.privacy_note")}
                 </p>
               </motion.form>
             )}
