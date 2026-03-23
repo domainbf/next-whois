@@ -1,10 +1,80 @@
-# Next Whois UI — v2.8
+# Next Whois UI — v2.9
 
 A fast, modern WHOIS and RDAP lookup tool supporting domains, IPv4/IPv6, ASN, and CIDR. Also includes built-in DNS, SSL certificate, and IP/ASN geolocation tools.
 
 ---
 
 ## Changelog
+
+### v2.9 — Comprehensive TLD Lifecycle Rules Expansion (2026-03-23)
+
+**Scope:** `src/lib/lifecycle.ts` completely rewritten. Table grew from ~150 entries to **634 total entries** (547 TLD-level + 87 SLD-level), covering the vast majority of the global domain namespace.
+
+**Sources consulted:**
+- ICANN RAA (standard gTLD: 45d grace / 30d RGP / 5d pendingDelete)
+- Namecheap KB: https://www.namecheap.com/support/knowledgebase/article.aspx/9916/2207/tlds-grace-periods
+- Dynadot TLD pages: https://www.dynadot.com/domain/tlds.html
+- Individual registry policy pages (CNNIC, HKIRC, Nominet, AFNIC, DENIC, auDA, etc.)
+- IANA root-zone database
+
+**Accuracy corrections:**
+
+| TLD | Before | After | Source |
+|---|---|---|---|
+| `.cn` | grace=0, redemption=30, pendingDelete=5 | grace=0, **redemption=14**, pendingDelete=5 | Namecheap KB / CNNIC registry-level RGP |
+| `.hk` | grace=0, redemption=30, pendingDelete=5 | grace=**90**, redemption=**0**, pendingDelete=**0** | HKIRC policy (90-day renewal window, no separate RGP) |
+| `.ph` | grace=30, redemption=30, pendingDelete=5 | grace=30, redemption=**0**, pendingDelete=5 | PH Domains Foundation — no redemption period |
+| `.ly` | grace=30, redemption=0, pendingDelete=0 | **IMMEDIATE** (0/0/0) | LYNIC policy |
+| `.au` | grace=0, redemption=0, pendingDelete=5 | grace=**30**, redemption=0, pendingDelete=5 | auDA new top-level TLD (launched 2022) |
+| `com.hk` | grace=0, redemption=30, pendingDelete=5 | **HKIRC** (90/0/0) | HKIRC — consistent with .hk |
+
+**New named presets (reusable policy families):**
+- `CNNIC` — `.cn` and all `*.cn` sub-TLDs: `{ grace: 0, redemption: 14, pendingDelete: 5 }`
+- `HKIRC` — `.hk` and all `*.hk` sub-TLDs: `{ grace: 90, redemption: 0, pendingDelete: 0 }`
+- `NOMINET` — `.uk` and all `*.uk` sub-TLDs: `{ grace: 92, redemption: 0, pendingDelete: 0 }`
+- `JPRS` — `.jp` and all `*.jp` sub-TLDs: immediate delete `{ grace: 0, redemption: 0, pendingDelete: 0 }`
+- `REGISTROBR` — `.br` and all `*.br` sub-TLDs: immediate delete
+- `NICAR` — `.ar` and all `*.ar` sub-TLDs: immediate delete
+
+**New TLD categories added:**
+
+1. **Popular new gTLDs (~60)**: `xyz`, `club`, `fun`, `icu`, `top`, `vip`, `wiki`, `ink`, `buzz`, `website`, `uno`, `bio`, `ski`, `ltd`, `llc`, `srl`, `gmbh`, `inc`, `bar`, `fit`, `fan`, `bet`, `best`, `cash`
+2. **Business/professional new gTLDs (~150)**: `academy`, `accountant`, `auction`, `bargains`, `bike`, `boutique`, `cafe`, `camera`, `careers`, `casino`, `chat`, `clinic`, `coach`, `codes`, `coffee`, `community`, `condos`, `construction`, `consulting`, `coupons`, `dance`, `dating`, `dental`, `diamonds`, `doctor`, `energy`, `engineering`, `estate`, `financial`, `fitness`, `flights`, `furniture`, `games`, `glass`, `golf`, `graphics`, `guru`, `healthcare`, `hockey`, `homes`, `industries`, `insure`, `investments`, `kitchen`, `legal`, `lighting`, `limited`, `limo`, `loans`, `management`, `marketing`, `mba`, `memorial`, `mortgage`, `movie`, `ninja`, `partners`, `pet`, `photography`, `pizza`, `plumbing`, `productions`, `properties`, `pub`, `racing`, `realty`, `recipes`, `rehab`, `rentals`, `repair`, `restaurant`, `rocks`, `rugby`, `school`, `security`, `sexy`, `shoes`, `singles`, `solar`, `surgery`, `tax`, `taxi`, `technology`, `tennis`, `tips`, `today`, `tours`, `town`, `toys`, `trade`, `training`, `university`, `vacations`, `ventures`, `villas`, `vision`, `voyage`, `wine`, `works`, `wtf`, `zone` (all STD 45/30/5)
+3. **Geographic / city new gTLDs (~30)**: `amsterdam`, `barcelona`, `berlin`, `brussels`, `capetown`, `cologne`, `dubai`, `istanbul`, `london`, `miami`, `nagoya`, `nyc`, `okinawa`, `osaka`, `paris`, `quebec`, `rio`, `ryukyu`, `saarland`, `tirol`, `tokyo`, `vegas`, `wien`, `yokohama`, `zuerich`, `boston`, `wales`, `scot`, `irish`, `africa`, `arab`, `nrw` (all STD)
+4. **Pacific ccTLDs**: `tl` (Timor-Leste), `fj`, `pg`, `sb`, `vu`, `ki`, `nr`, `ck`, `as`, `pf`, `nc`, `gp`, `mq`
+5. **African ccTLDs (~25)**: `mz`, `zw`, `zm`, `ao`, `bi`, `bj`, `bf`, `td`, `cg`, `cd`, `gq`, `gw`, `mr`, `ne`, `tg`, `bw`, `na`, `ls`, `sz`, `mw`, `mg`, `mu`, `km`, `so`, `dj`, `er`, `st`, `cv`, `gn`, `sl`, `lr`
+6. **European ccTLDs**: `fo` (Faroe), `mc` (Monaco), `sm` (San Marino), `ad` (Andorra), `gi` (Gibraltar), `im` (Isle of Man), `xk` (Kosovo)
+7. **Caribbean/Americas ccTLDs**: `gd`, `dm`, `bb`, `ky`, `bm`, `bs`, `tc`, `kn`, `fk`, `sr`, `aw`, `cw`, `sx`
+8. **AFNIC extensions**: `pf`, `nc`, `gp`, `mq` (all managed by AFNIC, same policy as `.fr`)
+
+**New SLD entries (87 total):**
+
+| Country | New SLDs |
+|---|---|
+| Australia (auDA) | `id.au`, `asn.au`, `edu.au`, `gov.au` (existing `com/net/org.au` kept at 30/30/5) |
+| Taiwan (TWNIC) | `com.tw`, `net.tw`, `org.tw`, `idv.tw`, `edu.tw`, `gov.tw` |
+| Hong Kong (HKIRC) | `net.hk`, `org.hk`, `idv.hk`, `edu.hk`, `gov.hk` (all 90/0/0) |
+| New Zealand (InternetNZ) | `net.nz`, `org.nz`, `school.nz`, `govt.nz` (all IMMEDIATE) |
+| Japan (JPRS) | `gr.jp`, `ac.jp`, `go.jp` (all IMMEDIATE) |
+| Korea (KISA) | `or.kr` |
+| Singapore (SGNIC) | `net.sg`, `org.sg`, `edu.sg`, `gov.sg` |
+| Malaysia (MYNIC) | `net.my`, `org.my`, `edu.my` |
+| Philippines (PH Domains) | `net.ph`, `org.ph` (no redemption) |
+| India (NIXI) | `co.in`, `net.in`, `org.in` |
+| Israel (ISOC-IL) | `org.il`, `net.il` |
+| South Africa (ZADNA) | `org.za`, `net.za`, `web.za` (all IMMEDIATE) |
+| Kenya (KENIC) | `or.ke`, `ne.ke` |
+| Nigeria (NIRA) | `org.ng`, `net.ng` |
+| Brazil (Registro.br) | `edu.br`, `gov.br` (all IMMEDIATE) |
+| Mexico (NIC México) | `org.mx`, `net.mx` |
+| Argentina (NIC Argentina) | `net.ar`, `org.ar` (all IMMEDIATE) |
+| Ukraine | `com.ua` |
+| Turkey (NIC TR) | `org.tr`, `net.tr` (all IMMEDIATE) |
+| Venezuela | `com.ve` |
+| Colombia | `com.co` |
+| Peru | `com.pe` |
+
+---
 
 ### v2.8 — CN Reserved Second-Level Domain Detection (2026-03-23)
 
