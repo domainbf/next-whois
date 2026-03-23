@@ -28,6 +28,7 @@ function AppHead({ origin }: { origin: string }) {
   const settings = useSiteSettings();
   const title = settings.site_title || siteTitle;
   const description = settings.site_description || siteDescription;
+  const keywords = settings.site_keywords || siteKeywords;
   const siteName = settings.og_site_name || settings.site_title || siteTitle;
   const canonicalUrl = settings.og_url || origin;
   const ogImage = settings.og_image || `${origin}/bannermepng.png`;
@@ -37,8 +38,8 @@ function AppHead({ origin }: { origin: string }) {
     <Head>
       <title key="site-title">{title}</title>
       <meta name="description" content={description} />
-      <meta name="tags" content={siteKeywords} />
-      <meta name="keywords" content={siteKeywords} />
+      <meta name="tags" content={keywords} />
+      <meta name="keywords" content={keywords} />
       <meta name="viewport" content="width=device-width, initial-scale=1" />
       <meta name="format-detection" content="telephone=no" />
 

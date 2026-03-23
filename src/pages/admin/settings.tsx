@@ -51,6 +51,7 @@ const SECTIONS: Section[] = [
       { key: "site_logo_text", label: "Logo 文字", desc: "导航栏中显示的品牌名称（留空使用网站标题）", placeholder: "NEXT WHOIS", icon: RiGlobalLine },
       { key: "site_subtitle", label: "网站副标题", desc: "首页 Hero 区域下方的副标题文字", placeholder: "专业的 WHOIS / RDAP 查询工具", icon: RiFileTextLine },
       { key: "site_description", label: "网站描述 (SEO)", desc: "搜索引擎结果中显示的描述文字", placeholder: "快速查询域名、IP、ASN、CIDR...", icon: RiFileTextLine },
+      { key: "site_keywords", label: "搜索关键词 (SEO)", desc: "meta keywords 标签内容，多个关键词用英文逗号分隔", placeholder: "Whois, RDAP, Lookup, Domain, IPv4, ASN", icon: RiSearchLine },
       { key: "site_footer", label: "页脚文字", desc: "页面底部显示的版权/说明文字", placeholder: "© 2024 Next Whois", icon: RiFileTextLine },
       { key: "site_icon_url", label: "网站图标 URL", desc: "Favicon 图标的外部链接（留空使用默认图标）", placeholder: "https://example.com/favicon.ico", icon: RiImageLine },
     ],
