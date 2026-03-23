@@ -140,9 +140,9 @@ function EditStampModal({ stamp, onClose, onSaved }: { stamp: Stamp; onClose: ()
   }
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center sm:p-4">
+    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-4 pb-6 sm:p-4">
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-md bg-background border border-border rounded-t-2xl sm:rounded-2xl shadow-2xl p-6 space-y-4 max-h-[85dvh] overflow-y-auto">
+      <div className="relative w-full max-w-md bg-background border border-border rounded-t-2xl sm:rounded-2xl shadow-2xl p-6 space-y-4 max-h-[88vh] overflow-y-auto">
         <div className="flex items-center justify-between">
           <h2 className="text-base font-bold flex items-center gap-2">
             <RiPencilLine className="w-4 h-4 text-primary" />编辑品牌认领
@@ -222,7 +222,7 @@ function EditExpiryModal({ sub, onClose, onSaved }: { sub: Subscription; onClose
   }
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center sm:p-4">
+    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-4 pb-6 sm:p-4">
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
       <div className="relative w-full max-w-sm bg-background border border-border rounded-t-2xl sm:rounded-2xl shadow-2xl p-6 space-y-4">
         <div className="flex items-center justify-between">
@@ -290,9 +290,9 @@ function ClaimGuideModal({ onClose }: { onClose: () => void }) {
   ];
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center sm:p-4">
+    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-4 pb-6 sm:p-4">
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-md bg-background border border-border rounded-t-2xl sm:rounded-2xl shadow-2xl max-h-[85dvh] overflow-y-auto">
+      <div className="relative w-full max-w-md bg-background border border-border rounded-t-2xl sm:rounded-2xl shadow-2xl max-h-[88vh] overflow-y-auto">
         <div className="flex items-center justify-between p-5 pb-0">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-xl bg-violet-100 dark:bg-violet-950/40 flex items-center justify-center">
@@ -422,9 +422,9 @@ function SubscribeGuideModal({ onClose }: { onClose: () => void }) {
   ];
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center sm:p-4">
+    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-4 pb-6 sm:p-4">
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-md bg-background border border-border rounded-t-2xl sm:rounded-2xl shadow-2xl max-h-[85dvh] overflow-y-auto">
+      <div className="relative w-full max-w-md bg-background border border-border rounded-t-2xl sm:rounded-2xl shadow-2xl max-h-[88vh] overflow-y-auto">
         <div className="flex items-center justify-between p-5 pb-0">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center">
