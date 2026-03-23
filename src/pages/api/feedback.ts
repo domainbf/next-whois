@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { sendEmail, feedbackHtml } from "@/lib/email";
+import { sendEmail, feedbackHtml, getSiteLabel } from "@/lib/email";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { ADMIN_EMAIL } from "@/lib/admin-shared";
 import { run, isDbReady } from "@/lib/db-query";
@@ -79,6 +79,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const issueLabels      = validatedIssues.map((k) => ISSUE_LABELS[k]).join("、");
   const ts               = new Date().toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" });
 
+  const siteName = await getSiteLabel().catch(() => "NEXT WHOIS");
   await sendEmail({
     to: ADMIN_EMAIL,
     subject: `[反馈] ${cleanQuery} — ${issueLabels}`,
@@ -90,6 +91,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       email: cleanEmail || undefined,
       ip,
       ts,
+      siteName,
     }),
   });
 

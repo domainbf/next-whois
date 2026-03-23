@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { requireAdmin } from "@/lib/admin";
-import { sendEmail, adminNotifyHtml } from "@/lib/email";
+import { sendEmail, adminNotifyHtml, getSiteLabel } from "@/lib/email";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).end();
@@ -15,18 +15,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!resendKey) return res.status(503).json({ error: "RESEND_API_KEY 未配置" });
 
   const fromEmail = process.env.RESEND_FROM_EMAIL || "noreply@x.rw";
+  const siteName = await getSiteLabel().catch(() => "NEXT WHOIS");
 
   try {
     await sendEmail({
       to,
-      subject: "✅ Next Whois 邮件测试",
+      subject: `✅ ${siteName} 邮件测试`,
       html: adminNotifyHtml({
         subject: "邮件系统工作正常",
-        body: `您好，这是来自 Next Whois 管理后台的测试邮件。<br><br>
+        body: `您好，这是来自 ${siteName} 管理后台的测试邮件。<br><br>
           <strong>发件人：</strong><code>${fromEmail}</code><br>
           <strong>收件人：</strong><code>${to}</code><br>
           <strong>发送时间：</strong>${new Date().toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" })}<br><br>
           Resend API 配置正常，所有邮件功能（欢迎邮件、密码重置、域名到期提醒）均已就绪。`,
+        siteName,
       }),
     });
     return res.status(200).json({ ok: true, to });

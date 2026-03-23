@@ -1,10 +1,32 @@
-# Next Whois UI — v3.2
+# Next Whois UI — v3.3
 
 A fast, modern WHOIS and RDAP lookup tool supporting domains, IPv4/IPv6, ASN, and CIDR. Also includes built-in DNS, SSL certificate, and IP/ASN geolocation tools.
 
 ---
 
 ## Changelog
+
+### v3.3 — Fully Branded Email Templates with Dynamic Site Name (2026-03-23)
+
+**Scope:** All outgoing system emails now read the site name from the database (`site_settings.site_logo_text`) and render it in logos, subjects, and footers. No more hardcoded "Next Whois" in any email. Covers every email route in the project.
+
+**Changes:**
+
+| File | Change | Detail |
+|---|---|---|
+| `src/lib/email.ts` | `getSiteLabel()` added with 60 s DB cache | Reads `site_logo_text` from `site_settings`; falls back to "NEXT WHOIS". Exported so any API route can call it once and pass the result down. |
+| `src/lib/email.ts` | `emailLayout()` accepts `siteName` param | Logo renders site name split on last space, last word coloured with PRIMARY violet; logo is a clickable link to `BASE_URL`. Footer copyright line also uses `siteName`. |
+| `src/lib/email.ts` | All builder functions accept `siteName?: string` | `welcomeHtml`, `subscriptionConfirmHtml`, `reminderHtml`, `phaseEventHtml`, `dropApproachingHtml`, `domainDroppedHtml`, `passwordResetHtml`, `adminNotifyHtml`, `feedbackHtml`, `highValueAlertHtml`, `verifyCodeHtml` all default to "NEXT WHOIS" when `siteName` is omitted. |
+| `src/lib/email.ts` | `stampVerifyTimeoutHtml()` added | New styled email for DNS verification timeout on stamp/brand-claim flow. Matches app visual style; accepts `domain`, `fileContent`, `verifyUrl`, `siteName`. |
+| `src/pages/api/user/register.ts` | Welcome email branded | Calls `getSiteLabel()`, uses `siteName` in subject and `welcomeHtml`. |
+| `src/pages/api/user/forgot-password.ts` | Reset email branded | Calls `getSiteLabel()`, uses `siteName` in subject and `passwordResetHtml`. |
+| `src/pages/api/user/send-verify-code.ts` | Verify-code email branded | Calls `getSiteLabel()`, uses `siteName` in subject and `verifyCodeHtml`. |
+| `src/pages/api/admin/test-email.ts` | Test email branded | Calls `getSiteLabel()`, uses `siteName` in subject and `adminNotifyHtml`. |
+| `src/pages/api/stamp/giveup-notify.ts` | Rewritten to use `stampVerifyTimeoutHtml` | Replaced raw Arial-only HTML builder with the new styled template function. Calls `getSiteLabel()`. |
+| `src/pages/api/feedback.ts` | Feedback notification branded | Calls `getSiteLabel()`, passes `siteName` to `feedbackHtml`. |
+| `src/pages/api/remind/submit.ts` | Subscription confirm email branded | Calls `getSiteLabel()`, passes `siteName` to `subscriptionConfirmHtml`. |
+| `src/pages/api/remind/process.ts` | All reminder/phase/drop emails branded | Calls `getSiteLabel()` once per cron invocation; passes `siteName` to all 5 email builder calls (`reminderHtml`, `phaseEventHtml` ×3, `dropApproachingHtml`, `domainDroppedHtml`). |
+| `src/pages/api/user/search-history.ts` | High-value domain alert branded | Calls `getSiteLabel()`, passes `siteName` to `highValueAlertHtml`. |
 
 ### v3.2 — UX Polish, Branding Consistency & Permission Flow Fixes (2026-03-23)
 

@@ -3,7 +3,7 @@ import { getSession } from "@/lib/auth";
 import { randomBytes } from "crypto";
 import { many, one, run, isDbReady } from "@/lib/db-query";
 import { scoreDomain, shouldAlertAdmin } from "@/lib/domain-value";
-import { sendEmail, highValueAlertHtml } from "@/lib/email";
+import { sendEmail, highValueAlertHtml, getSiteLabel } from "@/lib/email";
 import { ADMIN_EMAIL } from "@/lib/admin-shared";
 
 const MAX_HISTORY = 500;
@@ -28,6 +28,7 @@ async function maybeSendHighValueAlert(
   const result = scoreDomain(query, queryType);
   if (!result) return;
 
+  const siteName = await getSiteLabel().catch(() => "NEXT WHOIS");
   const html = highValueAlertHtml({
     domain: query,
     score: result.score,
@@ -37,6 +38,7 @@ async function maybeSendHighValueAlert(
     isNumericOnly: result.isNumericOnly,
     checkedBy: checkedByEmail ?? null,
     breakdown: result.breakdown,
+    siteName,
   });
 
   const prefix = result.isAlertKeyword ? "⚡ 特殊关键词可用" : "💎 高价值域名可用";

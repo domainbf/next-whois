@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { randomBytes } from "crypto";
 import { one, run, isDbReady } from "@/lib/db-query";
-import { sendEmail, passwordResetHtml } from "@/lib/email";
+import { sendEmail, passwordResetHtml, getSiteLabel } from "@/lib/email";
 
 const RESET_EXPIRES_MINUTES = 60;
 const SITE_URL =
@@ -46,11 +46,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   const resetUrl = `${SITE_URL}/reset-password?token=${rawToken}`;
+  const siteName = await getSiteLabel().catch(() => "NEXT WHOIS");
   try {
     await sendEmail({
       to: cleanEmail,
-      subject: "重置你的 Next Whois 密码",
-      html: passwordResetHtml({ resetUrl }),
+      subject: `重置你的 ${siteName} 密码`,
+      html: passwordResetHtml({ resetUrl, siteName }),
     });
   } catch (e) {
     console.error("[forgot-password] Failed to send email:", e);

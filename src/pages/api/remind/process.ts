@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { randomBytes } from "crypto";
 import {
   sendEmail, reminderHtml, phaseEventHtml,
-  dropApproachingHtml, domainDroppedHtml,
+  dropApproachingHtml, domainDroppedHtml, getSiteLabel,
 } from "@/lib/email";
 import {
   computeLifecycle,
@@ -34,6 +34,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   if (!(await isDbReady())) return res.status(500).json({ error: "Database unavailable" });
+
+  const siteName = await getSiteLabel().catch(() => "NEXT WHOIS");
 
   try {
     // Load admin-configured TLD lifecycle overrides once for the whole batch
@@ -100,6 +102,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 domain: reminder.domain,
                 expirationDate: reminder.expiration_date,
                 cancelToken: reminder.cancel_token,
+                siteName,
               }),
             });
             await upsertLog(DROPPED_KEY);
@@ -148,6 +151,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               expirationDate: reminder.expiration_date,
               graceEnd: fmtDate(graceEnd),
               cancelToken: reminder.cancel_token,
+              siteName,
             }),
           });
           await upsertLog(GRACE_KEY);
@@ -167,6 +171,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               redemptionEnd: fmtDate(redemptionEnd),
               dropDate: fmtDate(dropDate),
               cancelToken: reminder.cancel_token,
+              siteName,
             }),
           });
           await upsertLog(REDEMPTION_KEY);
@@ -185,6 +190,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               expirationDate: reminder.expiration_date,
               dropDate: fmtDate(dropDate),
               cancelToken: reminder.cancel_token,
+              siteName,
             }),
           });
           await upsertLog(PENDING_KEY);
@@ -203,6 +209,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               dropDate: fmtDate(dropDate),
               daysToDropDate,
               cancelToken: reminder.cancel_token,
+              siteName,
             }),
           });
           await upsertLog(DROP_SOON_KEY);
@@ -226,6 +233,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                   expirationDate: reminder.expiration_date,
                   daysLeft: daysToExpiry,
                   cancelToken: reminder.cancel_token,
+                  siteName,
                 }),
               });
               await upsertLog(threshold);

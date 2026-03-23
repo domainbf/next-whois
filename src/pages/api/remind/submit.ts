@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { randomBytes } from "crypto";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { sendEmail, subscriptionConfirmHtml } from "@/lib/email";
+import { sendEmail, subscriptionConfirmHtml, getSiteLabel } from "@/lib/email";
 import { computeLifecycle, fmtDate } from "@/lib/lifecycle";
 import { one, run, isDbReady } from "@/lib/db-query";
 
@@ -80,6 +80,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     registry:        lc.cfg.registry,
   } : undefined;
 
+  const siteName = await getSiteLabel().catch(() => "NEXT WHOIS");
   await sendEmail({
     to: cleanEmail,
     subject: `✅ 域名订阅已设置 · ${cleanDomain}`,
@@ -89,6 +90,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       cancelToken: cancelTok,
       thresholds: REMINDER_THRESHOLDS,
       lifecycle: lifecycleInfo,
+      siteName,
     }),
   });
 

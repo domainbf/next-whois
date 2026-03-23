@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { hash } from "bcryptjs";
 import { randomBytes } from "crypto";
 import { one, run, isDbReady } from "@/lib/db-query";
-import { sendEmail, welcomeHtml } from "@/lib/email";
+import { sendEmail, welcomeHtml, getSiteLabel } from "@/lib/email";
 import { getRedisValue, deleteRedisValue } from "@/lib/server/redis";
 import { getCaptchaConfig, verifyCaptchaToken } from "@/lib/server/captcha";
 
@@ -76,10 +76,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(500).json({ error: "注册失败，请稍后重试" });
   }
 
-  sendEmail({
-    to: cleanEmail,
-    subject: "欢迎使用 Next Whois 🎉",
-    html: welcomeHtml({ name: cleanName, email: cleanEmail }),
+  getSiteLabel().then((siteName) => {
+    sendEmail({
+      to: cleanEmail,
+      subject: `欢迎加入 ${siteName} 🎉`,
+      html: welcomeHtml({ name: cleanName, email: cleanEmail, siteName }),
+    });
   }).catch((e) => console.error("[register] welcome email error:", e));
 
   return res.status(201).json({ ok: true });

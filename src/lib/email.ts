@@ -2,21 +2,51 @@
  * Shared email helpers — send via Resend, consistent HTML template.
  */
 
+import { one } from "@/lib/db-query";
+
 const PRIMARY    = "#7c3aed";   // violet-600
 const PRIMARY_LT = "#8b5cf6";   // violet-500
 const DARK       = "#0f172a";   // slate-900
 const FONT       = "Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif";
 const BASE_URL   = () => process.env.NEXT_PUBLIC_BASE_URL || "https://x.rw";
 
+// ── Server-side site label (cached, reads from DB) ───────────────────────────
+let _labelCache: string | null = null;
+let _labelCacheAt = 0;
+const LABEL_TTL = 60_000;
+
+export async function getSiteLabel(): Promise<string> {
+  if (_labelCache && Date.now() - _labelCacheAt < LABEL_TTL) return _labelCache;
+  try {
+    const row = await one<{ value: string }>(
+      "SELECT value FROM site_settings WHERE key = 'site_logo_text'"
+    );
+    _labelCache = (row?.value?.trim()) || "NEXT WHOIS";
+  } catch {
+    _labelCache = "NEXT WHOIS";
+  }
+  _labelCacheAt = Date.now();
+  return _labelCache!;
+}
+
 // ── Shared primitives ────────────────────────────────────────────────────────
 
-function emailLayout(body: string): string {
+function emailLayout(body: string, siteName = "NEXT WHOIS"): string {
+  const year = new Date().getFullYear();
+  // Split on last space to colour the final word with PRIMARY
+  const parts = siteName.trim().split(" ");
+  const head = parts.length > 1 ? parts.slice(0, -1).join(" ") : "";
+  const tail = parts[parts.length - 1];
+  const logoHtml = head
+    ? `${head}&thinsp;<span style="color:${PRIMARY}">${tail}</span>`
+    : `<span style="color:${PRIMARY}">${tail}</span>`;
+
   return `<!DOCTYPE html>
 <html lang="zh">
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-  <title>Next Whois</title>
+  <title>${siteName}</title>
 </head>
 <body style="margin:0;padding:0;background:#f1f5f9;font-family:${FONT}">
   <table width="100%" cellpadding="0" cellspacing="0" style="padding:40px 16px;background:#f1f5f9">
@@ -26,9 +56,9 @@ function emailLayout(body: string): string {
         <!-- Logo -->
         <tr>
           <td style="padding-bottom:20px;text-align:center">
-            <span style="font-size:18px;font-weight:800;letter-spacing:-0.5px;color:${DARK}">
-              NEXT&thinsp;<span style="color:${PRIMARY}">WHOIS</span>
-            </span>
+            <a href="${BASE_URL()}" style="text-decoration:none">
+              <span style="font-size:18px;font-weight:800;letter-spacing:-0.5px;color:${DARK}">${logoHtml}</span>
+            </a>
           </td>
         </tr>
 
@@ -43,8 +73,8 @@ function emailLayout(body: string): string {
         <tr>
           <td style="padding:20px 8px 0;text-align:center">
             <p style="margin:0;font-size:11px;color:#94a3b8;line-height:1.8">
-              此邮件由 <a href="${BASE_URL()}" style="color:${PRIMARY};text-decoration:none">Next Whois</a> 自动发送，请勿直接回复。<br/>
-              © ${new Date().getFullYear()} X.RW · WHOIS Lookup Service
+              此邮件由 <a href="${BASE_URL()}" style="color:${PRIMARY};text-decoration:none">${siteName}</a> 自动发送，请勿直接回复。<br/>
+              © ${year} ${siteName}
             </p>
           </td>
         </tr>
@@ -124,7 +154,7 @@ function actionRow(btnHref: string, btnLabel: string, cancelHref?: string, btnCo
 // ──────────────────────────────────────────────────────────────────────────────
 // 1. Welcome email
 // ──────────────────────────────────────────────────────────────────────────────
-export function welcomeHtml({ name, email }: { name?: string | null; email: string }): string {
+export function welcomeHtml({ name, email, siteName = "NEXT WHOIS" }: { name?: string | null; email: string; siteName?: string }): string {
   const greeting = name ? `你好，${name}` : "你好";
   const features: [string, string, string][] = [
     ["🔍", "无限查询", "WHOIS / RDAP · 域名、IP、ASN、CIDR 全支持"],
@@ -138,7 +168,7 @@ export function welcomeHtml({ name, email }: { name?: string | null; email: stri
 
     ${section(`
       <p style="margin:0 0 20px;font-size:13px;color:#64748b;line-height:1.8">
-        现在可以使用 Next Whois 的全部功能：
+        现在可以使用 ${siteName} 的全部功能：
       </p>
       <table cellpadding="0" cellspacing="0" style="width:100%;margin-bottom:20px">
         ${features.map(([icon, title, desc]) => `
@@ -158,7 +188,7 @@ export function welcomeHtml({ name, email }: { name?: string | null; email: stri
 
     ${divider()}
     ${actionRow(`${BASE_URL()}`, "开始查询")}
-  `);
+  `, siteName);
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -181,7 +211,8 @@ export interface SubscriptionEmailParams {
   };
 }
 
-export function subscriptionConfirmHtml(p: SubscriptionEmailParams): string {
+export function subscriptionConfirmHtml(p: SubscriptionEmailParams & { siteName?: string }): string {
+  const siteName = p.siteName || "NEXT WHOIS";
   const cancelUrl = `${BASE_URL()}/remind/cancel?token=${p.cancelToken}`;
 
   const expiryStr = p.expirationDate
@@ -244,15 +275,15 @@ export function subscriptionConfirmHtml(p: SubscriptionEmailParams): string {
 
     ${divider()}
     ${actionRow(`${BASE_URL()}/${p.domain}`, "查看域名", cancelUrl)}
-  `);
+  `, siteName);
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
 // 3. Expiry reminder email
 // ──────────────────────────────────────────────────────────────────────────────
 export function reminderHtml({
-  domain, expirationDate, daysLeft, cancelToken,
-}: { domain: string; expirationDate: string | null; daysLeft: number; cancelToken: string }): string {
+  domain, expirationDate, daysLeft, cancelToken, siteName = "NEXT WHOIS",
+}: { domain: string; expirationDate: string | null; daysLeft: number; cancelToken: string; siteName?: string }): string {
   const cancelUrl = `${BASE_URL()}/remind/cancel?token=${cancelToken}`;
   const expiryStr = expirationDate
     ? new Date(expirationDate).toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric" })
@@ -283,7 +314,7 @@ export function reminderHtml({
 
     ${divider()}
     ${actionRow(`${BASE_URL()}/${domain}`, "立即查看", cancelUrl, btnColor)}
-  `);
+  `, siteName);
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -299,7 +330,8 @@ export interface PhaseEventEmailParams {
   cancelToken: string;
 }
 
-export function phaseEventHtml(p: PhaseEventEmailParams): string {
+export function phaseEventHtml(p: PhaseEventEmailParams & { siteName?: string }): string {
+  const siteName = p.siteName || "NEXT WHOIS";
   const cancelUrl = `${BASE_URL()}/remind/cancel?token=${p.cancelToken}`;
   const expiryStr = p.expirationDate
     ? new Date(p.expirationDate).toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric" })
@@ -357,7 +389,7 @@ export function phaseEventHtml(p: PhaseEventEmailParams): string {
 
     ${divider()}
     ${actionRow(`${BASE_URL()}/${p.domain}`, "查看域名详情", cancelUrl, cfg.bg)}
-  `);
+  `, siteName);
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -371,7 +403,8 @@ export interface DropApproachingParams {
   cancelToken: string;
 }
 
-export function dropApproachingHtml(p: DropApproachingParams): string {
+export function dropApproachingHtml(p: DropApproachingParams & { siteName?: string }): string {
+  const siteName = p.siteName || "NEXT WHOIS";
   const cancelUrl = `${BASE_URL()}/remind/cancel?token=${p.cancelToken}`;
   const expiryStr = p.expirationDate
     ? new Date(p.expirationDate).toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric" })
@@ -405,7 +438,7 @@ export function dropApproachingHtml(p: DropApproachingParams): string {
 
     ${divider()}
     ${actionRow(`${BASE_URL()}/${p.domain}`, "查看域名详情", cancelUrl, "#7c3aed")}
-  `);
+  `, siteName);
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -417,7 +450,8 @@ export interface DomainDroppedParams {
   cancelToken: string;
 }
 
-export function domainDroppedHtml(p: DomainDroppedParams): string {
+export function domainDroppedHtml(p: DomainDroppedParams & { siteName?: string }): string {
+  const siteName = p.siteName || "NEXT WHOIS";
   const cancelUrl = `${BASE_URL()}/remind/cancel?token=${p.cancelToken}`;
   const expiryStr = p.expirationDate
     ? new Date(p.expirationDate).toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric" })
@@ -443,13 +477,13 @@ export function domainDroppedHtml(p: DomainDroppedParams): string {
 
     ${divider()}
     ${actionRow(`${BASE_URL()}/${p.domain}`, "查看域名详情", cancelUrl, "#059669")}
-  `);
+  `, siteName);
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
 // 5. Password reset email
 // ──────────────────────────────────────────────────────────────────────────────
-export function passwordResetHtml({ resetUrl }: { resetUrl: string }): string {
+export function passwordResetHtml({ resetUrl, siteName = "NEXT WHOIS" }: { resetUrl: string; siteName?: string }): string {
   return emailLayout(`
     ${darkHeader("账户安全", "重置您的密码")}
 
@@ -468,24 +502,24 @@ export function passwordResetHtml({ resetUrl }: { resetUrl: string }): string {
         如非您本人操作，请忽略此邮件，您的账户安全不受影响。
       </p>
     `)}
-  `);
+  `, siteName);
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
 // 6. Admin test / notification email
 // ──────────────────────────────────────────────────────────────────────────────
-export function adminNotifyHtml({ subject, body }: { subject: string; body: string }): string {
+export function adminNotifyHtml({ subject, body, siteName = "NEXT WHOIS" }: { subject: string; body: string; siteName?: string }): string {
   return emailLayout(`
     ${darkHeader("管理员通知", subject)}
     ${section(`<p style="margin:0;font-size:13px;color:#475569;line-height:1.8">${body}</p>`)}
-  `);
+  `, siteName);
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
 // 7. Feedback notification email (sent to admin)
 // ──────────────────────────────────────────────────────────────────────────────
 export function feedbackHtml({
-  query, queryType, issueLabels, description, email, ip, ts,
+  query, queryType, issueLabels, description, email, ip, ts, siteName = "NEXT WHOIS",
 }: {
   query: string;
   queryType: string;
@@ -494,6 +528,7 @@ export function feedbackHtml({
   email?: string;
   ip: string;
   ts: string;
+  siteName?: string;
 }): string {
   const rows = [
     kvRow("查询目标", `<span style="font-family:monospace">${query}</span>`),
@@ -514,9 +549,9 @@ export function feedbackHtml({
 
     ${divider()}
     <div style="padding:14px 32px;background:#f8fafc">
-      <p style="margin:0;font-size:11px;color:#94a3b8">IP：${ip} · 来源：Next Whois 反馈系统</p>
+      <p style="margin:0;font-size:11px;color:#94a3b8">IP：${ip} · 来源：${siteName} 反馈系统</p>
     </div>
-  `);
+  `, siteName);
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -533,7 +568,8 @@ export interface HighValueAlertParams {
   breakdown: { lengthScore: number; tldScore: number; keywordScore: number; patternScore: number };
 }
 
-export function highValueAlertHtml(p: HighValueAlertParams): string {
+export function highValueAlertHtml(p: HighValueAlertParams & { siteName?: string }): string {
+  const siteName = p.siteName || "NEXT WHOIS";
   const ALERT_COLOR = p.score >= 80 ? "#dc2626" : p.score >= 60 ? "#d97706" : "#7c3aed";
   const tierBg     = p.score >= 80 ? "#fef2f2" : p.score >= 60 ? "#fffbeb" : "#ede9fe";
   const tierColor  = p.score >= 80 ? "#991b1b" : p.score >= 60 ? "#92400e" : "#5b21b6";
@@ -611,7 +647,7 @@ export function highValueAlertHtml(p: HighValueAlertParams): string {
         前往 NameSilo 注册 →
       </a>
     </div>
-  `);
+  `, siteName);
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -656,14 +692,56 @@ export async function sendEmail({
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// 8. Email verification code
+// 9. Stamp DNS verification timeout (sent to user, replaces giveup-notify raw HTML)
 // ──────────────────────────────────────────────────────────────────────────────
-export function verifyCodeHtml({ code, email }: { code: string; email: string }): string {
+export function stampVerifyTimeoutHtml({
+  domain, fileContent, verifyUrl, siteName = "NEXT WHOIS",
+}: {
+  domain: string;
+  fileContent: string;
+  verifyUrl: string;
+  siteName?: string;
+}): string {
+  return emailLayout(`
+    ${colorHeader("#ef4444", "域名验证超时", domainBadge(domain), "DNS 验证未在规定时间内完成")}
+
+    ${section(`
+      <p style="margin:0 0 18px;font-size:13px;color:#475569;line-height:1.8">
+        您的域名 DNS 验证已超时，请改用<strong style="color:#1e293b">文件验证</strong>方式完成品牌认领。
+      </p>
+
+      <div style="border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;margin-bottom:18px">
+        <div style="padding:14px 18px;border-bottom:1px solid #e2e8f0">
+          <p style="margin:0;font-size:11px;font-weight:600;letter-spacing:1px;color:#94a3b8;text-transform:uppercase">第一步 — 创建验证文件</p>
+          <p style="margin:8px 0 0;font-size:13px;color:#1e293b">在域名根目录创建文件路径：</p>
+          <p style="margin:6px 0 0;font-family:ui-monospace,'Fira Code',monospace;font-size:12px;color:#7c3aed;background:#f5f3ff;padding:8px 12px;border-radius:6px;word-break:break-all">
+            /.well-known/next-whois-verify.txt
+          </p>
+        </div>
+        <div style="padding:14px 18px;background:#f8fafc">
+          <p style="margin:0;font-size:11px;font-weight:600;letter-spacing:1px;color:#94a3b8;text-transform:uppercase">第二步 — 文件内容（一行）</p>
+          <p style="margin:8px 0 0;font-family:ui-monospace,'Fira Code',monospace;font-size:12px;color:#1e293b;background:#f1f5f9;padding:10px 14px;border-radius:6px;word-break:break-all">${fileContent}</p>
+        </div>
+        <div style="padding:12px 18px;border-top:1px solid #e2e8f0">
+          <p style="margin:0;font-size:12px;color:#64748b;line-height:1.7">完成后返回验证页面，点击<strong>重新验证</strong>即可。</p>
+        </div>
+      </div>
+    `)}
+
+    ${divider()}
+    ${actionRow(verifyUrl, "返回验证页面", undefined, "#ef4444")}
+  `, siteName);
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// 10. Email verification code
+// ──────────────────────────────────────────────────────────────────────────────
+export function verifyCodeHtml({ code, email, siteName = "NEXT WHOIS" }: { code: string; email: string; siteName?: string }): string {
   return emailLayout(`
     ${darkHeader("账号注册", "邮箱验证码", "请在注册页面填写以下验证码完成账号创建")}
     ${section(`
       <p style="margin:0 0 24px;font-size:14px;color:#475569;line-height:1.7">
-        你正在注册 <strong style="color:#1e293b">Next WHOIS</strong> 账号，邮箱地址为：<br/>
+        你正在注册 <strong style="color:#1e293b">${siteName}</strong> 账号，邮箱地址为：<br/>
         <span style="font-family:monospace;font-size:13px;color:#7c3aed;font-weight:600">${email}</span>
       </p>
       <div style="background:#f8fafc;border:2px dashed #c4b5fd;border-radius:16px;padding:28px;text-align:center;margin-bottom:24px">
@@ -672,13 +750,11 @@ export function verifyCodeHtml({ code, email }: { code: string; email: string })
         <p style="margin:12px 0 0;font-size:12px;color:#94a3b8">10 分钟内有效</p>
       </div>
       <p style="margin:0;font-size:12px;color:#94a3b8;line-height:1.6">
-        如果你没有在 Next WHOIS 发起注册请求，请忽略此邮件。<br/>
+        如果你没有在 ${siteName} 发起注册请求，请忽略此邮件。<br/>
         请勿将验证码分享给任何人。
       </p>
     `)}
     ${divider()}
-    <div style="padding:16px 32px;text-align:center">
-      <p style="margin:0;font-size:11px;color:#cbd5e1">© ${new Date().getFullYear()} Next WHOIS · 此邮件由系统自动发送</p>
-    </div>
-  `);
+    ${actionRow(`${BASE_URL()}`, "前往登录")}
+  `, siteName);
 }
