@@ -32,48 +32,40 @@ import {
   RiLinksLine,
   RiCheckboxCircleLine,
   RiSearchLine,
+  RiUserLine,
+  RiBuildingLine,
+  RiAwardLine,
+  RiShakeHandsLine,
+  RiCodeSLine,
+  RiVipCrownLine,
 } from "@remixicon/react";
 import { toast } from "sonner";
 
-const TAG_STYLES: { id: string; label: string; className: string; glow?: string }[] = [
-  { id: "personal", label: "Personal", className: "bg-violet-50 border border-violet-200 text-violet-700 dark:bg-violet-950/40 dark:border-violet-700/60 dark:text-violet-300" },
-  { id: "official", label: "Official", className: "bg-blue-500 text-white border-0", glow: "shadow-blue-500/40" },
-  { id: "brand", label: "Brand", className: "bg-violet-500 text-white border-0", glow: "shadow-violet-500/40" },
-  { id: "verified", label: "Verified", className: "bg-emerald-500 text-white border-0", glow: "shadow-emerald-500/40" },
-  { id: "partner", label: "Partner", className: "bg-orange-500 text-white border-0", glow: "shadow-orange-500/40" },
-  { id: "dev", label: "Developer", className: "bg-sky-500 text-white border-0", glow: "shadow-sky-500/40" },
-  { id: "warning", label: "Warning", className: "bg-amber-400 text-white border-0", glow: "shadow-amber-400/40" },
-  { id: "premium", label: "Premium", className: "bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white border-0", glow: "shadow-fuchsia-500/40" },
+const TAG_STYLES: { id: string; label: string; className: string; glow?: string; icon: React.ElementType }[] = [
+  { id: "personal",  label: "Personal",  icon: RiUserLine,      className: "bg-slate-100 border border-slate-300 text-slate-700 dark:bg-slate-800/60 dark:border-slate-600/60 dark:text-slate-300" },
+  { id: "official",  label: "Official",  icon: RiBuildingLine,  className: "bg-blue-500 text-white border-0",                                                                                  glow: "shadow-blue-500/40" },
+  { id: "brand",     label: "Brand",     icon: RiAwardLine,     className: "bg-violet-500 text-white border-0",                                                                                glow: "shadow-violet-500/40" },
+  { id: "verified",  label: "Verified",  icon: RiShieldCheckLine, className: "bg-emerald-500 text-white border-0",                                                                             glow: "shadow-emerald-500/40" },
+  { id: "partner",   label: "Partner",   icon: RiShakeHandsLine, className: "bg-orange-500 text-white border-0",                                                                                glow: "shadow-orange-500/40" },
+  { id: "dev",       label: "Developer", icon: RiCodeSLine,     className: "bg-sky-500 text-white border-0",                                                                                   glow: "shadow-sky-500/40" },
+  { id: "warning",   label: "Warning",   icon: RiAlertLine,     className: "bg-amber-400 text-white border-0",                                                                                 glow: "shadow-amber-400/40" },
+  { id: "premium",   label: "Premium",   icon: RiVipCrownLine,  className: "bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white border-0",                                             glow: "shadow-fuchsia-500/40" },
 ];
 
 function TagBadge({ tagName, tagStyle, live = false }: { tagName: string; tagStyle: string; live?: boolean }) {
   const style = TAG_STYLES.find((s) => s.id === tagStyle) || TAG_STYLES[0];
   const isColored = style.id !== "personal";
+  const Icon = style.icon;
   return (
     <span className={cn(
-      "relative inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md text-xs font-semibold overflow-hidden select-none",
+      "relative inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold overflow-hidden select-none",
       style.className,
       live && style.glow && `shadow-md ${style.glow}`,
     )}>
-      {live && (
-        <motion.span
-          className={cn("shrink-0", isColored ? "text-white/80" : "text-violet-500")}
-          animate={{ opacity: [0.3, 1, 0.3], scale: [0.85, 1.15, 0.85] }}
-          transition={{ duration: 1.6, repeat: Infinity, delay: 0 }}
-        >
-          <RiFlashlightLine className="w-2.5 h-2.5" />
-        </motion.span>
-      )}
+      <span className={cn("shrink-0", isColored ? "text-white/90" : "text-slate-500 dark:text-slate-400")}>
+        <Icon className="w-3 h-3" />
+      </span>
       <span>{tagName || style.label}</span>
-      {live && (
-        <motion.span
-          className={cn("shrink-0", isColored ? "text-white/80" : "text-violet-500")}
-          animate={{ opacity: [0.3, 1, 0.3], scale: [0.85, 1.15, 0.85] }}
-          transition={{ duration: 1.6, repeat: Infinity, delay: 0.8 }}
-        >
-          <RiFlashlightLine className="w-2.5 h-2.5" />
-        </motion.span>
-      )}
       {live && isColored && (
         <motion.span
           className="absolute inset-0 pointer-events-none"

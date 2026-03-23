@@ -53,6 +53,13 @@ import {
   RiSearchLine,
   RiCheckboxCircleLine,
   RiCheckboxBlankCircleLine,
+  RiUserLine,
+  RiBuildingLine,
+  RiAwardLine,
+  RiShakeHandsLine,
+  RiCodeSLine,
+  RiVipCrownLine,
+  RiAlertLine,
 } from "@remixicon/react";
 import { getTopRegistrars, DomainPricing } from "@/lib/pricing/client";
 import { FeedbackDrawer } from "@/components/feedback-drawer";
@@ -2701,19 +2708,31 @@ export default function LookupPage({
   const [reminderDialogOpen, setReminderDialogOpen] = React.useState(false);
 
   const [verifiedStamps, setVerifiedStamps] = React.useState<
-    { id: string; tagName: string; tagStyle: string; link: string; nickname: string }[]
+    { id: string; tagName: string; tagStyle: string; link: string; nickname: string; description?: string }[]
   >([]);
 
   const STAMP_STYLE_MAP: Record<string, string> = {
-    personal: "bg-violet-50 border border-violet-200 text-violet-700 dark:bg-violet-950/40 dark:border-violet-700/60 dark:text-violet-300",
-    default: "bg-violet-50 border border-violet-200 text-violet-700 dark:bg-violet-950/40 dark:border-violet-700/60 dark:text-violet-300",
+    personal: "bg-slate-100 border border-slate-300 text-slate-700 dark:bg-slate-800/60 dark:border-slate-600/60 dark:text-slate-300",
+    default:  "bg-slate-100 border border-slate-300 text-slate-700 dark:bg-slate-800/60 dark:border-slate-600/60 dark:text-slate-300",
     official: "bg-blue-500 text-white border-0",
-    brand: "bg-violet-500 text-white border-0",
+    brand:    "bg-violet-500 text-white border-0",
     verified: "bg-emerald-500 text-white border-0",
-    partner: "bg-orange-500 text-white border-0",
-    dev: "bg-sky-500 text-white border-0",
-    warning: "bg-amber-400 text-white border-0",
-    premium: "bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white border-0",
+    partner:  "bg-orange-500 text-white border-0",
+    dev:      "bg-sky-500 text-white border-0",
+    warning:  "bg-amber-400 text-white border-0",
+    premium:  "bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white border-0",
+  };
+
+  const STAMP_ICON_MAP: Record<string, React.ElementType> = {
+    personal: RiUserLine,
+    official: RiBuildingLine,
+    brand:    RiAwardLine,
+    verified: RiShieldCheckLine,
+    partner:  RiShakeHandsLine,
+    dev:      RiCodeSLine,
+    warning:  RiAlertLine,
+    premium:  RiVipCrownLine,
+    default:  RiShieldCheckLine,
   };
 
   useEffect(() => {
@@ -3234,6 +3253,7 @@ export default function LookupPage({
                         >
                           {queryType}
                         </Badge>
+                        {verifiedStamps.length === 0 && (
                         <button
                           onClick={() => {
                             if (!session) {
@@ -3249,6 +3269,7 @@ export default function LookupPage({
                         >
                           <RiShieldCheckLine className="w-3 h-3" />
                         </button>
+                        )}
                         <button
                           onClick={() => {
                             if (!session) {
@@ -3374,6 +3395,7 @@ export default function LookupPage({
                           </div>
                         )}
                         {/* Desktop-only Claim/Subscribe text buttons */}
+                        {verifiedStamps.length === 0 && (
                         <button
                           onClick={() => {
                             if (!session) {
@@ -3389,6 +3411,7 @@ export default function LookupPage({
                           <RiShieldCheckLine className="w-3 h-3" />
                           {isChinese ? "品牌认领" : "Claim"}
                         </button>
+                        )}
                         <button
                           onClick={() => {
                             if (!session) {
@@ -3408,34 +3431,16 @@ export default function LookupPage({
                           <RiTimerLine className="w-3 h-3" />
                           {isChinese ? "域名订阅" : "Subscribe"}
                         </button>
-                        {verifiedStamps.map((stamp) => (
-                          stamp.link ? (
-                            <a
-                              key={stamp.id}
-                              href={stamp.link}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className={cn(
-                                "flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold transition-opacity hover:opacity-80",
-                                STAMP_STYLE_MAP[stamp.tagStyle] || STAMP_STYLE_MAP.default,
-                              )}
-                            >
-                              <RiShieldCheckLine className="w-3 h-3" />
-                              {stamp.tagName}
-                            </a>
+                        {verifiedStamps.map((stamp) => {
+                          const StampIcon = STAMP_ICON_MAP[stamp.tagStyle] || STAMP_ICON_MAP.default;
+                          const stampCls = cn("flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold transition-opacity hover:opacity-80", STAMP_STYLE_MAP[stamp.tagStyle] || STAMP_STYLE_MAP.default);
+                          const inner = (<><StampIcon className="w-3 h-3 shrink-0" /><span className="truncate max-w-[80px]">{stamp.tagName}</span></>);
+                          return stamp.link ? (
+                            <a key={stamp.id} href={stamp.link} target="_blank" rel="noopener noreferrer" className={stampCls}>{inner}</a>
                           ) : (
-                            <span
-                              key={stamp.id}
-                              className={cn(
-                                "flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold",
-                                STAMP_STYLE_MAP[stamp.tagStyle] || STAMP_STYLE_MAP.default,
-                              )}
-                            >
-                              <RiShieldCheckLine className="w-3 h-3" />
-                              {stamp.tagName}
-                            </span>
-                          )
-                        ))}
+                            <span key={stamp.id} className={stampCls}>{inner}</span>
+                          );
+                        })}
                       </div>
                       <div className="flex items-center gap-2 mt-2">
                         <span className="text-[10px] text-muted-foreground font-mono">
@@ -3676,6 +3681,42 @@ export default function LookupPage({
                               </p>
                             </div>
                           )}
+                      </div>
+                    )}
+
+                    {/* Ownership stamp card — between dates and registrant */}
+                    {verifiedStamps.length > 0 && (
+                      <div className="mt-6 pt-6 border-t border-border/50 space-y-2">
+                        {verifiedStamps.map((stamp) => {
+                          const StampIcon = STAMP_ICON_MAP[stamp.tagStyle] || STAMP_ICON_MAP.default;
+                          const stampCls = STAMP_STYLE_MAP[stamp.tagStyle] || STAMP_STYLE_MAP.default;
+                          const card = (
+                            <div className="flex flex-col gap-1 min-w-0">
+                              <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+                                <span className="text-[11px] text-muted-foreground shrink-0">
+                                  {isChinese ? "此域名归属于" : "Owned by"}
+                                </span>
+                                <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold shrink-0", stampCls)}>
+                                  <StampIcon className="w-3 h-3" />
+                                  <span className="max-w-[90px] truncate">{stamp.tagName}</span>
+                                </span>
+                                {stamp.nickname && (
+                                  <span className="text-xs font-medium text-foreground truncate max-w-[120px]">{stamp.nickname}</span>
+                                )}
+                              </div>
+                              {stamp.description && (
+                                <p className="text-[11px] text-muted-foreground leading-relaxed line-clamp-2 break-words pr-2">{stamp.description}</p>
+                              )}
+                            </div>
+                          );
+                          return stamp.link ? (
+                            <a key={stamp.id} href={stamp.link} target="_blank" rel="noopener noreferrer" className="block hover:opacity-80 transition-opacity">
+                              {card}
+                            </a>
+                          ) : (
+                            <div key={stamp.id}>{card}</div>
+                          );
+                        })}
                       </div>
                     )}
 
