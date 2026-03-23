@@ -66,7 +66,6 @@ const VERSIONS: Version[] = [
   {
     version: "1.8",
     date: "2026-03",
-    highlight: true,
     changes: [
       { type: "improve", zh: "WHOIS 合并等待窗口从 600 ms 压缩至 350 ms，RDAP 优先结果更快返回", en: "WHOIS merge-wait window reduced 600 → 350 ms; RDAP-first results arrive ~250 ms earlier" },
       { type: "improve", zh: "渐进式容灾触发时间从 3500 ms 提前至 3000 ms，慢 TLD 最坏情况提速 500 ms", en: "Progressive fallback trigger lowered 3 500 → 3 000 ms; worst-case 500 ms faster for slow TLDs" },
@@ -77,7 +76,6 @@ const VERSIONS: Version[] = [
   {
     version: "1.7",
     date: "2026-03",
-    highlight: true,
     changes: [
       { type: "improve", zh: "查询 API 新增 IP 滑动窗口限流（每 IP 每分钟 40 次），防止滥用爬取", en: "Lookup API: IP-based sliding-window rate limiting (40 req/min) to prevent abuse" },
       { type: "improve", zh: "查询 API 严格校验 HTTP 方法（仅 GET），拒绝非法请求", en: "Lookup API: strict HTTP method validation — only GET accepted" },
@@ -90,7 +88,6 @@ const VERSIONS: Version[] = [
   {
     version: "1.6",
     date: "2026-03",
-    highlight: true,
     changes: [
       { type: "new", zh: "域名价值评分系统：100 分制多维评估（长度/后缀/关键词/拼写模式）", en: "Domain value scoring: 100-point multi-dimensional evaluation (length/TLD/keywords/pattern)" },
       { type: "new", zh: "支持后缀页：IANA 全量 1436 个 TLD，含 248 ccTLD + 1188 gTLD", en: "TLDs page: full IANA list of 1436 TLDs including 248 ccTLD and 1188 gTLD" },
