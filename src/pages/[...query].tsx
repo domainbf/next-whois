@@ -2713,8 +2713,8 @@ export default function LookupPage({
   >([]);
 
   const STAMP_STYLE_MAP: Record<string, string> = {
-    personal: "bg-slate-100 border border-slate-300 text-slate-700 dark:bg-slate-800/60 dark:border-slate-600/60 dark:text-slate-300",
-    default:  "bg-slate-100 border border-slate-300 text-slate-700 dark:bg-slate-800/60 dark:border-slate-600/60 dark:text-slate-300",
+    personal: "bg-teal-500 text-white border-0",
+    default:  "bg-teal-500 text-white border-0",
     official: "bg-blue-500 text-white border-0",
     brand:    "bg-violet-500 text-white border-0",
     verified: "bg-emerald-500 text-white border-0",
@@ -2737,7 +2737,7 @@ export default function LookupPage({
   };
 
   const STAMP_CARD_MAP: Record<string, { border: string; bg: string; iconColor: string }> = {
-    personal: { border: "border-l-slate-400",   bg: "bg-slate-50  dark:bg-slate-800/30",    iconColor: "text-slate-500  dark:text-slate-400" },
+    personal: { border: "border-l-teal-500",    bg: "bg-teal-50   dark:bg-teal-900/20",     iconColor: "text-teal-500" },
     official: { border: "border-l-blue-500",    bg: "bg-blue-50   dark:bg-blue-900/20",     iconColor: "text-blue-500" },
     brand:    { border: "border-l-violet-500",  bg: "bg-violet-50 dark:bg-violet-900/20",   iconColor: "text-violet-500" },
     verified: { border: "border-l-emerald-500", bg: "bg-emerald-50 dark:bg-emerald-900/20", iconColor: "text-emerald-500" },
@@ -2745,7 +2745,7 @@ export default function LookupPage({
     dev:      { border: "border-l-sky-500",     bg: "bg-sky-50    dark:bg-sky-900/20",      iconColor: "text-sky-500" },
     warning:  { border: "border-l-amber-400",   bg: "bg-amber-50  dark:bg-amber-900/20",    iconColor: "text-amber-500" },
     premium:  { border: "border-l-fuchsia-500", bg: "bg-fuchsia-50 dark:bg-fuchsia-900/20", iconColor: "text-fuchsia-500" },
-    default:  { border: "border-l-slate-400",   bg: "bg-slate-50  dark:bg-slate-800/30",    iconColor: "text-slate-500  dark:text-slate-400" },
+    default:  { border: "border-l-teal-500",    bg: "bg-teal-50   dark:bg-teal-900/20",     iconColor: "text-teal-500" },
   };
 
   useEffect(() => {

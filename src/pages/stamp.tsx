@@ -42,7 +42,7 @@ import {
 import { toast } from "sonner";
 
 const TAG_STYLES: { id: string; label: string; className: string; glow?: string; icon: React.ElementType }[] = [
-  { id: "personal",  label: "Personal",  icon: RiIdCardLine,      className: "bg-slate-100 border border-slate-300 text-slate-700 dark:bg-slate-800/60 dark:border-slate-600/60 dark:text-slate-300" },
+  { id: "personal",  label: "Personal",  icon: RiIdCardLine,      className: "bg-teal-500 text-white border-0",                                                                                  glow: "shadow-teal-500/40" },
   { id: "official",  label: "Official",  icon: RiBuildingLine,  className: "bg-blue-500 text-white border-0",                                                                                  glow: "shadow-blue-500/40" },
   { id: "brand",     label: "Brand",     icon: RiAwardLine,     className: "bg-violet-500 text-white border-0",                                                                                glow: "shadow-violet-500/40" },
   { id: "verified",  label: "Verified",  icon: RiShieldCheckLine, className: "bg-emerald-500 text-white border-0",                                                                             glow: "shadow-emerald-500/40" },
@@ -54,7 +54,6 @@ const TAG_STYLES: { id: string; label: string; className: string; glow?: string;
 
 function TagBadge({ tagName, tagStyle, live = false }: { tagName: string; tagStyle: string; live?: boolean }) {
   const style = TAG_STYLES.find((s) => s.id === tagStyle) || TAG_STYLES[0];
-  const isColored = style.id !== "personal";
   const Icon = style.icon;
   return (
     <span className={cn(
@@ -62,11 +61,11 @@ function TagBadge({ tagName, tagStyle, live = false }: { tagName: string; tagSty
       style.className,
       live && style.glow && `shadow-md ${style.glow}`,
     )}>
-      <span className={cn("shrink-0", isColored ? "text-white/90" : "text-slate-500 dark:text-slate-400")}>
+      <span className="shrink-0 text-white/90">
         <Icon className="w-3 h-3" />
       </span>
       <span>{tagName || style.label}</span>
-      {live && isColored && (
+      {live && style.glow && (
         <motion.span
           className="absolute inset-0 pointer-events-none"
           style={{ background: "linear-gradient(105deg, transparent 20%, rgba(255,255,255,0.28) 50%, transparent 80%)" }}
