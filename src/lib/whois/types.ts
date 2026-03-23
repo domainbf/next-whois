@@ -5,6 +5,8 @@ export type WhoisResult = {
   status: boolean;
   time: number;
   cached?: boolean;
+  cachedAt?: number;
+  cacheTtl?: number;
   source?: "rdap" | "whois";
   result?: WhoisAnalyzeResult;
   error?: string;

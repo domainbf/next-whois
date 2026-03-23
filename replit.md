@@ -1,10 +1,49 @@
-# Next Whois UI — v3.6
+# Next Whois UI — v3.7
 
 A fast, modern WHOIS and RDAP lookup tool supporting domains, IPv4/IPv6, ASN, and CIDR. Also includes built-in DNS, SSL certificate, and IP/ASN geolocation tools.
 
 ---
 
 ## Changelog
+
+### v3.7 — Smart Redis Cache with Adaptive TTL (2026-03-23)
+
+**Scope:** Replaced the flat-TTL Redis cache with a domain-type-aware intelligent cache layer. All lookups now avoid redundant WHOIS/RDAP server calls, with cache expiry tuned to how quickly each domain type's data actually changes.
+
+**Cache TTL strategy:**
+
+| Domain type | TTL | Rationale |
+|---|---|---|
+| IP / ASN / CIDR query | 24 h | IP allocations change extremely rarely |
+| Registry-reserved / pending | 12 h | Slow-moving administrative status |
+| Available / unregistered | 5 min | Could be registered at any moment |
+| Registered, expired (≤0 d) | 10 min | May be re-registered imminently |
+| Registered, expiring ≤7 d | 30 min | Could change hands soon |
+| Registered, remaining ≤60 d | 1 h | Watch for changes |
+| Registered, remaining >60 d | 6 h | Very stable — safe to cache long |
+| Error / failed lookup | 0 | Never cache failures |
+
+**Changes:**
+
+| File | Change | Detail |
+|---|---|---|
+| `src/lib/whois/types.ts` | Added `cachedAt?: number` and `cacheTtl?: number` to `WhoisResult` | `cachedAt` = Unix ms timestamp when result was cached; `cacheTtl` = remaining TTL seconds (from Redis `TTL` command when serving from cache, or initial TTL when freshly computed). |
+| `src/lib/server/redis.ts` | Production-grade Redis client rewrite | Added `lazyConnect: true`, `enableOfflineQueue: false` (commands fail immediately when disconnected instead of queuing), `retryStrategy` capped at 3 retries, per-event `_available` flag tracked via `ready`/`close`/`reconnecting`/`end` events. Added `getRemainingTtl(key)` and `getJsonRedisValueWithTtl(key)` helpers (pipeline GET + TTL in one round-trip). |
+| `src/lib/whois/lookup.ts` | `computeSmartTtl(result)` function | Exported function that classifies a `WhoisResult` and returns the appropriate cache TTL in seconds. Zero means "do not cache". |
+| `src/lib/whois/lookup.ts` | `lookupWhoisWithCache` upgraded | L1 (memory, 30 s) → L2 (Redis, smart TTL). Cache hits return `cachedAt` + `cacheTtl` from stored metadata + live Redis TTL. Cache misses: compute smart TTL, store `{ cachedAt, cacheTtl }` in the stored object, write to Redis with that TTL. Failures (status=false) are never cached. |
+| `src/pages/api/lookup.ts` | Dynamic `Cache-Control` header | `s-maxage` is now set to the actual smart TTL (e.g. 21600 for stable domains, 300 for available). `stale-while-revalidate` = min(TTL × 4, 86400). Vercel edge cache now matches Redis expiry. Also passes `cachedAt` and `cacheTtl` through in the JSON response. |
+| `src/pages/[...query].tsx` | Cache TTL displayed in result footer | When a result is served from cache, the time strip shows e.g. `0.00s · cached (6h)` — the parenthesised value is the remaining TTL from Redis, formatted as Xh / Xm / Xs. |
+| `src/lib/env.ts` | VERSION bumped to "3.7" | |
+
+**Environment variables (Redis connection — any one set activates Redis):**
+
+| Variable | Description |
+|---|---|
+| `KV_URL` or `REDIS_URL` | Full Redis connection URL (e.g. `redis://...` or `rediss://...`). Vercel KV uses `KV_URL`. Upstash uses `REDIS_URL`. |
+| `REDIS_HOST` | Redis hostname (used if URL not set) |
+| `REDIS_PORT` | Redis port (default 6379) |
+| `REDIS_PASSWORD` | Redis password |
+| `REDIS_DB` | Redis database index (default 0) |
 
 ### v3.6 — Mobile Animation Fix: No More Flash/Jitter (2026-03-23)
 

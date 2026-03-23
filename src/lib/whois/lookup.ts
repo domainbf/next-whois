@@ -6,7 +6,12 @@ function intEnv(name: string, def: number): number {
   return isNaN(n) ? def : n;
 }
 import { WhoisResult, WhoisAnalyzeResult, initialWhoisAnalyzeResult } from "@/lib/whois/types";
-import { getJsonRedisValue, setJsonRedisValue, isRedisAvailable } from "@/lib/server/redis";
+import {
+  getJsonRedisValueWithTtl,
+  setJsonRedisValue,
+  isRedisAvailable,
+  getRemainingTtl,
+} from "@/lib/server/redis";
 
 const L1_TTL_MS = 30_000;
 const L1_MAX = 500;
@@ -498,20 +503,65 @@ function mergeResults(
   };
 }
 
+// ── Smart cache TTL ────────────────────────────────────────────────────────
+// Returns the number of seconds to cache a lookup result in Redis.
+// Strategy:
+//   • IP / ASN queries             → 24 h  (IP allocations change rarely)
+//   • registry-reserved / pending  → 12 h  (status changes slowly)
+//   • available / unregistered     →  5 min (could be registered any moment)
+//   • registered, expired          → 10 min (may be re-registered soon)
+//   • registered, expiring ≤ 7 d   → 30 min (could change hands)
+//   • registered, remaining ≤ 60 d →  1 h
+//   • registered, remaining > 60 d →  6 h  (very stable data)
+//   • error / unknown              →  0     (do not cache failures)
+export function computeSmartTtl(result: WhoisResult): number {
+  if (!result.status || !result.result) return 0;
+
+  const r = result.result;
+
+  const isIpQuery =
+    (r.cidr    && r.cidr    !== "Unknown") ||
+    (r.inetNum && r.inetNum !== "Unknown") ||
+    (r.inet6Num && r.inet6Num !== "Unknown") ||
+    (r.originAS && r.originAS !== "Unknown") ||
+    (r.netRange && r.netRange !== "Unknown");
+  if (isIpQuery) return 86_400;
+
+  const statuses = (r.status || []).map((s) => s.status?.toLowerCase() ?? "");
+  const isReserved =
+    statuses.some((s) => s.includes("registry-reserved")) ||
+    statuses.some((s) => s.includes("pending"));
+  if (isReserved) return 43_200;
+
+  const hasRegistrar   = r.registrar    && r.registrar    !== "Unknown";
+  const hasExpiry      = r.expirationDate && r.expirationDate !== "Unknown";
+  const hasNameServers = r.nameServers  && r.nameServers.length > 0;
+  const hasCreation    = r.creationDate && r.creationDate !== "Unknown";
+  const isRegistered   = !!(hasRegistrar || hasExpiry || hasCreation || hasNameServers);
+
+  if (!isRegistered) return 300;
+
+  const remaining = r.remainingDays;
+  if (remaining !== null && remaining !== undefined) {
+    if (remaining <= 0)  return 600;
+    if (remaining <= 7)  return 1_800;
+    if (remaining <= 60) return 3_600;
+  }
+
+  return 21_600;
+}
+
 export async function lookupWhoisWithCache(
   domain: string,
 ): Promise<WhoisResult> {
   // ── CN Reserved SLD short-circuit ──────────────────────────────────────────
-  // Province, functional, and system-reserved .cn second-level domains are
-  // managed by CNNIC and are never directly registerable.  Return a synthetic
-  // "registry-reserved" result instantly — checked BEFORE the cache so that
-  // stale cached WHOIS results (e.g. from Redis) never override this.
   const cnReserved = getCnReservedSldInfo(domain);
   if (cnReserved) {
     return {
       time: 0,
       status: true,
       cached: false,
+      cacheTtl: 43_200,
       source: "whois",
       result: {
         ...initialWhoisAnalyzeResult,
@@ -524,24 +574,34 @@ export async function lookupWhoisWithCache(
 
   const key = `whois:${domain}`;
 
+  // L1 — in-process memory cache (30 s, survives within the same lambda instance)
   const l1Hit = l1Get(key);
-  if (l1Hit) return { ...l1Hit, time: 0, cached: true };
+  if (l1Hit) {
+    const remainingTtl = await getRemainingTtl(key).catch(() => null);
+    return { ...l1Hit, time: 0, cached: true, cachedAt: l1Hit.cachedAt, cacheTtl: remainingTtl ?? l1Hit.cacheTtl };
+  }
 
+  // L2 — Redis (smart TTL per domain type)
   if (isRedisAvailable()) {
-    const l2Hit = await getJsonRedisValue<WhoisResult>(key);
-    if (l2Hit) {
-      l1Set(key, l2Hit);
-      return { ...l2Hit, time: 0, cached: true };
+    const l2 = await getJsonRedisValueWithTtl<WhoisResult>(key);
+    if (l2) {
+      l1Set(key, l2.value);
+      return { ...l2.value, time: 0, cached: true, cachedAt: l2.value.cachedAt, cacheTtl: l2.remainingTtl ?? l2.value.cacheTtl };
     }
   }
 
+  // Cache miss — perform live lookup
   const result = await lookupWhois(domain);
 
   if (result.status) {
-    l1Set(key, result);
-    if (isRedisAvailable()) {
-      setJsonRedisValue<WhoisResult>(key, result).catch(() => {});
+    const ttl = computeSmartTtl(result);
+    const now = Date.now();
+    const toStore: WhoisResult = { ...result, cachedAt: now, cacheTtl: ttl };
+    l1Set(key, toStore);
+    if (isRedisAvailable() && ttl > 0) {
+      setJsonRedisValue<WhoisResult>(key, toStore, ttl).catch(() => {});
     }
+    return { ...result, cached: false, cachedAt: now, cacheTtl: ttl };
   }
 
   return { ...result, cached: false };

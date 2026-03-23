@@ -2896,7 +2896,7 @@ export default function LookupPage({
 
   const current = getWindowHref();
   const queryType = detectQueryType(target);
-  const { status, result, error, time, dnsProbe, registryUrl } = data as typeof data & { registryUrl?: string };
+  const { status, result, error, time, dnsProbe, registryUrl, cached, cachedAt, cacheTtl } = data as typeof data & { registryUrl?: string };
 
   const { data: session } = useSession();
 
@@ -3551,7 +3551,21 @@ export default function LookupPage({
                       </div>
                       <div className="flex items-center gap-2 mt-2">
                         <span className="text-[10px] text-muted-foreground font-mono">
-                          {time.toFixed(2)}s{data.cached && ` · ${t("cached")}`}
+                          {time.toFixed(2)}s
+                          {cached && (
+                            <>
+                              {" · "}{t("cached")}
+                              {cacheTtl && cacheTtl > 0 && (
+                                <span className="opacity-60">
+                                  {" "}({cacheTtl >= 3600
+                                    ? `${Math.round(cacheTtl / 3600)}h`
+                                    : cacheTtl >= 60
+                                      ? `${Math.round(cacheTtl / 60)}m`
+                                      : `${cacheTtl}s`})
+                                </span>
+                              )}
+                            </>
+                          )}
                           {data.source && ` · ${data.source}`}
                         </span>
                         <div className="ml-auto flex items-center gap-1">

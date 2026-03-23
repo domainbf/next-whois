@@ -21,6 +21,8 @@ type Data = {
   status: boolean;
   time: number;
   cached?: boolean;
+  cachedAt?: number;
+  cacheTtl?: number;
   source?: "rdap" | "whois";
   result?: WhoisAnalyzeResult;
   error?: string;
@@ -133,17 +135,18 @@ export default async function handler(
       rawWhoisContent: `[CN Reserved] ${cnReserved.descZh}`,
     };
     saveAnonymousSearchRecord(trimmed, syntheticResult).catch(() => {});
-    res.setHeader("Cache-Control", "s-maxage=86400, stale-while-revalidate=604800");
+    res.setHeader("Cache-Control", "s-maxage=43200, stale-while-revalidate=86400");
     return res.status(200).json({
       time: 0,
       status: true,
       cached: false,
+      cacheTtl: 43_200,
       source: "whois" as const,
       result: syntheticResult,
     });
   }
 
-  const { time, status, result, error, cached, source, dnsProbe, registryUrl } =
+  const { time, status, result, error, cached, cachedAt, cacheTtl, source, dnsProbe, registryUrl } =
     await lookupWhoisWithCache(trimmed);
   if (!status) {
     return res.status(500).json({ time, status, error, dnsProbe, registryUrl });
@@ -153,6 +156,10 @@ export default async function handler(
     saveAnonymousSearchRecord(trimmed, result, dnsProbe).catch(() => {});
   }
 
-  res.setHeader("Cache-Control", "s-maxage=3600, stale-while-revalidate=86400");
-  return res.status(200).json({ time, status, result, cached, source, dnsProbe, registryUrl });
+  // Set Cache-Control header to match the actual smart TTL so Vercel's
+  // CDN edge cache also honours the same expiry windows as Redis.
+  const sMaxAge = cacheTtl && cacheTtl > 0 ? cacheTtl : 3600;
+  const swr     = Math.min(sMaxAge * 4, 86_400);
+  res.setHeader("Cache-Control", `s-maxage=${sMaxAge}, stale-while-revalidate=${swr}`);
+  return res.status(200).json({ time, status, result, cached, cachedAt, cacheTtl, source, dnsProbe, registryUrl });
 }
