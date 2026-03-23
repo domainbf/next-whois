@@ -1,10 +1,41 @@
-# Next Whois UI — v2.3
+# Next Whois UI — v2.4
 
 A fast, modern WHOIS and RDAP lookup tool supporting domains, IPv4/IPv6, ASN, and CIDR. Also includes built-in DNS, SSL certificate, and IP/ASN geolocation tools.
 
 ---
 
 ## Changelog
+
+### v2.4 — Premium Domain Pricing Sync Fix (2026-03-23)
+
+**Problem:** Domains with `negotiable: true` (high-value score ≥ 65 from domain value engine) were showing standard TLD-level registration prices in plain/green text, giving no visual distinction from cheap commodity domains. The `isPremium` flag on pricing objects was only set when registrar price > 100 USD/EUR/CAD — missing domains like `ai.dev` (~¥34 TLD rate) that are actually premium via value scoring.
+
+**Fixes across 3 layers:**
+
+1. **`src/lib/whois/common_parser.ts`** — After fetching pricing + negotiable in parallel, sync `isPremium` flag:
+   - `registerPrice.isPremium = negotiable === true || registerPrice.isPremium`
+   - `renewPrice.isPremium = negotiable === true || renewPrice.isPremium`
+   - Uses spread to preserve all other pricing fields
+
+2. **`src/pages/[...query].tsx`** — Client-side `rawPrices` mapping (registrar table) also synced:
+   - `isPremium: result.negotiable === true || (price > 100 && USD/EUR/CAD)`
+   - Ensures registrar comparison table respects negotiable flag
+
+3. **UI badge overhaul** (desktop + mobile register/renew badge rows):
+   - Changed from red → **amber** color when `isPremium` is true (consistent with 溢价 badge which was already amber)
+   - Icon colors updated: `text-muted-foreground` → `text-amber-500` when premium
+   - Added small "参考" (zh) / "ref" (en) superscript label on register AND renew prices when premium — clearly communicates these are TLD reference rates, not domain-specific premium acquisition prices
+
+4. **DomainReminderDialog mini card** (pricing grid inside reminder dialog):
+   - Register + renew price text: red → **amber** when premium
+   - 溢价 cell background: `bg-red-500/8` → `bg-amber-500/8`
+   - 溢价 value text: `text-red-500` → `text-amber-500` (full amber consistency)
+   - Added "参考价" (zh) / "ref. rate" (en) sub-label under both prices when premium
+   - `isPremium` prop updated to `result.negotiable === true || result.registerPrice?.isPremium`
+
+**Result:** For `ai.dev` and similar premium/negotiable domains, all pricing badges now show in amber with a "参考" indicator, clearly distinguishing them from standard domain pricing while remaining informative.
+
+---
 
 ### v2.3 — Full 8-Locale i18n Coverage (2026-03-23)
 

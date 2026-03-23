@@ -2016,23 +2016,29 @@ function DomainReminderDialog({
                       <p className="text-[9px] font-bold text-muted-foreground/70 uppercase tracking-widest">
                         {isZh ? "注册" : "Register"}
                       </p>
-                      <p className={cn("text-[13px] font-black tabular-nums leading-none", isPremium ? "text-red-500 dark:text-red-400" : "text-foreground")}>
+                      <p className={cn("text-[13px] font-black tabular-nums leading-none", isPremium ? "text-amber-500" : "text-foreground")}>
                         {registerPriceFmt ?? "—"}
                       </p>
+                      {isPremium && registerPriceFmt && (
+                        <p className="text-[8px] text-amber-500/60 leading-none mt-0.5">{isZh ? "参考价" : "ref. rate"}</p>
+                      )}
                     </div>
                     {/* Renew price */}
                     <div className="flex flex-col items-center justify-center px-2 py-2.5 gap-0.5 border-x border-border/40">
                       <p className="text-[9px] font-bold text-muted-foreground/70 uppercase tracking-widest">
                         {isZh ? "续费" : "Renew"}
                       </p>
-                      <p className="text-[13px] font-black tabular-nums leading-none text-foreground">
+                      <p className={cn("text-[13px] font-black tabular-nums leading-none", isPremium ? "text-amber-500" : "text-foreground")}>
                         {renewPriceFmt ?? "—"}
                       </p>
+                      {isPremium && renewPriceFmt && (
+                        <p className="text-[8px] text-amber-500/60 leading-none mt-0.5">{isZh ? "参考价" : "ref. rate"}</p>
+                      )}
                     </div>
                     {/* Premium badge */}
                     <div className={cn(
                       "flex flex-col items-center justify-center px-2 py-2.5 gap-0.5",
-                      isPremium ? "bg-red-500/8 dark:bg-red-500/12" : ""
+                      isPremium ? "bg-amber-500/8 dark:bg-amber-500/12" : ""
                     )}>
                       <p className="text-[9px] font-bold text-muted-foreground/70 uppercase tracking-widest">
                         {isZh ? "溢价" : "Premium"}
@@ -2040,7 +2046,7 @@ function DomainReminderDialog({
                       <p className={cn(
                         "text-[12px] font-black leading-none",
                         isPremium
-                          ? "text-red-500 dark:text-red-400"
+                          ? "text-amber-500"
                           : "text-emerald-600 dark:text-emerald-400"
                       )}>
                         {isPremium
@@ -2348,9 +2354,10 @@ function AvailableDomainCard({ domain, locale }: { domain: string; locale: strin
           .map((r: any) => ({
             ...r,
             isPremium:
-              typeof r.new === "number" &&
-              r.new > 100 &&
-              ["usd", "eur", "cad"].includes((r.currency || "").toLowerCase()),
+              result.negotiable === true ||
+              (typeof r.new === "number" &&
+                r.new > 100 &&
+                ["usd", "eur", "cad"].includes((r.currency || "").toLowerCase())),
             externalLink: `https://www.nazhumi.com/domain/${tld}/new`,
           }));
         setRawPrices(prices);
@@ -2969,17 +2976,18 @@ export default function LookupPage({
                     href={result.registerPrice.externalLink}
                     className="hidden sm:flex px-2 py-0.5 rounded-md border bg-background items-center space-x-1 cursor-pointer hover:border-muted-foreground/50 transition-colors"
                   >
-                    <RiBillLine className="w-3 h-3 text-muted-foreground shrink-0" />
+                    <RiBillLine className={cn("w-3 h-3 shrink-0", result.registerPrice.isPremium ? "text-amber-500" : "text-muted-foreground")} />
                     <span
                       className={cn(
-                        "text-[11px] sm:text-xs font-normal text-muted-foreground",
-                        result.registerPrice.isPremium && "text-red-500",
+                        "text-[11px] sm:text-xs font-normal",
+                        result.registerPrice.isPremium ? "text-amber-500" : "text-muted-foreground",
                       )}
                     >
                       {t("register_price")}
                       {isChinese
                         ? toCNY(result.registerPrice.new as number, result.registerPrice.currency)
                         : toUSD(result.registerPrice.new as number, result.registerPrice.currency)}
+                      {result.registerPrice.isPremium && <span className="ml-0.5 opacity-60 text-[9px]">{isChinese ? "参考" : "ref"}</span>}
                     </span>
                   </Link>
                 )}
@@ -2991,12 +2999,13 @@ export default function LookupPage({
                     target="_blank"
                     className="hidden sm:flex px-2 py-0.5 rounded-md border bg-background items-center space-x-1 cursor-pointer hover:border-muted-foreground/50 transition-colors"
                   >
-                    <RiExchangeDollarFill className="w-3 h-3 text-muted-foreground shrink-0" />
-                    <span className="text-[11px] sm:text-xs font-normal text-muted-foreground">
+                    <RiExchangeDollarFill className={cn("w-3 h-3 shrink-0", result.renewPrice.isPremium ? "text-amber-500" : "text-muted-foreground")} />
+                    <span className={cn("text-[11px] sm:text-xs font-normal", result.renewPrice.isPremium ? "text-amber-500" : "text-muted-foreground")}>
                       {t("renew_price")}
                       {isChinese
                         ? toCNY(result.renewPrice.renew as number, result.renewPrice.currency)
                         : toUSD(result.renewPrice.renew as number, result.renewPrice.currency)}
+                      {result.renewPrice.isPremium && <span className="ml-0.5 opacity-60 text-[9px]">{isChinese ? "参考" : "ref"}</span>}
                     </span>
                   </Link>
                 )}
@@ -3393,12 +3402,13 @@ export default function LookupPage({
                               href={result.registerPrice.externalLink}
                               className="sm:hidden px-2 py-0.5 rounded-md border bg-background flex items-center space-x-1 cursor-pointer hover:border-muted-foreground/50 transition-colors"
                             >
-                              <RiBillLine className="w-3 h-3 text-muted-foreground shrink-0" />
-                              <span className={cn("text-[11px] font-normal text-muted-foreground", result.registerPrice.isPremium && "text-red-500")}>
+                              <RiBillLine className={cn("w-3 h-3 shrink-0", result.registerPrice.isPremium ? "text-amber-500" : "text-muted-foreground")} />
+                              <span className={cn("text-[11px] font-normal", result.registerPrice.isPremium ? "text-amber-500" : "text-muted-foreground")}>
                                 {t("register_price")}
                                 {isChinese
                                   ? toCNY(result.registerPrice.new as number, result.registerPrice.currency)
                                   : toUSD(result.registerPrice.new as number, result.registerPrice.currency)}
+                                {result.registerPrice.isPremium && <span className="ml-0.5 opacity-60 text-[9px]">{isChinese ? "参考" : "ref"}</span>}
                               </span>
                             </Link>
                           )}
@@ -3410,12 +3420,13 @@ export default function LookupPage({
                               target="_blank"
                               className="sm:hidden px-2 py-0.5 rounded-md border bg-background flex items-center space-x-1 cursor-pointer hover:border-muted-foreground/50 transition-colors"
                             >
-                              <RiExchangeDollarFill className="w-3 h-3 text-muted-foreground shrink-0" />
-                              <span className="text-[11px] font-normal text-muted-foreground">
+                              <RiExchangeDollarFill className={cn("w-3 h-3 shrink-0", result.renewPrice.isPremium ? "text-amber-500" : "text-muted-foreground")} />
+                              <span className={cn("text-[11px] font-normal", result.renewPrice.isPremium ? "text-amber-500" : "text-muted-foreground")}>
                                 {t("renew_price")}
                                 {isChinese
                                   ? toCNY(result.renewPrice.renew as number, result.renewPrice.currency)
                                   : toUSD(result.renewPrice.renew as number, result.renewPrice.currency)}
+                                {result.renewPrice.isPremium && <span className="ml-0.5 opacity-60 text-[9px]">{isChinese ? "参考" : "ref"}</span>}
                               </span>
                             </Link>
                           )}
@@ -3636,7 +3647,7 @@ export default function LookupPage({
                             : toUSD(result.renewPrice.renew as number, result.renewPrice.currency)
                           : undefined
                       }
-                      isPremium={result.registerPrice?.isPremium ?? false}
+                      isPremium={result.negotiable === true || (result.registerPrice?.isPremium ?? false)}
                       eppStatuses={result.status?.map((s) => s.status) ?? []}
                     />
 

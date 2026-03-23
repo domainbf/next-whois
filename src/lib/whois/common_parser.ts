@@ -254,8 +254,15 @@ export async function applyParams(result: WhoisAnalyzeResult) {
     getDomainTransferNegotiable(result.domain),
     getMozMetrics(result.domain),
   ]);
-  result.registerPrice = registerPrice;
-  result.renewPrice = renewPrice;
+  // Sync isPremium flag with negotiable status:
+  // High-value domains (negotiable=true) should be flagged as premium on pricing
+  // so UI correctly colors prices and shows premium indicators.
+  result.registerPrice = registerPrice
+    ? { ...registerPrice, isPremium: negotiable === true || registerPrice.isPremium }
+    : null;
+  result.renewPrice = renewPrice
+    ? { ...renewPrice, isPremium: negotiable === true || renewPrice.isPremium }
+    : null;
   result.negotiable = negotiable;
   result.mozDomainAuthority = mozMetrics.domainAuthority;
   result.mozPageAuthority = mozMetrics.pageAuthority;
