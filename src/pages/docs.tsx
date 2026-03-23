@@ -287,23 +287,23 @@ export default function DocsPage({ origin }: { origin: string }) {
                   <div className="space-y-3">
                     <div>
                       <p className="text-[11px] font-semibold text-muted-foreground mb-1.5 uppercase tracking-wide">域名（WHOIS / RDAP 优先）</p>
-                      <CodeBlock>{`curl "https://your-domain.com/api/lookup?query=google.com"`}</CodeBlock>
+                      <CodeBlock>{`curl "${origin}/api/lookup?query=google.com"`}</CodeBlock>
                     </div>
                     <div>
                       <p className="text-[11px] font-semibold text-muted-foreground mb-1.5 uppercase tracking-wide">IPv4 地址</p>
-                      <CodeBlock>{`curl "https://your-domain.com/api/lookup?query=8.8.8.8"`}</CodeBlock>
+                      <CodeBlock>{`curl "${origin}/api/lookup?query=8.8.8.8"`}</CodeBlock>
                     </div>
                     <div>
                       <p className="text-[11px] font-semibold text-muted-foreground mb-1.5 uppercase tracking-wide">IPv6 地址</p>
-                      <CodeBlock>{`curl "https://your-domain.com/api/lookup?query=2001:4860:4860::8888"`}</CodeBlock>
+                      <CodeBlock>{`curl "${origin}/api/lookup?query=2001:4860:4860::8888"`}</CodeBlock>
                     </div>
                     <div>
                       <p className="text-[11px] font-semibold text-muted-foreground mb-1.5 uppercase tracking-wide">ASN（自治系统号）</p>
-                      <CodeBlock>{`curl "https://your-domain.com/api/lookup?query=AS15169"`}</CodeBlock>
+                      <CodeBlock>{`curl "${origin}/api/lookup?query=AS15169"`}</CodeBlock>
                     </div>
                     <div>
                       <p className="text-[11px] font-semibold text-muted-foreground mb-1.5 uppercase tracking-wide">CIDR 网段</p>
-                      <CodeBlock>{`curl "https://your-domain.com/api/lookup?query=1.1.1.0/24"`}</CodeBlock>
+                      <CodeBlock>{`curl "${origin}/api/lookup?query=1.1.1.0/24"`}</CodeBlock>
                     </div>
                   </div>
                 </div>
@@ -402,9 +402,9 @@ export default function DocsPage({ origin }: { origin: string }) {
                 <div>
                   <SubHead label={t("docs.example_request")} />
                   <div className="space-y-2">
-                    <CodeBlock>{`curl "https://your-domain.com/api/dns/records?name=google.com&type=MX"`}</CodeBlock>
-                    <CodeBlock>{`curl "https://your-domain.com/api/dns/records?name=google.com&type=AAAA"`}</CodeBlock>
-                    <CodeBlock>{`curl "https://your-domain.com/api/dns/records?name=_dmarc.google.com&type=TXT"`}</CodeBlock>
+                    <CodeBlock>{`curl "${origin}/api/dns/records?name=google.com&type=MX"`}</CodeBlock>
+                    <CodeBlock>{`curl "${origin}/api/dns/records?name=google.com&type=AAAA"`}</CodeBlock>
+                    <CodeBlock>{`curl "${origin}/api/dns/records?name=_dmarc.google.com&type=TXT"`}</CodeBlock>
                   </div>
                 </div>
                 <div>
@@ -456,11 +456,11 @@ export default function DocsPage({ origin }: { origin: string }) {
                   <SubHead label={t("docs.example_request")} />
                   <div className="space-y-2">
                     <CodeBlock>{`# 查询 SPF 记录
-curl "https://your-domain.com/api/dns/txt?name=google.com"`}</CodeBlock>
+curl "${origin}/api/dns/txt?name=google.com"`}</CodeBlock>
                     <CodeBlock>{`# 查询 DMARC 记录
-curl "https://your-domain.com/api/dns/txt?name=_dmarc.google.com"`}</CodeBlock>
+curl "${origin}/api/dns/txt?name=_dmarc.google.com"`}</CodeBlock>
                     <CodeBlock>{`# 查询 DKIM 记录
-curl "https://your-domain.com/api/dns/txt?name=google._domainkey.gmail.com"`}</CodeBlock>
+curl "${origin}/api/dns/txt?name=google._domainkey.gmail.com"`}</CodeBlock>
                   </div>
                 </div>
                 <div>
@@ -556,9 +556,9 @@ curl "https://your-domain.com/api/dns/txt?name=google._domainkey.gmail.com"`}</C
                 <div>
                   <SubHead label={t("docs.example_request")} />
                   <div className="space-y-2">
-                    <CodeBlock>{`curl "https://your-domain.com/api/ssl/cert?hostname=github.com"`}</CodeBlock>
+                    <CodeBlock>{`curl "${origin}/api/ssl/cert?hostname=github.com"`}</CodeBlock>
                     <CodeBlock>{`# 检测非标准端口
-curl "https://your-domain.com/api/ssl/cert?hostname=mail.example.com&port=465"`}</CodeBlock>
+curl "${origin}/api/ssl/cert?hostname=mail.example.com&port=465"`}</CodeBlock>
                   </div>
                 </div>
                 <div>
@@ -637,13 +637,13 @@ curl "https://your-domain.com/api/ssl/cert?hostname=mail.example.com&port=465"`}
                   <SubHead label={t("docs.example_request")} />
                   <div className="space-y-2">
                     <CodeBlock>{`# IPv4 地址
-curl "https://your-domain.com/api/ip/lookup?q=8.8.8.8"`}</CodeBlock>
+curl "${origin}/api/ip/lookup?q=8.8.8.8"`}</CodeBlock>
                     <CodeBlock>{`# IPv6 地址
-curl "https://your-domain.com/api/ip/lookup?q=2001:4860:4860::8888"`}</CodeBlock>
+curl "${origin}/api/ip/lookup?q=2001:4860:4860::8888"`}</CodeBlock>
                     <CodeBlock>{`# 主机名（自动解析为 IP 再查询）
-curl "https://your-domain.com/api/ip/lookup?q=dns.google"`}</CodeBlock>
+curl "${origin}/api/ip/lookup?q=dns.google"`}</CodeBlock>
                     <CodeBlock>{`# ASN 归属网段
-curl "https://your-domain.com/api/ip/lookup?q=AS15169"`}</CodeBlock>
+curl "${origin}/api/ip/lookup?q=AS15169"`}</CodeBlock>
                   </div>
                 </div>
                 <div>
@@ -716,9 +716,9 @@ curl "https://your-domain.com/api/ip/lookup?q=AS15169"`}</CodeBlock>
                 <div>
                   <SubHead label={t("docs.example_request")} />
                   <div className="space-y-2">
-                    <CodeBlock>{`curl "https://your-domain.com/api/og?query=google.com&theme=dark" -o og.png`}</CodeBlock>
+                    <CodeBlock>{`curl "${origin}/api/og?query=google.com&theme=dark" -o og.png`}</CodeBlock>
                     <CodeBlock>{`# 自定义尺寸（适合 Twitter Card）
-curl "https://your-domain.com/api/og?query=example.com&w=1200&h=600" -o card.png`}</CodeBlock>
+curl "${origin}/api/og?query=example.com&w=1200&h=600" -o card.png`}</CodeBlock>
                   </div>
                 </div>
                 <div>
@@ -798,19 +798,19 @@ curl "https://your-domain.com/api/og?query=example.com&w=1200&h=600" -o card.png
                   <div className="space-y-2">
                     <div>
                       <p className="text-[11px] font-semibold text-muted-foreground mb-1.5 uppercase tracking-wide">按域名查询网站备案</p>
-                      <CodeBlock>{`curl "https://your-domain.com/api/icp/query?type=web&search=baidu.com"`}</CodeBlock>
+                      <CodeBlock>{`curl "${origin}/api/icp/query?type=web&search=baidu.com"`}</CodeBlock>
                     </div>
                     <div>
                       <p className="text-[11px] font-semibold text-muted-foreground mb-1.5 uppercase tracking-wide">按备案号查询</p>
-                      <CodeBlock>{`curl "https://your-domain.com/api/icp/query?type=web&search=京ICP证030173号"`}</CodeBlock>
+                      <CodeBlock>{`curl "${origin}/api/icp/query?type=web&search=京ICP证030173号"`}</CodeBlock>
                     </div>
                     <div>
                       <p className="text-[11px] font-semibold text-muted-foreground mb-1.5 uppercase tracking-wide">按企业名称查询（分页）</p>
-                      <CodeBlock>{`curl "https://your-domain.com/api/icp/query?type=web&search=深圳市腾讯计算机系统有限公司&pageNum=2&pageSize=20"`}</CodeBlock>
+                      <CodeBlock>{`curl "${origin}/api/icp/query?type=web&search=深圳市腾讯计算机系统有限公司&pageNum=2&pageSize=20"`}</CodeBlock>
                     </div>
                     <div>
                       <p className="text-[11px] font-semibold text-muted-foreground mb-1.5 uppercase tracking-wide">查询违法违规 APP</p>
-                      <CodeBlock>{`curl "https://your-domain.com/api/icp/query?type=bapp&search=example"`}</CodeBlock>
+                      <CodeBlock>{`curl "${origin}/api/icp/query?type=bapp&search=example"`}</CodeBlock>
                     </div>
                   </div>
                 </div>

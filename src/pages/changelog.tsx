@@ -43,9 +43,24 @@ interface DynamicEntry {
 
 const VERSIONS: Version[] = [
   {
-    version: "2.0",
+    version: "2.1",
     date: "2026-03",
     highlight: true,
+    changes: [
+      { type: "new", zh: "ICP 备案查询：支持网站 / APP / 小程序 / 快应用及对应违规类型，分页展示全量结果", en: "ICP filing query: supports website/app/mini-program/quick-app and blacklist types with paginated results" },
+      { type: "new", zh: "ICP 查询实时状态检测：页面顶部 API 健康徽章（在线/离线/检测中），离线时自动显示提示横幅", en: "ICP query health badge: real-time online/offline/checking indicator in page header with offline warning banner" },
+      { type: "new", zh: "动态更新记录系统：管理员可在后台增删改更新日志，前台按版本号合并展示", en: "Dynamic changelog system: admin can create/edit/delete changelog entries; front end merges them by version" },
+      { type: "new", zh: "更新记录邮件订阅：用户可订阅新版本推送，管理员一键发送版本通知邮件", en: "Changelog email subscription: users subscribe to release notifications; admin can broadcast with one click" },
+      { type: "improve", zh: "API 文档全面重构：新增分类快速导航栏、分类小节标题、/api/lookup 扩展为 5 种查询类型", en: "API docs overhaul: quick-nav pills, category section headers, /api/lookup expanded to 5 query types" },
+      { type: "improve", zh: "API 文档新增 /api/dns/txt 独立端点说明及与 /api/dns/records 的对比表格", en: "API docs: /api/dns/txt documented with comparison table against /api/dns/records" },
+      { type: "improve", zh: "API 文档新增精准限流速率表格（/api/lookup 40 次/分钟等各端点独立标注）", en: "API docs: per-endpoint rate-limit table with accurate values (40 req/min for /api/lookup etc.)" },
+      { type: "improve", zh: "API 文档请求示例全部使用站点实际域名替代占位符 your-domain.com", en: "API docs: all code examples now use the actual site domain instead of the placeholder your-domain.com" },
+      { type: "improve", zh: "ICP 查询页面加载动画改为叠加层覆盖，结果区域保持高度稳定，无跳动感", en: "ICP page: loading overlay replaces content swap — result area holds its height with no layout shift" },
+    ],
+  },
+  {
+    version: "2.0",
+    date: "2026-03",
     changes: [
       { type: "new", zh: "友情链接后台管理：数据库驱动，支持增删改查、显示/隐藏、分类分组、排序", en: "Friendly Links admin: DB-backed CRUD with show/hide toggle, category grouping, custom sort order" },
       { type: "new", zh: "关于我们页面全面可编辑：中/英简介、联系邮箱、GitHub 链接、原作者信息均可在管理后台配置", en: "About page fully admin-editable: zh/en intro, contact email, GitHub URL, author info all configurable" },
