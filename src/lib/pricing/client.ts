@@ -55,16 +55,37 @@ export async function getDomainTransferNegotiable(domain: string): Promise<boole
       .toLowerCase()
       .trim();
 
-    const [nazhumiData, miqingjuData] = await Promise.all([
+    // Run pricing check and domain scoring concurrently for speed
+    const [nazhumiData, miqingjuData, scoreResult] = await Promise.all([
       fetchNazhumiData(tld, "transfer"),
       fetchMiqingjuData(tld, "transfer"),
+      (async () => {
+        try {
+          const { scoreDomain } = await import("@/lib/domain-value");
+          return scoreDomain(domain, "domain");
+        } catch {
+          return null;
+        }
+      })(),
     ]);
+
+    const score = scoreResult?.score ?? 0;
+
+    // High-value domains (score ≥ 65) are almost always negotiable regardless of
+    // whether standard transfer pricing exists — owners of premium domains expect
+    // direct offers.
+    if (score >= 65) return true;
 
     const combined = [...nazhumiData, ...miqingjuData].filter(
       (r) => typeof r.transfer === "number" && (r.transfer as number) > 0,
     );
 
-    return combined.length === 0;
+    // If no standard transfer pricing is available for this TLD, mid-value and
+    // above domains can still be acquired via direct owner negotiation.
+    if (combined.length === 0) return score >= 35;
+
+    // Standard transfer pricing exists → not an aftermarket negotiation scenario.
+    return false;
   } catch {
     return null;
   }

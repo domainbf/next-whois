@@ -1,4 +1,10 @@
 import { MAX_WHOIS_FOLLOW, LOOKUP_TIMEOUT } from "@/lib/env";
+// intEnv re-used here so we can override per-protocol timeouts via env vars
+function intEnv(name: string, def: number): number {
+  const v = typeof process !== "undefined" ? process.env[name] : undefined;
+  const n = v ? parseInt(v, 10) : NaN;
+  return isNaN(n) ? def : n;
+}
 import { WhoisResult, WhoisAnalyzeResult } from "@/lib/whois/types";
 import { getJsonRedisValue, setJsonRedisValue, isRedisAvailable } from "@/lib/server/redis";
 
@@ -37,7 +43,7 @@ import { probeDomain } from "@/lib/whois/dns-check";
 import { lookupNicBa } from "@/lib/whois/http-scrapers/nic-ba";
 import { lookupYisi } from "@/lib/whois/yisi-fallback";
 import { lookupTianhu } from "@/lib/whois/tianhu-fallback";
-import { isTldFallbackEnabled, recordTldNativeFailure, recordTldNativeSuccess } from "@/lib/whois/tld-fallback-gate";
+import { isTldFallbackEnabled, recordTldNativeFailure, recordTldNativeSuccess, forceTldFallback } from "@/lib/whois/tld-fallback-gate";
 import { isRdapSkipped, markRdapSkipped, markRdapSupported, initRdapSkipCache } from "@/lib/whois/tld-rdap-skip";
 
 class ScraperRequiredError extends Error {
@@ -506,6 +512,17 @@ export async function lookupWhoisWithCache(
 // Kept short: WHOIS raw is supplementary — don't hold up a good RDAP result.
 const WHOIS_MERGE_WAIT_MS = 600;
 
+// Separate timeout caps for each protocol.
+// RDAP is HTTP/JSON so 4 s is generous; WHOIS TCP can be slower.
+const RDAP_TIMEOUT  = intEnv("RDAP_TIMEOUT_MS",  4_000);
+const WHOIS_TIMEOUT = intEnv("WHOIS_TIMEOUT_MS", 6_000);
+
+// If nothing at all has resolved after this many ms, immediately trigger
+// yisi / tianhu as an *additional* racer — even without prior failures.
+// This guarantees a worst-case result time of roughly PROGRESSIVE_FALLBACK_MS
+// + third-party API latency (≈ 1-2 s) instead of waiting for full timeouts.
+const PROGRESSIVE_FALLBACK_MS = intEnv("PROGRESSIVE_FALLBACK_MS", 3_500);
+
 export async function lookupWhois(domain: string): Promise<WhoisResult> {
   const startTime = performance.now();
   const elapsed = () => (performance.now() - startTime) / 1000;
@@ -525,12 +542,13 @@ export async function lookupWhois(domain: string): Promise<WhoisResult> {
     : false;
 
   // ── Build promise pool ────────────────────────────────────────────────────
-  // RDAP: only if not skipped (skipping avoids an unnecessary parallel TCP/HTTP attempt)
+  // RDAP: only if not skipped; uses a shorter cap (RDAP_TIMEOUT) since it's HTTP/JSON.
   const rdapPromise: Promise<any> = skipRdap
     ? Promise.reject(new Error("RDAP skipped for this TLD"))
-    : withTimeout(lookupRdap(domain), LOOKUP_TIMEOUT);
+    : withTimeout(lookupRdap(domain), RDAP_TIMEOUT);
 
-  const whoisPromise = withTimeout(getLookupWhois(domain), LOOKUP_TIMEOUT);
+  // WHOIS TCP is inherently slower; give it a bit more headroom.
+  const whoisPromise = withTimeout(getLookupWhois(domain), WHOIS_TIMEOUT);
 
   // Yisi / Tianhu: started immediately when the fallback gate is already open.
   // This lets a fast third-party response beat a slow native timeout.
@@ -541,13 +559,32 @@ export async function lookupWhois(domain: string): Promise<WhoisResult> {
       ]).then(([t, y]) => t ?? y)
     : Promise.resolve(null);
 
+  // Progressive fallback: if nothing has resolved after PROGRESSIVE_FALLBACK_MS,
+  // start yisi/tianhu even without prior failure history.  This bounds worst-case
+  // latency for any unknown TLD instead of waiting for full WHOIS_TIMEOUT.
+  const progressiveFallbackRacer: Promise<WhoisResult | null> = isDomainQuery
+    ? new Promise<WhoisResult | null>(resolve => {
+        const timer = setTimeout(async () => {
+          if (useFallbackEarly) { resolve(null); return; } // already running
+          const [t, y] = await Promise.all([
+            lookupTianhu(domain).catch(() => null),
+            lookupYisi(domain).catch(() => null),
+          ]);
+          resolve(t ?? y);
+        }, PROGRESSIVE_FALLBACK_MS);
+        // Prevent node from keeping the process alive if the lookup already succeeded
+        if (typeof timer === "object" && "unref" in timer) (timer as any).unref();
+      })
+    : Promise.resolve(null);
+
   // ── Race: first to produce a *tagged, non-null* result wins ──────────────
   // Important: null resolvers (failed/skipped) must never short-circuit the
   // race — we use a custom "first non-null" race instead of Promise.race.
   type Tagged =
     | { tag: "rdap"; value: any }
     | { tag: "whois"; value: Awaited<ReturnType<typeof getLookupWhois>> }
-    | { tag: "yisi_early"; value: WhoisResult };
+    | { tag: "yisi_early"; value: WhoisResult }
+    | { tag: "yisi_progressive"; value: WhoisResult };
 
   function firstNonNull<T>(promises: Promise<T | null>[]): Promise<T | null> {
     return new Promise(resolve => {
@@ -573,12 +610,18 @@ export async function lookupWhois(domain: string): Promise<WhoisResult> {
       v => ({ tag: "whois" as const, value: v }),
       () => null,
     ),
+    // Yisi started early (when fallback gate already open)
     ...(useFallbackEarly ? [
       yisiEarlyPromise.then(
         v => (v ? { tag: "yisi_early" as const, value: v } : null),
         () => null,
       ),
     ] : []),
+    // Progressive fallback (always included for domain queries)
+    progressiveFallbackRacer.then(
+      v => (v ? { tag: "yisi_progressive" as const, value: v } : null),
+      () => null,
+    ),
   ];
 
   const first = await firstNonNull(taggedRacers);
@@ -587,8 +630,8 @@ export async function lookupWhois(domain: string): Promise<WhoisResult> {
   let rdapSettled: PromiseSettledResult<Awaited<ReturnType<typeof lookupRdap>>>;
   let whoisSettled: PromiseSettledResult<Awaited<ReturnType<typeof getLookupWhois>>>;
 
-  // If yisi/tianhu won the race and produced a usable result, return early.
-  if (first?.tag === "yisi_early") {
+  // If yisi/tianhu won the race (either early or progressive), return early.
+  if (first?.tag === "yisi_early" || first?.tag === "yisi_progressive") {
     // Settle quietly in background for RDAP learning only
     if (!skipRdap) {
       Promise.allSettled([rdapPromise]).then(([r]) => {
@@ -599,6 +642,10 @@ export async function lookupWhois(domain: string): Promise<WhoisResult> {
           if (/no rdap server/i.test(msg)) markRdapSkipped(tldSuffix).catch(() => {});
         }
       });
+    }
+    if (first.tag === "yisi_progressive") {
+      // Progressive hit = native path was slow → open fallback gate for next time
+      forceTldFallback(domain).catch(() => {});
     }
     return first.value;
   }

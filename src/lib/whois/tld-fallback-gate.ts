@@ -47,3 +47,24 @@ export async function recordTldNativeSuccess(domain: string): Promise<void> {
     );
   } catch {}
 }
+
+/**
+ * Immediately open the fallback gate for a TLD regardless of fail_count.
+ * Called when the progressive fallback won the race, meaning native WHOIS / RDAP
+ * was too slow — we want yisi/tianhu to race from the very start next time.
+ */
+export async function forceTldFallback(domain: string): Promise<void> {
+  if (!(await isDbReady())) return;
+  try {
+    const tld = extractTld(domain);
+    await run(
+      `INSERT INTO tld_fallback_stats (tld, fail_count, use_fallback, last_fail_at)
+       VALUES ($1, $2, true, NOW())
+       ON CONFLICT (tld) DO UPDATE
+         SET fail_count   = GREATEST(tld_fallback_stats.fail_count, $2),
+             use_fallback = true,
+             last_fail_at = NOW()`,
+      [tld, FALLBACK_THRESHOLD],
+    );
+  } catch {}
+}

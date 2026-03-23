@@ -13,6 +13,61 @@ import { LocaleProvider } from "@/lib/locale-context";
 import { SiteSettingsProvider, useSiteSettings } from "@/lib/site-settings";
 import { RiMegaphoneLine, RiCloseLine } from "@remixicon/react";
 
+function RouteProgressBar() {
+  const router = useRouter();
+  const [active, setActive] = React.useState(false);
+  const [width, setWidth] = React.useState(0);
+  const rampRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  React.useEffect(() => {
+    let increment: ReturnType<typeof setInterval> | null = null;
+    const start = () => {
+      setWidth(0);
+      setActive(true);
+      let w = 0;
+      increment = setInterval(() => {
+        w = w < 70 ? w + 6 : w < 90 ? w + 1.5 : w < 95 ? w + 0.3 : w;
+        setWidth(Math.min(w, 95));
+      }, 100);
+    };
+    const finish = () => {
+      if (increment) clearInterval(increment);
+      setWidth(100);
+      rampRef.current = setTimeout(() => { setActive(false); setWidth(0); }, 350);
+    };
+    router.events.on("routeChangeStart", start);
+    router.events.on("routeChangeComplete", finish);
+    router.events.on("routeChangeError", finish);
+    return () => {
+      router.events.off("routeChangeStart", start);
+      router.events.off("routeChangeComplete", finish);
+      router.events.off("routeChangeError", finish);
+      if (increment) clearInterval(increment);
+      if (rampRef.current) clearTimeout(rampRef.current);
+    };
+  }, [router]);
+
+  if (!active) return null;
+  return (
+    <div
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        zIndex: 9999,
+        height: 2,
+        width: `${width}%`,
+        background: "linear-gradient(90deg, #7c3aed, #a855f7, #7c3aed)",
+        backgroundSize: "200% 100%",
+        transition: width === 100 ? "width 0.2s ease-out" : "width 0.1s linear",
+        borderRadius: "0 2px 2px 0",
+        boxShadow: "0 0 8px #a855f799",
+        pointerEvents: "none",
+      }}
+    />
+  );
+}
+
 const pageVariants = {
   initial: { opacity: 0, y: 8, scale: 0.995 },
   animate: { opacity: 1, y: 0, scale: 1 },
@@ -127,6 +182,7 @@ export default function App({ Component, pageProps: { session, ...pageProps } }:
           <div className="absolute inset-0 bg-gradient-to-b from-transparent via-background/20 to-background" />
         </div>
         <div className="relative w-full min-h-screen font-sans">
+          <RouteProgressBar />
           {!isAdminPage && <AnnouncementBanner />}
           {!isAdminPage && <Navbar />}
           <main className={isAdminPage ? undefined : "pt-16"}>
@@ -135,7 +191,7 @@ export default function App({ Component, pageProps: { session, ...pageProps } }:
             ) : (
               <AnimatePresence mode="wait" initial={false}>
                 <motion.div
-                  key={router.pathname}
+                  key={router.asPath}
                   variants={pageVariants}
                   initial="initial"
                   animate="animate"
