@@ -533,13 +533,7 @@ const WHOIS_MERGE_WAIT_MS = 350;
 // Separate timeout caps for each protocol.
 // RDAP is HTTP/JSON so 4 s is generous; WHOIS TCP can be slower.
 const RDAP_TIMEOUT  = intEnv("RDAP_TIMEOUT_MS",  4_000);
-const WHOIS_TIMEOUT = intEnv("WHOIS_TIMEOUT_MS", 6_000);
-
-// If nothing at all has resolved after this many ms, immediately trigger
-// yisi / tianhu as an *additional* racer — even without prior failures.
-// This guarantees a worst-case result time of roughly PROGRESSIVE_FALLBACK_MS
-// + third-party API latency (≈ 1-2 s) instead of waiting for full timeouts.
-const PROGRESSIVE_FALLBACK_MS = intEnv("PROGRESSIVE_FALLBACK_MS", 3_000);
+const WHOIS_TIMEOUT = intEnv("WHOIS_TIMEOUT_MS", 8_000);
 
 export async function lookupWhois(domain: string): Promise<WhoisResult> {
   const startTime = performance.now();
@@ -580,26 +574,35 @@ export async function lookupWhois(domain: string): Promise<WhoisResult> {
       ]).then(([t, y]) => t ?? y)
     : Promise.resolve(null);
 
-  // Progressive fallback: if nothing has resolved after PROGRESSIVE_FALLBACK_MS,
-  // start yisi/tianhu even without prior failure history.  This bounds worst-case
-  // latency for any unknown TLD instead of waiting for full WHOIS_TIMEOUT.
-  // cancelProgressiveTimer is set to true when the race is won early so the
-  // timer callback skips its API calls and avoids burning rate-limited quota.
-  let cancelProgressiveTimer = false;
+  // Progressive fallback: only fires AFTER both native lookups have fully settled
+  // (succeeded, failed, or timed out). This is true "local-first" — third-party
+  // APIs are never contacted while native RDAP/WHOIS is still running.
+  //
+  // If the early-gate is already open (useFallbackEarly=true), yisiEarlyPromise
+  // is already racing; no need to run the progressive path at all.
+  //
+  // nativeWon is set to true as soon as firstNonNull() resolves with a non-null
+  // winner, so that if native finishes before the allSettled resolves we skip
+  // the third-party calls entirely.
+  let nativeWon = false;
   const progressiveFallbackRacer: Promise<WhoisResult | null> = isDomainQuery
-    ? new Promise<WhoisResult | null>(resolve => {
-        const timer = setTimeout(async () => {
-          if (cancelProgressiveTimer) { resolve(null); return; } // race already won
-          if (useFallbackEarly) { resolve(null); return; } // already running
-          const [t, y] = await Promise.all([
-            lookupTianhu(domain).catch(() => null),
-            lookupYisi(domain).catch(() => null),
-          ]);
-          resolve(t ?? y);
-        }, PROGRESSIVE_FALLBACK_MS);
-        // Prevent node from keeping the process alive if the lookup already succeeded
-        if (typeof timer === "object" && "unref" in timer) (timer as any).unref();
-      })
+    ? (async () => {
+        // Skip if early-gate yisi/tianhu are already racing in parallel
+        if (useFallbackEarly) return null;
+        // Wait for ALL native lookups to settle (resolve or reject/timeout)
+        await Promise.allSettled([
+          ...(skipRdap ? [] : [rdapPromise]),
+          whoisPromise,
+        ]);
+        // Native won the race — no third-party calls needed
+        if (nativeWon) return null;
+        // Both native methods genuinely failed → fall through to third-party
+        const [t, y] = await Promise.all([
+          lookupTianhu(domain).catch(() => null),
+          lookupYisi(domain).catch(() => null),
+        ]);
+        return t ?? y;
+      })()
     : Promise.resolve(null);
 
   // ── Race: first to produce a *tagged, non-null* result wins ──────────────
@@ -651,9 +654,9 @@ export async function lookupWhois(domain: string): Promise<WhoisResult> {
 
   const first = await firstNonNull(taggedRacers);
 
-  // Cancel the progressive fallback timer if the race was already won by
-  // RDAP / WHOIS / yisi_early — prevents burning tianhu/yisi rate-limited quota.
-  if (first !== null) cancelProgressiveTimer = true;
+  // Signal the progressive fallback that native (RDAP/WHOIS/yisi_early) already
+  // produced a result — it will skip the third-party API calls when it checks in.
+  if (first !== null) nativeWon = true;
 
   // ── Settle remaining promises depending on what won ───────────────────────
   let rdapSettled: PromiseSettledResult<Awaited<ReturnType<typeof lookupRdap>>>;

@@ -6,22 +6,29 @@ A fast, modern WHOIS and RDAP lookup tool supporting domains, IPv4/IPv6, ASN, an
 
 ## Changelog
 
-### v2.5 — UnhandledPromiseRejection Fix + Fallback Timer Cancellation (2026-03-23)
+### v2.5 — Local-First Architecture: Bug Fixes + After-Native Fallback (2026-03-23)
 
-**Bug fixes in `src/lib/whois/lookup.ts`:**
+**Three fixes in `src/lib/whois/lookup.ts`:**
 
-1. **Critical: `UnhandledPromiseRejection` crash on RDAP-skipped TLDs (`.cn`, `.bf`, `.lu`, `.ye`, etc.)**
-   - **Root cause:** `rdapPromise` was set to `Promise.reject(new Error("RDAP skipped for this TLD"))` when `skipRdap=true`. Although `rdapPromise` was correctly excluded from `taggedRacers`, no `.catch()` was ever attached to the promise itself. In Node.js 15+, any rejected promise without a rejection handler crashes the process with `UnhandledPromiseRejection`.
-   - **Fix:** Changed to `Promise.resolve(null)` — safe because the value of `rdapPromise` is never read when `skipRdap=true` (all downstream references are guarded by `if (!skipRdap)` or manually set `rdapSettled`).
+1. **Critical bug: `UnhandledPromiseRejection` crash on RDAP-skipped TLDs (`.cn`, `.bf`, `.lu`, `.ye`, etc.)**
+   - **Root cause:** `rdapPromise = Promise.reject(...)` when `skipRdap=true`, but no `.catch()` was ever attached. Node.js 15+ crashes the process on any unhandled rejection.
+   - **Fix:** Changed to `Promise.resolve(null)` — safe because `rdapPromise` is excluded from `taggedRacers` and never read when `skipRdap=true`.
 
-2. **Improvement: Progressive fallback timer cancelled when race already won**
-   - **Problem:** The `progressiveFallbackRacer` fires `lookupTianhu()` / `lookupYisi()` after a 3-second timer. Previously, this timer still fired even when RDAP or WHOIS had already won the race, unnecessarily consuming tian.hu's rate-limited quota (25/min, 300/day) and yisi.yun's API quota.
-   - **Fix:** Added `cancelProgressiveTimer` flag (set to `true` when `firstNonNull()` resolves with a non-null winner). The timer callback checks this flag and returns early if the race was already won. The timer still fires normally when all native lookups fail, preserving the intended progressive fallback behavior.
+2. **Architecture overhaul: True "local-first" — third-party only fires after native fails**
+   - **Old (broken) behavior:** A 3-second timer would fire `lookupTianhu()`/`lookupYisi()` even while WHOIS was still running (WHOIS timeout = 6s). If WHOIS takes 3–5s (common for legitimate WHOIS servers), third-party would race against it and win. Then `forceTldFallback()` would be called, permanently opening the early gate for that TLD — creating a feedback loop where the system increasingly bypassed native WHOIS in favour of third-party.
+   - **New behavior:** `progressiveFallbackRacer` now uses `await Promise.allSettled([rdapPromise, whoisPromise])` — waits for ALL native lookups to genuinely settle (succeed, fail, or timeout) before calling `lookupTianhu()`/`lookupYisi()`. Third-party is truly a last resort.
+   - **Bonus:** For TLDs with no WHOIS server, `getLookupWhois` rejects almost instantly ("No WHOIS server responded") so the fallback fires immediately without waiting — actually faster than the old 3s timer for quickly-failing TLDs.
+   - **`nativeWon` flag:** Set to `true` when `firstNonNull()` resolves with a native result. The progressive async function checks this after `allSettled` and skips third-party calls if native already won.
+   - **`forceTldFallback` preserved:** Still called when progressive wins, since with the new architecture this truly means native completely failed — justified to open the early gate for next time.
 
-**Architecture note:**
-- `lookupTianhu`: only activates if `tianhu_enabled=true` in admin config (free API, 25/min, 300/day)
-- `lookupYisi`: only activates if `yisi_enabled=true AND yisi_key` is set in admin config (requires API key)
-- Both fallbacks are tried in parallel by the progressive (3s delay) and early (pre-gate) paths
+3. **WHOIS timeout increased: 6000ms → 8000ms**
+   - Many legitimate WHOIS servers (especially for ccTLDs) need 5-7s to respond. Increasing the cap reduces false timeouts and unnecessary fallback gate triggers. RDAP timeout unchanged at 4000ms (HTTP/JSON is faster).
+
+**Architecture summary:**
+- `lookupTianhu`: only if `tianhu_enabled=true` in admin config (25/min, 300/day)
+- `lookupYisi`: only if `yisi_enabled=true AND yisi_key` set in admin config
+- Progressive path: after native settles (not on a timer)
+- Early gate: after ≥3 recorded native failures for a TLD (`tld_fallback_stats` table)
 
 ---
 
