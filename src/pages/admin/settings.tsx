@@ -293,12 +293,16 @@ const SECTIONS: Section[] = [
 
 const FEATURE_GROUPS: { title: string; icon: React.ElementType; color: string; items: ToggleDef[] }[] = [
   {
-    title: "用户权限",
+    title: "访问控制",
     icon: RiShieldLine,
     color: "bg-slate-100 dark:bg-slate-800/60 text-slate-600 dark:text-slate-400",
     items: [
-      { key: "allow_registration", label: "开放注册", desc: "允许新用户自助注册账户", onColor: "bg-emerald-500" },
-      { key: "require_login", label: "登录才能查询", desc: "未登录用户无法进行域名查询，只能看到首页", onColor: "bg-amber-500" },
+      { key: "allow_registration", label: "开放注册", desc: "允许新用户自助注册账户（关闭后注册页显示提示，已有账号不受影响）", onColor: "bg-emerald-500" },
+      { key: "require_login", label: "登录后才可查询", desc: "未登录访客无法进行任何查询，仅可浏览首页", onColor: "bg-amber-500" },
+      { key: "disable_login", label: "禁用登录入口", desc: "隐藏导航栏登录按钮并关闭登录页；管理员仍可通过直接访问 /login 登录", onColor: "bg-red-500" },
+      { key: "maintenance_mode", label: "维护模式", desc: "对所有非管理员用户显示「维护中」提示页，站点暂停对外服务", onColor: "bg-orange-500" },
+      { key: "query_only_mode", label: "纯查询模式", desc: "隐藏用户账户、控制台、历史记录等功能，仅保留域名查询核心功能", onColor: "bg-violet-500" },
+      { key: "hide_raw_whois", label: "隐藏原始 WHOIS", desc: "查询结果不显示原始 WHOIS / RDAP 报文，仅展示解析后的结构化信息", onColor: "bg-slate-500" },
     ],
   },
   {
@@ -440,13 +444,18 @@ export default function AdminSettingsPage() {
             <h2 className="text-lg font-bold">网站设置</h2>
             <p className="text-xs text-muted-foreground mt-0.5">全面配置网站内容、功能开关、分析统计等</p>
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={reset} disabled={saving || loading} className="rounded-xl h-9 gap-2 text-sm">
-              <RiRefreshLine className="w-4 h-4" />重置默认
-            </Button>
-            <Button onClick={handleSave} disabled={saving || loading} className="rounded-xl h-9 gap-2 text-sm font-semibold">
-              {saving ? <><RiLoader4Line className="w-4 h-4 animate-spin" />保存中…</> : <><RiSaveLine className="w-4 h-4" />保存所有设置</>}
-            </Button>
+          <div className="flex flex-col items-end gap-2">
+            <div className="flex items-center gap-2">
+              <Button variant="outline" onClick={reset} disabled={saving || loading} className="rounded-xl h-9 gap-2 text-sm">
+                <RiRefreshLine className="w-4 h-4" />重置默认
+              </Button>
+              <Button onClick={handleSave} disabled={saving || loading} className="rounded-xl h-9 gap-2 text-sm font-semibold">
+                {saving ? <><RiLoader4Line className="w-4 h-4 animate-spin" />保存中…</> : <><RiSaveLine className="w-4 h-4" />保存所有设置</>}
+              </Button>
+            </div>
+            <p className="text-[10px] text-muted-foreground/70 text-right">
+              点击保存后立即写入数据库 · 当前浏览器即时生效 · 其他会话 60 秒内同步
+            </p>
           </div>
         </div>
 

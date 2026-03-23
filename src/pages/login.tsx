@@ -79,6 +79,12 @@ export default function LoginPage() {
             </p>
           </div>
 
+          {settings.disable_login === "1" && (
+            <div className="mb-4 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 px-4 py-3 text-sm text-amber-800 dark:text-amber-300 text-center">
+              登录功能暂时关闭，仅管理员可登录
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} noValidate>
             <div className="glass-panel border border-border rounded-2xl p-6 space-y-4">
               {/* Email */}

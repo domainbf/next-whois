@@ -11,7 +11,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import { SessionProvider } from "next-auth/react";
 import { LocaleProvider } from "@/lib/locale-context";
 import { SiteSettingsProvider, useSiteSettings } from "@/lib/site-settings";
-import { RiMegaphoneLine, RiCloseLine } from "@remixicon/react";
+import { RiMegaphoneLine, RiCloseLine, RiWrenchLine } from "@remixicon/react";
+import { ADMIN_EMAIL } from "@/lib/admin-shared";
 
 const pageVariants = {
   initial: { opacity: 0, y: 8, scale: 0.995 },
@@ -106,6 +107,43 @@ function AnnouncementBanner() {
   );
 }
 
+function MaintenanceGate({ children }: { children: React.ReactNode }) {
+  const settings = useSiteSettings();
+  const [sessionEmail, setSessionEmail] = React.useState<string | null | undefined>(undefined);
+
+  React.useEffect(() => {
+    if (settings.maintenance_mode !== "1") return;
+    fetch("/api/auth/session")
+      .then(r => r.json())
+      .then(s => setSessionEmail((s?.user?.email as string) || null))
+      .catch(() => setSessionEmail(null));
+  }, [settings.maintenance_mode]);
+
+  // Not in maintenance — render normally
+  if (settings.maintenance_mode !== "1") return <>{children}</>;
+  // Still checking session — render nothing briefly to avoid flash
+  if (sessionEmail === undefined) return null;
+  // Admin bypass
+  if (sessionEmail && sessionEmail.toLowerCase().trim() === ADMIN_EMAIL) return <>{children}</>;
+
+  return (
+    <div className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-background px-6 text-center">
+      <div className="w-14 h-14 rounded-2xl bg-amber-100 dark:bg-amber-950/50 flex items-center justify-center mb-5">
+        <RiWrenchLine className="w-7 h-7 text-amber-600 dark:text-amber-400" />
+      </div>
+      <h1 className="text-xl font-bold mb-2">站点维护中</h1>
+      <p className="text-sm text-muted-foreground max-w-xs">
+        系统正在升级维护，请稍后再访问。感谢您的耐心等待。
+      </p>
+      {settings.site_announcement && (
+        <p className="mt-4 text-xs text-muted-foreground/70 border border-border rounded-xl px-4 py-2 max-w-xs">
+          {settings.site_announcement}
+        </p>
+      )}
+    </div>
+  );
+}
+
 export default function App({ Component, pageProps: { session, ...pageProps } }: AppProps) {
   const origin: string = pageProps.origin || process.env.NEXT_PUBLIC_SITE_URL || "";
   const router = useRouter();
@@ -127,6 +165,7 @@ export default function App({ Component, pageProps: { session, ...pageProps } }:
           <div className="absolute inset-0 bg-dot-pattern opacity-10" />
           <div className="absolute inset-0 bg-gradient-to-b from-transparent via-background/20 to-background" />
         </div>
+        <MaintenanceGate>
         <div className="relative w-full min-h-screen font-sans">
           {!isAdminPage && <AnnouncementBanner />}
           {!isAdminPage && <Navbar />}
@@ -150,6 +189,7 @@ export default function App({ Component, pageProps: { session, ...pageProps } }:
             {!isAdminPage && <SiteFooter />}
           </main>
         </div>
+        </MaintenanceGate>
       </ThemeProvider>
     </SiteSettingsProvider>
     </LocaleProvider>

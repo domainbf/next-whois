@@ -56,6 +56,7 @@ import {
 } from "@remixicon/react";
 import { getTopRegistrars, DomainPricing } from "@/lib/pricing/client";
 import { FeedbackDrawer } from "@/components/feedback-drawer";
+import { useSiteSettings } from "@/lib/site-settings";
 import { computeLifecycle, fmtDate, fmtDateTime, fmtCountdown } from "@/lib/lifecycle";
 import React, { useEffect, useMemo } from "react";
 import { addHistory, detectQueryType } from "@/lib/history";
@@ -2649,6 +2650,8 @@ export default function LookupPage({
 }) {
   const { t, locale } = useTranslation();
   const router = useRouter();
+  const settings = useSiteSettings();
+  const hideRawWhois = settings.hide_raw_whois === "1";
   const [loading, setLoading] = React.useState(false);
   const [expandStatus, setExpandStatus] = React.useState(false);
   const [feedbackOpen, setFeedbackOpen] = React.useState(false);
@@ -3194,7 +3197,7 @@ export default function LookupPage({
                 )}
               </div>
 
-              {hasErrorRaw && (
+              {hasErrorRaw && !hideRawWhois && (
                 <div className="lg:col-span-4">
                   <ResponsePanel
                     whoisContent={result!.rawWhoisContent || ""}
@@ -4126,7 +4129,7 @@ export default function LookupPage({
                       </div>
                     )}
 
-                    {(result.rawWhoisContent || result.rawRdapContent) && (
+                    {(result.rawWhoisContent || result.rawRdapContent) && !hideRawWhois && (
                       <div className="flex-1 min-h-[250px]">
                         <ResponsePanel
                           whoisContent={result.rawWhoisContent}

@@ -15,9 +15,13 @@ export interface SiteSettings {
   og_url: string;
   og_image: string;
   twitter_card: string;
-  // Auth
+  // Auth & access control
   allow_registration: string;
   require_login: string;
+  disable_login: string;
+  maintenance_mode: string;
+  query_only_mode: string;
+  hide_raw_whois: string;
   // Core feature toggles
   enable_feedback: string;
   enable_stamps: string;
@@ -74,6 +78,10 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   twitter_card: "summary_large_image",
   allow_registration: "1",
   require_login: "",
+  disable_login: "",
+  maintenance_mode: "",
+  query_only_mode: "",
+  hide_raw_whois: "",
   enable_feedback: "1",
   enable_stamps: "1",
   enable_sponsor: "1",

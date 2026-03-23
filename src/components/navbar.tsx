@@ -435,11 +435,15 @@ export function NavDrawer() {
 function UserButton() {
   const { data: session, status } = useSession();
   const { t } = useTranslation();
+  const settings = useSiteSettings();
   const [open, setOpen] = React.useState(false);
   const ref = React.useRef<HTMLDivElement>(null);
   const email = (session?.user as any)?.email as string | undefined;
   const userId = (session?.user as any)?.id as string | undefined;
   const isAdminUser = !!email && email.toLowerCase().trim() === ADMIN_EMAIL;
+
+  const loginDisabled  = settings.disable_login   === "1";
+  const queryOnlyMode  = settings.query_only_mode  === "1";
 
   React.useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -457,7 +461,9 @@ function UserButton() {
 
   if (status === "loading") return null;
 
+  // Hide login button when login is disabled or in query-only mode (unless admin)
   if (status === "unauthenticated") {
+    if (loginDisabled || queryOnlyMode) return null;
     return (
       <motion.div {...TAP} style={{ display: "inline-flex" }}>
         <Link
@@ -470,6 +476,9 @@ function UserButton() {
       </motion.div>
     );
   }
+
+  // In query-only mode, hide the avatar/dashboard for non-admin logged-in users too
+  if (queryOnlyMode && !isAdminUser) return null;
 
   const name = session?.user?.name || email || "U";
   const initials = name.slice(0, 1).toUpperCase();
