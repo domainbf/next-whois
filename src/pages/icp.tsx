@@ -14,8 +14,10 @@ import {
   RiCheckLine, RiFileCopyLine, RiFileList2Line,
   RiArrowLeftSFill, RiArrowRightSFill, RiAlertLine,
   RiGlobalLine, RiSmartphoneLine, RiAppsLine, RiThunderstormsLine,
+  RiRefreshLine, RiWifiLine, RiWifiOffLine,
 } from "@remixicon/react";
 import type { IcpRecord, IcpResponse } from "@/pages/api/icp/query";
+import type { IcpHealthResponse } from "@/pages/api/icp/health";
 
 // ── Type definitions ─────────────────────────────────────────────────────────
 
@@ -106,6 +108,73 @@ function RecordCard({ record, isBlacklist }: { record: IcpRecord; isBlacklist: b
   );
 }
 
+// ── API health check hook ────────────────────────────────────────────────────
+type HealthStatus = "checking" | "online" | "offline";
+
+function useApiHealth() {
+  const [status, setStatus] = React.useState<HealthStatus>("checking");
+  const [latency, setLatency] = React.useState<number | null>(null);
+  const [error, setError] = React.useState<string | undefined>();
+  const [checking, setChecking] = React.useState(false);
+
+  const check = React.useCallback(async () => {
+    setChecking(true);
+    try {
+      const res = await fetch("/api/icp/health");
+      const data: IcpHealthResponse = await res.json();
+      setStatus(data.online ? "online" : "offline");
+      setLatency(data.latencyMs);
+      setError(data.error);
+    } catch {
+      setStatus("offline");
+      setLatency(null);
+      setError("检测失败");
+    } finally {
+      setChecking(false);
+    }
+  }, []);
+
+  React.useEffect(() => { check(); }, [check]);
+
+  return { status, latency, error, checking, check };
+}
+
+function ApiStatusBadge({ status, latency, error, checking, onRefresh }: {
+  status: HealthStatus; latency: number | null; error?: string; checking: boolean; onRefresh: () => void;
+}) {
+  return (
+    <button
+      onClick={onRefresh}
+      disabled={checking}
+      title={error ? `错误：${error}` : status === "online" ? `备案数据服务在线，延迟 ${latency}ms` : "备案数据服务离线，点击重新检测"}
+      className={cn(
+        "inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] font-medium border transition-all",
+        status === "checking" && "border-border/50 text-muted-foreground bg-muted/30",
+        status === "online"   && "border-emerald-500/30 text-emerald-600 dark:text-emerald-400 bg-emerald-500/8",
+        status === "offline"  && "border-red-500/30 text-red-500 bg-red-500/8",
+      )}
+    >
+      {checking ? (
+        <RiLoader4Line className="w-3 h-3 animate-spin" />
+      ) : status === "online" ? (
+        <RiWifiLine className="w-3 h-3" />
+      ) : status === "offline" ? (
+        <RiWifiOffLine className="w-3 h-3" />
+      ) : (
+        <RiLoader4Line className="w-3 h-3 animate-spin" />
+      )}
+      {checking
+        ? "检测中…"
+        : status === "online"
+        ? `在线${latency != null ? ` · ${latency}ms` : ""}`
+        : status === "offline"
+        ? `离线${error ? ` · ${error}` : ""}  ↺`
+        : "检测中…"}
+      {!checking && status === "offline" && <RiRefreshLine className="w-3 h-3" />}
+    </button>
+  );
+}
+
 function Pagination({ pageNum, pages, total, pageSize, onPage }: {
   pageNum: number; pages: number; total: number; pageSize: number; onPage: (p: number) => void;
 }) {
@@ -148,6 +217,7 @@ export default function IcpPage() {
   const [result, setResult] = React.useState<IcpResponse | null>(null);
   const [currentPage, setCurrentPage] = React.useState(1);
   const inputRef = React.useRef<HTMLInputElement>(null);
+  const { status: apiStatus, latency: apiLatency, error: apiError, checking: apiChecking, check: recheckApi } = useApiHealth();
 
   // Read initial query from URL
   React.useEffect(() => {
@@ -214,16 +284,41 @@ export default function IcpPage() {
                 <RiArrowLeftSLine className="w-4 h-4" />
               </Button>
             </Link>
-            <div className="flex items-center gap-2">
-              <div className="p-1.5 rounded-lg bg-rose-500/10 text-rose-500">
+            <div className="flex items-center gap-2 flex-1 flex-wrap">
+              <div className="p-1.5 rounded-lg bg-rose-500/10 text-rose-500 shrink-0">
                 <RiFileList2Line className="w-5 h-5" />
               </div>
               <div>
                 <h1 className="text-lg font-bold leading-none">ICP 备案查询</h1>
                 <p className="text-[11px] text-muted-foreground mt-0.5">网站 · APP · 小程序 · 快应用备案信息</p>
               </div>
+              <div className="ml-auto shrink-0">
+                <ApiStatusBadge
+                  status={apiStatus}
+                  latency={apiLatency}
+                  error={apiError}
+                  checking={apiChecking}
+                  onRefresh={recheckApi}
+                />
+              </div>
             </div>
           </div>
+
+          {/* Offline warning banner */}
+          {apiStatus === "offline" && !apiChecking && (
+            <div className="flex items-start gap-2.5 rounded-xl border border-orange-500/20 bg-orange-500/5 px-4 py-3 mb-4 text-sm">
+              <RiAlertLine className="w-4 h-4 text-orange-400 shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <span className="font-medium text-orange-600 dark:text-orange-400">备案数据服务当前不可用</span>
+                <span className="text-muted-foreground ml-1.5">
+                  {apiError || "服务可能正在维护，查询可能失败"}，请稍后重试。
+                </span>
+              </div>
+              <button onClick={recheckApi} className="text-xs text-orange-500 hover:text-orange-600 shrink-0 font-medium flex items-center gap-1">
+                <RiRefreshLine className="w-3.5 h-3.5" />重试
+              </button>
+            </div>
+          )}
 
           {/* Type selector */}
           <div className="mb-4">

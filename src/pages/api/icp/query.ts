@@ -37,6 +37,20 @@ export type IcpResponse = {
   error?: string;
 };
 
+/** Strip HTML tags and collapse whitespace for clean error messages */
+function stripHtml(text: string): string {
+  return text
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\s{2,}/g, " ")
+    .trim()
+    .slice(0, 120);
+}
+
+function isHtmlResponse(text: string): boolean {
+  const t = text.trimStart().toLowerCase();
+  return t.startsWith("<!doctype") || t.startsWith("<html");
+}
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse<IcpResponse>,
@@ -82,9 +96,23 @@ export default async function handler(
 
     if (!upstreamRes.ok) {
       const text = await upstreamRes.text().catch(() => "");
+      const clean = isHtmlResponse(text)
+        ? `数据服务暂时不可用（HTTP ${upstreamRes.status}），请稍后重试`
+        : `上游接口错误（HTTP ${upstreamRes.status}）：${stripHtml(text)}`;
       return res.status(502).json({
-        ok: false, type, search, pageNum, pageSize, total: 0, pages: 0, list: [],
-        error: `上游接口错误 ${upstreamRes.status}: ${text.slice(0, 200)}`,
+        ok: false, type, search, pageNum, pageSize, total: 0, pages: 0, list: [], error: clean,
+      });
+    }
+
+    // Guard against non-JSON (upstream may return HTML on 200 too)
+    const contentType = upstreamRes.headers.get("content-type") ?? "";
+    if (!contentType.includes("json")) {
+      const text = await upstreamRes.text().catch(() => "");
+      const clean = isHtmlResponse(text)
+        ? "数据服务返回了非 JSON 响应，可能正在维护，请稍后重试"
+        : `意外响应：${text.slice(0, 100)}`;
+      return res.status(502).json({
+        ok: false, type, search, pageNum, pageSize, total: 0, pages: 0, list: [], error: clean,
       });
     }
 
@@ -110,9 +138,14 @@ export default async function handler(
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "未知错误";
     const isTimeout = msg.includes("abort") || msg.includes("timeout");
+    const isNoConn = msg.includes("ENOTFOUND") || msg.includes("ECONNREFUSED") || msg.includes("fetch failed");
+    const clean = isTimeout
+      ? "查询超时（>12s），数据服务可能暂时不可用，请稍后重试"
+      : isNoConn
+      ? "无法连接到备案数据服务，服务可能暂时离线"
+      : `查询失败：${msg.slice(0, 100)}`;
     return res.status(502).json({
-      ok: false, type, search, pageNum, pageSize, total: 0, pages: 0, list: [],
-      error: isTimeout ? "查询超时，请稍后重试" : `查询失败: ${msg}`,
+      ok: false, type, search, pageNum, pageSize, total: 0, pages: 0, list: [], error: clean,
     });
   }
 }
