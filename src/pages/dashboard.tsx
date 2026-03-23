@@ -258,15 +258,22 @@ function GuideModalShell({ onClose, icon, iconBg, title, subtitle, children }: {
   subtitle: string;
   children: React.ReactNode;
 }) {
+  React.useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center p-4"
+      className="fixed inset-0 z-[60] flex items-start justify-center px-4 pb-4"
+      style={{ paddingTop: "clamp(60px, 10vh, 80px)" }}
       onClick={onClose}
     >
       <div className="absolute inset-0 bg-black/75 backdrop-blur-sm pointer-events-none" />
       <div
         className="relative z-10 w-full max-w-sm bg-background border border-border rounded-2xl shadow-2xl flex flex-col"
-        style={{ maxHeight: "min(92vh, 640px)" }}
+        style={{ maxHeight: "calc(100vh - clamp(60px,10vh,80px) - 16px)" }}
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
@@ -287,7 +294,7 @@ function GuideModalShell({ onClose, icon, iconBg, title, subtitle, children }: {
           </button>
         </div>
         <div
-          className="flex-1 overflow-y-auto overscroll-contain"
+          className="flex-1 min-h-0 overflow-y-auto overscroll-contain"
           style={{ WebkitOverflowScrolling: "touch" } as React.CSSProperties}
         >
           <div className="p-4 space-y-3">{children}</div>
@@ -443,11 +450,13 @@ function SubscribeGuideModal({ onClose }: { onClose: () => void }) {
           前往 <RiArrowRightLine className="w-3.5 h-3.5" />
         </Button>
       </form>
-      <Link href="/remind" onClick={onClose} className="block pb-1">
-        <Button variant="outline" size="sm" className="w-full h-9 rounded-xl text-xs gap-1.5 touch-manipulation">
-          <RiCalendarLine className="w-3.5 h-3.5" />查看订阅管理页
-        </Button>
-      </Link>
+      <button
+        type="button"
+        onClick={() => { onClose(); router.push("/remind"); }}
+        className="w-full h-9 rounded-xl text-xs touch-manipulation flex items-center justify-center border border-border bg-background hover:bg-muted transition-colors font-medium"
+      >
+        <RiCalendarLine className="w-3.5 h-3.5 mr-1" />查看订阅管理页
+      </button>
     </GuideModalShell>
   );
 }
