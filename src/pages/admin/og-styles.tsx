@@ -14,6 +14,7 @@ import {
   RiMoonLine,
   RiSunLine,
   RiShuffleLine,
+  RiFlipHorizontalLine,
 } from "@remixicon/react";
 import { toast } from "sonner";
 import { requireAdmin } from "@/lib/admin";
@@ -115,6 +116,9 @@ export default function OgStylesPage({ initialEnabledStyles }: Props) {
   const [enabled, setEnabled] = React.useState<Set<number>>(
     new Set(initialEnabledStyles),
   );
+  const [savedEnabled, setSavedEnabled] = React.useState<Set<number>>(
+    new Set(initialEnabledStyles),
+  );
   const [saving, setSaving] = React.useState(false);
   const [previewTheme, setPreviewTheme] = React.useState<"light" | "dark">(
     "dark",
@@ -127,6 +131,14 @@ export default function OgStylesPage({ initialEnabledStyles }: Props) {
     Record<number, boolean>
   >({});
   const [imgKey, setImgKey] = React.useState(0);
+
+  const hasUnsaved = React.useMemo(() => {
+    if (enabled.size !== savedEnabled.size) return true;
+    for (const id of enabled) {
+      if (!savedEnabled.has(id)) return true;
+    }
+    return false;
+  }, [enabled, savedEnabled]);
 
   function toggle(id: number) {
     setEnabled((prev) => {
@@ -149,11 +161,36 @@ export default function OgStylesPage({ initialEnabledStyles }: Props) {
   }
 
   function selectNone() {
-    if (enabled.size <= 1) {
+    const sorted = Array.from(enabled).sort((a, b) => a - b);
+    if (sorted.length <= 1) {
       toast.error("至少需要保留一种样式");
       return;
     }
-    setEnabled(new Set([0]));
+    setEnabled(new Set([sorted[0]]));
+  }
+
+  function invertSelection() {
+    const all = Array.from({ length: TOTAL_STYLES }, (_, i) => i);
+    const inverted = all.filter((id) => !enabled.has(id));
+    if (inverted.length === 0) {
+      toast.error("至少需要保留一种样式");
+      return;
+    }
+    setEnabled(new Set(inverted));
+  }
+
+  function retryImage(id: number) {
+    setErrorImages((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+    setLoadedImages((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+    setImgKey((k) => k + 1);
   }
 
   function refreshPreviews() {
@@ -165,14 +202,16 @@ export default function OgStylesPage({ initialEnabledStyles }: Props) {
   async function save() {
     setSaving(true);
     try {
-      const value = Array.from(enabled).sort((a, b) => a - b).join(",");
+      const sorted = Array.from(enabled).sort((a, b) => a - b);
+      const value = sorted.join(",");
       const res = await fetch("/api/admin/settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ key: "og_enabled_styles", value }),
       });
       if (!res.ok) throw new Error("保存失败");
-      toast.success("已保存 OG 样式配置");
+      setSavedEnabled(new Set(enabled));
+      toast.success(`已保存 OG 样式配置（${sorted.length} 种启用）`);
     } catch {
       toast.error("保存失败，请重试");
     } finally {
@@ -203,18 +242,25 @@ export default function OgStylesPage({ initialEnabledStyles }: Props) {
               / {TOTAL_STYLES} 种，默认按域名哈希随机选取
             </p>
           </div>
-          <Button
-            onClick={save}
-            disabled={saving}
-            className="gap-2"
-          >
-            {saving ? (
-              <RiLoader4Line className="size-4 animate-spin" />
-            ) : (
-              <RiSaveLine className="size-4" />
+          <div className="flex items-center gap-2">
+            {hasUnsaved && (
+              <span className="text-xs text-amber-600 dark:text-amber-400 font-medium px-2">
+                未保存更改
+              </span>
             )}
-            保存配置
-          </Button>
+            <Button
+              onClick={save}
+              disabled={saving}
+              className="gap-2"
+            >
+              {saving ? (
+                <RiLoader4Line className="size-4 animate-spin" />
+              ) : (
+                <RiSaveLine className="size-4" />
+              )}
+              保存配置
+            </Button>
+          </div>
         </div>
 
         <div className="flex items-center gap-3 flex-wrap p-4 bg-muted/40 rounded-xl border border-border">
@@ -262,10 +308,18 @@ export default function OgStylesPage({ initialEnabledStyles }: Props) {
             </button>
             <span className="text-muted-foreground/40 text-xs">|</span>
             <button
+              onClick={invertSelection}
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors px-2"
+            >
+              <RiFlipHorizontalLine className="size-3" />
+              反选
+            </button>
+            <span className="text-muted-foreground/40 text-xs">|</span>
+            <button
               onClick={selectNone}
               className="text-xs text-muted-foreground hover:text-foreground transition-colors px-2"
             >
-              仅保留 #0
+              仅保留最小
             </button>
           </div>
         </div>
@@ -303,6 +357,16 @@ export default function OgStylesPage({ initialEnabledStyles }: Props) {
                     <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-muted-foreground">
                       <RiImageLine className="size-8 opacity-40" />
                       <span className="text-xs opacity-60">预览加载失败</span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          retryImage(meta.id);
+                        }}
+                        className="flex items-center gap-1 text-xs border border-border rounded-md px-2 py-1 hover:bg-accent transition-colors mt-1"
+                      >
+                        <RiRefreshLine className="size-3" />
+                        重试
+                      </button>
                     </div>
                   )}
                   <img
@@ -376,7 +440,12 @@ export default function OgStylesPage({ initialEnabledStyles }: Props) {
           })}
         </div>
 
-        <div className="flex justify-end pt-2">
+        <div className="flex justify-end items-center gap-3 pt-2">
+          {hasUnsaved && (
+            <span className="text-xs text-amber-600 dark:text-amber-400 font-medium">
+              有未保存的更改
+            </span>
+          )}
           <Button onClick={save} disabled={saving} className="gap-2">
             {saving ? (
               <RiLoader4Line className="size-4 animate-spin" />

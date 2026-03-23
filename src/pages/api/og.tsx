@@ -1383,10 +1383,28 @@ export default async function handler(req: NextRequest) {
       </div>
     );
   } else if (styleVariant === 5) {
-    // ── Style 5: Blueprint (Technical Dark) ───────────────────────────────────
+    // ── Style 5: Blueprint (Technical Dark) – rendered grid lines ─────────────
     const blueprintBg = "#0f172a";
     const cyan = "#67e8f9";
+    const cyanDim = "#22d3ee";
     const cyanFaint = "#164e63";
+    const gridColor = "#1e3a5f";
+
+    // Build horizontal + vertical grid paths as SVG
+    const cols = 16;
+    const rows = 10;
+    const hPaths = Array.from({ length: rows - 1 }, (_, i) => {
+      const y = Math.round(((i + 1) / rows) * h);
+      return `M0 ${y} L${w} ${y}`;
+    }).join(" ");
+    const vPaths = Array.from({ length: cols - 1 }, (_, i) => {
+      const x = Math.round(((i + 1) / cols) * w);
+      return `M${x} 0 L${x} ${h}`;
+    }).join(" ");
+
+    // Corner marker size
+    const cm = 20;
+
     content = (
       <div
         style={{
@@ -1396,8 +1414,26 @@ export default async function handler(req: NextRequest) {
           flexDirection: "column",
           backgroundColor: blueprintBg,
           padding: "0",
+          position: "relative",
         }}
       >
+        {/* SVG grid overlay */}
+        <svg
+          width={w}
+          height={h}
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+          }}
+        >
+          <path d={hPaths} stroke={gridColor} strokeWidth="1" fill="none" />
+          <path d={vPaths} stroke={gridColor} strokeWidth="1" fill="none" />
+        </svg>
+
+        {/* Content frame */}
         <div
           style={{
             flex: 1,
@@ -1407,8 +1443,39 @@ export default async function handler(req: NextRequest) {
             border: `1px solid ${cyanFaint}`,
             padding: "36px 52px",
             gap: "0",
+            position: "relative",
           }}
         >
+          {/* Corner markers – top-left */}
+          <div style={{ position: "absolute", top: "-1px", left: "-1px", display: "flex" }}>
+            <div style={{ width: `${cm}px`, height: "2px", backgroundColor: cyan, display: "flex" }} />
+          </div>
+          <div style={{ position: "absolute", top: "-1px", left: "-1px", display: "flex" }}>
+            <div style={{ width: "2px", height: `${cm}px`, backgroundColor: cyan, display: "flex" }} />
+          </div>
+          {/* Corner markers – top-right */}
+          <div style={{ position: "absolute", top: "-1px", right: "-1px", display: "flex" }}>
+            <div style={{ width: `${cm}px`, height: "2px", backgroundColor: cyan, display: "flex" }} />
+          </div>
+          <div style={{ position: "absolute", top: "-1px", right: "-1px", display: "flex" }}>
+            <div style={{ width: "2px", height: `${cm}px`, backgroundColor: cyan, display: "flex" }} />
+          </div>
+          {/* Corner markers – bottom-left */}
+          <div style={{ position: "absolute", bottom: "-1px", left: "-1px", display: "flex" }}>
+            <div style={{ width: `${cm}px`, height: "2px", backgroundColor: cyan, display: "flex" }} />
+          </div>
+          <div style={{ position: "absolute", bottom: "-1px", left: "-1px", display: "flex" }}>
+            <div style={{ width: "2px", height: `${cm}px`, backgroundColor: cyan, display: "flex" }} />
+          </div>
+          {/* Corner markers – bottom-right */}
+          <div style={{ position: "absolute", bottom: "-1px", right: "-1px", display: "flex" }}>
+            <div style={{ width: `${cm}px`, height: "2px", backgroundColor: cyan, display: "flex" }} />
+          </div>
+          <div style={{ position: "absolute", bottom: "-1px", right: "-1px", display: "flex" }}>
+            <div style={{ width: "2px", height: `${cm}px`, backgroundColor: cyan, display: "flex" }} />
+          </div>
+
+          {/* Header row */}
           <div
             style={{
               display: "flex",
@@ -1441,6 +1508,7 @@ export default async function handler(req: NextRequest) {
             </div>
           </div>
 
+          {/* Main content */}
           <div
             style={{
               flex: 1,
@@ -1454,7 +1522,7 @@ export default async function handler(req: NextRequest) {
             <span
               style={{
                 fontSize: "11px",
-                color: cyan,
+                color: cyanDim,
                 letterSpacing: "0.16em",
                 fontFamily: "monospace",
                 display: "flex",
@@ -1512,6 +1580,7 @@ export default async function handler(req: NextRequest) {
             </div>
           </div>
 
+          {/* Footer row */}
           <div
             style={{
               display: "flex",
