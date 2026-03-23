@@ -251,6 +251,9 @@ function mergeRegistrars(
 }
 
 function calcIsPremium(r: NazhumiRegistrar): boolean {
+  // Registry marks domain as premium via currencytype field
+  if (r.currencytype && r.currencytype.toLowerCase().includes("premium")) return true;
+  // High price threshold for major currencies (registry-level premium TLD pricing)
   return (
     typeof r.new === "number" &&
     r.new > 100 &&

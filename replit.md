@@ -6,34 +6,33 @@ A fast, modern WHOIS and RDAP lookup tool supporting domains, IPv4/IPv6, ASN, an
 
 ## Changelog
 
-### v2.4 — Premium Domain Pricing Sync Fix (2026-03-23)
+### v2.4 — Premium Domain Pricing: Accurate API-Based Detection (2026-03-23)
 
-**Problem:** Domains with `negotiable: true` (high-value score ≥ 65 from domain value engine) were showing standard TLD-level registration prices in plain/green text, giving no visual distinction from cheap commodity domains. The `isPremium` flag on pricing objects was only set when registrar price > 100 USD/EUR/CAD — missing domains like `ai.dev` (~¥34 TLD rate) that are actually premium via value scoring.
+**Two distinct concepts now properly separated:**
+- `isPremium` (on pricing) = registry/API confirmed premium-priced TLD (price > $100 USD/EUR/CAD, OR `currencytype === "premium"` from API response)
+- `negotiable` = domain name has high resale value (from domain value scoring engine — independent of TLD pricing)
 
-**Fixes across 3 layers:**
+**Changes:**
 
-1. **`src/lib/whois/common_parser.ts`** — After fetching pricing + negotiable in parallel, sync `isPremium` flag:
-   - `registerPrice.isPremium = negotiable === true || registerPrice.isPremium`
-   - `renewPrice.isPremium = negotiable === true || renewPrice.isPremium`
-   - Uses spread to preserve all other pricing fields
+1. **`src/lib/pricing/client.ts` — `calcIsPremium` improved:**
+   - Now also checks `r.currencytype.toLowerCase().includes("premium")` — detects registry-marked premium pricing from the Nazhumi API response field before the price-threshold fallback
+   - Ensures both server-side (`getDomainPricing`) and client-side (`getTopRegistrars`) correctly propagate API-reported premium status
 
-2. **`src/pages/[...query].tsx`** — Client-side `rawPrices` mapping (registrar table) also synced:
-   - `isPremium: result.negotiable === true || (price > 100 && USD/EUR/CAD)`
-   - Ensures registrar comparison table respects negotiable flag
+2. **`src/pages/[...query].tsx` — `rawPrices` client mapping updated:**
+   - Now checks `r.currencytype.toLowerCase().includes("premium")` in addition to price threshold
+   - Removed incorrect `result.negotiable === true` conflation from rawPrices
 
-3. **UI badge overhaul** (desktop + mobile register/renew badge rows):
-   - Changed from red → **amber** color when `isPremium` is true (consistent with 溢价 badge which was already amber)
-   - Icon colors updated: `text-muted-foreground` → `text-amber-500` when premium
-   - Added small "参考" (zh) / "ref" (en) superscript label on register AND renew prices when premium — clearly communicates these are TLD reference rates, not domain-specific premium acquisition prices
+3. **UI — Register/Renew price badges (desktop + mobile):**
+   - Normal domains: grey `text-muted-foreground` (unchanged)
+   - Registry-premium TLD (isPremium = true): **amber** `text-amber-500` with amber icon
+   - Renew price badge now also respects `isPremium` for amber coloring (previously had no isPremium styling)
 
-4. **DomainReminderDialog mini card** (pricing grid inside reminder dialog):
-   - Register + renew price text: red → **amber** when premium
+4. **DomainReminderDialog mini card:**
+   - Colors updated: `text-red-500` → `text-amber-500` for consistency with main badge row
    - 溢价 cell background: `bg-red-500/8` → `bg-amber-500/8`
-   - 溢价 value text: `text-red-500` → `text-amber-500` (full amber consistency)
-   - Added "参考价" (zh) / "ref. rate" (en) sub-label under both prices when premium
-   - `isPremium` prop updated to `result.negotiable === true || result.registerPrice?.isPremium`
+   - 溢价 value: `text-red-500` → `text-amber-500`
 
-**Result:** For `ai.dev` and similar premium/negotiable domains, all pricing badges now show in amber with a "参考" indicator, clearly distinguishing them from standard domain pricing while remaining informative.
+**Result:** `ai.dev` — shows grey $4.99 register / $11.62 renew (correct: `.dev` is not a premium-priced TLD), amber "Negotiable: Yes" (correct: high-value domain name). A domain like `.ai` with $100+ registration price would show all pricing in amber.
 
 ---
 

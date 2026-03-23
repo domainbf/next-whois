@@ -2019,9 +2019,6 @@ function DomainReminderDialog({
                       <p className={cn("text-[13px] font-black tabular-nums leading-none", isPremium ? "text-amber-500" : "text-foreground")}>
                         {registerPriceFmt ?? "—"}
                       </p>
-                      {isPremium && registerPriceFmt && (
-                        <p className="text-[8px] text-amber-500/60 leading-none mt-0.5">{isZh ? "参考价" : "ref. rate"}</p>
-                      )}
                     </div>
                     {/* Renew price */}
                     <div className="flex flex-col items-center justify-center px-2 py-2.5 gap-0.5 border-x border-border/40">
@@ -2031,9 +2028,6 @@ function DomainReminderDialog({
                       <p className={cn("text-[13px] font-black tabular-nums leading-none", isPremium ? "text-amber-500" : "text-foreground")}>
                         {renewPriceFmt ?? "—"}
                       </p>
-                      {isPremium && renewPriceFmt && (
-                        <p className="text-[8px] text-amber-500/60 leading-none mt-0.5">{isZh ? "参考价" : "ref. rate"}</p>
-                      )}
                     </div>
                     {/* Premium badge */}
                     <div className={cn(
@@ -2354,7 +2348,7 @@ function AvailableDomainCard({ domain, locale }: { domain: string; locale: strin
           .map((r: any) => ({
             ...r,
             isPremium:
-              result.negotiable === true ||
+              (r.currencytype && r.currencytype.toLowerCase().includes("premium")) ||
               (typeof r.new === "number" &&
                 r.new > 100 &&
                 ["usd", "eur", "cad"].includes((r.currency || "").toLowerCase())),
@@ -2987,7 +2981,6 @@ export default function LookupPage({
                       {isChinese
                         ? toCNY(result.registerPrice.new as number, result.registerPrice.currency)
                         : toUSD(result.registerPrice.new as number, result.registerPrice.currency)}
-                      {result.registerPrice.isPremium && <span className="ml-0.5 opacity-60 text-[9px]">{isChinese ? "参考" : "ref"}</span>}
                     </span>
                   </Link>
                 )}
@@ -3005,7 +2998,6 @@ export default function LookupPage({
                       {isChinese
                         ? toCNY(result.renewPrice.renew as number, result.renewPrice.currency)
                         : toUSD(result.renewPrice.renew as number, result.renewPrice.currency)}
-                      {result.renewPrice.isPremium && <span className="ml-0.5 opacity-60 text-[9px]">{isChinese ? "参考" : "ref"}</span>}
                     </span>
                   </Link>
                 )}
@@ -3408,7 +3400,6 @@ export default function LookupPage({
                                 {isChinese
                                   ? toCNY(result.registerPrice.new as number, result.registerPrice.currency)
                                   : toUSD(result.registerPrice.new as number, result.registerPrice.currency)}
-                                {result.registerPrice.isPremium && <span className="ml-0.5 opacity-60 text-[9px]">{isChinese ? "参考" : "ref"}</span>}
                               </span>
                             </Link>
                           )}
@@ -3426,7 +3417,6 @@ export default function LookupPage({
                                 {isChinese
                                   ? toCNY(result.renewPrice.renew as number, result.renewPrice.currency)
                                   : toUSD(result.renewPrice.renew as number, result.renewPrice.currency)}
-                                {result.renewPrice.isPremium && <span className="ml-0.5 opacity-60 text-[9px]">{isChinese ? "参考" : "ref"}</span>}
                               </span>
                             </Link>
                           )}
@@ -3647,7 +3637,7 @@ export default function LookupPage({
                             : toUSD(result.renewPrice.renew as number, result.renewPrice.currency)
                           : undefined
                       }
-                      isPremium={result.negotiable === true || (result.registerPrice?.isPremium ?? false)}
+                      isPremium={result.registerPrice?.isPremium ?? false}
                       eppStatuses={result.status?.map((s) => s.status) ?? []}
                     />
 
