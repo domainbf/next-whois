@@ -13,7 +13,7 @@ import {
   RiHomeLine, RiInformationLine, RiHistoryLine, RiLinksLine,
   RiHeartLine, RiBarChartLine, RiSearchLine, RiCodeBoxLine,
   RiShieldLine, RiPaletteLine, RiEyeLine, RiUploadLine, RiCloseLine,
-  RiFingerprint2Line,
+  RiFingerprint2Line, RiUserLine,
 } from "@remixicon/react";
 
 // ── Client-side image compression helper ────────────────────────────────────
@@ -245,7 +245,9 @@ const SECTIONS: Section[] = [
       { key: "about_content", label: "中文简介", desc: "关于页面的中文介绍段落（留空使用内置默认文案）", placeholder: "这里填写关于本站的中文介绍...", icon: RiFileTextLine, multiline: true },
       { key: "about_intro_en", label: "英文简介", desc: "关于页面的英文介绍段落（留空使用内置默认文案）", placeholder: "Enter the English description for the about page...", icon: RiFileTextLine, multiline: true },
       { key: "about_contact_email", label: "联系邮箱", desc: "显示在关于页面和友情链接页的联系邮箱（留空则不显示）", placeholder: "contact@yourdomain.com", icon: RiMailSendLine },
-      { key: "about_github_url", label: "源码 GitHub 链接", desc: "GitHub 仓库地址，显示在技术栈区域（留空则不显示）", placeholder: "https://github.com/yourname/yourrepo", icon: RiCodeBoxLine },
+      { key: "about_github_url", label: "源码 GitHub 链接", desc: "GitHub 仓库地址（留空使用默认 zmh-program/next-whois）", placeholder: "https://github.com/yourname/yourrepo", icon: RiCodeBoxLine },
+      { key: "about_author_name", label: "原作者名称", desc: "显示在【基于…二次创作】卡片中的原作者名称（留空使用默认 zmh-program）", placeholder: "zmh-program", icon: RiUserLine },
+      { key: "about_author_url", label: "原作者主页链接", desc: "原作者个人主页（留空使用默认 https://zmh.me）", placeholder: "https://zmh.me", icon: RiLinksLine },
       { key: "about_thanks", label: "致谢列表（JSON）", desc: `致谢服务商列表，JSON 格式，留空使用默认。格式：[{"name":"站名","url":"https://...","desc":"中文说明","descEn":"English desc"}]`, placeholder: '[{"name":"Example","url":"https://example.com","desc":"示例服务","descEn":"Example service"}]', icon: RiCodeBoxLine, multiline: true },
     ],
   },

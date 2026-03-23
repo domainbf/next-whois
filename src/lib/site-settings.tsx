@@ -47,6 +47,8 @@ export interface SiteSettings {
   about_intro_en: string;
   about_contact_email: string;
   about_github_url: string;
+  about_author_name: string;
+  about_author_url: string;
   about_thanks: string;
   // Changelog page
   changelog_title: string;
@@ -119,6 +121,8 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   about_intro_en: "",
   about_contact_email: "",
   about_github_url: "",
+  about_author_name: "",
+  about_author_url: "",
   about_thanks: "",
   changelog_title: "",
   links_title: "",

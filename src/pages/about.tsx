@@ -155,6 +155,8 @@ export default function AboutPage() {
   const introEn = settings.about_intro_en || `${siteName} is a professional lookup tool for domain investors, developers, and site operators. It supports WHOIS/RDAP, IP address, ASN, CIDR, DNS records, and SSL certificate lookups, with value-added features like expiry reminders, brand stamps, and a domain toolbox.`;
 
   const githubUrl = settings.about_github_url || "https://github.com/zmh-program/next-whois";
+  const authorName = settings.about_author_name || "zmh-program";
+  const authorUrl = settings.about_author_url || "https://zmh.me";
   const contactEmail = settings.about_contact_email;
 
   let thanksItems = DEFAULT_THANKS;
@@ -325,8 +327,28 @@ export default function AboutPage() {
                   </div>
                 ))}
               </div>
-              {githubUrl && (
-                <div className="mt-4 pt-3 border-t border-border/40">
+            </motion.div>
+
+            {/* Based on Next Whois — author acknowledgment */}
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35, delay: 0.6 }}
+              className="glass-panel border border-border rounded-xl p-5 flex items-start gap-4"
+            >
+              <div className="p-2.5 rounded-xl bg-muted/60 shrink-0">
+                <RiStarLine className="w-5 h-5 text-muted-foreground" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold mb-1">
+                  {isChinese ? "本站基于 · Next Whois 二次创作" : "Based on · Next Whois"}
+                </p>
+                <p className="text-[11px] text-muted-foreground leading-relaxed mb-3">
+                  {isChinese
+                    ? "感谢原作者的开源贡献，本站在 Next Whois 基础上进行二次开发，遵循 MIT 协议。"
+                    : "Thanks to the original author's open source contribution. This site is built upon Next Whois under the MIT license."}
+                </p>
+                <div className="flex flex-wrap gap-2">
                   <a
                     href={githubUrl}
                     target="_blank"
@@ -334,11 +356,19 @@ export default function AboutPage() {
                     className="inline-flex items-center gap-1.5 text-[11px] font-medium px-3 py-1.5 rounded-lg bg-muted/60 hover:bg-muted border border-border transition-colors"
                   >
                     <RiGithubLine className="w-3.5 h-3.5" />
-                    {isChinese ? "查看源码" : "View Source"}
-                    <RiExternalLinkLine className="w-2.5 h-2.5 text-muted-foreground/50" />
+                    GitHub
+                  </a>
+                  <a
+                    href={authorUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-[11px] font-medium px-3 py-1.5 rounded-lg bg-muted/60 hover:bg-muted border border-border transition-colors"
+                  >
+                    <RiUserLine className="w-3.5 h-3.5" />
+                    {authorName}
                   </a>
                 </div>
-              )}
+              </div>
             </motion.div>
 
             {/* Thanks */}

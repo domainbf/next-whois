@@ -33,9 +33,28 @@ interface Version {
 
 const VERSIONS: Version[] = [
   {
-    version: "1.9",
+    version: "2.0",
     date: "2026-03",
     highlight: true,
+    changes: [
+      { type: "new", zh: "友情链接后台管理：数据库驱动，支持增删改查、显示/隐藏、分类分组、排序", en: "Friendly Links admin: DB-backed CRUD with show/hide toggle, category grouping, custom sort order" },
+      { type: "new", zh: "关于我们页面全面可编辑：中/英简介、联系邮箱、GitHub 链接、原作者信息均可在管理后台配置", en: "About page fully admin-editable: zh/en intro, contact email, GitHub URL, author info all configurable" },
+      { type: "new", zh: "致谢列表支持 JSON 自定义，留空使用内置默认，无需改代码", en: "Acknowledgements list supports JSON override; defaults preserved when field is empty" },
+      { type: "new", zh: "原作者感谢卡片恢复：GitHub 链接 + 作者主页均可在管理设置中替换", en: "Author credit card restored with configurable GitHub repo and author homepage links" },
+      { type: "new", zh: "人机验证（CAPTCHA）集成：支持 Cloudflare Turnstile 和 hCaptcha，管理后台配置密钥即生效", en: "CAPTCHA integration: Cloudflare Turnstile and hCaptcha supported; enable by setting keys in admin" },
+      { type: "new", zh: "注册邮箱 OTP 验证：发送 6 位验证码，10 分钟有效，60 秒防频繁发送", en: "Email OTP at registration: 6-digit code, 10-minute validity, 60-second resend cooldown" },
+      { type: "new", zh: "邀请码系统：后台生成/管理邀请码，可设置最大使用次数，支持注册时填写或已注册用户后台申请", en: "Invite code system: admin-generated codes with max-use limits; apply at registration or from dashboard" },
+      { type: "new", zh: "注册访问控制：require_invite_code 开关，开启后注册必须填写有效邀请码", en: "Registration gating: require_invite_code toggle; valid code required when enabled" },
+      { type: "new", zh: "Dashboard 订阅标签：未持有邀请码时显示锁定状态，内嵌邀请码申请表单", en: "Dashboard subscription tab: locked state with inline invite-code application form when no access" },
+      { type: "feature", zh: "匿名查询去重：同一 IP 同一查询 24 小时内只记录一次，减少重复历史数据", en: "Anonymous query deduplication: same query within 24 h written only once to history" },
+      { type: "improve", zh: "管理后台新增【人机验证】设置区块：服务商选择、Site Key、Secret Key 独立字段", en: "Admin Settings: new CAPTCHA section with provider dropdown, Site Key and Secret Key fields" },
+      { type: "improve", zh: "管理后台新增【链接】导航项：直达友情链接管理页", en: "Admin nav: new 'Links' entry pointing to friendly links management page" },
+    ],
+  },
+  {
+    version: "1.9",
+    date: "2026-03",
+    highlight: false,
     changes: [
       { type: "improve", zh: "页面切换动画精简：时长 0.28 s → 0.22 s，曲线换用 ease-out-expo，去除 scale 抖动", en: "Page transition refined: 0.28 s → 0.22 s, ease-out-expo curve, scale jitter removed" },
       { type: "improve", zh: "动画层添加 will-change: opacity, transform，浏览器提前提升 GPU 合成层", en: "Animated wrapper gains will-change: opacity, transform for early GPU layer promotion" },
