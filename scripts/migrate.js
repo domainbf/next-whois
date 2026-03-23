@@ -68,6 +68,17 @@ const TABLES = [
     query_type   TEXT         NOT NULL DEFAULT 'domain',
     created_at   TIMESTAMPTZ  NOT NULL DEFAULT NOW()
   )`,
+  `CREATE TABLE IF NOT EXISTS tld_lifecycle_overrides (
+    id           VARCHAR(16)  PRIMARY KEY,
+    tld          TEXT         UNIQUE NOT NULL,
+    grace        INTEGER      NOT NULL DEFAULT 0,
+    redemption   INTEGER      NOT NULL DEFAULT 0,
+    pending_delete INTEGER    NOT NULL DEFAULT 0,
+    registry     TEXT,
+    notes        TEXT,
+    created_at   TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    updated_at   TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+  )`,
   `CREATE INDEX IF NOT EXISTS idx_search_history_user ON search_history(user_id, created_at DESC)`,
   `CREATE INDEX IF NOT EXISTS idx_user_tool_clicks_user ON user_tool_clicks(user_id)`,
 ];

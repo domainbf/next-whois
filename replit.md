@@ -349,6 +349,27 @@ All persistent state lives in PostgreSQL (`src/lib/db.ts`). Tables auto-created 
 - Thanks/acknowledgements (`about_thanks`) — JSON array `[{name, url, desc, descEn}]`, falls back to hardcoded defaults
 - All fields editable via Admin Settings → 关于页面 section
 
+## Domain Subscription Enhancement (v2.0)
+
+### DB-Configurable TLD Lifecycle Rules
+- `tld_lifecycle_overrides` table: admin-set grace/redemption/pendingDelete days per TLD
+- `src/lib/server/lifecycle-overrides.ts`: 5-minute in-memory cache; `loadLifecycleOverrides()` + `invalidateLifecycleOverridesCache()`
+- `getTldLifecycle()` and `computeLifecycle()` in `lifecycle.ts` accept optional `overrides` dict; DB values take priority over hardcoded table
+- Admin API: `/api/admin/tld-lifecycle` — GET list, POST create (id auto-gen), PATCH update, DELETE; all writes call `invalidateLifecycleOverridesCache()`
+- Admin page: `/admin/tld-lifecycle` — searchable table, add/edit/delete dialog, shows TLD + days + registry + built-in comparison
+
+### Drop Notifications (v2.0)
+- `dropApproachingHtml` + `domainDroppedHtml` templates added to `src/lib/email.ts`
+- `DROP_SOON_KEY = -4`: sent when `phase === pendingDelete` AND `daysToDropDate <= 7` (not already sent)
+- `DROPPED_KEY = -5`: sent when `phase === dropped` → notification then deactivate subscription
+- `process.ts` loads overrides once per cron run, passes to all `computeLifecycle()` calls
+
+### Subscription API & Dashboard Upgrade
+- `/api/user/subscriptions` GET now returns computed lifecycle fields per subscription: `drop_date`, `grace_end`, `redemption_end`, `phase`, `days_to_expiry`, `days_to_drop`, `tld_confidence`
+- `dashboard.tsx` removed local 13-TLD `LIFECYCLE` table + `getDomainLifecycle()` — lifecycle data now comes from the API using the full 200+ TLD table
+- `urgentSubs` now includes subscriptions where `days_to_drop <= 7` (approaching drop date)
+- Subscription cards show purple "X天后可抢注" badge when approaching drop; drop date rendered in purple when urgent
+
 ## Registration Security (v2.0)
 
 ### Invite Code System

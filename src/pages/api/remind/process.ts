@@ -1,6 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { randomBytes } from "crypto";
-import { sendEmail, reminderHtml, phaseEventHtml } from "@/lib/email";
+import {
+  sendEmail, reminderHtml, phaseEventHtml,
+  dropApproachingHtml, domainDroppedHtml,
+} from "@/lib/email";
 import {
   computeLifecycle,
   fmtDate,
@@ -9,8 +12,11 @@ import {
   PENDING_KEY,
 } from "@/lib/lifecycle";
 import { many, run, isDbReady } from "@/lib/db-query";
+import { loadLifecycleOverrides } from "@/lib/server/lifecycle-overrides";
 
 const THRESHOLDS = [60, 30, 10, 5, 1];
+const DROP_SOON_KEY = -4;   // 7 days before drop date
+const DROPPED_KEY   = -5;   // domain just became available
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "GET" && req.method !== "POST") return res.status(405).end();
@@ -30,6 +36,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!(await isDbReady())) return res.status(500).json({ error: "Database unavailable" });
 
   try {
+    // Load admin-configured TLD lifecycle overrides once for the whole batch
+    const overrides = await loadLifecycleOverrides();
+
     const remindersRaw = await many<{
       id: string; domain: string; email: string;
       expiration_date: string | null; cancel_token: string; phase_flags: string | null;
@@ -61,18 +70,56 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     for (const reminder of reminders) {
       try {
-        const lc = computeLifecycle(reminder.domain, reminder.expiration_date);
+        const lc = computeLifecycle(reminder.domain, reminder.expiration_date, undefined, overrides);
         if (!lc) { results.skipped++; continue; }
 
         const now = new Date();
         const { phase, expiry, graceEnd, redemptionEnd, dropDate, cfg } = lc;
         const msPerDay = 86_400_000;
         const daysToExpiry = Math.ceil((expiry.getTime() - now.getTime()) / msPerDay);
+        const daysToDropDate = Math.ceil((dropDate.getTime() - now.getTime()) / msPerDay);
         const sentKeys: number[] = reminder.sent_keys;
 
+        const upsertLog = async (daysKey: number) => {
+          const logId = randomBytes(8).toString("hex");
+          await run(
+            `INSERT INTO reminder_logs (id, reminder_id, days_before)
+             VALUES ($1, $2, $3)
+             ON CONFLICT (reminder_id, days_before) DO NOTHING`,
+            [logId, reminder.id, daysKey],
+          );
+        };
+
+        // ── Domain dropped: send notification then deactivate ─────────────────
+        if (phase === "dropped") {
+          if (!sentKeys.includes(DROPPED_KEY)) {
+            await sendEmail({
+              to: reminder.email,
+              subject: `✅ ${reminder.domain} 已释放，现在可以注册了`,
+              html: domainDroppedHtml({
+                domain: reminder.domain,
+                expirationDate: reminder.expiration_date,
+                cancelToken: reminder.cancel_token,
+              }),
+            });
+            await upsertLog(DROPPED_KEY);
+            results.sent++;
+          }
+          // Deactivate after notifying
+          await run(
+            `UPDATE reminders
+             SET active = false, cancelled_at = $1, cancel_reason = 'domain_dropped_or_expired'
+             WHERE id = $2`,
+            [now.toISOString(), reminder.id],
+          );
+          results.expired++;
+          continue;
+        }
+
+        // ── Past full recovery window (safety fallback) ───────────────────────
         const totalPostExpiry = cfg.grace + cfg.redemption + cfg.pendingDelete;
         const pastRecovery = (now.getTime() - expiry.getTime()) / msPerDay > (totalPostExpiry + 30);
-        if (pastRecovery || phase === "dropped") {
+        if (pastRecovery) {
           await run(
             `UPDATE reminders
              SET active = false, cancelled_at = $1, cancel_reason = 'domain_dropped_or_expired'
@@ -90,16 +137,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         let didSend = false;
 
-        const upsertLog = async (daysKey: number) => {
-          const logId = randomBytes(8).toString("hex");
-          await run(
-            `INSERT INTO reminder_logs (id, reminder_id, days_before)
-             VALUES ($1, $2, $3)
-             ON CONFLICT (reminder_id, days_before) DO NOTHING`,
-            [logId, reminder.id, daysKey],
-          );
-        };
-
+        // ── Grace phase notification ──────────────────────────────────────────
         if (phaseFlags.grace && phase === "grace" && cfg.grace > 0 && !sentKeys.includes(GRACE_KEY)) {
           await sendEmail({
             to: reminder.email,
@@ -117,6 +155,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           didSend = true;
         }
 
+        // ── Redemption phase notification ─────────────────────────────────────
         if (!didSend && phaseFlags.redemption && phase === "redemption" && cfg.redemption > 0 && !sentKeys.includes(REDEMPTION_KEY)) {
           await sendEmail({
             to: reminder.email,
@@ -135,6 +174,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           didSend = true;
         }
 
+        // ── Pending-delete phase notification ─────────────────────────────────
         if (!didSend && phaseFlags.pendingDelete && phase === "pendingDelete" && cfg.pendingDelete > 0 && !sentKeys.includes(PENDING_KEY)) {
           await sendEmail({
             to: reminder.email,
@@ -152,6 +192,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           didSend = true;
         }
 
+        // ── Drop approaching: 7 days before drop date ─────────────────────────
+        if (!didSend && phase === "pendingDelete" && daysToDropDate <= 7 && !sentKeys.includes(DROP_SOON_KEY)) {
+          await sendEmail({
+            to: reminder.email,
+            subject: `⚡ ${reminder.domain} 将在 ${daysToDropDate} 天后可抢注`,
+            html: dropApproachingHtml({
+              domain: reminder.domain,
+              expirationDate: reminder.expiration_date,
+              dropDate: fmtDate(dropDate),
+              daysToDropDate,
+              cancelToken: reminder.cancel_token,
+            }),
+          });
+          await upsertLog(DROP_SOON_KEY);
+          results.sent++;
+          didSend = true;
+        }
+
+        // ── Active phase: days-to-expiry thresholds ───────────────────────────
         if (!didSend && phase === "active") {
           for (const threshold of THRESHOLDS) {
             if (daysToExpiry <= threshold && !sentKeys.includes(threshold)) {

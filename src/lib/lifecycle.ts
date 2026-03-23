@@ -334,12 +334,17 @@ export const DEFAULT_LIFECYCLE: TldLifecycle = {
   confidence: "est",
 };
 
-/** Get lifecycle config for a domain (by TLD). */
-export function getTldLifecycle(domain: string): TldLifecycle {
+/** Get lifecycle config for a domain (by TLD), with optional admin overrides applied first. */
+export function getTldLifecycle(domain: string, overrides?: Record<string, TldLifecycle>): TldLifecycle {
   const parts = domain.toLowerCase().split(".");
   const tld = parts.pop() ?? "";
   // Check for two-level ccTLD (e.g., co.uk) — not common but handle
   const twoLevel = parts.length > 0 ? `${parts[parts.length - 1]}.${tld}` : "";
+  // Admin DB overrides take priority
+  if (overrides) {
+    if (twoLevel && overrides[twoLevel]) return overrides[twoLevel];
+    if (overrides[tld]) return overrides[tld];
+  }
   if (twoLevel && LIFECYCLE_TABLE[twoLevel]) return LIFECYCLE_TABLE[twoLevel];
   return LIFECYCLE_TABLE[tld] ?? DEFAULT_LIFECYCLE;
 }
@@ -384,14 +389,15 @@ export function getPhaseFromEppStatus(eppStatuses: string[]): LifecyclePhase | n
 export function computeLifecycle(
   domain: string,
   expirationDate: string | null,
-  eppStatuses?: string[]
+  eppStatuses?: string[],
+  overrides?: Record<string, TldLifecycle>
 ): LifecycleInfo | null {
   if (!expirationDate) return null;
   const expiry = new Date(expirationDate);
   if (isNaN(expiry.getTime())) return null;
 
   const tld = domain.split(".").pop()?.toLowerCase() ?? "";
-  const cfg = getTldLifecycle(domain);
+  const cfg = getTldLifecycle(domain, overrides);
   const ms = (d: number) => d * 86_400_000;
   const graceEnd = new Date(expiry.getTime() + ms(cfg.grace));
   const redemptionEnd = new Date(graceEnd.getTime() + ms(cfg.redemption));

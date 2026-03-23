@@ -361,6 +361,92 @@ export function phaseEventHtml(p: PhaseEventEmailParams): string {
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
+// 5a. Domain drop approaching (7 days before drop date)
+// ──────────────────────────────────────────────────────────────────────────────
+export interface DropApproachingParams {
+  domain: string;
+  expirationDate: string | null;
+  dropDate: string;
+  daysToDropDate: number;
+  cancelToken: string;
+}
+
+export function dropApproachingHtml(p: DropApproachingParams): string {
+  const cancelUrl = `${BASE_URL()}/remind/cancel?token=${p.cancelToken}`;
+  const expiryStr = p.expirationDate
+    ? new Date(p.expirationDate).toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric" })
+    : "未知";
+  const urgency = p.daysToDropDate <= 1 ? "🔴 明日起可抢注" : `⚡ ${p.daysToDropDate} 天后可抢注`;
+
+  return emailLayout(`
+    ${colorHeader("#7c3aed", "域名即将可注册", domainBadge(p.domain), "该域名即将进入可注册状态")}
+
+    ${section(`
+      <div style="border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;margin-bottom:18px">
+        <div style="padding:12px 18px;border-bottom:1px solid #e2e8f0">
+          <p style="margin:0;font-size:11px;font-weight:600;letter-spacing:1px;color:#94a3b8;text-transform:uppercase">原过期日期</p>
+          <p style="margin:6px 0 0;font-size:16px;font-weight:700;color:#1e293b;font-family:monospace">${expiryStr}</p>
+        </div>
+        <div style="padding:12px 18px;background:#f5f3ff;border-bottom:1px solid #e2e8f0">
+          <p style="margin:0;font-size:11px;font-weight:700;letter-spacing:1px;color:#7c3aed;text-transform:uppercase">预计可注册日期</p>
+          <p style="margin:6px 0 0;font-size:20px;font-weight:800;color:#7c3aed;font-family:ui-monospace,'Fira Code',monospace">${p.dropDate}</p>
+        </div>
+        <div style="padding:12px 18px;background:#faf5ff">
+          <p style="margin:0;font-size:13px;color:#475569;line-height:1.7">
+            域名已完成所有保留期，即将从注册局释放。若您有意注册此域名，请关注各大注册商的抢注服务，通常在释放后数小时至数天内可完成注册。
+          </p>
+        </div>
+      </div>
+
+      <div style="padding:12px 16px;background:#f5f3ff;border:1px solid #ddd6fe;border-radius:8px;margin-bottom:14px">
+        <p style="margin:0;font-size:12px;font-weight:700;color:#6d28d9">${urgency}</p>
+      </div>
+    `)}
+
+    ${divider()}
+    ${actionRow(`${BASE_URL()}/${p.domain}`, "查看域名详情", cancelUrl, "#7c3aed")}
+  `);
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// 5b. Domain dropped / now available
+// ──────────────────────────────────────────────────────────────────────────────
+export interface DomainDroppedParams {
+  domain: string;
+  expirationDate: string | null;
+  cancelToken: string;
+}
+
+export function domainDroppedHtml(p: DomainDroppedParams): string {
+  const cancelUrl = `${BASE_URL()}/remind/cancel?token=${p.cancelToken}`;
+  const expiryStr = p.expirationDate
+    ? new Date(p.expirationDate).toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric" })
+    : "未知";
+
+  return emailLayout(`
+    ${colorHeader("#059669", "域名已释放 · 可以注册了", domainBadge(p.domain), "该域名已重新开放注册")}
+
+    ${section(`
+      <div style="border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;margin-bottom:18px">
+        <div style="padding:12px 18px;border-bottom:1px solid #e2e8f0">
+          <p style="margin:0;font-size:11px;font-weight:600;letter-spacing:1px;color:#94a3b8;text-transform:uppercase">原过期日期</p>
+          <p style="margin:6px 0 0;font-size:16px;font-weight:700;color:#1e293b;font-family:monospace">${expiryStr}</p>
+        </div>
+        <div style="padding:14px 18px;background:#ecfdf5">
+          <p style="margin:0;font-size:13px;font-weight:700;color:#059669">✅ 域名已完成所有保留期，现已向公众开放注册。</p>
+          <p style="margin:8px 0 0;font-size:12px;color:#475569;line-height:1.7">
+            请前往你的注册商查看是否可以注册。部分域名释放后会进入抢注竞价流程，可关注 DropCatch、NameJet 等平台。
+          </p>
+        </div>
+      </div>
+    `)}
+
+    ${divider()}
+    ${actionRow(`${BASE_URL()}/${p.domain}`, "查看域名详情", cancelUrl, "#059669")}
+  `);
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
 // 5. Password reset email
 // ──────────────────────────────────────────────────────────────────────────────
 export function passwordResetHtml({ resetUrl }: { resetUrl: string }): string {

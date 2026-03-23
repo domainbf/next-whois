@@ -2,6 +2,8 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
 import { many, run, isDbReady } from "@/lib/db-query";
+import { computeLifecycle } from "@/lib/lifecycle";
+import { loadLifecycleOverrides } from "@/lib/server/lifecycle-overrides";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const session = await getServerSession(req, res, authOptions);
@@ -11,12 +13,35 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method === "GET") {
     try {
-      const rows = await many(
-        `SELECT id, domain, expiration_date, active, created_at, cancel_token
+      const rows = await many<{
+        id: string; domain: string; expiration_date: string | null;
+        active: boolean; cancel_token: string | null; created_at: string;
+      }>(
+        `SELECT id, domain, expiration_date, active, cancel_token, created_at
          FROM reminders WHERE email = $1 ORDER BY created_at DESC`,
         [session.user.email],
       );
-      return res.status(200).json({ subscriptions: rows });
+
+      // Compute lifecycle for each subscription using admin overrides
+      const overrides = await loadLifecycleOverrides();
+      const now = Date.now();
+      const subscriptions = rows.map((r) => {
+        const lc = r.expiration_date
+          ? computeLifecycle(r.domain, r.expiration_date, undefined, overrides)
+          : null;
+        return {
+          ...r,
+          drop_date: lc ? lc.dropDate.toISOString() : null,
+          grace_end: lc ? lc.graceEnd.toISOString() : null,
+          redemption_end: lc ? lc.redemptionEnd.toISOString() : null,
+          phase: lc?.phase ?? null,
+          days_to_expiry: lc?.daysToExpiry ?? null,
+          days_to_drop: lc ? Math.ceil((lc.dropDate.getTime() - now) / 86_400_000) : null,
+          tld_confidence: lc?.cfg.confidence ?? null,
+        };
+      });
+
+      return res.status(200).json({ subscriptions });
     } catch (err: any) {
       console.error("[subscriptions] GET error:", err.message);
       return res.status(500).json({ error: "获取数据失败" });

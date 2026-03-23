@@ -27,6 +27,9 @@ import { useTranslation } from "@/lib/i18n";
 type Subscription = {
   id: string; domain: string; expiration_date: string | null;
   active: boolean; created_at: string; cancel_token: string;
+  drop_date: string | null; grace_end: string | null; redemption_end: string | null;
+  phase: string | null; days_to_expiry: number | null; days_to_drop: number | null;
+  tld_confidence: string | null;
 };
 
 type RegStatus = "registered" | "unregistered" | "reserved" | "error" | "unknown";
@@ -62,40 +65,6 @@ function TagBadge({ style, name }: { style: string; name: string }) {
       {name}
     </span>
   );
-}
-
-// ── Domain lifecycle helpers ──────────────────────────────────────────────────
-const LIFECYCLE: Record<string, { grace: number; redemption: number; pendingDelete: number }> = {
-  com: { grace: 45, redemption: 30, pendingDelete: 5 },
-  net: { grace: 45, redemption: 30, pendingDelete: 5 },
-  org: { grace: 45, redemption: 30, pendingDelete: 5 },
-  info: { grace: 45, redemption: 30, pendingDelete: 5 },
-  biz: { grace: 45, redemption: 30, pendingDelete: 5 },
-  name: { grace: 45, redemption: 30, pendingDelete: 5 },
-  mobi: { grace: 45, redemption: 30, pendingDelete: 5 },
-  pro: { grace: 45, redemption: 30, pendingDelete: 5 },
-  io:  { grace: 30, redemption: 30, pendingDelete: 5 },
-  co:  { grace: 45, redemption: 30, pendingDelete: 5 },
-  app: { grace: 45, redemption: 30, pendingDelete: 5 },
-  dev: { grace: 45, redemption: 30, pendingDelete: 5 },
-  ai:  { grace: 30, redemption: 30, pendingDelete: 5 },
-};
-
-function getDomainLifecycle(domain: string, expiryDate: Date) {
-  const tld = domain.split(".").pop()?.toLowerCase() ?? "";
-  const cfg = LIFECYCLE[tld] ?? { grace: 45, redemption: 30, pendingDelete: 5 };
-  const ms = (d: number) => d * 86_400_000;
-  const graceEnd = new Date(expiryDate.getTime() + ms(cfg.grace));
-  const redemptionEnd = new Date(graceEnd.getTime() + ms(cfg.redemption));
-  const dropDate = new Date(redemptionEnd.getTime() + ms(cfg.pendingDelete));
-  const now = new Date();
-  let phase: "active" | "grace" | "redemption" | "pendingDelete" | "dropped";
-  if (now < expiryDate) phase = "active";
-  else if (now < graceEnd) phase = "grace";
-  else if (now < redemptionEnd) phase = "redemption";
-  else if (now < dropDate) phase = "pendingDelete";
-  else phase = "dropped";
-  return { graceEnd, redemptionEnd, dropDate, phase };
 }
 
 const PHASE_LABEL: Record<string, { label: string; color: string }> = {
@@ -620,9 +589,7 @@ export default function DashboardPage() {
   }
 
   function daysUntilExpiry(sub: Subscription): number | null {
-    if (!sub.expiration_date) return null;
-    const diff = new Date(sub.expiration_date).getTime() - Date.now();
-    return Math.ceil(diff / 86_400_000);
+    return sub.days_to_expiry ?? null;
   }
 
   const AVATAR_COLORS: { key: string; bg: string; text: string; label: string }[] = [
@@ -767,7 +734,8 @@ export default function DashboardPage() {
   });
   const urgentSubs = activeSubs.filter(s => {
     const d = daysUntilExpiry(s);
-    return d !== null && d >= 0 && d <= 7;
+    const dd = s.days_to_drop;
+    return (d !== null && d >= 0 && d <= 7) || (dd !== null && dd >= 0 && dd <= 7);
   });
   const verifiedStamps = stamps.filter(s => s.verified);
 
@@ -1020,13 +988,12 @@ export default function DashboardPage() {
                   return da - db;
                 })
                 .map(sub => {
-                const lifecycle = sub.expiration_date
-                  ? getDomainLifecycle(sub.domain, new Date(sub.expiration_date))
-                  : null;
-                const phase = lifecycle?.phase;
+                const phase = sub.phase;
                 const phaseInfo = phase ? PHASE_LABEL[phase] : null;
                 const days = daysUntilExpiry(sub);
-                const isUrgent = sub.active && days !== null && days >= 0 && days <= 7;
+                const daysDropping = sub.days_to_drop;
+                const isDropSoon = sub.active && daysDropping !== null && daysDropping >= 0 && daysDropping <= 7 && phase !== "active";
+                const isUrgent = sub.active && ((days !== null && days >= 0 && days <= 7) || isDropSoon);
                 const isWarn = sub.active && days !== null && days >= 0 && days <= 30 && !isUrgent;
 
                 return (
@@ -1058,6 +1025,11 @@ export default function DashboardPage() {
                           {isWarn && (
                             <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 font-semibold border border-amber-300/50">
                               {days}天后到期
+                            </span>
+                          )}
+                          {isDropSoon && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-purple-100 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 font-semibold border border-purple-300/50">
+                              {daysDropping === 0 ? "今日可抢注" : `${daysDropping}天后可抢注`}
                             </span>
                           )}
                           {phaseInfo && phase !== "active" && !isUrgent && !isWarn && (
@@ -1092,25 +1064,25 @@ export default function DashboardPage() {
                       </div>
                     </div>
 
-                    {/* Lifecycle dates */}
-                    {lifecycle && sub.expiration_date && (
+                    {/* Lifecycle dates (server-computed) */}
+                    {sub.drop_date && sub.expiration_date && (
                       <div className="grid grid-cols-3 gap-2 pt-1 border-t border-border/40">
                         <div className="text-center">
                           <p className="text-[10px] text-muted-foreground mb-0.5">宽限期结束</p>
                           <p className={cn("text-[11px] font-semibold tabular-nums", phase === "grace" ? "text-amber-600 dark:text-amber-400" : "text-foreground")}>
-                            {fmt(lifecycle.graceEnd)}
+                            {sub.grace_end ? fmt(new Date(sub.grace_end)) : "—"}
                           </p>
                         </div>
                         <div className="text-center">
                           <p className="text-[10px] text-muted-foreground mb-0.5">赎回期结束</p>
                           <p className={cn("text-[11px] font-semibold tabular-nums", phase === "redemption" ? "text-orange-600 dark:text-orange-400" : "text-foreground")}>
-                            {fmt(lifecycle.redemptionEnd)}
+                            {sub.redemption_end ? fmt(new Date(sub.redemption_end)) : "—"}
                           </p>
                         </div>
                         <div className="text-center">
                           <p className="text-[10px] text-muted-foreground mb-0.5">预计释放</p>
-                          <p className={cn("text-[11px] font-semibold tabular-nums", phase === "pendingDelete" ? "text-red-600 dark:text-red-400" : "text-foreground")}>
-                            {fmt(lifecycle.dropDate)}
+                          <p className={cn("text-[11px] font-semibold tabular-nums", phase === "pendingDelete" || isDropSoon ? "text-purple-600 dark:text-purple-400" : "text-foreground")}>
+                            {fmt(new Date(sub.drop_date))}
                           </p>
                         </div>
                       </div>
