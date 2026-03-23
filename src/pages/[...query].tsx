@@ -3691,31 +3691,31 @@ export default function LookupPage({
                     {verifiedStamps.length > 0 && (
                       <div className="mt-6 pt-6 border-t border-border/50 space-y-3">
                         {verifiedStamps.map((stamp) => {
-                          const StampIcon = STAMP_ICON_MAP[stamp.tagStyle] || STAMP_ICON_MAP.default;
                           const cardStyle = STAMP_CARD_MAP[stamp.tagStyle] || STAMP_CARD_MAP.default;
                           const badgeCls = STAMP_STYLE_MAP[stamp.tagStyle] || STAMP_STYLE_MAP.default;
                           const card = (
                             <div className={cn(
-                              "flex items-start gap-3 pl-3 pr-4 py-3 rounded-r-xl border-l-4 transition-opacity",
-                              cardStyle.bg, cardStyle.border,
+                              "rounded-xl px-4 py-3.5 transition-opacity",
+                              cardStyle.bg,
                               stamp.link && "hover:opacity-80",
                             )}>
-                              <StampIcon className={cn("w-7 h-7 shrink-0 mt-0.5", cardStyle.iconColor)} />
-                              <div className="min-w-0 flex-1">
-                                <div className="flex items-center gap-2 flex-wrap mb-0.5">
-                                  <span className="text-sm font-bold text-foreground leading-tight">{stamp.tagName}</span>
-                                  <span className={cn("inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full", badgeCls)}>
-                                    <RiShieldCheckLine className="w-2.5 h-2.5" />
-                                    {isChinese ? "已认证" : "Verified"}
-                                  </span>
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-2 mb-1.5">
+                                    <span className={cn("inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full tracking-wide", badgeCls)}>
+                                      <RiShieldCheckLine className="w-2.5 h-2.5" />
+                                      {isChinese ? "已认证" : "Verified"}
+                                    </span>
+                                  </div>
+                                  <p className="text-base font-bold text-foreground leading-snug mb-1">{stamp.tagName}</p>
+                                  {stamp.description && (
+                                    <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3 break-words">{stamp.description}</p>
+                                  )}
                                 </div>
-                                {stamp.description && (
-                                  <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3 break-words">{stamp.description}</p>
+                                {stamp.link && (
+                                  <RiArrowRightSLine className="w-5 h-5 shrink-0 text-muted-foreground/40 mt-1" />
                                 )}
                               </div>
-                              {stamp.link && (
-                                <RiArrowRightSLine className="w-4 h-4 shrink-0 text-muted-foreground/60 mt-1" />
-                              )}
                             </div>
                           );
                           return stamp.link ? (
