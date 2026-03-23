@@ -1,10 +1,74 @@
-# Next Whois UI — v2.9
+# Next Whois UI — v3.0
 
 A fast, modern WHOIS and RDAP lookup tool supporting domains, IPv4/IPv6, ASN, and CIDR. Also includes built-in DNS, SSL certificate, and IP/ASN geolocation tools.
 
 ---
 
 ## Changelog
+
+### v3.0 — TLD Lifecycle Data Accuracy Overhaul (2026-03-23)
+
+**Scope:** Major accuracy corrections to `src/lib/lifecycle.ts` based on cross-referencing Namecheap KB (updated 2025-09-10) and Dynadot TLD pages (verified 2026-03) against the Enom TLD Reference Chart.
+
+**Sources:**
+- Namecheap KB: https://www.namecheap.com/support/knowledgebase/article.aspx/9916/2207/tlds-grace-periods
+- Dynadot TLD pages: https://www.dynadot.com/domain/[tld]
+- Enom TLD Reference Chart: https://docs.google.com/spreadsheets/d/1oVNszsvqhxh3hlT1LYMfcwq3lw_e6J7DeBePvN4t2aw
+
+**Named preset updates:**
+
+| Preset | Before | After | Reason |
+|---|---|---|---|
+| `STD` (default gTLD) | grace=45, rdmp=30, pd=5 | grace=**30**, rdmp=30, pd=5 | Dynadot: 30d in practice, not 45d max |
+| `AFNIC` (.fr etc.) | grace=0, rdmp=30, pd=**10** | grace=0, rdmp=30, pd=**5** | Dynadot verified: .pm/.wf delete=5 |
+| `NOMINET` (.uk etc.) | grace=**92**, rdmp=0, pd=**0** | grace=**90**, rdmp=0, pd=**5** | Dynadot: grace=85/5; Namecheap: 90d total |
+| `CNNIC` (.cn etc.) | grace=0, rdmp=**14**, pd=5 | grace=0, rdmp=**15**, pd=5 | Dynadot restore=15d |
+| `HKIRC` (.hk etc.) | grace=**90**, rdmp=**0**, pd=0 | grace=**30**, rdmp=**60**, pd=0 | Dynadot: grace=30, restore=60 |
+
+**Major TLD corrections:**
+
+| TLD | Before | After | Source |
+|---|---|---|---|
+| `.de` | IMMEDIATE (0/0/0) | grace=10, rdmp=30, pd=25 | Dynadot: variable grace 0-20d; NOT immediate |
+| `.it` | IMMEDIATE | grace=10, rdmp=30, pd=0 | Dynadot: grace=10, restore=30 |
+| `.pl` | IMMEDIATE | grace=0, rdmp=30, pd=0 | Dynadot: restore=30 |
+| `.no` | IMMEDIATE | grace=89, rdmp=0, pd=0 | Dynadot: 89-day grace |
+| `.ie` | IMMEDIATE | grace=30, rdmp=30, pd=14 | Dynadot: grace=30, restore=30, delete=14 |
+| `.be` | IMMEDIATE | grace=10, rdmp=40, pd=0 | Dynadot: variable 0-20d grace, restore=40 |
+| `.cl` | IMMEDIATE | grace=10, rdmp=30, pd=10 | Dynadot: grace=10, restore=30, delete=10 |
+| `.es` | IMMEDIATE | grace=0, rdmp=10, pd=0 | Namecheap: 10-day RGP only, no pendingDelete |
+| `.eu` | grace=40, rdmp=0 | grace=0, rdmp=40, pd=0 | Dynadot: no grace, restore=40 |
+| `.nl` | grace=40, rdmp=0 | grace=0, rdmp=40, pd=0 | Dynadot: no grace, restore=40 |
+| `.ch` | grace=30, rdmp=0, pd=5 | grace=5, rdmp=40, pd=0 | Dynadot: grace=5, restore=40 |
+| `.li` | grace=30, rdmp=0, pd=5 | grace=5, rdmp=40, pd=0 | Dynadot: grace=5, restore=40 |
+| `.pt` | grace=30, rdmp=0 | grace=29, rdmp=0 | Dynadot: grace=29 |
+| `.cz` | grace=30, rdmp=0 | grace=59, rdmp=0 | Dynadot: grace=59 |
+| `.ro` | grace=30, rdmp=0 | grace=80, rdmp=0 | Dynadot: grace=80 |
+| `.lt` | grace=30, rdmp=30, pd=5 | grace=0, rdmp=30, pd=0 | Dynadot: no grace, restore=30 |
+| `.lv` | grace=30, rdmp=30, pd=5 | grace=0, rdmp=30, pd=0 | Dynadot: no grace, restore=30 |
+| `.tw` | grace=0, rdmp=30, pd=5 | grace=32, rdmp=0, pd=10 | Dynadot: grace=32, delete=10, no restore |
+| `.nz` | IMMEDIATE | grace=40, rdmp=90, pd=5 | Dynadot: grace=40, restore=90 |
+| `.hk` | HKIRC (grace=90) | HKIRC (grace=30, rdmp=60) | Preset updated |
+| `.in` | grace=30, rdmp=30 | grace=40, rdmp=30 | Dynadot: grace=40 |
+| `.id` | grace=30, rdmp=30 | grace=40, rdmp=30 | Dynadot: grace=40 |
+| `.ph` | grace=30, rdmp=0, pd=5 | grace=50, rdmp=0, pd=0 | Dynadot: grace=50, delete=0 |
+| `.ae` | grace=30, rdmp=30, pd=5 | grace=20, rdmp=0, pd=0 | Dynadot: grace=20, no restore |
+| `.cm` | grace=30, rdmp=0, pd=0 | IMMEDIATE | Namecheap: expires = deleted same day |
+| `.nu` | grace=45, rdmp=30, pd=5 | grace=7, rdmp=60, pd=0 | Namecheap: 7d then 60d RGP |
+| `.gg` | grace=45, rdmp=30, pd=5 | grace=28, rdmp=12, pd=0 | Dynadot: grace=28, restore=12 |
+| `.la` | grace=45, rdmp=30, pd=5 | grace=28, rdmp=30, pd=0 | Dynadot: grace=28, no delete |
+| `.to` | grace=45, rdmp=30, pd=5 | grace=40, rdmp=30, pd=5 | Dynadot: grace=40 |
+| `.fm` | grace=45, rdmp=30, pd=5 | grace=30, rdmp=30, pd=4 | Dynadot: delete=4 |
+| `.vg` | grace=45, rdmp=30, pd=5 | grace=30, rdmp=30, pd=4 | Dynadot: delete=4 |
+| (all 45d island TLDs) | grace=45 | grace=30 | Dynadot shows 30d for all VeriSign-managed |
+
+**SLD corrections:**
+- `.co.nz` / `.net.nz` / `.org.nz` / `.school.nz`: IMMEDIATE → grace=40, rdmp=90, pd=5
+- `.com.hk` and all `*.hk`: auto-updated via HKIRC preset
+- `.com.ph` / `.net.ph` / `.org.ph`: grace=30/pd=5 → grace=50/pd=0
+- `co.in` / `net.in` / `org.in`: grace=30 → grace=40 (matching .in TLD)
+
+---
 
 ### v2.9 — Comprehensive TLD Lifecycle Rules Expansion (2026-03-23)
 
