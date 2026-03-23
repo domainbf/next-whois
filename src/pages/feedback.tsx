@@ -8,10 +8,11 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
+import { useSiteSettings } from "@/lib/site-settings";
 import {
   RiArrowLeftSLine, RiFlagLine, RiCheckLine, RiLoader4Line,
-  RiServerLine, RiLockLine, RiGlobalLine, RiHeart3Line,
-  RiQuestionLine, RiBugLine, RiSparkling2Line,
+  RiServerLine, RiLockLine, RiGlobalLine,
+  RiSparkling2Line, RiCloseCircleLine,
 } from "@remixicon/react";
 
 type QueryType = "domain" | "dns" | "ssl" | "ip" | "general";
@@ -101,12 +102,14 @@ const FADE = { duration: 0.18, ease: "easeOut" as const };
 
 export default function FeedbackPage() {
   const router = useRouter();
+  const settings = useSiteSettings();
 
   const rawType = (router.query.type as string) || "general";
   const queryType: QueryType = ["domain", "dns", "ssl", "ip", "general"].includes(rawType)
     ? (rawType as QueryType)
     : "general";
   const initQuery = (router.query.q as string) || "";
+  const source    = (router.query.source as string) || "";
 
   const meta = TYPE_META[queryType];
   const Icon = meta.icon;
@@ -124,6 +127,7 @@ export default function FeedbackPage() {
   React.useEffect(() => {
     setQuery((router.query.q as string) || "");
     setSelected(new Set());
+    setDescription("");
     setDone(false);
     openedAt.current = Date.now();
   }, [router.query.q, router.query.type]);
@@ -171,7 +175,16 @@ export default function FeedbackPage() {
     }
   }
 
-  const backHref = queryType === "domain" ? "/" : queryType === "dns" ? "/dns" : queryType === "ssl" ? "/ssl" : queryType === "ip" ? "/ip" : "/";
+  const SOURCE_BACK: Record<string, string> = {
+    sponsor: "/sponsor", links: "/links", about: "/about",
+    dns: "/dns", ssl: "/ssl", ip: "/ip",
+  };
+  const TYPE_BACK: Record<QueryType, string> = {
+    domain: "/", dns: "/dns", ssl: "/ssl", ip: "/ip", general: "/",
+  };
+  const backHref = source && SOURCE_BACK[source] ? SOURCE_BACK[source] : TYPE_BACK[queryType];
+
+  const feedbackDisabled = settings.enable_feedback === "0" || settings.enable_feedback === "";
 
   return (
     <>
@@ -194,6 +207,16 @@ export default function FeedbackPage() {
               </div>
             </div>
           </div>
+
+          {feedbackDisabled && (
+            <div className="flex items-start gap-3 rounded-2xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 p-4 mb-4 text-sm text-amber-800 dark:text-amber-300">
+              <RiCloseCircleLine className="w-5 h-5 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-semibold">反馈功能已关闭</p>
+                <p className="text-xs mt-0.5 opacity-80">管理员暂时关闭了反馈提交，请稍后再试。</p>
+              </div>
+            </div>
+          )}
 
           <AnimatePresence mode="wait" initial={false}>
             {done ? (
@@ -303,7 +326,7 @@ export default function FeedbackPage() {
 
                 <Button
                   type="submit"
-                  disabled={submitting || selected.size === 0}
+                  disabled={submitting || selected.size === 0 || feedbackDisabled}
                   className="w-full h-11 rounded-xl gap-2 text-sm font-semibold"
                 >
                   {submitting

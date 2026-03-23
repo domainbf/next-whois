@@ -12,17 +12,17 @@ const ISSUE_LABELS: Record<string, string> = {
   outdated:        "数据已过期",
   parse_error:     "解析错误",
   // DNS
-  resolve_failed:  "查询失败/超时",
+  resolve_failed:  "查询失败 / 超时",
   wrong_result:    "结果不正确",
   missing_record:  "记录缺失",
   // SSL
-  cert_error:      "证书错误/不受信任",
+  cert_error:      "证书错误 / 不受信任",
   chain_error:     "证书链错误",
-  expired_wrong:   "过期时间有误",
+  expired_wrong:   "过期时间显示有误",
   // IP / ASN
   wrong_location:  "归属地不准确",
-  wrong_isp:       "ISP/运营商有误",
-  wrong_asn:       "ASN信息有误",
+  wrong_isp:       "ISP / 运营商有误",
+  wrong_asn:       "ASN 信息有误",
   // General
   feature_request: "功能建议",
   bug_report:      "程序错误",
@@ -84,7 +84,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     subject: `[反馈] ${cleanQuery} — ${issueLabels}`,
     html: feedbackHtml({
       query: cleanQuery,
-      queryType: String(queryType || "domain"),
+      queryType: String(queryType || "general"),
       issueLabels,
       description: cleanDescription || undefined,
       email: cleanEmail || undefined,
@@ -101,7 +101,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       [
         id,
         cleanQuery,
-        String(queryType || "domain"),
+        String(queryType || "general"),
         validatedIssues.join(","),
         cleanDescription || null,
         cleanEmail || null,
