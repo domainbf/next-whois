@@ -1,10 +1,65 @@
-# Next Whois UI — v2.6
+# Next Whois UI — v2.7
 
 A fast, modern WHOIS and RDAP lookup tool supporting domains, IPv4/IPv6, ASN, and CIDR. Also includes built-in DNS, SSL certificate, and IP/ASN geolocation tools.
 
 ---
 
 ## Changelog
+
+### v2.7 — Enhanced Domain Status Detection: Reserved / Prohibited / Suspended (2026-03-23)
+
+**Problem:** Many ccTLD and gTLD registries express special domain states (reserved, prohibited, blocked, suspended) as free-form text in WHOIS responses rather than EPP status codes. The parser only understood structured `Domain Status:` fields, so domains like `com.tw` (WHOIS says "reserved name") were incorrectly shown as **已注册 (Registered)**.
+
+**Two-layer fix:**
+
+**1. `src/lib/whois/common_parser.ts` — Synthetic status injection**
+
+After the normal EPP status deduplication pass, scans the raw WHOIS text for non-EPP state keywords and injects synthetic status entries:
+
+| Pattern matched in raw text | Synthetic status injected | UI result |
+|---|---|---|
+| `reserved name`, `this name is reserved`, `domain is reserved`, `reserved by the registry`, standalone `reserved` line | `registry-reserved` | 保留域名 (amber) |
+| `registration prohibited`, `cannot be registered`, `registration not available`, `not eligible for registration`, `prohibited string`, `registry banned`, `registration blocked` | `registrationProhibited` | 禁止注册 (red) |
+| `suspended by registry/registrar`, `registry-suspended`, `domain is suspended` | `suspended` | 暂停 (orange) |
+
+These patterns are conservative — specific enough to avoid false positives in WHOIS legal footer text (e.g. "all rights reserved" does NOT match "reserved name").
+
+**2. `src/pages/[...query].tsx` — `getDomainRegistrationStatus` enhanced**
+
+Added a raw content scan as a safety net, checking both `result.rawWhoisContent` and `result.rawRdapContent` (serialized to string) for the same patterns. This covers RDAP-sourced data where `common_parser.ts` doesn't run.
+
+Also added `suspended` EPP code detection to the hold check: `hasSuspended = allStatusText.includes("suspended") || rawHasSuspended`.
+
+**3. `src/lib/whois/epp_status.ts` — Two new entries**
+
+- `registryreserved` → displayName `registry-reserved`, category `server`  
+- `registrationprohibited` → displayName `registrationProhibited`, category `server`
+
+These ensure the EPP status badge in the 状态 section shows correct Chinese/English descriptions instead of the generic "暂无标准释义" fallback.
+
+**4. `src/pages/[...query].tsx` — EPP lock filter robustness fix**
+
+Pre-existing bug: Some WHOIS servers (e.g. TWNIC for `.tw`) emit EPP lock statuses with **spaces** (`"client delete prohibited"`) rather than camelCase or hyphens. The original filter took only `s.split(/\s+/)[0]` ("client") which is not in the EPP lock set, letting the string pass through — and `prohibitCheckText.includes("prohibited")` was then true, incorrectly triggering the **禁止注册** badge for all Google-owned `.tw` domains.
+
+**Fix:** The filter now checks the code against the lock set in TWO additional forms — the raw first-word AND the space/hyphen-stripped concatenated form:
+```
+"client delete prohibited"
+  → noSep = "clientdeleteprohibited" → IN set → filtered ✓
+"client-transfer-prohibited"  
+  → noSep = "clienttransferprohibited" → IN set → filtered ✓
+"clientUpdateProhibited" → toLowerCase → "clientupdateprohibited"
+  → noSep = "clientupdateprohibited" → IN set → filtered ✓
+```
+
+**Verified results:**
+
+| Domain | Before | After |
+|---|---|---|
+| `com.tw` | ● 已注册 (WRONG — WHOIS says "reserved name") | ● 保留域名 ✓ |
+| `google.tw` | ● 禁止注册 (WRONG — only has EPP lock codes) | ● 正常 ✓ |
+| `google.com` | ● 已注册 ✓ | ● 已注册 ✓ (no false positive) |
+
+---
 
 ### v2.6 — RDAP-First Optimization: Massive Speed Improvement for 30+ ccTLDs (2026-03-23)
 

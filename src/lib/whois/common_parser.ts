@@ -651,6 +651,68 @@ export async function analyzeWhois(data: string): Promise<WhoisAnalyzeResult> {
   }
   result.status = newStatus;
 
+  // ── Synthetic status injection from raw WHOIS text ──────────────────────────
+  // Many ccTLD WHOIS servers express domain state as free-form text rather than
+  // structured EPP status codes. Detect these patterns and inject synthetic
+  // status entries so downstream status detection works correctly.
+  {
+    const rawLow = data.toLowerCase();
+    const hasStatusCode = (code: string) =>
+      result.status.some((s) => s.status.toLowerCase().includes(code));
+
+    // Reserved patterns — standalone text that indicates the name is reserved.
+    const syntheticReserved =
+      !hasStatusCode("reserved") &&
+      (rawLow.includes("reserved name") ||
+        rawLow.includes("this name is reserved") ||
+        rawLow.includes("is a reserved name") ||
+        rawLow.includes("domain is reserved") ||
+        rawLow.includes("reserved by the registry") ||
+        rawLow.includes("registry reserved") ||
+        rawLow.includes("reserved-name") ||
+        // standalone "reserved" on its own line (trimmed), e.g. TWNIC / NZRS
+        /(?:^|\n)\s*reserved\s*(?:\n|$)/.test(rawLow));
+
+    if (syntheticReserved) {
+      result.status.push({ status: "registry-reserved", url: "" });
+    }
+
+    // Prohibited / blocked patterns — name cannot be registered.
+    const syntheticProhibited =
+      !hasStatusCode("prohibited") &&
+      !hasStatusCode("blocked") &&
+      (rawLow.includes("registration is prohibited") ||
+        rawLow.includes("registration prohibited") ||
+        rawLow.includes("cannot be registered") ||
+        rawLow.includes("registration not possible") ||
+        rawLow.includes("registration not available") ||
+        rawLow.includes("not available for registration") ||
+        rawLow.includes("not eligible for registration") ||
+        rawLow.includes("prohibited string") ||
+        rawLow.includes("registrar banned") ||
+        rawLow.includes("registry banned") ||
+        /\bblocked\s+by\s+(?:registry|registrar)\b/.test(rawLow) ||
+        /\bregistration\s+blocked\b/.test(rawLow));
+
+    if (syntheticProhibited) {
+      result.status.push({ status: "registrationProhibited", url: "" });
+    }
+
+    // Suspended — domain suspended by registry for policy/abuse reasons.
+    const syntheticSuspended =
+      !hasStatusCode("suspended") &&
+      !hasStatusCode("hold") &&
+      (rawLow.includes("suspended by registry") ||
+        rawLow.includes("suspended by registrar") ||
+        rawLow.includes("registry-suspended") ||
+        rawLow.includes("domain is suspended") ||
+        rawLow.includes("account suspended"));
+
+    if (syntheticSuspended) {
+      result.status.push({ status: "suspended", url: "" });
+    }
+  }
+
   const seenNS = new Set<string>();
   result.nameServers = result.nameServers.filter((ns) => {
     const nsKey = ns.toLowerCase().trim();

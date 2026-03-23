@@ -1479,15 +1479,65 @@ function getDomainRegistrationStatus(
   const allStatusText = allStatusCodes.join(" ");
 
   // Build a separate text excluding EPP lock statuses for the prohibit check
-  // so that "clientTransferProhibited" does not trigger "禁止注册".
+  // so that "clientTransferProhibited" / "client transfer prohibited" /
+  // "client-transfer-prohibited" do not trigger "禁止注册".
+  // We check THREE forms of each code: the raw first-word, the full hyphenated
+  // string (some ccTLDs emit "client-delete-prohibited"), and the concatenated
+  // no-separator form (TWNIC WHOIS emits "client delete prohibited" with spaces).
   const prohibitCheckText = allStatusCodes
     .filter((s) => {
-      const code = s.split(/\s+/)[0];
-      return !EPP_PROHIBITED_LOCK_STATUSES.has(code);
+      const firstWord = s.split(/\s+/)[0];            // "client" from "client delete prohibited"
+      const noSep = s.replace(/[\s_\-]/g, "");        // "clientdeleteprohibited"
+      return (
+        !EPP_PROHIBITED_LOCK_STATUSES.has(firstWord) &&
+        !EPP_PROHIBITED_LOCK_STATUSES.has(noSep)
+      );
     })
     .join(" ");
 
-  // True only for genuine registration-prohibit signals, not EPP lock flags.
+  // ── Raw content scan (safety net for RDAP and exotic ccTLD WHOIS formats) ───
+  // Some registries embed state as free text in WHOIS/RDAP rather than EPP
+  // codes. Scan the raw content with specific phrases to capture these signals.
+  const rawContent = [
+    typeof result.rawWhoisContent === "string" ? result.rawWhoisContent : "",
+    result.rawRdapContent
+      ? typeof result.rawRdapContent === "string"
+        ? result.rawRdapContent
+        : JSON.stringify(result.rawRdapContent)
+      : "",
+  ]
+    .join("\n")
+    .toLowerCase();
+
+  const rawHasReserved =
+    rawContent.includes("reserved name") ||
+    rawContent.includes("this name is reserved") ||
+    rawContent.includes("is a reserved name") ||
+    rawContent.includes("domain is reserved") ||
+    rawContent.includes("reserved by the registry") ||
+    rawContent.includes("registry reserved") ||
+    rawContent.includes("reserved-name") ||
+    /(?:^|\n)\s*reserved\s*(?:\n|$)/.test(rawContent);
+
+  const rawHasProhibited =
+    rawContent.includes("registration is prohibited") ||
+    rawContent.includes("registration prohibited") ||
+    rawContent.includes("cannot be registered") ||
+    rawContent.includes("registration not possible") ||
+    rawContent.includes("registration not available") ||
+    rawContent.includes("not available for registration") ||
+    rawContent.includes("not eligible for registration") ||
+    rawContent.includes("prohibited string") ||
+    rawContent.includes("registrar banned") ||
+    rawContent.includes("registry banned") ||
+    /\bblocked\s+by\s+(?:registry|registrar)\b/.test(rawContent);
+
+  const rawHasSuspended =
+    rawContent.includes("suspended by registry") ||
+    rawContent.includes("suspended by registrar") ||
+    rawContent.includes("registry-suspended") ||
+    rawContent.includes("domain is suspended");
+
   const isProhibited =
     prohibitCheckText.includes("prohibited") ||
     prohibitCheckText.includes("registrationprohibited") ||
@@ -1497,7 +1547,8 @@ function getDomainRegistrationStatus(
     prohibitCheckText.includes("ineligible") ||
     prohibitCheckText.includes("forbidden") ||
     prohibitCheckText.includes("registry-prohibited") ||
-    prohibitCheckText.includes("registrybanned");
+    prohibitCheckText.includes("registrybanned") ||
+    rawHasProhibited;
 
   function makeStatus(
     type: RegistrationStatusType,
@@ -1515,7 +1566,8 @@ function getDomainRegistrationStatus(
     prohibitCheckText.includes("reserved") ||
     allStatusText.includes("reserved-delegated") ||
     allStatusText.includes("registryreserved") ||
-    allStatusText.includes("registry-reserved");
+    allStatusText.includes("registry-reserved") ||
+    rawHasReserved;
 
   if (isReserved)
     return makeStatus("reserved", "text-amber-600 border-amber-400/50 bg-amber-50 dark:bg-amber-950/20", "bg-amber-500");
@@ -1554,7 +1606,11 @@ function getDomainRegistrationStatus(
     allStatusText === "ok" ||
     allStatusText.includes("active");
 
-  const isHold = (hasServerHold || hasClientHold) && !hasOk;
+  const hasSuspended =
+    allStatusText.includes("suspended") ||
+    rawHasSuspended;
+
+  const isHold = (hasServerHold || hasClientHold || hasSuspended) && !hasOk;
 
   if (isHold)
     return makeStatus("hold", "text-orange-600 border-orange-400/50 bg-orange-50 dark:bg-orange-950/20", "bg-orange-500");

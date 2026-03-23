@@ -327,6 +327,18 @@ const EPP_STATUS_MAP: Record<string, EppStatusInfo> = {
     descriptionZh: "域名被注册局预留，公众无法注册。",
     category: "server",
   },
+  registryreserved: {
+    displayName: "registry-reserved",
+    description: "The domain is reserved by the registry (detected from WHOIS free text).",
+    descriptionZh: "注册局已将此域名标记为保留域名（从 WHOIS 原始文本中检测）。",
+    category: "server",
+  },
+  registrationprohibited: {
+    displayName: "registrationProhibited",
+    description: "The domain cannot be registered — marked as prohibited by the registry.",
+    descriptionZh: "该域名被注册局标记为禁止注册，无法通过任何渠道注册。",
+    category: "server",
+  },
   blocked: {
     displayName: "blocked",
     description: "The domain is blocked by the registry and cannot be registered.",
