@@ -1,10 +1,29 @@
-# Next Whois UI — v2.4
+# Next Whois UI — v2.5
 
 A fast, modern WHOIS and RDAP lookup tool supporting domains, IPv4/IPv6, ASN, and CIDR. Also includes built-in DNS, SSL certificate, and IP/ASN geolocation tools.
 
 ---
 
 ## Changelog
+
+### v2.5 — UnhandledPromiseRejection Fix + Fallback Timer Cancellation (2026-03-23)
+
+**Bug fixes in `src/lib/whois/lookup.ts`:**
+
+1. **Critical: `UnhandledPromiseRejection` crash on RDAP-skipped TLDs (`.cn`, `.bf`, `.lu`, `.ye`, etc.)**
+   - **Root cause:** `rdapPromise` was set to `Promise.reject(new Error("RDAP skipped for this TLD"))` when `skipRdap=true`. Although `rdapPromise` was correctly excluded from `taggedRacers`, no `.catch()` was ever attached to the promise itself. In Node.js 15+, any rejected promise without a rejection handler crashes the process with `UnhandledPromiseRejection`.
+   - **Fix:** Changed to `Promise.resolve(null)` — safe because the value of `rdapPromise` is never read when `skipRdap=true` (all downstream references are guarded by `if (!skipRdap)` or manually set `rdapSettled`).
+
+2. **Improvement: Progressive fallback timer cancelled when race already won**
+   - **Problem:** The `progressiveFallbackRacer` fires `lookupTianhu()` / `lookupYisi()` after a 3-second timer. Previously, this timer still fired even when RDAP or WHOIS had already won the race, unnecessarily consuming tian.hu's rate-limited quota (25/min, 300/day) and yisi.yun's API quota.
+   - **Fix:** Added `cancelProgressiveTimer` flag (set to `true` when `firstNonNull()` resolves with a non-null winner). The timer callback checks this flag and returns early if the race was already won. The timer still fires normally when all native lookups fail, preserving the intended progressive fallback behavior.
+
+**Architecture note:**
+- `lookupTianhu`: only activates if `tianhu_enabled=true` in admin config (free API, 25/min, 300/day)
+- `lookupYisi`: only activates if `yisi_enabled=true AND yisi_key` is set in admin config (requires API key)
+- Both fallbacks are tried in parallel by the progressive (3s delay) and early (pre-gate) paths
+
+---
 
 ### v2.4 — Premium Domain Pricing: Accurate API-Based Detection (2026-03-23)
 

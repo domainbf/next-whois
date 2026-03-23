@@ -561,8 +561,11 @@ export async function lookupWhois(domain: string): Promise<WhoisResult> {
 
   // ── Build promise pool ────────────────────────────────────────────────────
   // RDAP: only if not skipped; uses a shorter cap (RDAP_TIMEOUT) since it's HTTP/JSON.
+  // IMPORTANT: never use Promise.reject() here — an unattached rejected promise causes
+  // UnhandledPromiseRejection crashes in Node 15+.  When skipRdap is true, rdapPromise
+  // is excluded from taggedRacers entirely, so Promise.resolve(null) is safe.
   const rdapPromise: Promise<any> = skipRdap
-    ? Promise.reject(new Error("RDAP skipped for this TLD"))
+    ? Promise.resolve(null)
     : withTimeout(lookupRdap(domain), RDAP_TIMEOUT);
 
   // WHOIS TCP is inherently slower; give it a bit more headroom.
@@ -580,9 +583,13 @@ export async function lookupWhois(domain: string): Promise<WhoisResult> {
   // Progressive fallback: if nothing has resolved after PROGRESSIVE_FALLBACK_MS,
   // start yisi/tianhu even without prior failure history.  This bounds worst-case
   // latency for any unknown TLD instead of waiting for full WHOIS_TIMEOUT.
+  // cancelProgressiveTimer is set to true when the race is won early so the
+  // timer callback skips its API calls and avoids burning rate-limited quota.
+  let cancelProgressiveTimer = false;
   const progressiveFallbackRacer: Promise<WhoisResult | null> = isDomainQuery
     ? new Promise<WhoisResult | null>(resolve => {
         const timer = setTimeout(async () => {
+          if (cancelProgressiveTimer) { resolve(null); return; } // race already won
           if (useFallbackEarly) { resolve(null); return; } // already running
           const [t, y] = await Promise.all([
             lookupTianhu(domain).catch(() => null),
@@ -643,6 +650,10 @@ export async function lookupWhois(domain: string): Promise<WhoisResult> {
   ];
 
   const first = await firstNonNull(taggedRacers);
+
+  // Cancel the progressive fallback timer if the race was already won by
+  // RDAP / WHOIS / yisi_early — prevents burning tianhu/yisi rate-limited quota.
+  if (first !== null) cancelProgressiveTimer = true;
 
   // ── Settle remaining promises depending on what won ───────────────────────
   let rdapSettled: PromiseSettledResult<Awaited<ReturnType<typeof lookupRdap>>>;
