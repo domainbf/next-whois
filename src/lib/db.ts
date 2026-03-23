@@ -152,6 +152,16 @@ const CREATE_TABLES = [
     created_by   VARCHAR(16)  REFERENCES users(id) ON DELETE SET NULL,
     created_at   TIMESTAMPTZ  NOT NULL DEFAULT NOW()
   )`,
+  `CREATE TABLE IF NOT EXISTS friendly_links (
+    id           SERIAL       PRIMARY KEY,
+    name         TEXT         NOT NULL,
+    url          TEXT         NOT NULL,
+    description  TEXT,
+    category     TEXT,
+    sort_order   INTEGER      NOT NULL DEFAULT 0,
+    active       BOOLEAN      NOT NULL DEFAULT true,
+    created_at   TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+  )`,
 ];
 
 const ALTER_COLUMNS = [

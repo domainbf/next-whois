@@ -114,8 +114,8 @@ const SUB_PAGES = [
     color: "bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400",
     title: "友情链接",
     titleEn: "Friendly Links",
-    desc: "精选域名行业相关工具与资源网站",
-    descEn: "Curated domain industry tools and resource websites",
+    desc: "站长精选推荐 · 朋友们的网站",
+    descEn: "Curated recommendations and friends' websites",
   },
   {
     href: "/docs",
@@ -128,31 +128,11 @@ const SUB_PAGES = [
   },
 ];
 
-const THANKS = [
-  {
-    name: "nazhumi.com",
-    url: "https://www.nazhumi.com",
-    desc: "低注册价格支持",
-    descEn: "Low registration price support",
-  },
-  {
-    name: "tian.hu",
-    url: "https://tian.hu",
-    desc: "域名翻译数据支持",
-    descEn: "Domain translation data support",
-  },
-  {
-    name: "miqingju.com",
-    url: "https://www.miqingju.com",
-    desc: "域名比价查询支持",
-    descEn: "Domain price comparison support",
-  },
-  {
-    name: "yisi.yun",
-    url: "https://yisi.yun",
-    desc: "API 数据服务支持",
-    descEn: "API data service",
-  },
+const DEFAULT_THANKS = [
+  { name: "nazhumi.com", url: "https://www.nazhumi.com", desc: "低注册价格支持", descEn: "Low registration price support" },
+  { name: "tian.hu", url: "https://tian.hu", desc: "域名翻译数据支持", descEn: "Domain translation data support" },
+  { name: "miqingju.com", url: "https://www.miqingju.com", desc: "域名比价查询支持", descEn: "Domain price comparison support" },
+  { name: "yisi.yun", url: "https://yisi.yun", desc: "API 数据服务支持", descEn: "API data service" },
 ];
 
 const card = {
@@ -169,11 +149,35 @@ export default function AboutPage() {
   const settings = useSiteSettings();
   const isChinese = locale === "zh" || locale === "zh-tw";
   const siteName = settings.site_logo_text || "NEXT WHOIS";
+  const pageTitle = settings.about_title || (isChinese ? "关于我们" : "About");
+
+  const introZh = settings.about_content || `${siteName} 是一款面向域名投资者、技术人员与网站运营者的专业查询工具，支持域名 WHOIS/RDAP、IP 地址、ASN 自治系统、CIDR 网段、DNS 记录及 SSL 证书查询。提供到期提醒、品牌认领、域名工具箱等增值功能，助力你高效管理与评估域名资产。`;
+  const introEn = settings.about_intro_en || `${siteName} is a professional lookup tool for domain investors, developers, and site operators. It supports WHOIS/RDAP, IP address, ASN, CIDR, DNS records, and SSL certificate lookups, with value-added features like expiry reminders, brand stamps, and a domain toolbox.`;
+
+  const githubUrl = settings.about_github_url || "https://github.com/zmh-program/next-whois";
+  const contactEmail = settings.about_contact_email;
+
+  let thanksItems = DEFAULT_THANKS;
+  if (settings.about_thanks?.trim()) {
+    try {
+      const parsed = JSON.parse(settings.about_thanks);
+      if (Array.isArray(parsed)) {
+        thanksItems = parsed.map((t: { name: string; url: string; desc?: string; descEn?: string }) => ({
+          name: t.name || "",
+          url: t.url || "",
+          desc: t.desc || "",
+          descEn: t.descEn || t.desc || "",
+        }));
+      }
+    } catch {
+      thanksItems = DEFAULT_THANKS;
+    }
+  }
 
   return (
     <>
       <Head>
-        <title key="site-title">{`${isChinese ? "关于我们" : "About"} — ${siteName}`}</title>
+        <title key="site-title">{`${pageTitle} — ${siteName}`}</title>
       </Head>
       <ScrollArea className="w-full h-[calc(100vh-4rem)]">
         <main className="w-full max-w-3xl mx-auto px-4 sm:px-6 py-6 pb-16">
@@ -189,9 +193,7 @@ export default function AboutPage() {
                 <RiInformationLine className="w-5 h-5" />
               </div>
               <div>
-                <h1 className="text-lg font-bold leading-none">
-                  {isChinese ? "关于我们" : "About"}
-                </h1>
+                <h1 className="text-lg font-bold leading-none">{pageTitle}</h1>
                 <p className="text-[11px] text-muted-foreground mt-0.5">
                   {isChinese ? "项目介绍 · 功能说明 · 技术栈" : "Project info · Features · Tech stack"}
                 </p>
@@ -203,6 +205,7 @@ export default function AboutPage() {
           </div>
 
           <div className="space-y-6">
+            {/* Intro */}
             <motion.div
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
@@ -223,13 +226,21 @@ export default function AboutPage() {
                   </div>
                 </div>
                 <p className="text-sm text-muted-foreground leading-relaxed">
-                  {isChinese
-                    ? `${siteName} 是一款面向域名投资者、技术人员与网站运营者的专业查询工具，支持域名 WHOIS/RDAP、IP 地址、ASN 自治系统、CIDR 网段、DNS 记录及 SSL 证书查询。提供到期提醒、品牌认领、域名工具箱等增值功能，助力你高效管理与评估域名资产。`
-                    : `${siteName} is a professional lookup tool for domain investors, developers, and site operators. It supports WHOIS/RDAP, IP address, ASN, CIDR, DNS records, and SSL certificate lookups, with value-added features like expiry reminders, brand stamps, and a domain toolbox.`}
+                  {isChinese ? introZh : introEn}
                 </p>
+                {contactEmail && (
+                  <a
+                    href={`mailto:${contactEmail}`}
+                    className="inline-flex items-center gap-1.5 text-[11px] font-medium mt-3 px-3 py-1.5 rounded-lg bg-muted/60 hover:bg-muted border border-border transition-colors text-muted-foreground hover:text-foreground"
+                  >
+                    <RiMailLine className="w-3.5 h-3.5" />
+                    {contactEmail}
+                  </a>
+                )}
               </div>
             </motion.div>
 
+            {/* Features */}
             <div>
               <h3 className="text-sm font-semibold text-muted-foreground mb-3 px-1">
                 {isChinese ? "核心功能" : "Core Features"}
@@ -260,6 +271,7 @@ export default function AboutPage() {
               </div>
             </div>
 
+            {/* More pages */}
             <div>
               <h3 className="text-sm font-semibold text-muted-foreground mb-3 px-1">
                 {isChinese ? "更多页面" : "More Pages"}
@@ -289,6 +301,7 @@ export default function AboutPage() {
               </div>
             </div>
 
+            {/* Tech stack */}
             <motion.div
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
@@ -312,81 +325,58 @@ export default function AboutPage() {
                   </div>
                 ))}
               </div>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.35, delay: 0.6 }}
-              className="glass-panel border border-border rounded-xl p-5 flex items-start gap-4"
-            >
-              <div className="p-2.5 rounded-xl bg-muted/60 shrink-0">
-                <RiStarLine className="w-5 h-5 text-muted-foreground" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold mb-1">
-                  {isChinese ? "本站基于 · Next Whois 二次创作" : "Based on · Next Whois"}
-                </p>
-                <p className="text-[11px] text-muted-foreground leading-relaxed mb-3">
-                  {isChinese
-                    ? "感谢原作者的开源贡献，本站在 Next Whois 基础上进行二次开发，遵循 MIT 协议。"
-                    : "Thanks to the original author's open source contribution. This site is built upon Next Whois under the MIT license."}
-                </p>
-                <div className="flex flex-wrap gap-2">
+              {githubUrl && (
+                <div className="mt-4 pt-3 border-t border-border/40">
                   <a
-                    href="https://github.com/zmh-program/next-whois"
+                    href={githubUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1.5 text-[11px] font-medium px-3 py-1.5 rounded-lg bg-muted/60 hover:bg-muted border border-border transition-colors"
                   >
                     <RiGithubLine className="w-3.5 h-3.5" />
-                    GitHub
-                  </a>
-                  <a
-                    href="https://zmh.me"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 text-[11px] font-medium px-3 py-1.5 rounded-lg bg-muted/60 hover:bg-muted border border-border transition-colors"
-                  >
-                    <RiUserLine className="w-3.5 h-3.5" />
-                    {isChinese ? "作者" : "Author"}
+                    {isChinese ? "查看源码" : "View Source"}
+                    <RiExternalLinkLine className="w-2.5 h-2.5 text-muted-foreground/50" />
                   </a>
                 </div>
-              </div>
+              )}
             </motion.div>
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.35, delay: 0.7 }}
-              className="glass-panel border border-border rounded-xl p-5"
-            >
-              <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
-                <RiHeartLine className="w-4 h-4 text-rose-500" />
-                {isChinese ? "致谢" : "Acknowledgements"}
-              </h3>
-              <div className="grid grid-cols-2 gap-2.5">
-                {THANKS.map((t) => (
-                  <a
-                    key={t.name}
-                    href={t.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2.5 p-2.5 rounded-lg bg-muted/40 hover:bg-muted/70 border border-border/60 hover:border-border transition-all group"
-                  >
-                    <div className="p-1.5 rounded-md bg-rose-500/10 shrink-0">
-                      <RiHeartLine className="w-3.5 h-3.5 text-rose-500" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-semibold leading-none truncate">{t.name}</p>
-                      <p className="text-[10px] text-muted-foreground mt-0.5 leading-snug truncate">
-                        {isChinese ? t.desc : t.descEn}
-                      </p>
-                    </div>
-                    <RiExternalLinkLine className="w-3 h-3 text-muted-foreground/30 group-hover:text-muted-foreground/60 transition-colors shrink-0" />
-                  </a>
-                ))}
-              </div>
-            </motion.div>
+
+            {/* Thanks */}
+            {thanksItems.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.35, delay: 0.7 }}
+                className="glass-panel border border-border rounded-xl p-5"
+              >
+                <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
+                  <RiHeartLine className="w-4 h-4 text-rose-500" />
+                  {isChinese ? "致谢" : "Acknowledgements"}
+                </h3>
+                <div className="grid grid-cols-2 gap-2.5">
+                  {thanksItems.map((t) => (
+                    <a
+                      key={t.name}
+                      href={t.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2.5 p-2.5 rounded-lg bg-muted/40 hover:bg-muted/70 border border-border/60 hover:border-border transition-all group"
+                    >
+                      <div className="p-1.5 rounded-md bg-rose-500/10 shrink-0">
+                        <RiHeartLine className="w-3.5 h-3.5 text-rose-500" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-semibold leading-none truncate">{t.name}</p>
+                        <p className="text-[10px] text-muted-foreground mt-0.5 leading-snug truncate">
+                          {isChinese ? t.desc : t.descEn}
+                        </p>
+                      </div>
+                      <RiExternalLinkLine className="w-3 h-3 text-muted-foreground/30 group-hover:text-muted-foreground/60 transition-colors shrink-0" />
+                    </a>
+                  ))}
+                </div>
+              </motion.div>
+            )}
           </div>
 
           <div className="mt-10 pt-6 border-t border-border/40 text-center">

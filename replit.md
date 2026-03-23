@@ -330,6 +330,24 @@ All persistent state lives in PostgreSQL (`src/lib/db.ts`). Tables auto-created 
 | API Keys | `/admin/api` |
 | Site Settings | `/admin/settings` |
 | Invite Codes | `/admin/invite-codes` |
+| Friendly Links | `/admin/links` |
+
+## Admin-Managed Content (v2.0)
+
+### Friendly Links (`/links`)
+- Fully DB-backed: `friendly_links` table (id, name, url, description, category, sort_order, active)
+- Public API: `/api/links` (GET active links, sorted by sort_order then id)
+- Admin CRUD: `/api/admin/links` (GET/POST/PUT/DELETE)
+- Admin page: `/admin/links` — create/edit/delete/toggle visibility, optional category grouping
+- Links page groups by category, shows empty state when no links added
+- Subtitle and title customizable via `links_title` / `links_content` in site settings
+
+### About Page (`/about`)
+- Chinese intro (`about_content`), English intro (`about_intro_en`) — both editable in admin settings
+- Contact email (`about_contact_email`) — shown as a mailto link on about + links pages
+- GitHub URL (`about_github_url`) — shown in tech stack section
+- Thanks/acknowledgements (`about_thanks`) — JSON array `[{name, url, desc, descEn}]`, falls back to hardcoded defaults
+- All fields editable via Admin Settings → 关于页面 section
 
 ## Registration Security (v2.0)
 

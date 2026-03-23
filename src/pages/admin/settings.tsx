@@ -241,8 +241,12 @@ const SECTIONS: Section[] = [
     icon: RiInformationLine,
     color: "bg-sky-100 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400",
     fields: [
-      { key: "about_title", label: "关于页面标题", desc: "覆盖默认标题（留空使用默认）", placeholder: "关于 Next Whois", icon: RiInformationLine },
-      { key: "about_content", label: "关于页面额外内容", desc: "在关于页面底部追加显示的 HTML 或 Markdown 内容（留空则不显示）", placeholder: "<p>补充说明...</p>", icon: RiFileTextLine, multiline: true },
+      { key: "about_title", label: "页面标题", desc: "关于页面的标题文字（留空使用默认）", placeholder: "关于我们", icon: RiInformationLine },
+      { key: "about_content", label: "中文简介", desc: "关于页面的中文介绍段落（留空使用内置默认文案）", placeholder: "这里填写关于本站的中文介绍...", icon: RiFileTextLine, multiline: true },
+      { key: "about_intro_en", label: "英文简介", desc: "关于页面的英文介绍段落（留空使用内置默认文案）", placeholder: "Enter the English description for the about page...", icon: RiFileTextLine, multiline: true },
+      { key: "about_contact_email", label: "联系邮箱", desc: "显示在关于页面和友情链接页的联系邮箱（留空则不显示）", placeholder: "contact@yourdomain.com", icon: RiMailSendLine },
+      { key: "about_github_url", label: "源码 GitHub 链接", desc: "GitHub 仓库地址，显示在技术栈区域（留空则不显示）", placeholder: "https://github.com/yourname/yourrepo", icon: RiCodeBoxLine },
+      { key: "about_thanks", label: "致谢列表（JSON）", desc: `致谢服务商列表，JSON 格式，留空使用默认。格式：[{"name":"站名","url":"https://...","desc":"中文说明","descEn":"English desc"}]`, placeholder: '[{"name":"Example","url":"https://example.com","desc":"示例服务","descEn":"Example service"}]', icon: RiCodeBoxLine, multiline: true },
     ],
   },
   {
@@ -260,8 +264,8 @@ const SECTIONS: Section[] = [
     icon: RiLinksLine,
     color: "bg-teal-100 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400",
     fields: [
-      { key: "links_title", label: "链接页面标题", desc: "覆盖默认标题（留空使用默认）", placeholder: "友情链接", icon: RiLinksLine },
-      { key: "links_content", label: "链接页面描述", desc: "链接页面顶部的描述文字（留空则不显示）", placeholder: "以下是相关资源和友情链接...", icon: RiFileTextLine, multiline: true },
+      { key: "links_title", label: "友链页面标题", desc: '覆盖默认标题（留空使用"友情链接"）', placeholder: "友情链接", icon: RiLinksLine },
+      { key: "links_content", label: "友链页面副标题", desc: "页面头部的一句话描述（留空使用默认）", placeholder: "站长精选推荐 · 朋友们的网站", icon: RiFileTextLine },
     ],
   },
   {
