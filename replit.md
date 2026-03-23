@@ -48,6 +48,7 @@ A fast, modern WHOIS and RDAP lookup tool supporting domains, IPv4/IPv6, ASN, an
 - `src/pages/admin/sponsors.tsx` — Sponsor management: add/edit/delete records, visibility toggle, stats, payment QR settings
 - `src/pages/api/admin/sponsors.ts` — Sponsor CRUD API (GET public with visible_only, POST/PUT/DELETE admin-only)
 - `src/pages/sponsor.tsx` — Public sponsor page: payment QR codes, sponsor list, cumulative stats
+- `src/lib/server/rate-limit.ts` — In-process sliding-window rate limiter: `rateLimit(key, limit, windowMs)` + `getClientIp(req)`
 
 ## Architecture
 
@@ -58,6 +59,12 @@ The lookup flow: API request → try RDAP → fallback to WHOIS → merge result
 1. **RDAP** (`node-rdap` + bootstrap) — primary, returns structured JSON
 2. **WHOIS** (`whoiser` + custom servers) — secondary, raw text parsed by `common_parser.ts`
 3. **yisi.yun API** (`src/lib/whois/yisi-fallback.ts`) — tertiary; only invoked when both RDAP and WHOIS fail or return empty/error data for a domain query. Supports unusual TLDs with no public RDAP/WHOIS server. Zero overhead when native lookups succeed.
+
+## Version History (current: 1.9)
+
+- **v1.9** — Page smoothness: page transition 0.28 s → 0.22 s + ease-out-expo curve, `will-change` GPU hint, `prefers-reduced-motion` full support, smooth scroll, preconnect hints for exchange-rate API / IANA RDAP in `_document.tsx`
+- **v1.8** — Lookup speed: WHOIS merge-wait 600 → 350 ms, progressive-fallback trigger 3 500 → 3 000 ms, whoiser eager warm-up at module init, TLD DB calls halved for 2-part domains (tld === tldSuffix deduplication)
+- **v1.7** — API security: IP sliding-window rate limiting 40 req/min, GET-only method check, query length ≤ 300 chars, control-char rejection, standard X-RateLimit-* headers; four access-control toggles (disable_login / maintenance_mode / query_only_mode / hide_raw_whois) enforced in navbar + login + _app.tsx + query page
 
 ## Data Cleaning Enhancements (2026-03)
 

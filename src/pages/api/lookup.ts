@@ -4,10 +4,17 @@ import { WhoisAnalyzeResult } from "@/lib/whois/types";
 import { DnsProbeResult } from "@/lib/whois/dns-check";
 import { run, isDbReady } from "@/lib/db-query";
 import { randomBytes } from "crypto";
+import { rateLimit, getClientIp } from "@/lib/server/rate-limit";
 
 export const config = {
   maxDuration: 30,
 };
+
+// Rate limit: 40 requests per 60 s per IP
+const RATE_LIMIT        = 40;
+const RATE_WINDOW_MS    = 60_000;
+// Maximum accepted query length (domain names: 253 chars per RFC 1035)
+const MAX_QUERY_LENGTH  = 300;
 
 type Data = {
   status: boolean;
@@ -64,22 +71,46 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse<Data>,
 ) {
-  const query = req.query.query || req.query.q;
+  // Only allow GET and HEAD
+  if (req.method !== "GET" && req.method !== "HEAD") {
+    res.setHeader("Allow", "GET, HEAD");
+    return res.status(405).json({ time: -1, status: false, error: "Method not allowed" });
+  }
 
-  if (!query || typeof query !== "string" || query.length === 0) {
+  // Rate limiting
+  const ip = getClientIp(req);
+  const { allowed, remaining, resetMs } = rateLimit(ip, RATE_LIMIT, RATE_WINDOW_MS);
+  res.setHeader("X-RateLimit-Limit", String(RATE_LIMIT));
+  res.setHeader("X-RateLimit-Remaining", String(remaining));
+  res.setHeader("X-RateLimit-Reset", String(Math.ceil(resetMs / 1_000)));
+  if (!allowed) {
+    return res.status(429).json({ time: -1, status: false, error: "Too many requests — please slow down" });
+  }
+
+  // Input validation
+  const query = req.query.query || req.query.q;
+  if (!query || typeof query !== "string" || query.trim().length === 0) {
+    return res.status(400).json({ time: -1, status: false, error: "Query is required" });
+  }
+  const trimmed = query.trim();
+  if (trimmed.length > MAX_QUERY_LENGTH) {
     return res
       .status(400)
-      .json({ time: -1, status: false, error: "Query is required" });
+      .json({ time: -1, status: false, error: `Query too long (max ${MAX_QUERY_LENGTH} chars)` });
+  }
+  // Reject obviously non-sensical characters (null bytes, control chars)
+  if (/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/.test(trimmed)) {
+    return res.status(400).json({ time: -1, status: false, error: "Invalid characters in query" });
   }
 
   const { time, status, result, error, cached, source, dnsProbe, registryUrl } =
-    await lookupWhoisWithCache(query);
+    await lookupWhoisWithCache(trimmed);
   if (!status) {
     return res.status(500).json({ time, status, error, dnsProbe, registryUrl });
   }
 
   if (result && !cached) {
-    saveAnonymousSearchRecord(query, result, dnsProbe).catch(() => {});
+    saveAnonymousSearchRecord(trimmed, result, dnsProbe).catch(() => {});
   }
 
   res.setHeader("Cache-Control", "s-maxage=3600, stale-while-revalidate=86400");

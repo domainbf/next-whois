@@ -28,8 +28,16 @@ function l1Set(key: string, value: WhoisResult) {
 import { analyzeWhois } from "@/lib/whois/common_parser";
 import { extractDomain } from "@/lib/utils";
 import { lookupRdap, convertRdapToWhoisResult } from "@/lib/whois/rdap_client";
-// whoiser is ESM-only; use dynamic import() so CJS serverless can load it
-const getWhoiser = () => import("whoiser");
+// whoiser is ESM-only; use dynamic import() so CJS serverless can load it.
+// The module promise is held at module level so subsequent calls are instant
+// (Node.js caches the fulfilled promise rather than re-parsing the bundle).
+let _whoiserPromise: Promise<typeof import("whoiser")> | null = null;
+const getWhoiser = () => {
+  if (!_whoiserPromise) _whoiserPromise = import("whoiser");
+  return _whoiserPromise;
+};
+// Warm up eagerly — by the time the first request arrives the module is loaded.
+void getWhoiser();
 import { domainToASCII } from "url";
 import {
   getCustomServerEntry,
@@ -310,12 +318,21 @@ async function getLookupWhois(domain: string): Promise<WhoisRawResult> {
   const follow = Math.min(Math.max(MAX_WHOIS_FOLLOW, 1), 2) as 1 | 2;
   const tld = domainToQuery.split(".").slice(1).join(".");
   const tldSuffix = domainToQuery.split(".").pop() || "";
-  const [[ce1, ce2], [us1, us2]] = await Promise.all([
-    Promise.all([getCustomServerEntry(tld), getCustomServerEntry(tldSuffix)]),
-    Promise.all([isUserManagedServer(tld), isUserManagedServer(tldSuffix)]),
-  ]);
-  const customEntry = ce1 || ce2;
-  const isUserServer = us1 || us2;
+  // Deduplicate DB calls when tld and tldSuffix are identical (all 2-part domains like .com/.net).
+  let customEntry: Awaited<ReturnType<typeof getCustomServerEntry>>;
+  let isUserServer: boolean;
+  if (tld === tldSuffix) {
+    const [ce, us] = await Promise.all([getCustomServerEntry(tld), isUserManagedServer(tld)]);
+    customEntry = ce;
+    isUserServer = us;
+  } else {
+    const [[ce1, ce2], [us1, us2]] = await Promise.all([
+      Promise.all([getCustomServerEntry(tld), getCustomServerEntry(tldSuffix)]),
+      Promise.all([isUserManagedServer(tld), isUserManagedServer(tldSuffix)]),
+    ]);
+    customEntry = ce1 || ce2;
+    isUserServer = us1 || us2;
+  }
 
   if (customEntry) {
     if (isScraperEntry(customEntry)) {
@@ -509,8 +526,9 @@ export async function lookupWhoisWithCache(
 }
 
 // After RDAP succeeds, wait at most this long for WHOIS (for raw content merging).
-// Kept short: WHOIS raw is supplementary — don't hold up a good RDAP result.
-const WHOIS_MERGE_WAIT_MS = 600;
+// 350 ms is enough to catch WHOIS responses that arrive just after RDAP without
+// meaningfully delaying the response when WHOIS is truly slow.
+const WHOIS_MERGE_WAIT_MS = 350;
 
 // Separate timeout caps for each protocol.
 // RDAP is HTTP/JSON so 4 s is generous; WHOIS TCP can be slower.
@@ -521,7 +539,7 @@ const WHOIS_TIMEOUT = intEnv("WHOIS_TIMEOUT_MS", 6_000);
 // yisi / tianhu as an *additional* racer — even without prior failures.
 // This guarantees a worst-case result time of roughly PROGRESSIVE_FALLBACK_MS
 // + third-party API latency (≈ 1-2 s) instead of waiting for full timeouts.
-const PROGRESSIVE_FALLBACK_MS = intEnv("PROGRESSIVE_FALLBACK_MS", 3_500);
+const PROGRESSIVE_FALLBACK_MS = intEnv("PROGRESSIVE_FALLBACK_MS", 3_000);
 
 export async function lookupWhois(domain: string): Promise<WhoisResult> {
   const startTime = performance.now();

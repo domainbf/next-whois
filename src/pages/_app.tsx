@@ -15,14 +15,14 @@ import { RiMegaphoneLine, RiCloseLine, RiWrenchLine } from "@remixicon/react";
 import { ADMIN_EMAIL } from "@/lib/admin-shared";
 
 const pageVariants = {
-  initial: { opacity: 0, y: 8, scale: 0.995 },
-  animate: { opacity: 1, y: 0, scale: 1 },
-  exit: { opacity: 0, y: -4, scale: 1.002 },
+  initial: { opacity: 0, y: 5 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -3 },
 };
 
 const pageTransition = {
-  duration: 0.28,
-  ease: [0.25, 0.46, 0.45, 0.94],
+  duration: 0.22,
+  ease: [0.22, 1, 0.36, 1],
 };
 
 function AppHead({ origin }: { origin: string }) {
@@ -181,6 +181,7 @@ export default function App({ Component, pageProps: { session, ...pageProps } }:
                   animate="animate"
                   exit="exit"
                   transition={pageTransition}
+                  style={{ willChange: "opacity, transform" }}
                 >
                   <Component {...pageProps} />
                 </motion.div>

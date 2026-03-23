@@ -33,6 +33,42 @@ interface Version {
 
 const VERSIONS: Version[] = [
   {
+    version: "1.9",
+    date: "2026-03",
+    highlight: true,
+    changes: [
+      { type: "improve", zh: "页面切换动画精简：时长 0.28 s → 0.22 s，曲线换用 ease-out-expo，去除 scale 抖动", en: "Page transition refined: 0.28 s → 0.22 s, ease-out-expo curve, scale jitter removed" },
+      { type: "improve", zh: "动画层添加 will-change: opacity, transform，浏览器提前提升 GPU 合成层", en: "Animated wrapper gains will-change: opacity, transform for early GPU layer promotion" },
+      { type: "improve", zh: "新增 prefers-reduced-motion 支持：偏好减少动效的用户全站动画近乎即时", en: "prefers-reduced-motion support: all animations near-instant for users who prefer reduced motion" },
+      { type: "improve", zh: "全局启用 scroll-behavior: smooth（仅限非减动效模式）", en: "Global smooth scrolling enabled (respects prefers-reduced-motion)" },
+      { type: "improve", zh: "_document 新增 preconnect + dns-prefetch 预连接（汇率 API / IANA RDAP）", en: "Document head: preconnect + dns-prefetch hints for exchange-rate API and IANA RDAP" },
+    ],
+  },
+  {
+    version: "1.8",
+    date: "2026-03",
+    highlight: true,
+    changes: [
+      { type: "improve", zh: "WHOIS 合并等待窗口从 600 ms 压缩至 350 ms，RDAP 优先结果更快返回", en: "WHOIS merge-wait window reduced 600 → 350 ms; RDAP-first results arrive ~250 ms earlier" },
+      { type: "improve", zh: "渐进式容灾触发时间从 3500 ms 提前至 3000 ms，慢 TLD 最坏情况提速 500 ms", en: "Progressive fallback trigger lowered 3 500 → 3 000 ms; worst-case 500 ms faster for slow TLDs" },
+      { type: "improve", zh: "whoiser 模块在进程启动时预热加载，首次查询无模块解析开销", en: "whoiser module eagerly warm-loaded at process start — no parse overhead on first query" },
+      { type: "improve", zh: "常见 2 段域名（.com/.net 等）TLD 数据库查询从 4 次减为 2 次（去重）", en: "TLD DB calls halved for 2-part domains (.com/.net…): 4 queries → 2 via deduplication" },
+    ],
+  },
+  {
+    version: "1.7",
+    date: "2026-03",
+    highlight: true,
+    changes: [
+      { type: "improve", zh: "查询 API 新增 IP 滑动窗口限流（每 IP 每分钟 40 次），防止滥用爬取", en: "Lookup API: IP-based sliding-window rate limiting (40 req/min) to prevent abuse" },
+      { type: "improve", zh: "查询 API 严格校验 HTTP 方法（仅 GET），拒绝非法请求", en: "Lookup API: strict HTTP method validation — only GET accepted" },
+      { type: "improve", zh: "查询长度上限 300 字符，拒绝含控制字符的恶意输入", en: "Query length capped at 300 chars; control characters rejected with 400" },
+      { type: "improve", zh: "限流响应头标准化：X-RateLimit-Limit / Remaining / Reset 三字段", en: "Standard rate-limit headers: X-RateLimit-Limit / Remaining / Reset" },
+      { type: "improve", zh: "管理后台设置保存提示说明同步延迟（当前浏览器即时 · 其他会话 60 秒内）", en: "Admin settings save button now shows sync latency note (instant in current browser, ≤60 s elsewhere)" },
+      { type: "feature", zh: "新增四项访问控制开关：禁用登录 / 维护模式 / 纯查询模式 / 隐藏原始 WHOIS", en: "Four new access-control toggles: disable login, maintenance mode, query-only mode, hide raw WHOIS" },
+    ],
+  },
+  {
     version: "1.6",
     date: "2026-03",
     highlight: true,
