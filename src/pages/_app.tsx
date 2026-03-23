@@ -15,14 +15,14 @@ import { RiMegaphoneLine, RiCloseLine, RiWrenchLine } from "@remixicon/react";
 import { ADMIN_EMAIL } from "@/lib/admin-shared";
 
 const pageVariants = {
-  initial: { opacity: 0 },
-  animate: { opacity: 1 },
-  exit: { opacity: 0 },
+  initial: { opacity: 0, y: 8 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -4 },
 };
 
 const pageTransition = {
-  duration: 0.15,
-  ease: "easeOut",
+  duration: 0.22,
+  ease: [0.22, 1, 0.36, 1],
 };
 
 function AppHead({ origin }: { origin: string }) {

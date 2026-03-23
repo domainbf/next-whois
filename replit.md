@@ -4,7 +4,14 @@ A fast, modern WHOIS and RDAP lookup tool supporting domains, IPv4/IPv6, ASN, an
 
 ## Recent Changes (v2.0)
 
-- **Page transitions**: Pure opacity (0.15s easeOut), no y-offset jitter
+- **Page transitions**: y-axis slide (y:8→0 enter, y:0→-4 exit) with custom cubic-bezier [0.22,1,0.36,1] at 0.22s for silky-smooth feel
+- **Result card stagger**: Main grid uses `CARD_CONTAINER_VARIANTS` (staggerChildren:0.06s) — left and right columns animate in sequence with `CARD_ITEM_VARIANTS` (y:12→0, duration:0.32s)
+- **NS row animations**: Each nameserver row is a `motion.div` with spring tap (scale:0.97) and hover nudge (x:2px)
+- **Domain title animation**: `motion.h2` with spring tap (scale:0.97) on click-to-copy
+- **Search button**: Spring tap (scale:0.9) via `motion.div` wrapper around submit button
+- **Hydration fix**: `ResultSkeleton` replaced `Math.random()` widths with deterministic fixed array `[85,72,90,65,80,70]`
+- **Glass panel polish**: Added `box-shadow` for depth; dark mode shadow uses black/30
+- **CSS utilities added**: `animate-fade-in-up`, `animate-fade-in`, `animate-scale-in`, `stagger-1` through `stagger-5` delay classes
 - **DNS tool** (`dns.tsx`): CAA record type added; AnimatePresence for all states; MX priority badges; SOA structured display; 4×DoH resolvers; preset shortcuts (基础解析/邮件安全/域名服务器/证书授权)
 - **SSL tool** (`ssl.tsx`): ValidityBar progress component; AnimatePresence for all states; quick examples (google.com/github.com/cloudflare.com); refresh button
 - **IP/ASN tool** (`ip.tsx`): AnimatePresence for all states; Yandex static map preview; IPv6 + ASN examples

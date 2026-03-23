@@ -485,22 +485,28 @@ export function SearchBox({
           onKeyDown={handleKeyDown}
           onFocus={() => setShowSuggestions(suggestions.length > 0)}
         />
-        <Button
-          size="icon"
-          variant="outline"
-          className={cn(
-            "absolute right-0 rounded-l-none border-l-0 transition-all duration-300",
-            (isEnterPressed || loading) && "bg-primary text-primary-foreground",
-            "hover:bg-primary hover:text-primary-foreground",
-          )}
-          onClick={handleSearch}
+        <motion.div
+          whileTap={{ scale: 0.9 }}
+          transition={{ type: "spring", stiffness: 600, damping: 32, mass: 0.6 }}
+          className="absolute right-0"
         >
-          {loading ? (
-            <RiLoader2Line className="w-4 h-4 animate-spin" />
-          ) : (
-            <RiSendPlaneLine className="w-4 h-4" />
-          )}
-        </Button>
+          <Button
+            size="icon"
+            variant="outline"
+            className={cn(
+              "rounded-l-none border-l-0 transition-all duration-300",
+              (isEnterPressed || loading) && "bg-primary text-primary-foreground",
+              "hover:bg-primary hover:text-primary-foreground",
+            )}
+            onClick={handleSearch}
+          >
+            {loading ? (
+              <RiLoader2Line className="w-4 h-4 animate-spin" />
+            ) : (
+              <RiSendPlaneLine className="w-4 h-4" />
+            )}
+          </Button>
+        </motion.div>
       </div>
 
       <AnimatePresence>

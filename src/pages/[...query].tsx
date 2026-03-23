@@ -112,6 +112,23 @@ import {
 import { Label } from "@/components/ui/label";
 import { useSearchHotkeys } from "@/hooks/useSearchHotkeys";
 
+const CARD_CONTAINER_VARIANTS = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.06, delayChildren: 0.02 },
+  },
+};
+
+const CARD_ITEM_VARIANTS = {
+  hidden: { opacity: 0, y: 12 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.32, ease: [0.22, 1, 0.36, 1] },
+  },
+};
+
 const REGISTRAR_ICONS: Record<string, { slug: string | null; color: string }> =
   {
     godaddy: { slug: "godaddy", color: "#1BDBDB" },
@@ -2630,11 +2647,11 @@ function ResultSkeleton() {
           <div className="glass-panel border border-border rounded-xl p-6 h-64 flex flex-col gap-3">
             <div className="h-4 w-24 rounded bg-muted/70 animate-pulse" />
             <div className="flex-1 space-y-2">
-              {[1, 2, 3, 4, 5, 6].map((i) => (
+              {[85, 72, 90, 65, 80, 70].map((w, i) => (
                 <div
                   key={i}
                   className="h-3 rounded bg-muted/50 animate-pulse"
-                  style={{ width: `${60 + Math.random() * 35}%` }}
+                  style={{ width: `${w}%` }}
                 />
               ))}
             </div>
@@ -3247,13 +3264,13 @@ export default function LookupPage({
           {!loading && status && result && (
             <>
               <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.3 }}
+                variants={CARD_CONTAINER_VARIANTS}
+                initial="hidden"
+                animate="visible"
                 className="grid grid-cols-1 lg:grid-cols-12 gap-6"
               >
                 {" "}
-                <div className="lg:col-span-8 space-y-6">
+                <motion.div variants={CARD_ITEM_VARIANTS} className="lg:col-span-8 space-y-6">
                   <div className="glass-panel border border-border rounded-xl p-6 sm:p-8 relative overflow-hidden">
                     <div className="absolute top-3 right-2 opacity-60 pointer-events-none select-none w-[120px] h-[120px] overflow-hidden">
                       <CssGlobe />
@@ -3307,12 +3324,14 @@ export default function LookupPage({
                           <RiTimerLine className="w-3 h-3" />
                         </button>
                       </div>
-                      <h2
-                        className="text-3xl sm:text-4xl font-bold tracking-tight mb-1 cursor-pointer hover:opacity-80 transition-opacity uppercase"
+                      <motion.h2
+                        className="text-3xl sm:text-4xl font-bold tracking-tight mb-1 cursor-pointer hover:opacity-80 transition-opacity uppercase select-none"
                         onClick={() => copy(result.domain || target)}
+                        whileTap={{ scale: 0.97 }}
+                        transition={{ type: "spring", stiffness: 500, damping: 30 }}
                       >
                         {result.domain || displayTarget}
-                      </h2>
+                      </motion.h2>
                       {result.domainPunycode && (
                         <p
                           className="text-xs text-muted-foreground font-mono mb-3 cursor-pointer hover:opacity-70 transition-opacity"
@@ -3865,10 +3884,13 @@ export default function LookupPage({
                           {result.nameServers.map((ns, i) => {
                             const nsBrand = getNsBrand(ns);
                             return (
-                              <div
+                              <motion.div
                                 key={i}
                                 className="flex items-center gap-3 p-2 bg-muted/30 border border-border/50 rounded-md cursor-pointer hover:bg-muted/50 transition-colors"
                                 onClick={() => copy(ns)}
+                                whileTap={{ scale: 0.97 }}
+                                whileHover={{ x: 2 }}
+                                transition={{ type: "spring", stiffness: 500, damping: 30 }}
                               >
                                 {nsBrand ? (
                                   nsBrand.slug ? (
@@ -3921,7 +3943,7 @@ export default function LookupPage({
                                     {nsBrand.brand}
                                   </span>
                                 )}
-                              </div>
+                              </motion.div>
                             );
                           })}
                         </div>
@@ -4071,8 +4093,8 @@ export default function LookupPage({
                       </div>
                     </div>
                   )}
-                </div>
-                <div className="lg:col-span-4 relative overflow-hidden">
+                </motion.div>
+                <motion.div variants={CARD_ITEM_VARIANTS} className="lg:col-span-4 relative overflow-hidden">
                   <div className="flex flex-col gap-6 lg:absolute lg:inset-0 lg:overflow-y-auto">
                     {isValidField(result.registrar) && (
                       <div className="glass-panel border border-border rounded-xl p-5 shrink-0 overflow-hidden">
@@ -4199,7 +4221,7 @@ export default function LookupPage({
                       </div>
                     )}
                   </div>
-                </div>
+                </motion.div>
               </motion.div>
             </>
           )}
