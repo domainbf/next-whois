@@ -56,6 +56,11 @@ export interface SiteSettings {
   sponsor_wechat_qr: string;
   sponsor_github_url: string;
   sponsor_extra_links: string;
+  sponsor_paypal_url: string;
+  sponsor_crypto_btc: string;
+  sponsor_crypto_eth: string;
+  sponsor_crypto_usdt: string;
+  sponsor_crypto_okx: string;
   // SEO / Analytics
   analytics_google: string;
   analytics_umami: string;
@@ -110,6 +115,11 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   sponsor_wechat_qr: "",
   sponsor_github_url: "",
   sponsor_extra_links: "",
+  sponsor_paypal_url: "",
+  sponsor_crypto_btc: "",
+  sponsor_crypto_eth: "",
+  sponsor_crypto_usdt: "",
+  sponsor_crypto_okx: "",
   analytics_google: "",
   analytics_umami: "",
   analytics_umami_src: "",

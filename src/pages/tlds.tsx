@@ -424,7 +424,7 @@ export default function TldsPage() {
           </div>
 
           <AnimatePresence mode="wait" initial={false}>
-          {tab === "tlds" && (
+          {tab === "tlds" ? (
             <motion.div
               key="tab-tlds"
               initial={{ opacity: 0, x: -12 }}
@@ -511,9 +511,7 @@ export default function TldsPage() {
                 </p>
               </div>
             </motion.div>
-          )}
-
-          {tab === "servers" && (
+          ) : (
             <motion.div
               key="tab-servers"
               initial={{ opacity: 0, x: 12 }}

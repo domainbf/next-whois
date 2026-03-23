@@ -456,6 +456,233 @@ export default function DocsPage({ origin }: { origin: string }) {
 
             <Card>
               <CardHeader className="pb-4">
+                <CardTitle className="flex items-center gap-2 text-base flex-wrap">
+                  <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 border-0 text-xs font-bold">
+                    GET
+                  </Badge>
+                  <InlineCodeScroll codeClassName="font-mono text-sm">
+                    /api/dns/records
+                  </InlineCodeScroll>
+                </CardTitle>
+                <p className="text-sm text-muted-foreground mt-1">
+                  通过 4 个 DoH（DNS over HTTPS）解析器并行查询 DNS 记录，返回去重合并结果及每个解析器的状态与延迟。
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">
+                    {t("docs.parameters")}
+                  </h3>
+                  <ParamsTable
+                    t={t}
+                    params={[
+                      { name: "name", type: "string", required: true, description: "要查询的域名，如 google.com 或 _dmarc.google.com" },
+                      { name: "type", type: "string", required: false, default: "A", description: "记录类型：A · AAAA · MX · NS · CNAME · TXT · SOA · CAA" },
+                    ]}
+                  />
+                </div>
+                <div>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">
+                    {t("docs.example_request")}
+                  </h3>
+                  <CodeBlock>{`curl "https://your-domain.com/api/dns/records?name=google.com&type=MX"`}</CodeBlock>
+                </div>
+                <div>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">
+                    {t("docs.success_response")}
+                  </h3>
+                  <CodeBlock>{`{
+  "name": "google.com",
+  "type": "MX",
+  "found": true,
+  "records": [
+    { "priority": 10, "exchange": "smtp.google.com" }
+  ],
+  "flat": ["10 smtp.google.com"],
+  "resolvers": [
+    { "name": "Google DoH", "kind": "doh", "records": [...], "flat": [...], "latencyMs": 42 },
+    { "name": "Cloudflare DoH", "kind": "doh", "records": [...], "flat": [...], "latencyMs": 38 },
+    { "name": "Quad9 DoH", "kind": "doh", "records": [...], "flat": [...], "latencyMs": 55 },
+    { "name": "AdGuard DoH", "kind": "doh", "records": [...], "flat": [...], "latencyMs": 61 }
+  ],
+  "latencyMs": 63
+}`}</CodeBlock>
+                </div>
+                <div>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">
+                    注意事项
+                  </h3>
+                  <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
+                    <li>所有请求不缓存（<code className="font-mono text-xs">Cache-Control: no-store</code>），数据实时获取</li>
+                    <li>TXT 记录原始值返回，调用方可自行解析 SPF / DMARC / DKIM / BIMI</li>
+                    <li>当记录不存在时，<code className="font-mono text-xs">found: false</code>，<code className="font-mono text-xs">flat: []</code></li>
+                    <li>超时 7 秒每个解析器，4 个并行执行，整体超时约 20 秒</li>
+                  </ul>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-4">
+                <CardTitle className="flex items-center gap-2 text-base flex-wrap">
+                  <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 border-0 text-xs font-bold">
+                    GET
+                  </Badge>
+                  <InlineCodeScroll codeClassName="font-mono text-sm">
+                    /api/ssl/cert
+                  </InlineCodeScroll>
+                </CardTitle>
+                <p className="text-sm text-muted-foreground mt-1">
+                  直连目标主机（默认端口 443），执行 TLS 握手并返回 SSL 证书详情：有效期、颁发者、SAN 列表、证书链、密码套件等。
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">
+                    {t("docs.parameters")}
+                  </h3>
+                  <ParamsTable
+                    t={t}
+                    params={[
+                      { name: "hostname", type: "string", required: true, description: "目标主机名或 IP，如 google.com 或 1.1.1.1" },
+                      { name: "port", type: "number", required: false, default: "443", description: "目标端口（默认 443）" },
+                    ]}
+                  />
+                </div>
+                <div>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">
+                    {t("docs.example_request")}
+                  </h3>
+                  <CodeBlock>{`curl "https://your-domain.com/api/ssl/cert?hostname=github.com"`}</CodeBlock>
+                </div>
+                <div>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">
+                    {t("docs.success_response")}
+                  </h3>
+                  <CodeBlock>{`{
+  "ok": true,
+  "hostname": "github.com",
+  "port": 443,
+  "authorized": true,
+  "authError": null,
+  "protocol": "TLSv1.3",
+  "cipher": "TLS_AES_128_GCM_SHA256",
+  "subject": { "CN": "github.com", "O": "GitHub, Inc.", "C": "US" },
+  "issuer": { "CN": "DigiCert TLS Hybrid ECC SHA384 2020 CA1", "O": "DigiCert Inc" },
+  "valid_from": "2024-03-07T00:00:00.000Z",
+  "valid_to": "2025-03-07T23:59:59.000Z",
+  "days_remaining": 120,
+  "is_expired": false,
+  "is_expiring_soon": false,
+  "fingerprint256": "AA:BB:CC:...",
+  "serialNumber": "0A:1B:2C:...",
+  "sans": [
+    { "type": "DNS", "value": "github.com" },
+    { "type": "DNS", "value": "www.github.com" }
+  ],
+  "chain": [...],
+  "latencyMs": 185
+}`}</CodeBlock>
+                </div>
+                <div>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">
+                    {t("docs.error_response")}
+                  </h3>
+                  <CodeBlock>{`{
+  "ok": false,
+  "hostname": "expired.badssl.com",
+  "port": 443,
+  "error": "certificate has expired",
+  "latencyMs": 210
+}`}</CodeBlock>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-4">
+                <CardTitle className="flex items-center gap-2 text-base flex-wrap">
+                  <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 border-0 text-xs font-bold">
+                    GET
+                  </Badge>
+                  <InlineCodeScroll codeClassName="font-mono text-sm">
+                    /api/ip/lookup
+                  </InlineCodeScroll>
+                </CardTitle>
+                <p className="text-sm text-muted-foreground mt-1">
+                  查询 IP 地址、主机名或 ASN 的归属地、ISP、时区、代理检测，以及 RDAP 注册信息。支持 IPv4、IPv6 和 ASN。
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">
+                    {t("docs.parameters")}
+                  </h3>
+                  <ParamsTable
+                    t={t}
+                    params={[
+                      { name: "q", type: "string", required: true, description: "IPv4 / IPv6 地址、主机名（自动解析）或 ASN（如 AS15169）" },
+                    ]}
+                  />
+                </div>
+                <div>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">
+                    {t("docs.example_request")}
+                  </h3>
+                  <CodeBlock>{`curl "https://your-domain.com/api/ip/lookup?q=8.8.8.8"
+curl "https://your-domain.com/api/ip/lookup?q=AS15169"`}</CodeBlock>
+                </div>
+                <div>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">
+                    {t("docs.success_response")}
+                  </h3>
+                  <CodeBlock>{`{
+  "type": "ipv4",
+  "query": "8.8.8.8",
+  "resolvedFrom": null,
+  "flag": "🇺🇸",
+  "country": "United States",
+  "countryCode": "US",
+  "region": "California",
+  "city": "Mountain View",
+  "timezone": "America/Los_Angeles",
+  "offset": -28800,
+  "lat": 37.4056,
+  "lon": -122.0775,
+  "isp": "Google LLC",
+  "org": "AS15169 Google LLC",
+  "as": "AS15169 Google LLC",
+  "asname": "GOOGLE",
+  "reverse": "dns.google",
+  "mobile": false,
+  "proxy": false,
+  "hosting": true,
+  "rdap": {
+    "name": "GOGL",
+    "handle": "NET-8-8-8-0-1",
+    "startAddress": "8.8.8.0",
+    "endAddress": "8.8.8.255",
+    "ipVersion": "v4",
+    "contact_org": "Google LLC"
+  }
+}`}</CodeBlock>
+                </div>
+                <div>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">
+                    注意事项
+                  </h3>
+                  <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
+                    <li>归属地数据来源：<code className="font-mono text-xs">ip-api.com</code>（免费版每分钟限 45 次）</li>
+                    <li>RDAP 数据来源：ARIN / RIPE / APNIC 官方 API，实时查询</li>
+                    <li>代理 / 托管检测仅供参考，准确率因 IP 而异</li>
+                    <li>主机名输入时先通过 DNS 解析为 IP，再查询归属地</li>
+                  </ul>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-4">
                 <CardTitle className="text-base">
                   {t("docs.rate_limiting")}
                 </CardTitle>

@@ -2,10 +2,10 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 export const config = { maxDuration: 20 };
 
-const RECORD_TYPES = ["A", "AAAA", "MX", "NS", "CNAME", "TXT", "SOA"] as const;
+const RECORD_TYPES = ["A", "AAAA", "MX", "NS", "CNAME", "TXT", "SOA", "CAA"] as const;
 type RecordType = typeof RECORD_TYPES[number];
 
-const TYPE_NUM: Record<RecordType, number> = { A: 1, AAAA: 28, MX: 15, NS: 2, CNAME: 5, TXT: 16, SOA: 6 };
+const TYPE_NUM: Record<RecordType, number> = { A: 1, AAAA: 28, MX: 15, NS: 2, CNAME: 5, TXT: 16, SOA: 6, CAA: 257 };
 
 const DOH_RESOLVERS = [
   { name: "Google DoH",     url: "https://dns.google/resolve",                        kind: "doh" as const },
@@ -42,6 +42,8 @@ function parseDoHData(data: string, type: RecordType): any {
         minttl:  parseInt(parts[6] ?? "0"),
       };
     }
+    case "CAA":
+      return d;
   }
 }
 
