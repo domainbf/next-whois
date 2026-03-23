@@ -8,6 +8,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
+import { useSiteSettings } from "@/lib/site-settings";
 import {
   RiArrowLeftSLine, RiSearchLine, RiLoader4Line,
   RiGlobalLine, RiMapPinLine, RiWifiLine, RiTimeLine,
@@ -90,6 +91,8 @@ const FADE = { duration: 0.18, ease: "easeOut" as const };
 
 export default function IpPage() {
   const router = useRouter();
+  const settings = useSiteSettings();
+  const siteLabel = settings.site_logo_text || "NEXT WHOIS";
   const [query, setQuery] = React.useState("");
   const [result, setResult] = React.useState<IpResult | null>(null);
   const [loading, setLoading] = React.useState(false);
@@ -126,7 +129,7 @@ export default function IpPage() {
 
   return (
     <>
-      <Head><title key="site-title">IP / ASN 查询 — NEXT WHOIS</title></Head>
+      <Head><title key="site-title">{`IP / ASN 查询 — ${siteLabel}`}</title></Head>
       <ScrollArea className="w-full h-[calc(100vh-4rem)]">
         <main className="w-full max-w-2xl mx-auto px-4 sm:px-6 py-6 space-y-5">
           <div className="flex items-center gap-3">

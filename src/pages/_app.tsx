@@ -144,10 +144,20 @@ function MaintenanceGate({ children }: { children: React.ReactNode }) {
   );
 }
 
+// Pages that manage their own query state via shallow routing — use pathname only
+// so URL query param changes don't trigger full page exit/enter animation.
+const CLIENT_SEARCH_PAGES = new Set(["/dns", "/ip", "/ssl", "/icp", "/tools", "/feedback"]);
+
 export default function App({ Component, pageProps: { session, ...pageProps } }: AppProps) {
   const origin: string = pageProps.origin || process.env.NEXT_PUBLIC_SITE_URL || "";
   const router = useRouter();
   const isAdminPage = router.pathname.startsWith("/admin");
+
+  // For client-side search pages, use only the pathname as the animation key so
+  // that changing the ?q= query param doesn't cause a jarring exit/re-enter.
+  const animationKey = CLIENT_SEARCH_PAGES.has(router.pathname)
+    ? router.pathname
+    : router.asPath;
 
   return (
     <SessionProvider session={session}>
@@ -175,7 +185,7 @@ export default function App({ Component, pageProps: { session, ...pageProps } }:
             ) : (
               <AnimatePresence mode="wait" initial={false}>
                 <motion.div
-                  key={router.asPath}
+                  key={animationKey}
                   variants={pageVariants}
                   initial="initial"
                   animate="animate"

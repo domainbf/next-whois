@@ -19,6 +19,7 @@ import {
 import type { IcpRecord, IcpResponse } from "@/pages/api/icp/query";
 import type { IcpHealthResponse } from "@/pages/api/icp/health";
 import { useTranslation } from "@/lib/i18n";
+import { useSiteSettings } from "@/lib/site-settings";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -251,6 +252,8 @@ function ApiStatusBadge({ status, latency, error, checking, onRefresh }: {
 export default function IcpPage() {
   const router = useRouter();
   const { t } = useTranslation();
+  const settings = useSiteSettings();
+  const siteLabel = settings.site_logo_text || "NEXT WHOIS";
   const [query, setQuery] = React.useState("");
   const [selectedType, setSelectedType] = React.useState<IcpTypeId>("web");
   const [loading, setLoading] = React.useState(false);
@@ -312,7 +315,7 @@ export default function IcpPage() {
   return (
     <>
       <Head>
-        <title key="site-title">{`${t("icp.page_title")} - Next Whois`}</title>
+        <title key="site-title">{`${t("icp.page_title")} — ${siteLabel}`}</title>
       </Head>
       <ScrollArea className="w-full h-[calc(100vh-4rem)]">
         <main className="w-full max-w-3xl mx-auto px-4 sm:px-6 py-6">

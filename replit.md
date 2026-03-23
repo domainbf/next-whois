@@ -1,10 +1,31 @@
-# Next Whois UI — v3.1
+# Next Whois UI — v3.2
 
 A fast, modern WHOIS and RDAP lookup tool supporting domains, IPv4/IPv6, ASN, and CIDR. Also includes built-in DNS, SSL certificate, and IP/ASN geolocation tools.
 
 ---
 
 ## Changelog
+
+### v3.2 — UX Polish, Branding Consistency & Permission Flow Fixes (2026-03-23)
+
+**Scope:** Session-wide settings caching, page transition stabilization, consistent site branding across all sub-pages, and corrected auth/permission flows in the dashboard and query pages.
+
+**Changes:**
+
+| File | Change | Detail |
+|---|---|---|
+| `src/lib/site-settings.tsx` | Added `sessionStorage` cache for site settings | Reads cached settings as initial state on first render, eliminating the title flash caused by `DEFAULT_SETTINGS` showing before the API responds. Cache is written/updated on every successful API fetch. |
+| `src/pages/_app.tsx` | Fixed `AnimatePresence` key for client-search pages | Pages in `CLIENT_SEARCH_PAGES` (`/dns`, `/ip`, `/ssl`, `/icp`, `/tools`, `/feedback`) now use `router.pathname` as the animation key instead of `router.asPath`, preventing jarring exit/re-enter transitions when query params change. |
+| `src/pages/dns.tsx` | Added `useSiteSettings` hook; fixed hardcoded title | `DNS 查询 — NEXT WHOIS` now uses `settings.site_logo_text` dynamically. |
+| `src/pages/ssl.tsx` | Added `useSiteSettings` hook; fixed hardcoded title | `SSL 证书查询 — NEXT WHOIS` now uses `settings.site_logo_text` dynamically. |
+| `src/pages/ip.tsx` | Added `useSiteSettings` hook; fixed hardcoded title | `IP / ASN 查询 — NEXT WHOIS` now uses `settings.site_logo_text` dynamically. |
+| `src/pages/tools.tsx` | Added `useSiteSettings` hook; fixed hardcoded title | Tools page title now uses `settings.site_logo_text` dynamically. |
+| `src/pages/icp.tsx` | Added `useSiteSettings` hook; fixed hardcoded title | ICP page title now uses `settings.site_logo_text` dynamically. |
+| `src/pages/docs.tsx` | Added `useSiteSettings` hook; fixed hardcoded title + og/twitter meta | All 3 title occurrences (title, og:title, twitter:title) now use `settings.site_logo_text` dynamically. |
+| `src/pages/feedback.tsx` | Fixed hardcoded title | Was already importing `useSiteSettings`; title now uses `settings.site_logo_text`. |
+| `src/pages/dashboard.tsx` | Default tab changed to `stamps`; adds smart switch to `subscriptions` when user has `subscriptionAccess` | Users without subscription access now land on the Stamps tab first. Users with access auto-switch to Subscriptions tab after session loads. |
+| `src/pages/dashboard.tsx` line 447 | `SubscribeGuideModal` redirect changed from `/remind` to `/stamp` | The "查看订阅管理页" button now correctly sends users to the brand-claim page (`/stamp`), not the subscription reminder page. Label updated to "前往品牌认领页". |
+| `src/pages/[...query].tsx` | No-access subscribe toast now includes actionable `/stamp` redirect | Both subscribe button instances now show a toast with an "Apply / 前往申请" action button linking to `/stamp` when user lacks `subscriptionAccess`, instead of a dead-end info message. |
 
 ### v3.1 — Enom TLD Reference Chart Full Integration (2026-03-23)
 

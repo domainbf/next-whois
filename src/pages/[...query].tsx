@@ -3401,7 +3401,9 @@ export default function LookupPage({
                               return;
                             }
                             if (!(session?.user as any)?.subscriptionAccess) {
-                              toast.info(isChinese ? "需要邀请码才能使用域名订阅，请在注册时填写邀请码" : "Invite code required to subscribe. Please register with an invite code.");
+                              toast.info(isChinese ? "需要品牌认领权限才能使用域名订阅，前往申请" : "Brand claim access required to subscribe.", {
+                                action: { label: isChinese ? "前往申请" : "Apply", onClick: () => router.push("/stamp") },
+                              });
                               return;
                             }
                             setReminderDialogOpen(true);
@@ -3549,7 +3551,9 @@ export default function LookupPage({
                               return;
                             }
                             if (!(session?.user as any)?.subscriptionAccess) {
-                              toast.info(isChinese ? "需要邀请码才能使用域名订阅，请在注册时填写邀请码" : "Invite code required to subscribe. Please register with an invite code.");
+                              toast.info(isChinese ? "需要品牌认领权限才能使用域名订阅，前往申请" : "Brand claim access required to subscribe.", {
+                                action: { label: isChinese ? "前往申请" : "Apply", onClick: () => router.push("/stamp") },
+                              });
                               return;
                             }
                             setReminderDialogOpen(true);

@@ -7,6 +7,7 @@ import { TOOL_CATEGORIES, Tool } from "@/lib/tools-data";
 import { motion } from "framer-motion";
 import { useTranslation } from "@/lib/i18n";
 import { useSession } from "next-auth/react";
+import { useSiteSettings } from "@/lib/site-settings";
 
 const CLICKS_KEY = "tool_clicks";
 
@@ -41,6 +42,8 @@ function mergeClicks(
 export default function ToolsPage() {
   const { t, locale } = useTranslation();
   const { data: session } = useSession();
+  const settings = useSiteSettings();
+  const siteLabel = settings.site_logo_text || "NEXT WHOIS";
   const [clicks, setClicks] = React.useState<Record<string, number>>({});
 
   React.useEffect(() => {
@@ -82,7 +85,7 @@ export default function ToolsPage() {
   return (
     <>
       <Head>
-        <title key="site-title">{t("tools.page_title")} — NEXT WHOIS</title>
+        <title key="site-title">{`${t("tools.page_title")} — ${siteLabel}`}</title>
       </Head>
       <ScrollArea className="w-full h-[calc(100vh-4rem)]">
         <main className="w-full max-w-3xl mx-auto px-4 sm:px-6 py-6">

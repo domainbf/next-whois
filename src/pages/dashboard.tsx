@@ -444,10 +444,10 @@ function SubscribeGuideModal({ onClose }: { onClose: () => void }) {
       </form>
       <button
         type="button"
-        onClick={() => { onClose(); router.push("/remind"); }}
+        onClick={() => { onClose(); router.push("/stamp"); }}
         className="w-full h-9 rounded-xl text-xs touch-manipulation flex items-center justify-center border border-border bg-background hover:bg-muted transition-colors font-medium"
       >
-        <RiCalendarLine className="w-3.5 h-3.5 mr-1" />查看订阅管理页
+        <RiCalendarLine className="w-3.5 h-3.5 mr-1" />前往品牌认领页
       </button>
     </GuideModalShell>
   );
@@ -458,7 +458,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const { t } = useTranslation();
   const { data: session, status, update: updateSession } = useSession();
-  const [tab, setTab] = React.useState<"subscriptions" | "stamps" | "account" | "history">("subscriptions");
+  const [tab, setTab] = React.useState<"subscriptions" | "stamps" | "account" | "history">("stamps");
   const [subscriptions, setSubscriptions] = React.useState<Subscription[]>([]);
   const [stamps, setStamps] = React.useState<Stamp[]>([]);
   const [searchHistory, setSearchHistory] = React.useState<ServerHistoryItem[]>([]);
@@ -494,6 +494,13 @@ export default function DashboardPage() {
   React.useEffect(() => {
     if (status === "unauthenticated") router.replace("/login");
   }, [status, router]);
+
+  React.useEffect(() => {
+    if (status !== "authenticated") return;
+    if ((session?.user as any)?.subscriptionAccess) {
+      setTab("subscriptions");
+    }
+  }, [status, session]);
 
   React.useEffect(() => {
     if (status !== "authenticated") return;

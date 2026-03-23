@@ -152,8 +152,22 @@ export const DEFAULT_SETTINGS: SiteSettings = {
 };
 
 const STORAGE_KEY = "next_whois_settings_ts";
+const SESSION_CACHE_KEY = "next_whois_settings_cache";
 
 const SiteSettingsContext = React.createContext<SiteSettings>(DEFAULT_SETTINGS);
+
+function readSessionCache(): Partial<SiteSettings> | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = sessionStorage.getItem(SESSION_CACHE_KEY);
+    if (raw) return JSON.parse(raw) as Partial<SiteSettings>;
+  } catch {}
+  return null;
+}
+
+function writeSessionCache(s: Partial<SiteSettings>) {
+  try { sessionStorage.setItem(SESSION_CACHE_KEY, JSON.stringify(s)); } catch {}
+}
 
 export function SiteSettingsProvider({
   children,
@@ -162,9 +176,9 @@ export function SiteSettingsProvider({
   children: React.ReactNode;
   initialSettings?: Partial<SiteSettings>;
 }) {
-  const [settings, setSettings] = React.useState<SiteSettings>({
-    ...DEFAULT_SETTINGS,
-    ...initialSettings,
+  const [settings, setSettings] = React.useState<SiteSettings>(() => {
+    const cache = readSessionCache();
+    return { ...DEFAULT_SETTINGS, ...(cache || {}), ...(initialSettings || {}) };
   });
 
   const fetchSettings = React.useCallback(() => {
@@ -172,7 +186,9 @@ export function SiteSettingsProvider({
       .then((r) => r.json())
       .then((data) => {
         if (data.settings) {
-          setSettings({ ...DEFAULT_SETTINGS, ...data.settings });
+          const merged = { ...DEFAULT_SETTINGS, ...data.settings };
+          setSettings(merged);
+          writeSessionCache(data.settings);
         }
       })
       .catch(() => {});

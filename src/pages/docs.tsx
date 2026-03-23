@@ -16,6 +16,7 @@ import {
 import { VERSION } from "@/lib/env";
 import { useClipboard } from "@/lib/utils";
 import { useTranslation, TranslationKey } from "@/lib/i18n";
+import { useSiteSettings } from "@/lib/site-settings";
 
 // ── Syntax-highlighted JSON block ────────────────────────────────────────────
 function JsonHighlight({ content }: { content: string }) {
@@ -214,14 +215,17 @@ export async function getServerSideProps(context: GetServerSidePropsContext) {
 
 export default function DocsPage({ origin }: { origin: string }) {
   const { t } = useTranslation();
+  const settings = useSiteSettings();
+  const siteLabel = settings.site_logo_text || "NEXT WHOIS";
+  const docTitle = `${t("docs.title")} — ${siteLabel}`;
 
   return (
     <>
       <Head>
-        <title key="site-title">{t("docs.title")} - Next Whois</title>
-        <meta key="og:title" property="og:title" content={`${t("docs.title")} - Next Whois`} />
+        <title key="site-title">{docTitle}</title>
+        <meta key="og:title" property="og:title" content={docTitle} />
         <meta key="og:image" property="og:image" content={`${origin}/banner.png`} />
-        <meta key="twitter:title" name="twitter:title" content={`${t("docs.title")} - Next Whois`} />
+        <meta key="twitter:title" name="twitter:title" content={docTitle} />
         <meta key="twitter:image" name="twitter:image" content={`${origin}/banner.png`} />
       </Head>
       <div className="w-full h-[calc(100vh-4rem)] overflow-y-auto overflow-x-hidden">
