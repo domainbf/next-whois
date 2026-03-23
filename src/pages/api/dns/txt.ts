@@ -1,7 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import dns from "dns/promises";
+import { rateLimit, getClientIp } from "@/lib/server/rate-limit";
 
 export const config = { maxDuration: 12 };
+
+const RL_LIMIT  = 60;
+const RL_WINDOW = 60_000;
 
 type ResolverResult = {
   name: string;
@@ -47,6 +51,12 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse<Data>
 ) {
+  const { allowed } = rateLimit(getClientIp(req), RL_LIMIT, RL_WINDOW);
+  if (!allowed) return res.status(429).json({
+    name: "", found: false, records: [], flat: [], resolvers: [], latencyMs: 0,
+    error: "Too many requests",
+  });
+
   const name = (req.query.name as string | undefined)?.trim();
   if (!name) {
     return res.status(400).json({

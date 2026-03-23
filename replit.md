@@ -1,10 +1,24 @@
-# Next Whois UI — v3.7
+# Next Whois UI — v3.8
 
 A fast, modern WHOIS and RDAP lookup tool supporting domains, IPv4/IPv6, ASN, and CIDR. Also includes built-in DNS, SSL certificate, and IP/ASN geolocation tools.
 
 ---
 
 ## Changelog
+
+### v3.8 — Page Transition Fixes, URL Param Loading & API Rate Limiting (2026-03-23)
+
+**Scope:** Fixed multiple UX and security bugs accumulated since v3.6. Transitions now reliably fire between domain searches; tool pages correctly load query params from the URL on first render; DNS/IP/SSL APIs are now rate-limited.
+
+**Bug fixes:**
+
+- **`_app.tsx` — animationKey logic was inverted:** Pages under `/[...query]` all shared the same animation key (`router.pathname` = `/[...query]`), so navigating between domain searches produced no transition. Fixed by swapping the key strategy: shallow tool pages (`/dns`, `/ssl`, `/ip`, `/icp`, `/stamp`) use `router.pathname` (so they don't re-animate when the query string changes), and all other pages (including `/[...query]`) use `router.asPath` (so each unique domain URL gets its own transition).
+- **`_app.tsx` — Restored `AnimatePresence mode="wait" initial={false}`** with a `motion.div` using pure-opacity `pageVariants` (0 → 1, 0.13 s). The previous v3.6 CSS-only approach was removed in favour of this corrected Framer Motion approach.
+- **`[...query].tsx` — Card stagger restored (opacity-only):** The over-aggressive v3.6 removal of all stagger is reverted. Cards now stagger at 0.025 s intervals with opacity-only variants (no y-axis movement), keeping the feel smooth without the earlier jitter.
+- **`dns.tsx` / `ssl.tsx` / `ip.tsx` — `router.isReady` missing from `useEffect`:** All three tool pages were reading `router.query` in a `useEffect(fn, [])` that ran before Next.js had populated the query object on first render, causing URL `?q=` params to be silently ignored. Changed dependency arrays to `[router.isReady]` with an early-return guard.
+- **DNS/IP/SSL APIs — no rate limiting:** `api/dns/records`, `api/dns/txt`, `api/ip/lookup`, and `api/ssl/cert` had no request throttling, leaving them open to abuse. Added in-memory `rateLimit()` checks (60/min for DNS, 30/min for IP, 20/min for SSL) with `429` responses.
+
+---
 
 ### v3.7 — Smart Redis Cache with Adaptive TTL (2026-03-23)
 

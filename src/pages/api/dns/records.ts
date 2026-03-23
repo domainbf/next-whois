@@ -1,6 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from "next";
+import { rateLimit, getClientIp } from "@/lib/server/rate-limit";
 
 export const config = { maxDuration: 20 };
+
+const RL_LIMIT  = 60;
+const RL_WINDOW = 60_000;
 
 const RECORD_TYPES = ["A", "AAAA", "MX", "NS", "CNAME", "TXT", "SOA", "CAA"] as const;
 type RecordType = typeof RECORD_TYPES[number];
@@ -76,6 +80,9 @@ function normalizeToString(type: RecordType, raw: any): string {
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  const { allowed } = rateLimit(getClientIp(req), RL_LIMIT, RL_WINDOW);
+  if (!allowed) return res.status(429).json({ error: "Too many requests" });
+
   const name = (req.query.name as string | undefined)?.trim().toLowerCase();
   const typeRaw = ((req.query.type as string) || "A").toUpperCase();
 

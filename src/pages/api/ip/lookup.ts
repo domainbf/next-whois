@@ -1,6 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from "next";
+import { rateLimit, getClientIp } from "@/lib/server/rate-limit";
 
 export const config = { maxDuration: 20 };
+
+const RL_LIMIT  = 30;
+const RL_WINDOW = 60_000;
 
 const IP_RE = /^(\d{1,3}\.){3}\d{1,3}$/;
 const IPV6_RE = /^[0-9a-fA-F:]+:[0-9a-fA-F:]+$/;
@@ -109,6 +113,9 @@ function extractRdapInfo(rdap: any): Record<string, string> {
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  const { allowed } = rateLimit(getClientIp(req), RL_LIMIT, RL_WINDOW);
+  if (!allowed) return res.status(429).json({ error: "Too many requests" });
+
   let query = (req.query.q as string | undefined)?.trim();
   if (!query) return res.status(400).json({ error: "q parameter is required" });
 

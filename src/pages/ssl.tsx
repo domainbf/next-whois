@@ -111,12 +111,13 @@ export default function SslPage() {
   const [loading, setLoading] = React.useState(false);
 
   React.useEffect(() => {
+    if (!router.isReady) return;
     const q = router.query.q as string;
     if (q) {
       setHostname(q);
       setTimeout(() => doQuery(q), 50);
     }
-  }, []);
+  }, [router.isReady]);
 
   async function doQuery(h?: string) {
     const host = (h ?? hostname).trim().toLowerCase().replace(/^https?:\/\//, "").split("/")[0].split(":")[0];

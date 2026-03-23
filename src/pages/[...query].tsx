@@ -115,12 +115,18 @@ import { useSearchHotkeys } from "@/hooks/useSearchHotkeys";
 
 const CARD_CONTAINER_VARIANTS = {
   hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { duration: 0.15 } },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.025, delayChildren: 0 },
+  },
 };
 
 const CARD_ITEM_VARIANTS = {
-  hidden: { opacity: 1 },
-  visible: { opacity: 1 },
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { duration: 0.2, ease: "easeOut" },
+  },
 };
 
 const REGISTRAR_ICONS: Record<string, { slug: string | null; color: string }> =

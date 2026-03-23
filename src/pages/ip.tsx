@@ -98,12 +98,13 @@ export default function IpPage() {
   const [loading, setLoading] = React.useState(false);
 
   React.useEffect(() => {
+    if (!router.isReady) return;
     const q = router.query.q as string;
     if (q) {
       setQuery(q);
       setTimeout(() => doQuery(q), 50);
     }
-  }, []);
+  }, [router.isReady]);
 
   async function doQuery(q?: string) {
     const input = (q ?? query).trim();

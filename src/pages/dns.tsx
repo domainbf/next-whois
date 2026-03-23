@@ -218,6 +218,7 @@ export default function DnsPage() {
   const [totalMs, setTotalMs] = React.useState<number | null>(null);
 
   React.useEffect(() => {
+    if (!router.isReady) return;
     const q = router.query.q as string;
     const t = router.query.type as string;
     if (q) {
@@ -226,7 +227,7 @@ export default function DnsPage() {
       setActiveTypes(types);
       setTimeout(() => doQuery(q, types), 80);
     }
-  }, []);
+  }, [router.isReady]);
 
   async function doQuery(d?: string, types?: RecordType[]) {
     const name = (d ?? domain).trim().toLowerCase().replace(/^https?:\/\//, "").split("/")[0];

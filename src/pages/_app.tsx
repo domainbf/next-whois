@@ -7,6 +7,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { siteTitle, siteDescription, siteKeywords } from "@/lib/seo";
 import { Navbar } from "@/components/navbar";
 import { useRouter } from "next/router";
+import { AnimatePresence, motion } from "framer-motion";
 import { SessionProvider } from "next-auth/react";
 import { LocaleProvider } from "@/lib/locale-context";
 import { SiteSettingsProvider, useSiteSettings } from "@/lib/site-settings";
@@ -181,20 +182,30 @@ function MaintenanceGate({ children }: { children: React.ReactNode }) {
   );
 }
 
-// Pages that manage their own query state — use pathname only so that query
-// param changes (shallow routing) or domain path changes on the same page
-// don't trigger a full exit/enter animation cycle.
-const CLIENT_SEARCH_PAGES = new Set([
+// Tool pages that use shallow routing (router.replace) to update the URL
+// without triggering a full page re-render — they must share the same key
+// so their internal result updates don't trigger the page-level animation.
+const SHALLOW_TOOL_PAGES = new Set([
   "/dns", "/ip", "/ssl", "/icp", "/tools", "/feedback",
-  "/[...query]",   // domain / WHOIS results — path changes per query
 ]);
+
+const pageVariants = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1 },
+  exit:    { opacity: 0 },
+};
+const pageTransition = { duration: 0.13, ease: "easeOut" };
 
 export default function App({ Component, pageProps: { session, ...pageProps } }: AppProps) {
   const origin: string = pageProps.origin || process.env.NEXT_PUBLIC_SITE_URL || "";
   const router = useRouter();
   const isAdminPage = router.pathname.startsWith("/admin");
 
-  const animationKey = CLIENT_SEARCH_PAGES.has(router.pathname)
+  // Shallow-routing tool pages share a stable key so internal result updates
+  // don't trigger the page animation. Every other page (including domain WHOIS
+  // results at /[...query]) uses router.asPath so each unique URL gets its own
+  // key and triggers the enter/exit animation on navigation.
+  const animationKey = SHALLOW_TOOL_PAGES.has(router.pathname)
     ? router.pathname
     : router.asPath;
 
@@ -223,9 +234,18 @@ export default function App({ Component, pageProps: { session, ...pageProps } }:
             {isAdminPage ? (
               <Component {...pageProps} />
             ) : (
-              <div key={animationKey} className="page-enter">
-                <Component {...pageProps} />
-              </div>
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.div
+                  key={animationKey}
+                  variants={pageVariants}
+                  initial="initial"
+                  animate="animate"
+                  exit="exit"
+                  transition={pageTransition}
+                >
+                  <Component {...pageProps} />
+                </motion.div>
+              </AnimatePresence>
             )}
             {!isAdminPage && <SiteFooter />}
           </main>
