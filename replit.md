@@ -1,10 +1,96 @@
-# Next Whois UI — v3.0
+# Next Whois UI — v3.1
 
 A fast, modern WHOIS and RDAP lookup tool supporting domains, IPv4/IPv6, ASN, and CIDR. Also includes built-in DNS, SSL certificate, and IP/ASN geolocation tools.
 
 ---
 
 ## Changelog
+
+### v3.1 — Enom TLD Reference Chart Full Integration (2026-03-23)
+
+**Scope:** Complete second pass of `src/lib/lifecycle.ts` corrections using the authoritative Enom TLD Reference Chart (2026-03, 922 lines). All grace/redemption/pendingDelete values for supported TLDs corrected to match Enom registrar data. New TLD entries added.
+
+**Source:** Enom TLD Reference Chart 2026-03 (PDF, 922 lines) — authoritative for gTLDs, nTLDs, and ccTLDs where Enom offers registration.
+
+**Comment block updates (LIFECYCLE_TABLE header):**
+
+| TLD | Before | After | Source |
+|---|---|---|---|
+| `.be` note | grace 0-20d, RGP=40d | no grace, RGP=30d, 3d pre-expiry deletion | Enom 2026-03 |
+| `.ch/.li` note | grace=5d, RGP=40d | no grace, RGP=14d, 10d pre-expiry | Enom 2026-03 |
+| `.eu` note | no grace, RGP=40d | no grace, RGP=30d, 3d pre-expiry | Enom 2026-03 |
+| `.nl` note | no grace, RGP=40d | no grace, RGP=30d, 3d pre-expiry | Enom 2026-03 |
+| `.es` note | RGP=10d | RGP=14d, 12d pre-expiry | Enom 2026-03 |
+| `.nz` note | grace=40d, RGP=90d | no grace, RGP=90d, 3d pre-expiry | Enom 2026-03 |
+| `.au` note | grace=30d, no RGP | no grace, RGP=31d, 10d pre-expiry | Enom 2026-03 |
+
+**Europe ccTLD corrections:**
+
+| TLD | grace Before→After | rdmp Before→After | Source |
+|---|---|---|---|
+| `.de` | 10→**0** | 30→30 | Enom 2026-03: N/30 |
+| `.nl` | 0→0 | 40→**30** | Enom 2026-03: N/30 |
+| `.eu` | 0→0 | 40→**30** | Enom 2026-03: N/30 |
+| `.es` | 0→0 | 10→**14** | Enom 2026-03: N/14 |
+| `.be` | 10→**0** | 40→**30** | Enom 2026-03: N/30 |
+| `.ch` | 5→**0** | 40→**14** | Enom 2026-03: N/14 |
+| `.li` | 5→**0** | 40→**14** | Enom 2026-03: N/14 |
+| `.am` | grace=30, rdmp=30 | **IMMEDIATE** | Enom 2026-03: N/N |
+
+**Asia-Pacific ccTLD corrections:**
+
+| TLD | grace Before→After | rdmp Before→After | Source |
+|---|---|---|---|
+| `.sg` | 30→**0** | 30→**14** | Enom 2026-03: N/14 |
+| `com/net/org/edu.sg` | 30→**0** | 30→**14** | Enom 2026-03: N/14 |
+| `.nz` | 40→**0** | 90→90 | Enom 2026-03: N/90 |
+| `co/net/org/school.nz` | 40→**0** | 90→90 | Enom 2026-03: N/90 |
+| `.in` | 40→**30** | 30→30 | Enom 2026-03: 30/30 |
+| `co/net/org.in` | 40→**30** | 30→30 | Enom 2026-03: 30/30 |
+| `.au` (bare TLD) | 30→**0** | 0→**31** | Enom 2026-03: N/31 |
+| `.mu` | 30→**40** | 0→**30** | Enom 2026-03: 40/30 |
+| `.tm` | grace=30, rdmp=0 | **IMMEDIATE** | Enom 2026-03: N/N |
+
+**Americas ccTLD corrections:**
+
+| TLD | grace Before→After | rdmp Before→After | Source |
+|---|---|---|---|
+| `.ca` | 40→**30** | 30→30 | Enom 2026-03: 30/30 |
+| `.pe` | 30→**0** | 30→**10** | Enom 2026-03: N/10 |
+| `com.pe` | 30→**0** | 30→**10** | Enom 2026-03: N/10 |
+| `com.mx` | 30→**40** | 30→**0** | Enom 2026-03: 40/N |
+| `.hn` | rdmp 0→**30** | — | Enom 2026-03: 30/30 |
+
+**Batch 1 corrections (applied earlier in v3.1):**
+
+| TLD | Change | Source |
+|---|---|---|
+| `.io` | grace 30→**32** | Enom 2026-03 |
+| `.ai` | grace 30→**45** | Enom 2026-03 |
+| `.la` | grace 28→**30** | Enom 2026-03 |
+| `.tv` | grace 30→**42** | Enom 2026-03 |
+| `.ac` / `.sh` | grace 30→**32** | Enom 2026-03 |
+| `.vg` | grace 30→**32**, rdmp 30→30 | Enom 2026-03 |
+| `.tc` | grace 30→**32**, rdmp 0→**30** | Enom 2026-03 |
+| `.sc` / `.mn` / `.fm` / `.ms` / `.gs` / `.tk` / `.bz` | **IMMEDIATE** | Enom 2026-03 |
+| `.de` | grace 10→**0** | Enom 2026-03 |
+| `.nl` | rdmp 40→**30** | Enom 2026-03 |
+| `.eu` | rdmp 40→**30** | Enom 2026-03 |
+| `.es` | rdmp 10→**14** | Enom 2026-03 |
+
+**New entries added:**
+
+| TLD | Data | Registry |
+|---|---|---|
+| `.eus` | grace=45, rdmp=30, pd=5 | PUNTUEUS (Basque Country) |
+| `.free` / `.fast` / `.hot` / `.spot` / `.talk` / `.you` | grace=40, rdmp=30, pd=5 | Amazon Registry Services |
+| `com/net/org.mu` | grace=40, rdmp=30, pd=5 | ICTA (Mauritius) |
+
+**Other changes:**
+- `.inc`: grace corrected 30→42 (Enom 2026-03: 42/30)
+- Duplicate `.tc` entry (line 676, old est-confidence entry) removed
+
+---
 
 ### v3.0 — TLD Lifecycle Data Accuracy Overhaul (2026-03-23)
 
