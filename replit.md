@@ -1,10 +1,32 @@
-# Next Whois UI — v3.3
+# Next Whois UI — v3.4
 
 A fast, modern WHOIS and RDAP lookup tool supporting domains, IPv4/IPv6, ASN, and CIDR. Also includes built-in DNS, SSL certificate, and IP/ASN geolocation tools.
 
 ---
 
 ## Changelog
+
+### v3.4 — Mobile UX: Instant Nav Feedback + Tiered History Retention + Pagination (2026-03-23)
+
+**Scope:** Three parallel improvements: (1) immediate tap feedback on navigation via top loading bar; (2) smoother page transitions (pure opacity, no y-axis jank); (3) search history now has tiered expiry, 100-record cap, per-page pagination, value-tier badges, and confirmed delete-all.
+
+**Changes:**
+
+| File | Change | Detail |
+|---|---|---|
+| `src/pages/_app.tsx` | Added `RouteLoadingBar` component | 2 px primary-colour bar at top of screen. Appears immediately on `routeChangeStart` (15 % → 50 % → 75 % → 100 % on complete), giving instant click feedback on mobile. Uses router events, no external dependency. |
+| `src/pages/_app.tsx` | Simplified page transition animation | Removed y-axis offset (`y: 6`/`y: -3`). Now pure opacity fade only (`0 → 1 → 0`), duration reduced to 0.15 s. Eliminates vertical jank that was especially noticeable on mobile. |
+| `src/pages/_app.tsx` | Removed `willChange` hint | `willChange: "opacity, transform"` removed; `transform` is no longer needed since y-axis motion is gone. |
+| `src/lib/db.ts` | Added `value_tier` column to `search_history` | `ALTER TABLE … ADD COLUMN IF NOT EXISTS value_tier TEXT NOT NULL DEFAULT 'normal'`. Stores computed domain value tier alongside each record for retention-rule enforcement. |
+| `src/pages/api/user/search-history.ts` | Tiered retention cleanup (`pruneExpired`) | Runs after every POST. SQL removes records older than: 10 d (normal), 20 d (valuable, score ≥ 35), 50 d (high, score ≥ 55). |
+| `src/pages/api/user/search-history.ts` | `MAX_HISTORY` 500 → 100 | Normal users now capped at 100 records. Oldest records trimmed after every write via `trimToLimit`. |
+| `src/pages/api/user/search-history.ts` | Computes and stores `value_tier` on insert | `computeValueTier()` uses `scoreDomain()`: high (≥55) / valuable (≥35) / normal. Only for `domain` queries with `unregistered` status; all others default to `normal`. |
+| `src/pages/api/user/search-history.ts` | GET now supports pagination | Accepts `?page=N`, returns `{ history, total, page, pages }`. Page size = 20. |
+| `src/pages/dashboard.tsx` | History pagination state + controls | New states: `historyPage`, `historyTotal`, `historyPages`. `fetchHistory(page)` function. Prev / Next buttons shown when `pages > 1`. |
+| `src/pages/dashboard.tsx` | Value-tier badges in history list | Each domain row shows a coloured "高价值" (amber) or "有价值" (violet) badge when `valueTier` is set, alongside the existing reg-status badge. |
+| `src/pages/dashboard.tsx` | "全部删除" confirmation | `window.confirm` shows total count before deletion. Resets all pagination state on success. |
+| `src/pages/dashboard.tsx` | Tab & stat card use `historyTotal` | History tab badge and overview card now show the server-side total instead of the current page length. |
+| `src/pages/dashboard.tsx` | Retention hint footer | When only one page exists, shows "普通 10 天 · 有价值 20 天 · 高价值 50 天" instead of old "最近 50 条记录". |
 
 ### v3.3 — Fully Branded Email Templates with Dynamic Site Name (2026-03-23)
 

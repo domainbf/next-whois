@@ -15,15 +15,68 @@ import { RiMegaphoneLine, RiCloseLine, RiWrenchLine } from "@remixicon/react";
 import { ADMIN_EMAIL } from "@/lib/admin-shared";
 
 const pageVariants = {
-  initial: { opacity: 0, y: 6 },
-  animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -3 },
+  initial: { opacity: 0 },
+  animate: { opacity: 1 },
+  exit:    { opacity: 0 },
 };
 
 const pageTransition = {
-  duration: 0.18,
-  ease: [0.4, 0, 0.2, 1],
+  duration: 0.15,
+  ease: "easeOut",
 };
+
+// ── Top route-loading bar (gives immediate tap feedback on mobile) ──────────
+function RouteLoadingBar() {
+  const router = useRouter();
+  const [visible, setVisible] = React.useState(false);
+  const [width, setWidth] = React.useState(0);
+  const timerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  React.useEffect(() => {
+    const clear = () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+
+    const start = () => {
+      clear();
+      setVisible(true);
+      setWidth(15);
+      timerRef.current = setTimeout(() => setWidth(50), 150);
+      timerRef.current = setTimeout(() => setWidth(75), 600);
+    };
+
+    const done = () => {
+      clear();
+      setWidth(100);
+      timerRef.current = setTimeout(() => {
+        setVisible(false);
+        setWidth(0);
+      }, 220);
+    };
+
+    router.events.on("routeChangeStart",    start);
+    router.events.on("routeChangeComplete", done);
+    router.events.on("routeChangeError",    done);
+    return () => {
+      clear();
+      router.events.off("routeChangeStart",    start);
+      router.events.off("routeChangeComplete", done);
+      router.events.off("routeChangeError",    done);
+    };
+  }, [router]);
+
+  if (!visible) return null;
+  return (
+    <div
+      aria-hidden
+      className="fixed top-0 left-0 z-[300] h-[2px] bg-primary"
+      style={{
+        width: `${width}%`,
+        transition: width === 100 ? "width 0.15s ease-out" : "width 0.4s ease-out",
+      }}
+    />
+  );
+}
 
 function AppHead({ origin }: { origin: string }) {
   const settings = useSiteSettings();
@@ -78,7 +131,6 @@ function SiteFooter() {
   const router = useRouter();
   const footerText = settings.site_footer;
   if (!footerText) return null;
-  // Hide on admin pages
   if (router.pathname.startsWith("/admin")) return null;
   return (
     <footer className="border-t border-border/40 mt-12 py-6 px-4 text-center">
@@ -119,11 +171,8 @@ function MaintenanceGate({ children }: { children: React.ReactNode }) {
       .catch(() => setSessionEmail(null));
   }, [settings.maintenance_mode]);
 
-  // Not in maintenance — render normally
   if (settings.maintenance_mode !== "1") return <>{children}</>;
-  // Still checking session — render nothing briefly to avoid flash
   if (sessionEmail === undefined) return null;
-  // Admin bypass
   if (sessionEmail && sessionEmail.toLowerCase().trim() === ADMIN_EMAIL) return <>{children}</>;
 
   return (
@@ -157,8 +206,6 @@ export default function App({ Component, pageProps: { session, ...pageProps } }:
   const router = useRouter();
   const isAdminPage = router.pathname.startsWith("/admin");
 
-  // For client-side search pages, use only the pathname as the animation key so
-  // that changing the ?q= query param doesn't cause a jarring exit/re-enter.
   const animationKey = CLIENT_SEARCH_PAGES.has(router.pathname)
     ? router.pathname
     : router.asPath;
@@ -169,6 +216,7 @@ export default function App({ Component, pageProps: { session, ...pageProps } }:
     <SiteSettingsProvider>
       <AppHead origin={origin} />
       <Toaster />
+      <RouteLoadingBar />
       <ThemeProvider
         attribute="class"
         defaultTheme="system"
@@ -195,7 +243,6 @@ export default function App({ Component, pageProps: { session, ...pageProps } }:
                   animate="animate"
                   exit="exit"
                   transition={pageTransition}
-                  style={{ willChange: "opacity, transform" }}
                 >
                   <Component {...pageProps} />
                 </motion.div>

@@ -490,6 +490,9 @@ export default function DashboardPage() {
   const [savingAvatar, setSavingAvatar] = React.useState(false);
   const [historySearch, setHistorySearch] = React.useState("");
   const [clearingHistory, setClearingHistory] = React.useState(false);
+  const [historyPage, setHistoryPage] = React.useState(1);
+  const [historyTotal, setHistoryTotal] = React.useState(0);
+  const [historyPages, setHistoryPages] = React.useState(1);
 
   React.useEffect(() => {
     if (status === "unauthenticated") router.replace("/login");
@@ -514,15 +517,25 @@ export default function DashboardPage() {
     }).catch(() => {}).finally(() => setLoadingData(false));
   }, [status]);
 
+  const fetchHistory = React.useCallback((page: number) => {
+    setLoadingHistory(true);
+    fetch(`/api/user/search-history?page=${page}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.history) setSearchHistory(data.history);
+        if (typeof data.total === "number") setHistoryTotal(data.total);
+        if (typeof data.pages === "number") setHistoryPages(data.pages);
+        if (typeof data.page  === "number") setHistoryPage(data.page);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingHistory(false));
+  }, []);
+
   React.useEffect(() => {
-    if (tab === "history" && status === "authenticated" && searchHistory.length === 0) {
-      setLoadingHistory(true);
-      fetch("/api/user/search-history")
-        .then(r => r.json())
-        .then(data => { if (data.history) setSearchHistory(data.history); })
-        .catch(() => {})
-        .finally(() => setLoadingHistory(false));
+    if (tab === "history" && status === "authenticated") {
+      fetchHistory(historyPage);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, status]);
 
   function refreshData() {
@@ -563,10 +576,14 @@ export default function DashboardPage() {
   }
 
   async function clearAllHistory() {
+    if (!window.confirm(`确定要清空全部 ${historyTotal} 条搜索记录吗？此操作不可撤销。`)) return;
     setClearingHistory(true);
     try {
       await fetch("/api/user/search-history?id=all", { method: "DELETE" });
       setSearchHistory([]);
+      setHistoryTotal(0);
+      setHistoryPages(1);
+      setHistoryPage(1);
       toast.success("搜索历史已清空");
     } catch {
       toast.error("操作失败");
@@ -749,7 +766,7 @@ export default function DashboardPage() {
   const TABS = [
     { key: "subscriptions" as const, label: "域名订阅", icon: <RiCalendarLine className="w-3.5 h-3.5" />, count: activeSubs.length || undefined },
     { key: "stamps" as const, label: "品牌认领", icon: <RiShieldCheckLine className="w-3.5 h-3.5" />, count: stamps.length || undefined },
-    { key: "history" as const, label: "搜索历史", icon: <RiHistoryLine className="w-3.5 h-3.5" />, count: searchHistory.length || undefined },
+    { key: "history" as const, label: "搜索历史", icon: <RiHistoryLine className="w-3.5 h-3.5" />, count: historyTotal || undefined },
     { key: "account" as const, label: "账户", icon: <RiUserLine className="w-3.5 h-3.5" /> },
   ];
 
@@ -855,7 +872,7 @@ export default function DashboardPage() {
                 <RiBarChartLine className="w-3.5 h-3.5 text-violet-600 dark:text-violet-400" />
               </div>
               <div>
-                <p className="text-base font-bold leading-none">{searchHistory.length}</p>
+                <p className="text-base font-bold leading-none">{historyTotal || searchHistory.length}</p>
                 <p className="text-[10px] text-muted-foreground mt-0.5">历史查询</p>
               </div>
             </div>
@@ -1205,20 +1222,36 @@ export default function DashboardPage() {
               error:        { label: "查询失败", cls: "text-rose-600 bg-rose-50 border-rose-300/60 dark:bg-rose-950/30 dark:border-rose-700/40" },
               unknown:      { label: "未知",   cls: "text-muted-foreground bg-muted border-border" },
             };
+            const TIER_CFG: Record<string, { label: string; cls: string }> = {
+              high:     { label: "高价值", cls: "text-amber-600 bg-amber-50 border-amber-300/60 dark:bg-amber-950/30 dark:border-amber-700/40" },
+              valuable: { label: "有价值", cls: "text-violet-600 bg-violet-50 border-violet-300/60 dark:bg-violet-950/30 dark:border-violet-700/40" },
+            };
             const q = historySearch.trim().toLowerCase();
             const filtered = q ? searchHistory.filter(h => h.query.toLowerCase().includes(q)) : searchHistory;
+
+            function goPage(p: number) {
+              if (p < 1 || p > historyPages) return;
+              setHistorySearch("");
+              fetchHistory(p);
+            }
+
             return (
-              <motion.div key="history" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }} className="space-y-3">
+              <motion.div key="history" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }} className="space-y-3">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground shrink-0">搜索历史</p>
-                  {searchHistory.length > 0 && (
+                  <div className="flex items-center gap-2 min-w-0">
+                    <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground shrink-0">搜索历史</p>
+                    {historyTotal > 0 && (
+                      <span className="text-[10px] text-muted-foreground/60 tabular-nums">共 {historyTotal} 条</span>
+                    )}
+                  </div>
+                  {historyTotal > 0 && (
                     <button
                       onClick={clearAllHistory}
                       disabled={clearingHistory}
-                      className="text-[11px] text-muted-foreground hover:text-red-500 flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-muted transition-colors"
+                      className="text-[11px] text-muted-foreground hover:text-red-500 flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-muted transition-colors shrink-0"
                     >
                       {clearingHistory ? <RiLoader4Line className="w-3 h-3 animate-spin" /> : <RiDeleteBack2Line className="w-3 h-3" />}
-                      清空全部
+                      全部删除
                     </button>
                   )}
                 </div>
@@ -1231,7 +1264,7 @@ export default function DashboardPage() {
                       type="text"
                       value={historySearch}
                       onChange={e => setHistorySearch(e.target.value)}
-                      placeholder="筛选历史记录…"
+                      placeholder="筛选本页记录…"
                       className="w-full pl-8 pr-3 py-2 text-sm bg-muted/50 border border-border/60 rounded-xl outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all"
                     />
                     {historySearch && (
@@ -1258,10 +1291,12 @@ export default function DashboardPage() {
                     {filtered.map((item, i) => {
                       const rs = item.regStatus ?? "unknown";
                       const cfg = STATUS_CFG[rs] ?? STATUS_CFG.unknown;
+                      const tier = (item as any).valueTier as string | undefined;
+                      const tierCfg = tier && TIER_CFG[tier];
                       const d = new Date(item.timestamp);
                       const ts = `${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
                       return (
-                        <div key={i} className="flex items-center gap-2 px-3 py-2.5 hover:bg-muted/40 transition-colors first:rounded-t-2xl last:rounded-b-2xl group">
+                        <div key={item.id ?? i} className="flex items-center gap-2 px-3 py-2.5 hover:bg-muted/40 transition-colors first:rounded-t-2xl last:rounded-b-2xl group">
                           <div className="w-6 h-6 rounded-md bg-muted flex items-center justify-center shrink-0">
                             <RiSearchLine className="w-3 h-3 text-muted-foreground" />
                           </div>
@@ -1272,6 +1307,11 @@ export default function DashboardPage() {
                                 {cfg.label}
                               </span>
                             )}
+                            {tierCfg && rs === "unregistered" && (
+                              <span className={`shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-md border ${tierCfg.cls}`}>
+                                {tierCfg.label}
+                              </span>
+                            )}
                             <span className="shrink-0 text-[11px] text-muted-foreground tabular-nums whitespace-nowrap">
                               {QUERY_TYPE_LABEL[item.queryType] ?? item.queryType}{" · "}{ts}
                             </span>
@@ -1280,7 +1320,8 @@ export default function DashboardPage() {
                             onClick={async () => {
                               if (!item.id) return;
                               await fetch(`/api/user/search-history?id=${item.id}`, { method: "DELETE" });
-                              setSearchHistory(prev => prev.filter((_, idx) => idx !== i));
+                              setSearchHistory(prev => prev.filter(h => h.id !== item.id));
+                              setHistoryTotal(prev => Math.max(0, prev - 1));
                             }}
                             className="p-1 rounded-md text-muted-foreground/40 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors opacity-0 group-hover:opacity-100 shrink-0"
                             title="删除此条记录"
@@ -1292,8 +1333,34 @@ export default function DashboardPage() {
                     })}
                   </div>
                 )}
-                {!q && searchHistory.length > 0 && (
-                  <p className="text-[10px] text-center text-muted-foreground/60">最近 50 条记录</p>
+
+                {/* Pagination */}
+                {!q && historyPages > 1 && (
+                  <div className="flex items-center justify-center gap-2 pt-1">
+                    <button
+                      onClick={() => goPage(historyPage - 1)}
+                      disabled={historyPage <= 1 || loadingHistory}
+                      className="px-3 py-1.5 rounded-lg text-xs font-medium bg-muted hover:bg-muted/80 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    >
+                      上一页
+                    </button>
+                    <span className="text-[11px] text-muted-foreground tabular-nums">
+                      {historyPage} / {historyPages}
+                    </span>
+                    <button
+                      onClick={() => goPage(historyPage + 1)}
+                      disabled={historyPage >= historyPages || loadingHistory}
+                      className="px-3 py-1.5 rounded-lg text-xs font-medium bg-muted hover:bg-muted/80 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    >
+                      下一页
+                    </button>
+                  </div>
+                )}
+
+                {!q && historyTotal > 0 && historyPages <= 1 && (
+                  <p className="text-[10px] text-center text-muted-foreground/50">
+                    普通记录保留 10 天 · 有价值 20 天 · 高价值 50 天
+                  </p>
                 )}
               </motion.div>
             );

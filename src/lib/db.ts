@@ -169,6 +169,7 @@ const ALTER_COLUMNS = [
   `ALTER TABLE search_history ADD COLUMN IF NOT EXISTS reg_status         TEXT`,
   `ALTER TABLE search_history ADD COLUMN IF NOT EXISTS expiration_date    TEXT`,
   `ALTER TABLE search_history ADD COLUMN IF NOT EXISTS remaining_days     INTEGER`,
+  `ALTER TABLE search_history ADD COLUMN IF NOT EXISTS value_tier        TEXT NOT NULL DEFAULT 'normal'`,
   `ALTER TABLE search_history ALTER COLUMN user_id                        DROP NOT NULL`,
   `ALTER TABLE users         ADD COLUMN IF NOT EXISTS disabled            BOOLEAN NOT NULL DEFAULT false`,
   `ALTER TABLE users         ADD COLUMN IF NOT EXISTS admin_notes         TEXT`,
