@@ -53,7 +53,7 @@ import {
   RiSearchLine,
   RiCheckboxCircleLine,
   RiCheckboxBlankCircleLine,
-  RiUserLine,
+  RiIdCardLine,
   RiBuildingLine,
   RiAwardLine,
   RiShakeHandsLine,
@@ -2725,7 +2725,7 @@ export default function LookupPage({
   };
 
   const STAMP_ICON_MAP: Record<string, React.ElementType> = {
-    personal: RiUserLine,
+    personal: RiIdCardLine,
     official: RiBuildingLine,
     brand:    RiAwardLine,
     verified: RiShieldCheckLine,

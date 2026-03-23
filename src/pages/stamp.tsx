@@ -32,7 +32,7 @@ import {
   RiLinksLine,
   RiCheckboxCircleLine,
   RiSearchLine,
-  RiUserLine,
+  RiIdCardLine,
   RiBuildingLine,
   RiAwardLine,
   RiShakeHandsLine,
@@ -42,7 +42,7 @@ import {
 import { toast } from "sonner";
 
 const TAG_STYLES: { id: string; label: string; className: string; glow?: string; icon: React.ElementType }[] = [
-  { id: "personal",  label: "Personal",  icon: RiUserLine,      className: "bg-slate-100 border border-slate-300 text-slate-700 dark:bg-slate-800/60 dark:border-slate-600/60 dark:text-slate-300" },
+  { id: "personal",  label: "Personal",  icon: RiIdCardLine,      className: "bg-slate-100 border border-slate-300 text-slate-700 dark:bg-slate-800/60 dark:border-slate-600/60 dark:text-slate-300" },
   { id: "official",  label: "Official",  icon: RiBuildingLine,  className: "bg-blue-500 text-white border-0",                                                                                  glow: "shadow-blue-500/40" },
   { id: "brand",     label: "Brand",     icon: RiAwardLine,     className: "bg-violet-500 text-white border-0",                                                                                glow: "shadow-violet-500/40" },
   { id: "verified",  label: "Verified",  icon: RiShieldCheckLine, className: "bg-emerald-500 text-white border-0",                                                                             glow: "shadow-emerald-500/40" },
@@ -194,7 +194,7 @@ function StampLandingPage() {
         <title key="site-title">品牌认领 · Next WHOIS</title>
         <meta name="description" content="认领你拥有的域名，在 WHOIS 查询结果中展示你的品牌信息。" />
       </Head>
-      <div className="max-w-lg mx-auto px-4 py-8 pb-20 space-y-6">
+      <div className="max-w-lg mx-auto px-4 py-8 pb-10 space-y-6">
         {/* Back */}
         <Link href="/dashboard" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
           <RiArrowLeftLine className="w-3.5 h-3.5" />返回 Dashboard
@@ -263,10 +263,9 @@ function StampLandingPage() {
             <Input
               value={query}
               onChange={e => setQuery(e.target.value)}
-              placeholder="输入你的域名，如 example.com"
+              placeholder="输入你的域名，如 x.rw"
               className="h-10 rounded-xl text-sm font-mono flex-1"
               autoComplete="off"
-              autoFocus
             />
             <Button type="submit" className="h-10 rounded-xl gap-1.5 px-4 shrink-0">
               认领
@@ -697,7 +696,7 @@ export default function StampPage() {
       </Head>
 
       <div className="min-h-[calc(100vh-64px)] bg-background">
-        <div className="max-w-lg mx-auto px-4 py-5 pb-20">
+        <div className="max-w-lg mx-auto px-4 py-5 pb-10">
 
           {/* Back nav */}
           <div className="flex items-center gap-2 mb-5">
@@ -932,7 +931,7 @@ export default function StampPage() {
                             <Input
                               value={form.link}
                               onChange={(e) => update("link", e.target.value)}
-                              placeholder="https://example.com"
+                              placeholder="https://x.rw"
                               type="text"
                               inputMode="url"
                             />

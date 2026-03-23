@@ -315,7 +315,7 @@ function ClaimGuideModal({ onClose }: { onClose: () => void }) {
             <div className="rounded-lg border border-border bg-background shadow-sm overflow-hidden">
               <div className="px-3 pt-3 pb-1.5 space-y-1">
                 <p className="text-[8px] font-bold uppercase tracking-wider text-muted-foreground/50">DOMAIN</p>
-                <p className="text-xs font-bold font-mono">EXAMPLE.COM</p>
+                <p className="text-xs font-bold font-mono">X.RW</p>
                 <div className="flex items-center gap-1.5">
                   <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400">
                     <span className="w-1 h-1 rounded-full bg-emerald-500" />Active
@@ -364,9 +364,8 @@ function ClaimGuideModal({ onClose }: { onClose: () => void }) {
               <Input
                 value={domain}
                 onChange={e => setDomain(e.target.value)}
-                placeholder="example.com"
+                placeholder="x.rw"
                 className="h-9 rounded-lg text-sm font-mono flex-1"
-                autoFocus
               />
               <Button type="submit" size="sm" className="h-9 rounded-lg gap-1.5 shrink-0">
                 前往
@@ -448,7 +447,7 @@ function SubscribeGuideModal({ onClose }: { onClose: () => void }) {
             <div className="rounded-lg border border-border bg-background shadow-sm overflow-hidden">
               <div className="px-3 pt-3 pb-1.5 space-y-1">
                 <p className="text-[8px] font-bold uppercase tracking-wider text-muted-foreground/50">DOMAIN</p>
-                <p className="text-xs font-bold font-mono">EXAMPLE.COM</p>
+                <p className="text-xs font-bold font-mono">X.RW</p>
                 <div className="flex items-center gap-1.5">
                   <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400">
                     <span className="w-1 h-1 rounded-full bg-emerald-500" />Active
@@ -497,9 +496,8 @@ function SubscribeGuideModal({ onClose }: { onClose: () => void }) {
               <Input
                 value={domain}
                 onChange={e => setDomain(e.target.value)}
-                placeholder="example.com"
+                placeholder="x.rw"
                 className="h-9 rounded-lg text-sm font-mono flex-1"
-                autoFocus
               />
               <Button type="submit" size="sm" className="h-9 rounded-lg gap-1.5 shrink-0">
                 前往
