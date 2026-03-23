@@ -294,6 +294,15 @@ All persistent state lives in PostgreSQL (`src/lib/db.ts`). Tables auto-created 
 - Third-party APIs (tianhu / yisi) only invoked when `fail_count >= 3` AND `use_fallback = true`
 - Admin UI: `/admin/tld-fallback` — view stats, toggle fallback per TLD, bulk clear
 
+## v2.0 — UI Micro-Interactions
+
+- **Button press feedback**: `Button` base class gains `active:scale-[0.96] touch-manipulation select-none` — all buttons scale slightly on press
+- **Spring physics clicks**: `src/components/motion/clickable.tsx` — `<Clickable>` wraps any child with a Framer Motion spring (stiffness 600 / damping 32 / mass 0.6) for a natural squish-and-release feel
+- **TLD page tab animation**: `AnimatePresence mode="wait"` with x-slide + fade between "TLD List" and "WHOIS Servers" tabs (0.22s ease-out-expo)
+- **Server row edit expansion**: Inline edit form animates open/closed with `height: 0 → auto` via `motion.div`; row → form swap is wrapped in per-row `AnimatePresence mode="wait"`
+- **Add-server form**: Same height animation via `AnimatePresence` wrapping the `showAdd` conditional
+- **Global tap delay elimination**: `globals.css` adds `touch-action: manipulation` to all `button`, `a`, `[role="button"]`, `select` elements — removes 300 ms iOS tap delay everywhere
+
 ## Admin Backend Pages
 
 | Page | Route |

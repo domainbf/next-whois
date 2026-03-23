@@ -242,6 +242,17 @@ button {
   }
 }
 
+/* Eliminate 300 ms tap delay on all interactive elements on mobile */
+button,
+a,
+[role="button"],
+input[type="submit"],
+input[type="button"],
+label[for],
+select {
+  touch-action: manipulation;
+}
+
 /* Smooth scrolling — skip for users who prefer reduced motion */
 @media (prefers-reduced-motion: no-preference) {
   html {

@@ -1,7 +1,7 @@
 import React from "react";
 import Head from "next/head";
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -409,7 +409,7 @@ export default function TldsPage() {
                 key={t}
                 onClick={() => setTab(t)}
                 className={[
-                  "flex-1 flex items-center justify-center gap-1.5 px-2 sm:px-4 py-2 rounded-lg text-sm font-medium transition-all min-w-0 overflow-hidden",
+                  "flex-1 flex items-center justify-center gap-1.5 px-2 sm:px-4 py-2 rounded-lg text-sm font-medium transition-all min-w-0 overflow-hidden touch-manipulation select-none active:scale-[0.97]",
                   tab === t
                     ? "bg-primary text-primary-foreground shadow-sm"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted/60",
@@ -423,13 +423,20 @@ export default function TldsPage() {
             ))}
           </div>
 
+          <AnimatePresence mode="wait" initial={false}>
           {tab === "tlds" && (
-            <>
+            <motion.div
+              key="tab-tlds"
+              initial={{ opacity: 0, x: -12 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 12 }}
+              transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+            >
               {!loading && data && (
                 <motion.div
-                  initial={{ opacity: 0, y: 8 }}
+                  initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3 }}
+                  transition={{ duration: 0.22 }}
                   className="grid grid-cols-2 gap-2.5 mb-5"
                 >
                   <button
@@ -503,10 +510,17 @@ export default function TldsPage() {
                   {isChinese ? "点击统计卡片可按类型筛选 · 数据来源 IANA" : "Click the cards above to filter by type · Data source: IANA"}
                 </p>
               </div>
-            </>
+            </motion.div>
           )}
 
           {tab === "servers" && (
+            <motion.div
+              key="tab-servers"
+              initial={{ opacity: 0, x: 12 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -12 }}
+              transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+            >
             <div className="space-y-4">
               <div className="flex gap-2">
                 <div className="relative flex-1">
@@ -527,9 +541,20 @@ export default function TldsPage() {
                 </Button>
               </div>
 
-              {showAdd && (
-                <AddEditForm onSave={handleSave} onCancel={() => setShowAdd(false)} />
-              )}
+              <AnimatePresence initial={false}>
+                {showAdd && (
+                  <motion.div
+                    key="add-form"
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                    style={{ overflow: "hidden" }}
+                  >
+                    <AddEditForm onSave={handleSave} onCancel={() => setShowAdd(false)} />
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               <div className="glass-panel border border-border rounded-2xl overflow-hidden">
                 <div className="flex items-center justify-between px-4 py-3 border-b border-border/60 bg-muted/20">
@@ -549,43 +574,61 @@ export default function TldsPage() {
                     {isChinese ? "未找到服务器" : "No servers found"}
                   </div>
                 ) : (
-                  <div className="divide-y divide-border/50 max-h-[calc(100vh-28rem)] overflow-y-auto">
+                  <div className="divide-y divide-border/50 max-h-[60vh] overflow-y-auto overscroll-contain">
                     {filteredServers.map((row) => (
                       <div key={row.tld}>
-                        {editingTld === row.tld && row.source === "user" ? (
-                          <div className="px-4 py-3">
-                            <AddEditForm
-                              initial={{ tld: row.tld, entry: row.entry }}
-                              onSave={handleSave}
-                              onCancel={() => setEditingTld(null)}
-                            />
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-3 px-4 py-2.5 hover:bg-muted/30 transition-colors group">
-                            <code className="text-xs font-mono text-foreground w-20 shrink-0">.{row.tld}</code>
-                            <div className="flex items-center gap-1.5 shrink-0">
-                              <ProtocolBadge protocol={getProtocol(row.entry)} />
-                              <SourceBadge source={row.source} />
-                            </div>
-                            <span className="text-xs text-muted-foreground font-mono truncate flex-1 min-w-0">
-                              {getDisplayHost(row.entry)}
-                            </span>
-                            {row.source === "user" && (
-                              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                                <Button size="icon-sm" variant="ghost" className="h-6 w-6"
-                                  onClick={() => setEditingTld(row.tld)} title={isChinese ? "编辑" : "Edit"}>
-                                  <RiEditLine className="w-3 h-3" />
-                                </Button>
-                                <Button size="icon-sm" variant="ghost"
-                                  className="h-6 w-6 text-destructive hover:text-destructive"
-                                  onClick={() => handleDelete(row.tld)}
-                                  disabled={deleting === row.tld} title={isChinese ? "删除" : "Delete"}>
-                                  <RiDeleteBinLine className="w-3 h-3" />
-                                </Button>
+                        <AnimatePresence initial={false} mode="wait">
+                          {editingTld === row.tld && row.source === "user" ? (
+                            <motion.div
+                              key="form"
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: "auto" }}
+                              exit={{ opacity: 0, height: 0 }}
+                              transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                              style={{ overflow: "hidden" }}
+                            >
+                              <div className="px-4 py-3">
+                                <AddEditForm
+                                  initial={{ tld: row.tld, entry: row.entry }}
+                                  onSave={handleSave}
+                                  onCancel={() => setEditingTld(null)}
+                                />
                               </div>
-                            )}
-                          </div>
-                        )}
+                            </motion.div>
+                          ) : (
+                            <motion.div
+                              key="row"
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              exit={{ opacity: 0 }}
+                              transition={{ duration: 0.12 }}
+                              className="flex items-center gap-3 px-4 py-2.5 hover:bg-muted/30 transition-colors group"
+                            >
+                              <code className="text-xs font-mono text-foreground w-20 shrink-0">.{row.tld}</code>
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <ProtocolBadge protocol={getProtocol(row.entry)} />
+                                <SourceBadge source={row.source} />
+                              </div>
+                              <span className="text-xs text-muted-foreground font-mono truncate flex-1 min-w-0">
+                                {getDisplayHost(row.entry)}
+                              </span>
+                              {row.source === "user" && (
+                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                                  <Button size="icon-sm" variant="ghost" className="h-6 w-6 touch-manipulation"
+                                    onClick={() => setEditingTld(row.tld)} title={isChinese ? "编辑" : "Edit"}>
+                                    <RiEditLine className="w-3 h-3" />
+                                  </Button>
+                                  <Button size="icon-sm" variant="ghost"
+                                    className="h-6 w-6 text-destructive hover:text-destructive touch-manipulation"
+                                    onClick={() => handleDelete(row.tld)}
+                                    disabled={deleting === row.tld} title={isChinese ? "删除" : "Delete"}>
+                                    <RiDeleteBinLine className="w-3 h-3" />
+                                  </Button>
+                                </div>
+                              )}
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </div>
                     ))}
                   </div>
@@ -606,7 +649,9 @@ export default function TldsPage() {
                 </ul>
               </div>
             </div>
+            </motion.div>
           )}
+          </AnimatePresence>
         </main>
       </ScrollArea>
     </>

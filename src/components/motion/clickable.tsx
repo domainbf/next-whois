@@ -9,10 +9,12 @@ export interface ClickableProps
   hoverScale?: number;
 }
 
+const SPRING = { type: "spring" as const, stiffness: 600, damping: 32, mass: 0.6 };
+
 const Clickable: React.FC<ClickableProps> = ({
   children,
   className,
-  tapScale = 0.95,
+  tapScale = 0.94,
   tapDuration = 0.1,
   hoverScale,
 }) => {
@@ -21,10 +23,10 @@ const Clickable: React.FC<ClickableProps> = ({
       className={className}
       whileTap={{
         scale: tapScale,
-        transition: { duration: tapDuration },
+        transition: SPRING,
       }}
-      whileHover={hoverScale ? { scale: hoverScale } : {}}
-      whileFocus={hoverScale ? { scale: hoverScale } : {}}
+      whileHover={hoverScale ? { scale: hoverScale, transition: SPRING } : {}}
+      whileFocus={hoverScale ? { scale: hoverScale, transition: SPRING } : {}}
     >
       {children}
     </motion.div>
