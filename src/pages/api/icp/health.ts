@@ -23,7 +23,7 @@ export default async function handler(
     let upstream: Response;
     try {
       upstream = await fetch(
-        "http://api.ong/query/web?search=miit.gov.cn&pageNum=1&pageSize=1",
+        "http://api.ong:16181/query/web?search=miit.gov.cn&pageNum=1&pageSize=1",
         {
           signal: controller.signal,
           headers: { Accept: "application/json", "User-Agent": "NextWhois/2.0" },
@@ -43,12 +43,20 @@ export default async function handler(
         online: false,
         latencyMs,
         checkedAt,
-        error: `HTTP ${upstream.status}${!isJson ? ", 非 JSON 响应" : ""}`,
+        error: `HTTP ${upstream.status}${!isJson ? "，非 JSON 响应" : ""}`,
       });
     }
 
+    const data = await upstream.json();
+    const online = data?.success === true || data?.code === 200;
+
     res.setHeader("Cache-Control", "no-store");
-    return res.status(200).json({ online: true, latencyMs, checkedAt });
+    return res.status(200).json({
+      online,
+      latencyMs,
+      checkedAt,
+      error: online ? undefined : (data?.msg || "服务异常"),
+    });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "unknown";
     const latencyMs = Date.now() - t0;
