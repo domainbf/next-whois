@@ -68,6 +68,16 @@ const TABLES = [
     query_type   TEXT         NOT NULL DEFAULT 'domain',
     created_at   TIMESTAMPTZ  NOT NULL DEFAULT NOW()
   )`,
+  `CREATE TABLE IF NOT EXISTS changelog_entries (
+    id           VARCHAR(16)  PRIMARY KEY,
+    entry_date   DATE         NOT NULL,
+    type         TEXT         NOT NULL DEFAULT 'new',
+    zh           TEXT         NOT NULL,
+    en           TEXT         NOT NULL DEFAULT '',
+    version      TEXT,
+    created_at   TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_changelog_date ON changelog_entries(entry_date DESC)`,
   `CREATE TABLE IF NOT EXISTS tld_lifecycle_overrides (
     id           VARCHAR(16)  PRIMARY KEY,
     tld          TEXT         UNIQUE NOT NULL,

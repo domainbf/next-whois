@@ -14,6 +14,7 @@ import {
   RiBugLine,
   RiFlashlightLine,
   RiStarLine,
+  RiCalendarLine,
 } from "@remixicon/react";
 
 type ChangeType = "feature" | "fix" | "improve" | "new";
@@ -31,6 +32,15 @@ interface Version {
   changes: Change[];
 }
 
+interface DynamicEntry {
+  id: string;
+  entry_date: string; // "YYYY-MM-DD"
+  type: ChangeType;
+  zh: string;
+  en: string;
+  version: string | null;
+}
+
 const VERSIONS: Version[] = [
   {
     version: "2.0",
@@ -46,15 +56,17 @@ const VERSIONS: Version[] = [
       { type: "new", zh: "邀请码系统：后台生成/管理邀请码，可设置最大使用次数，支持注册时填写或已注册用户后台申请", en: "Invite code system: admin-generated codes with max-use limits; apply at registration or from dashboard" },
       { type: "new", zh: "注册访问控制：require_invite_code 开关，开启后注册必须填写有效邀请码", en: "Registration gating: require_invite_code toggle; valid code required when enabled" },
       { type: "new", zh: "Dashboard 订阅标签：未持有邀请码时显示锁定状态，内嵌邀请码申请表单", en: "Dashboard subscription tab: locked state with inline invite-code application form when no access" },
+      { type: "new", zh: "TLD 生命周期规则数据库化：管理后台可覆盖任意 TLD 的宽限期/赎回期/待删除天数", en: "DB-configurable TLD lifecycle rules: admin can override grace/redemption/pendingDelete days per TLD" },
+      { type: "new", zh: "域名即将可注册提醒：待删除期内 7 天前自动发送邮件通知", en: "Drop approaching notification: email sent 7 days before predicted drop date during pendingDelete phase" },
+      { type: "new", zh: "域名释放通知：进入 dropped 阶段后发送邮件并自动取消订阅", en: "Domain released notification: email sent on drop, subscription auto-deactivated" },
       { type: "feature", zh: "匿名查询去重：同一 IP 同一查询 24 小时内只记录一次，减少重复历史数据", en: "Anonymous query deduplication: same query within 24 h written only once to history" },
       { type: "improve", zh: "管理后台新增【人机验证】设置区块：服务商选择、Site Key、Secret Key 独立字段", en: "Admin Settings: new CAPTCHA section with provider dropdown, Site Key and Secret Key fields" },
-      { type: "improve", zh: "管理后台新增【链接】导航项：直达友情链接管理页", en: "Admin nav: new 'Links' entry pointing to friendly links management page" },
+      { type: "improve", zh: "管理后台新增【链接】【规则】【日志】导航项", en: "Admin nav: new Links, Rules, and Changelog entries" },
     ],
   },
   {
     version: "1.9",
     date: "2026-03",
-    highlight: false,
     changes: [
       { type: "improve", zh: "页面切换动画精简：时长 0.28 s → 0.22 s，曲线换用 ease-out-expo，去除 scale 抖动", en: "Page transition refined: 0.28 s → 0.22 s, ease-out-expo curve, scale jitter removed" },
       { type: "improve", zh: "动画层添加 will-change: opacity, transform，浏览器提前提升 GPU 合成层", en: "Animated wrapper gains will-change: opacity, transform for early GPU layer promotion" },
@@ -167,17 +179,63 @@ const VERSIONS: Version[] = [
 ];
 
 const TYPE_CONFIG: Record<ChangeType, { icon: typeof RiAddCircleLine; color: string; label: string; labelEn: string }> = {
-  new: { icon: RiAddCircleLine, color: "text-emerald-500", label: "新增", labelEn: "New" },
-  feature: { icon: RiStarLine, color: "text-blue-500", label: "功能", labelEn: "Feature" },
-  improve: { icon: RiFlashlightLine, color: "text-amber-500", label: "优化", labelEn: "Improve" },
-  fix: { icon: RiBugLine, color: "text-red-500", label: "修复", labelEn: "Fix" },
+  new:     { icon: RiAddCircleLine,  color: "text-emerald-500", label: "新增", labelEn: "New" },
+  feature: { icon: RiStarLine,       color: "text-blue-500",    label: "功能", labelEn: "Feature" },
+  improve: { icon: RiFlashlightLine, color: "text-amber-500",   label: "优化", labelEn: "Improve" },
+  fix:     { icon: RiBugLine,        color: "text-red-500",     label: "修复", labelEn: "Fix" },
 };
+
+function groupEntriesByMonth(entries: DynamicEntry[]): {
+  monthKey: string; monthLabel: string; monthLabelEn: string;
+  days: { date: string; dayLabel: string; dayLabelEn: string; items: DynamicEntry[] }[];
+}[] {
+  const months = new Map<string, Map<string, DynamicEntry[]>>();
+  for (const e of entries) {
+    const [y, m, d] = e.entry_date.split("-");
+    const mk = `${y}-${m}`;
+    if (!months.has(mk)) months.set(mk, new Map());
+    const days = months.get(mk)!;
+    if (!days.has(e.entry_date)) days.set(e.entry_date, []);
+    days.get(e.entry_date)!.push(e);
+    const _ = [d]; // suppress unused warning
+  }
+  return Array.from(months.entries()).map(([mk, days]) => {
+    const [y, m] = mk.split("-");
+    const mi = parseInt(m);
+    return {
+      monthKey: mk,
+      monthLabel: `${y}年${mi}月`,
+      monthLabelEn: new Date(Number(y), mi - 1, 1).toLocaleDateString("en-US", { year: "numeric", month: "long" }),
+      days: Array.from(days.entries()).map(([dk, items]) => {
+        const day = parseInt(dk.split("-")[2]);
+        return {
+          date: dk,
+          dayLabel: `${mi}月${day}日`,
+          dayLabelEn: new Date(Number(y), mi - 1, day).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+          items,
+        };
+      }).sort((a, b) => b.date.localeCompare(a.date)),
+    };
+  }).sort((a, b) => b.monthKey.localeCompare(a.monthKey));
+}
 
 export default function ChangelogPage() {
   const { locale } = useTranslation();
   const settings = useSiteSettings();
   const isChinese = locale === "zh" || locale === "zh-tw";
   const siteName = settings.site_logo_text || "NEXT WHOIS";
+  const [dynamicEntries, setDynamicEntries] = React.useState<DynamicEntry[]>([]);
+  const [dynamicLoaded, setDynamicLoaded] = React.useState(false);
+
+  React.useEffect(() => {
+    fetch("/api/changelog")
+      .then(r => r.json())
+      .then(d => { setDynamicEntries(d.entries || []); setDynamicLoaded(true); })
+      .catch(() => setDynamicLoaded(true));
+  }, []);
+
+  const grouped = groupEntriesByMonth(dynamicEntries);
+  const totalEntries = dynamicEntries.length;
 
   return (
     <>
@@ -186,11 +244,9 @@ export default function ChangelogPage() {
       </Head>
       <ScrollArea className="w-full h-[calc(100vh-4rem)]">
         <main className="w-full max-w-3xl mx-auto px-4 sm:px-6 py-6 pb-16">
+          {/* Header */}
           <div className="flex items-center gap-3 mb-6">
-            <Link
-              href="/about"
-              className="p-1.5 rounded-lg hover:bg-muted/60 transition-colors text-muted-foreground hover:text-foreground"
-            >
+            <Link href="/about" className="p-1.5 rounded-lg hover:bg-muted/60 transition-colors text-muted-foreground hover:text-foreground">
               <RiArrowLeftSLine className="w-5 h-5" />
             </Link>
             <div className="flex items-center gap-2">
@@ -209,17 +265,100 @@ export default function ChangelogPage() {
             <div className="ml-auto flex items-center gap-2">
               <span className="text-[10px] text-muted-foreground hidden sm:block">
                 {VERSIONS.length} {isChinese ? "个版本" : "releases"}
+                {totalEntries > 0 && ` · ${totalEntries} ${isChinese ? "条动态" : "updates"}`}
               </span>
             </div>
           </div>
 
+          {/* ── Dynamic daily updates section ── */}
+          {(dynamicLoaded && grouped.length > 0) && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.28 }}
+              className="mb-6"
+            >
+              <div className="flex items-center gap-2 mb-4">
+                <div className="p-1 rounded bg-primary/10">
+                  <RiCalendarLine className="w-3.5 h-3.5 text-primary" />
+                </div>
+                <span className="text-sm font-bold text-primary">
+                  {isChinese ? "近期更新" : "Recent Updates"}
+                </span>
+                <div className="flex-1 h-px bg-primary/20" />
+              </div>
+
+              <div className="space-y-5">
+                {grouped.map((month, mi) => (
+                  <motion.div
+                    key={month.monthKey}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.22, delay: mi * 0.05 }}
+                    className="glass-panel border border-border/60 rounded-xl overflow-hidden"
+                  >
+                    {/* Month header */}
+                    <div className="px-4 py-2.5 border-b border-border/40 bg-muted/20 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <RiToolsLine className="w-3.5 h-3.5 text-muted-foreground" />
+                        <span className="text-[13px] font-bold">
+                          {isChinese ? month.monthLabel : month.monthLabelEn}
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-muted-foreground">
+                        {month.days.reduce((n, d) => n + d.items.length, 0)} {isChinese ? "条" : "items"}
+                      </span>
+                    </div>
+
+                    {/* Days */}
+                    <div className="px-4 py-3 space-y-4">
+                      {month.days.map(day => (
+                        <div key={day.date}>
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="text-[11px] font-semibold text-muted-foreground tabular-nums">
+                              {isChinese ? day.dayLabel : day.dayLabelEn}
+                            </span>
+                            <div className="flex-1 h-px bg-border/30" />
+                          </div>
+                          <div className="space-y-1.5 pl-1">
+                            {day.items.map(entry => {
+                              const cfg = TYPE_CONFIG[entry.type] ?? TYPE_CONFIG.new;
+                              return (
+                                <div key={entry.id} className="flex items-start gap-2.5">
+                                  <cfg.icon className={`w-3.5 h-3.5 shrink-0 mt-0.5 ${cfg.color}`} />
+                                  <span className="text-[12px] text-foreground/80 leading-snug">
+                                    {isChinese ? entry.zh : (entry.en || entry.zh)}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+
+              {/* Divider before version history */}
+              <div className="flex items-center gap-3 mt-7 mb-5">
+                <div className="flex-1 h-px bg-border/40" />
+                <span className="text-[11px] text-muted-foreground/60 whitespace-nowrap">
+                  {isChinese ? "版本历史" : "Version History"}
+                </span>
+                <div className="flex-1 h-px bg-border/40" />
+              </div>
+            </motion.div>
+          )}
+
+          {/* ── Static version history ── */}
           <div className="space-y-4">
             {VERSIONS.map((v, vi) => (
               <motion.div
                 key={v.version}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.28, delay: vi * 0.06 }}
+                transition={{ duration: 0.28, delay: vi * 0.05 }}
                 className={`glass-panel border rounded-xl overflow-hidden ${v.highlight ? "border-primary/40" : "border-border"}`}
               >
                 <div className={`px-5 py-3 border-b flex items-center justify-between gap-3 ${v.highlight ? "border-primary/20 bg-primary/5" : "border-border/60 bg-muted/20"}`}>
