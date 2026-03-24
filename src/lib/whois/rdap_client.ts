@@ -80,93 +80,146 @@ function isASNumber(query: string): boolean {
 }
 
 /**
- * ccTLD RDAP endpoint overrides for registries not listed in the IANA bootstrap.
- * These are tried automatically when node-rdap cannot resolve an RDAP server.
+ * Fast-path RDAP endpoints for ccTLDs.
+ * Entries here bypass the node-rdap IANA bootstrap lookup entirely — the domain
+ * query is sent directly to the listed URL.  Sources:
+ *   • IANA RDAP bootstrap  (https://data.iana.org/rdap/dns.json)  ← authoritative
+ *   • registry public announcements for TLDs not yet in IANA bootstrap
  */
 const CCTLD_RDAP_OVERRIDES: Record<string, string> = {
-  // Europe / CIS
-  ge: "https://rdap.nic.ge/",
+  // ── Western Europe (IANA) ────────────────────────────────────────────────
+  ad: "https://rdap.nic.ad/",
+  fi: "https://rdap.fi/rdap/rdap/",
+  fo: "https://rdap.centralnic.com/fo/",        // IANA: CentralNIC hosts .fo
+  fr: "https://rdap.nic.fr/",
+  is: "https://rdap.isnic.is/rdap/",            // IANA: /rdap/ suffix required
+  nl: "https://rdap.sidn.nl/",
+  no: "https://rdap.norid.no/",
+  pl: "https://rdap.dns.pl/",
+  si: "https://rdap.register.si/",
+  uk: "https://rdap.nominet.uk/uk/",
+  // ── Eastern Europe / CIS ────────────────────────────────────────────────
+  al: "https://rdap.nic.al/",
   am: "https://rdap.nic.am/",
   az: "https://rdap.nic.az/",
-  md: "https://rdap.nic.md/",
   ba: "https://rdap.nic.ba/",
-  mk: "https://rdap.nic.mk/",
-  al: "https://rdap.nic.al/",
   cy: "https://rdap.nic.cy/",
+  cz: "https://rdap.nic.cz/",
+  ge: "https://rdap.nic.ge/",
+  kg: "http://rdap.cctld.kg/",                  // IANA: http (server does not do TLS)
+  md: "https://rdap.nic.md/",
+  mk: "https://rdap.nic.mk/",
   mt: "https://rdap.nic.mt/",
-  is: "https://rdap.isnic.is/",
   tj: "https://rdap.nic.tj/",
   tm: "https://rdap.nic.tm/",
-  kg: "https://rdap.nic.kg/",
-  uz: "https://rdap.nic.uz/",
-  fo: "https://rdap.nic.fo/",
+  ua: "https://rdap.hostmaster.ua/",
+  uz: "https://rdap.cctld.uz/",                 // IANA: cctld.uz, not nic.uz
+  // ── Northern / Other Europe ─────────────────────────────────────────────
   gl: "https://rdap.nic.gl/",
   xk: "https://rdap.nic.xk/",
-  // Africa
-  td: "https://rdap.nic.td/",
-  cd: "https://rdap.nic.cd/",
-  ng: "https://rdap.nic.net.ng/",
-  ke: "https://rdap.kenic.or.ke/",
-  tz: "https://rdap.tznic.or.tz/",
-  mw: "https://rdap.nic.mw/",
-  gh: "https://rdap.nic.gh/",
-  ug: "https://rdap.nic.ug/",
-  rw: "https://rdap.ricta.org.rw/",
-  zm: "https://rdap.zicta.zm/",
-  ci: "https://rdap.nic.ci/",
-  sn: "https://rdap.nic.sn/",
-  cm: "https://rdap.netcom.cm/",
-  mg: "https://rdap.nic.mg/",
-  ly: "https://rdap.nic.ly/",
-  sd: "https://rdap.nic.sd/",
-  et: "https://rdap.nic.et/",
-  dj: "https://rdap.nic.dj/",
-  so: "https://rdap.nic.so/",
+  // ── Africa ──────────────────────────────────────────────────────────────
   ao: "https://rdap.nic.ao/",
-  mz: "https://rdap.nic.mz/",
-  zw: "https://rdap.zispa.co.zw/",
-  na: "https://rdap.nic.na/",
   bw: "https://rdap.nic.bw/",
+  cd: "https://rdap.nic.cd/",
+  ci: "https://rdap.nic.ci/",
+  cm: "https://rdap.nic.cm/",                   // IANA: nic.cm, not netcom.cm
+  dj: "https://rdap.nic.dj/",
+  et: "https://rdap.nic.et/",
+  gh: "https://rdap.nic.gh/",
+  ke: "https://rdap.kenic.or.ke/",
+  ly: "https://rdap.nic.ly/",
+  mg: "https://rdap.nic.mg/",
+  ml: "https://rdap.nic.ml/",
+  mu: "https://rdap.identitydigital.services/rdap/",  // IANA: IdentityDigital
+  mw: "https://rdap.nic.mw/",
+  mz: "https://rdap.nic.mz/",
+  na: "https://keetmans.omadhina.co.na/",       // IANA: Namibian ccTLD registrar
+  ng: "https://rdap.nic.net.ng/",
+  rw: "https://rdap.ricta.org.rw/",
   sc: "https://rdap.nic.sc/",
-  mu: "https://rdap.nic.mu/",
-  // Middle East
-  iq: "https://rdap.nic.iq/",
-  om: "https://rdap.nic.om/",
+  sd: "https://rdap.nic.sd/",
+  sn: "https://rdap.nic.sn/whois43/",           // IANA: /whois43/ path required
+  so: "https://rdap.nic.so/",
+  ss: "https://rdap.nic.ss/",
+  td: "https://rdap.nic.td/",
+  tz: "https://whois.tznic.or.tz/rdap/",        // IANA: whois.tznic.or.tz/rdap/
+  ug: "https://rdap.nic.ug/",
+  zm: "https://rdap.nic.zm/",                   // IANA: nic.zm, not zicta.zm
+  zw: "https://rdap.zispa.co.zw/",
+  // ── Middle East ─────────────────────────────────────────────────────────
   bh: "https://rdap.nic.bh/",
+  iq: "https://rdap.nic.iq/",
   jo: "https://rdap.nic.jo/",
+  lb: "https://rdap.lbdr.org.lb/",
+  om: "https://rdap.nic.om/",
   ps: "https://rdap.nic.ps/",
   sy: "https://rdap.nic.sy/",
-  // Asia / Pacific
+  ye: "https://rdap.y.net.ye/",
+  // ── Asia / Pacific ──────────────────────────────────────────────────────
+  af: "https://rdap.nic.af/",
+  as: "https://rdap.nic.as/",
+  au: "https://rdap.cctld.au/rdap/",
   bn: "https://rdap.bnnic.bn/",
   bt: "https://rdap.nic.bt/",
-  mv: "https://rdap.nic.mv/",
-  mm: "https://rdap.nic.mm/",
+  cc: "https://tld-rdap.verisign.com/cc/v1/",
+  cx: "https://rdap.nic.cx/",
+  fj: "https://www.rdap.fj/",                   // IANA: www.rdap.fj
+  fm: "https://rdap.centralnic.com/fm/",
+  gs: "https://rdap.nic.gs/",
+  id: "https://rdap.pandi.id/rdap/",
+  in: "https://rdap.nixiregistry.in/rdap/",
   kh: "https://rdap.nic.kh/",
   la: "https://rdap.nic.la/",
+  mm: "https://rdap.nic.mm/",
+  ms: "https://rdap.nic.ms/",
+  mv: "https://rdap.nic.mv/",
+  nf: "https://rdap.nic.nf/",
   np: "https://rdap.nic.np/",
-  af: "https://rdap.nic.af/",
-  pk: "https://rdap.pknic.net.pk/",
+  nz: "https://rdap.srs.net.nz/",
   pg: "https://rdap.nic.pg/",
-  fj: "https://rdap.nic.fj/",
-  ws: "https://rdap.nic.ws/",
-  to: "https://rdap.nic.to/",
-  vu: "https://rdap.nic.vu/",
+  pk: "https://rdap.pknic.net.pk/",
+  pn: "https://rdap.nominet.uk/pn/",
+  pw: "https://rdap.radix.host/rdap/",
   sb: "https://rdap.nic.sb/",
-  // Caribbean / Americas
+  sg: "https://rdap.sgnic.sg/rdap/",
+  th: "https://rdap.thains.co.th/",
+  to: "https://rdap.tonicregistry.to/rdap/",    // IANA: tonicregistry.to
+  tv: "https://rdap.nic.tv/",
+  tw: "https://ccrdap.twnic.tw/tw/",
+  vu: "https://rdap.nic.vu/",
+  ws: "https://rdap.nic.ws/",
+  // ── Caribbean / Americas ─────────────────────────────────────────────────
   ag: "https://rdap.nic.ag/",
-  dm: "https://rdap.nic.dm/",
-  gd: "https://rdap.nic.gd/",
-  gy: "https://rdap.nic.gy/",
-  ht: "https://rdap.nic.ht/",
-  sr: "https://rdap.nic.sr/",
+  ai: "https://rdap.identitydigital.services/rdap/",
+  ar: "https://rdap.nic.ar/",
   bb: "https://rdap.nic.bb/",
-  lc: "https://rdap.nic.lc/",
-  vc: "https://rdap.nic.vc/",
-  kn: "https://rdap.nic.kn/",
-  tt: "https://rdap.nic.tt/",
-  jm: "https://rdap.nic.jm/",
+  bm: "https://rdap.identitydigital.services/rdap/",
+  br: "https://rdap.registro.br/",
   bz: "https://rdap.nic.bz/",
+  ca: "https://rdap.ca.fury.ca/rdap/",
+  cr: "https://rdap.nic.cr/",
   cu: "https://rdap.nic.cu/",
+  cv: "https://rdap.nic.cv/",
+  dm: "https://rdap.nic.dm/",
+  ec: "https://rdap.registry.ec/",
+  gd: "https://rdap.centralnic.com/gd/",        // IANA: CentralNIC hosts .gd
+  gy: "https://rdap.registry.gy/",              // IANA: registry.gy
+  hn: "https://rdap.nic.hn/",
+  ht: "https://rdap.nic.ht/",
+  jm: "https://rdap.nic.jm/",
+  kn: "https://rdap.nic.kn/",
+  ky: "https://whois.kyregistry.ky/rdap/",
+  lc: "https://rdap.nic.lc/",
+  pm: "https://rdap.nic.pm/",
+  re: "https://rdap.nic.re/",
+  sr: "https://whois.sr/rdap/",                 // IANA: whois.sr/rdap/
+  tf: "https://rdap.nic.tf/",
+  tt: "https://rdap.nic.tt/",
+  vc: "https://rdap.nic.vc/",
+  vg: "https://rdap.centralnic.com/vg/",
+  vi: "https://rdap.nic.vi/",
+  wf: "https://rdap.nic.wf/",
+  yt: "https://rdap.nic.yt/",
 };
 
 async function tryRdapOverride(domainToQuery: string, timeoutMs = 2500): Promise<any | null> {
