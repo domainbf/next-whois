@@ -100,7 +100,7 @@ export default function AdminTldLifecyclePage() {
   }
 
   async function handleDelete(row: Override) {
-    if (!confirm(`确认删除 .${row.tld} 的自定义规则？将恢复默认内置值。`)) return;
+    if (!confirm(`确认删除 .${row.tld} 的修正记录？将恢复为系统内置默认值。`)) return;
     setDeleting(row.id);
     try {
       const res = await fetch(`/api/admin/tld-lifecycle?id=${row.id}`, { method: "DELETE" });
@@ -128,7 +128,8 @@ export default function AdminTldLifecyclePage() {
     )
     .sort(([a], [b]) => a.localeCompare(b));
 
-  const [showBuiltin, setShowBuiltin] = React.useState(false);
+  const [showBuiltinManual, setShowBuiltinManual] = React.useState(false);
+  const showBuiltin = showBuiltinManual || !!search;
 
   function getBuiltIn(tld: string) {
     const entry = LIFECYCLE_TABLE[tld];
@@ -147,7 +148,7 @@ export default function AdminTldLifecyclePage() {
           <div>
             <h1 className="text-xl font-bold">TLD 生命周期规则</h1>
             <p className="text-sm text-muted-foreground mt-0.5">
-              自定义各 TLD 的宽限期、赎回期、待删除天数，优先级高于系统内置值
+              修正各 TLD 的宽限期、赎回期、待删除天数，修正后优先于系统内置值生效
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -156,7 +157,7 @@ export default function AdminTldLifecyclePage() {
               刷新
             </Button>
             <Button size="sm" onClick={openAdd}>
-              <RiAddLine className="w-3.5 h-3.5 mr-1.5" /> 添加规则
+              <RiAddLine className="w-3.5 h-3.5 mr-1.5" /> 新增修正
             </Button>
           </div>
         </div>
@@ -165,7 +166,7 @@ export default function AdminTldLifecyclePage() {
           <RiSearchLine className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
           <Input
             className="pl-9 h-8 text-sm"
-            placeholder="搜索 TLD / 注册局..."
+            placeholder="搜索 TLD（同时搜索内置表）..."
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
@@ -195,7 +196,7 @@ export default function AdminTldLifecyclePage() {
               ) : filtered.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="text-center py-8 text-muted-foreground text-sm">
-                    {search ? `未找到匹配 "${search}" 的规则` : "暂无自定义规则 — 所有 TLD 使用内置默认值"}
+                    {search ? `未找到匹配 "${search}" 的修正记录` : "暂无修正记录 — 所有 TLD 当前使用内置默认值"}
                   </td>
                 </tr>
               ) : filtered.map(row => (
@@ -230,14 +231,14 @@ export default function AdminTldLifecyclePage() {
         </div>
 
         <p className="text-xs text-muted-foreground">
-          {rows.length > 0 ? `共 ${rows.length} 条自定义规则；` : "暂无自定义规则 — "}系统内置 {Object.keys(LIFECYCLE_TABLE).length} 个 TLD 的标准值
+          {rows.length > 0 ? `已修正 ${rows.length} 个 TLD；` : "暂无修正记录 — "}系统内置 {Object.keys(LIFECYCLE_TABLE).length} 个 TLD 的默认值
         </p>
 
         {/* Built-in reference table */}
         <div className="border rounded-xl overflow-hidden">
           <button
             className="w-full flex items-center justify-between px-4 py-3 bg-muted/30 hover:bg-muted/50 transition-colors text-left"
-            onClick={() => setShowBuiltin(v => !v)}
+            onClick={() => setShowBuiltinManual(v => !v)}
           >
             <div>
               <span className="text-sm font-semibold">内置生命周期参考表</span>
@@ -274,7 +275,7 @@ export default function AdminTldLifecyclePage() {
                       <td className={cn(tdClass, "font-mono font-semibold")}>
                         .{tld}
                         {customTlds.has(tld) && (
-                          <span className="ml-1.5 text-[9px] px-1 py-0.5 rounded bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 font-semibold">已覆盖</span>
+                          <span className="ml-1.5 text-[9px] px-1 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 font-semibold">已修正</span>
                         )}
                       </td>
                       <td className={cn(tdClass, "text-center tabular-nums text-muted-foreground")}>{entry.grace}d</td>
@@ -297,7 +298,7 @@ export default function AdminTldLifecyclePage() {
                             }}
                             className="text-[11px] px-2 py-1 rounded-lg bg-muted hover:bg-primary/10 hover:text-primary text-muted-foreground transition-colors font-medium"
                           >
-                            添加覆盖
+                            修正
                           </button>
                         )}
                       </td>
@@ -314,7 +315,7 @@ export default function AdminTldLifecyclePage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>{editing ? `编辑 .${editing.tld} 规则` : "添加 TLD 规则"}</DialogTitle>
+            <DialogTitle>{editing ? `修正 .${editing.tld}` : "新增 TLD 修正"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div>
