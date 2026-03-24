@@ -53,17 +53,19 @@ function ImageUploadField({
     reader.readAsDataURL(file);
   }
 
-  const imgSrc = preview || value;
+  const isDataUrl = value.startsWith("data:image/");
+  const imgSrc = preview || (isDataUrl ? value : value.startsWith("http") || value.startsWith("/") ? value : null);
 
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
         <div className="flex-1">
           <Input
-            value={value}
+            value={isDataUrl ? "" : value}
             onChange={e => { onChange(e.target.value); setPreview(null); }}
-            placeholder="https://... 或点击上传"
+            placeholder={isDataUrl ? "📎 已上传图片（直接上传新图片可替换）" : "https://... 或点击上传"}
             className="h-8 text-xs font-mono"
+            readOnly={isDataUrl}
           />
         </div>
         <Button
@@ -86,8 +88,18 @@ function ImageUploadField({
         />
       </div>
       {imgSrc && (
-        <div className="w-32 h-32 rounded-xl border border-border overflow-hidden bg-muted/30 flex items-center justify-center">
+        <div className="relative group w-32 h-32 rounded-xl border border-border overflow-hidden bg-muted/30 flex items-center justify-center">
           <img src={imgSrc} alt={label} className="w-full h-full object-contain" />
+          {isDataUrl && (
+            <button
+              type="button"
+              onClick={() => { onChange(""); setPreview(null); }}
+              className="absolute top-1 right-1 w-5 h-5 rounded-full bg-destructive text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+              title="清除图片"
+            >
+              <span className="text-[10px] font-bold">×</span>
+            </button>
+          )}
         </div>
       )}
     </div>

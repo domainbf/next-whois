@@ -58,12 +58,7 @@ export default function AdminSystemPage() {
     if (!confirm("手动触发今日提醒处理？\n系统将查询到期域名并发送邮件通知。")) return;
     setTriggering(true);
     try {
-      const secret = prompt("请输入 CRON_SECRET：");
-      if (!secret) return;
-      const res = await fetch("/api/remind/process", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${secret}` },
-      });
+      const res = await fetch("/api/admin/trigger-reminders", { method: "POST" });
       const d = await res.json();
       if (!res.ok) throw new Error(d.error || "触发失败");
       toast.success(`提醒已触发：处理 ${d.processed ?? "?"} 条记录`);
@@ -218,7 +213,7 @@ export default function AdminSystemPage() {
                       <RiBellLine className="w-4 h-4 text-primary" />手动触发提醒处理
                     </p>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      Cron 每日 09:00 UTC 自动执行 · 可在此手动触发（需 CRON_SECRET）
+                      Cron 每日 09:00 UTC 自动执行 · 管理员可在此一键手动触发
                     </p>
                   </div>
                   <Button

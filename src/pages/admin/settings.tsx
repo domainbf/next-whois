@@ -14,6 +14,7 @@ import {
   RiHeartLine, RiBarChartLine, RiSearchLine, RiCodeBoxLine,
   RiShieldLine, RiPaletteLine, RiEyeLine, RiUploadLine, RiCloseLine,
   RiFingerprint2Line, RiUserLine, RiBankCardLine,
+  RiAddLine, RiDeleteBinLine, RiAlertLine,
 } from "@remixicon/react";
 
 // ── Client-side image compression helper ────────────────────────────────────
@@ -159,6 +160,187 @@ function ImageUploadField({
   );
 }
 
+// ── ThanksListEditor ─────────────────────────────────────────────────────────
+type ThanksItem = { name: string; url: string; desc: string; descEn: string };
+
+function parseThanks(json: string): ThanksItem[] {
+  try {
+    const p = JSON.parse(json);
+    if (Array.isArray(p)) return p.map(i => ({ name: i.name || "", url: i.url || "", desc: i.desc || "", descEn: i.descEn || "" }));
+  } catch {}
+  return [];
+}
+
+function ThanksListEditor({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [items, setItems] = React.useState<ThanksItem[]>(() => parseThanks(value));
+
+  React.useEffect(() => {
+    const fresh = parseThanks(value);
+    setItems(fresh);
+  }, []);
+
+  function update(next: ThanksItem[]) {
+    setItems(next);
+    onChange(next.length ? JSON.stringify(next) : "");
+  }
+
+  function addItem() {
+    update([...items, { name: "", url: "", desc: "", descEn: "" }]);
+  }
+
+  function removeItem(i: number) {
+    update(items.filter((_, idx) => idx !== i));
+  }
+
+  function setField(i: number, field: keyof ThanksItem, val: string) {
+    const next = items.map((item, idx) => idx === i ? { ...item, [field]: val } : item);
+    update(next);
+  }
+
+  return (
+    <div className="space-y-3">
+      {items.length === 0 && (
+        <p className="text-xs text-muted-foreground py-2 text-center bg-muted/30 rounded-xl border border-dashed border-border">
+          暂无条目，点击「添加」按钮新增致谢项
+        </p>
+      )}
+      {items.map((item, i) => (
+        <div key={i} className="bg-muted/30 border border-border rounded-xl p-3 space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-muted-foreground font-semibold bg-muted px-1.5 py-0.5 rounded shrink-0">#{i + 1}</span>
+            <div className="flex-1 grid grid-cols-2 gap-2">
+              <Input
+                value={item.name}
+                onChange={e => setField(i, "name", e.target.value)}
+                placeholder="名称（如 Vercel）"
+                className="h-8 rounded-lg text-xs"
+              />
+              <Input
+                value={item.url}
+                onChange={e => setField(i, "url", e.target.value)}
+                placeholder="https://..."
+                className="h-8 rounded-lg text-xs font-mono"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => removeItem(i)}
+              className="w-7 h-7 flex items-center justify-center rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors shrink-0"
+              title="删除"
+            >
+              <RiDeleteBinLine className="w-3.5 h-3.5" />
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-2 pl-8">
+            <Input
+              value={item.desc}
+              onChange={e => setField(i, "desc", e.target.value)}
+              placeholder="中文描述"
+              className="h-8 rounded-lg text-xs"
+            />
+            <Input
+              value={item.descEn}
+              onChange={e => setField(i, "descEn", e.target.value)}
+              placeholder="English description"
+              className="h-8 rounded-lg text-xs"
+            />
+          </div>
+        </div>
+      ))}
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={addItem}
+        className="h-8 rounded-xl gap-1.5 text-xs w-full border-dashed"
+      >
+        <RiAddLine className="w-3.5 h-3.5" />添加致谢条目
+      </Button>
+    </div>
+  );
+}
+
+// ── ExtraLinksEditor ─────────────────────────────────────────────────────────
+type ExtraLink = { label: string; url: string };
+
+function parseExtraLinks(json: string): ExtraLink[] {
+  try {
+    const p = JSON.parse(json);
+    if (Array.isArray(p)) return p.map(i => ({ label: i.label || "", url: i.url || "" }));
+  } catch {}
+  return [];
+}
+
+function ExtraLinksEditor({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [items, setItems] = React.useState<ExtraLink[]>(() => parseExtraLinks(value));
+
+  React.useEffect(() => {
+    setItems(parseExtraLinks(value));
+  }, []);
+
+  function update(next: ExtraLink[]) {
+    setItems(next);
+    onChange(next.length ? JSON.stringify(next) : "");
+  }
+
+  function addItem() {
+    update([...items, { label: "", url: "" }]);
+  }
+
+  function removeItem(i: number) {
+    update(items.filter((_, idx) => idx !== i));
+  }
+
+  function setField(i: number, field: keyof ExtraLink, val: string) {
+    const next = items.map((item, idx) => idx === i ? { ...item, [field]: val } : item);
+    update(next);
+  }
+
+  return (
+    <div className="space-y-2">
+      {items.length === 0 && (
+        <p className="text-xs text-muted-foreground py-2 text-center bg-muted/30 rounded-xl border border-dashed border-border">
+          暂无条目，点击「添加」按钮新增赞助链接
+        </p>
+      )}
+      {items.map((item, i) => (
+        <div key={i} className="flex items-center gap-2 bg-muted/30 border border-border rounded-xl p-2">
+          <span className="text-[10px] text-muted-foreground font-semibold bg-muted px-1.5 py-0.5 rounded shrink-0">#{i + 1}</span>
+          <Input
+            value={item.label}
+            onChange={e => setField(i, "label", e.target.value)}
+            placeholder="按钮文字（如 Ko-fi）"
+            className="h-8 rounded-lg text-xs flex-1"
+          />
+          <Input
+            value={item.url}
+            onChange={e => setField(i, "url", e.target.value)}
+            placeholder="https://..."
+            className="h-8 rounded-lg text-xs flex-1 font-mono"
+          />
+          <button
+            type="button"
+            onClick={() => removeItem(i)}
+            className="w-7 h-7 flex items-center justify-center rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors shrink-0"
+            title="删除"
+          >
+            <RiDeleteBinLine className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      ))}
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={addItem}
+        className="h-8 rounded-xl gap-1.5 text-xs w-full border-dashed"
+      >
+        <RiAddLine className="w-3.5 h-3.5" />添加赞助链接
+      </Button>
+    </div>
+  );
+}
+
 type FieldDef = {
   key: keyof SiteSettings;
   label: string;
@@ -167,6 +349,7 @@ type FieldDef = {
   icon: React.ElementType;
   multiline?: boolean;
   isImage?: boolean;
+  customEditor?: "thanks-list" | "extra-links";
 };
 
 type ToggleDef = {
@@ -253,7 +436,7 @@ const SECTIONS: Section[] = [
       { key: "about_github_url", label: "源码 GitHub 链接", desc: "GitHub 仓库地址（留空使用默认 zmh-program/next-whois）", placeholder: "https://github.com/yourname/yourrepo", icon: RiCodeBoxLine },
       { key: "about_author_name", label: "原作者名称", desc: "显示在【基于…二次创作】卡片中的原作者名称（留空使用默认 zmh-program）", placeholder: "zmh-program", icon: RiUserLine },
       { key: "about_author_url", label: "原作者主页链接", desc: "原作者个人主页（留空使用默认 https://zmh.me）", placeholder: "https://zmh.me", icon: RiLinksLine },
-      { key: "about_thanks", label: "致谢列表（JSON）", desc: `致谢服务商列表，JSON 格式，留空使用默认。格式：[{"name":"站名","url":"https://...","desc":"中文说明","descEn":"English desc"}]`, placeholder: '[{"name":"Example","url":"https://example.com","desc":"示例服务","descEn":"Example service"}]', icon: RiCodeBoxLine, multiline: true },
+      { key: "about_thanks", label: "致谢列表", desc: "致谢服务商/支持者列表，点击「添加」逐条填写，留空使用内置默认列表", placeholder: "", icon: RiCodeBoxLine, customEditor: "thanks-list" },
     ],
   },
   {
@@ -291,7 +474,7 @@ const SECTIONS: Section[] = [
       { key: "sponsor_crypto_eth", label: "ETH 钱包地址", desc: "Ethereum 收款地址（留空隐藏）", placeholder: "0x...", icon: RiLinksLine },
       { key: "sponsor_crypto_usdt", label: "USDT 钱包地址", desc: "Tether (TRC20/ERC20) 收款地址（留空隐藏）", placeholder: "T...", icon: RiLinksLine },
       { key: "sponsor_crypto_okx", label: "OKX / Web3 钱包地址", desc: "OKX 或其他 Web3 钱包地址（留空隐藏）", placeholder: "0x...", icon: RiLinksLine },
-      { key: "sponsor_extra_links", label: "其他赞助方式 (JSON)", desc: `额外赞助链接，JSON 格式：[{"label":"Ko-fi","url":"https://ko-fi.com/..."}]`, placeholder: `[{"label":"Ko-fi","url":"https://ko-fi.com/..."}]`, icon: RiLinksLine },
+      { key: "sponsor_extra_links", label: "其他赞助链接", desc: "额外显示的赞助按钮，点击「添加」逐条填写按钮文字和链接", placeholder: "", icon: RiLinksLine, customEditor: "extra-links" },
     ],
   },
   {
@@ -381,11 +564,14 @@ function Toggle({ value, onChange, onColor }: { value: boolean; onChange: (v: bo
 
 export default function AdminSettingsPage() {
   const [form, setForm] = React.useState<SiteSettings>(DEFAULT_SETTINGS);
+  const [saved, setSaved] = React.useState<SiteSettings>(DEFAULT_SETTINGS);
   const [loading, setLoading] = React.useState(true);
   const [saving, setSaving] = React.useState(false);
   const [testingEmail, setTestingEmail] = React.useState(false);
   const [emailOk, setEmailOk] = React.useState<boolean | null>(null);
   const [activeSection, setActiveSection] = React.useState("branding");
+
+  const isDirty = !loading && JSON.stringify(form) !== JSON.stringify(saved);
 
   const set = (key: keyof SiteSettings, value: string) =>
     setForm(prev => ({ ...prev, [key]: value }));
@@ -418,7 +604,11 @@ export default function AdminSettingsPage() {
     fetch("/api/admin/settings")
       .then(r => r.json())
       .then(data => {
-        if (data.settings) setForm({ ...DEFAULT_SETTINGS, ...data.settings });
+        if (data.settings) {
+          const merged = { ...DEFAULT_SETTINGS, ...data.settings };
+          setForm(merged);
+          setSaved(merged);
+        }
       })
       .catch(() => toast.error("加载设置失败"))
       .finally(() => setLoading(false));
@@ -433,6 +623,7 @@ export default function AdminSettingsPage() {
         body: JSON.stringify(form),
       });
       if (!res.ok) throw new Error((await res.json()).error);
+      setSaved({ ...form });
       notifySettingsUpdated();
       toast.success("设置已保存，已同步到所有页面");
     } catch (e: any) {
@@ -477,6 +668,22 @@ export default function AdminSettingsPage() {
             </p>
           </div>
         </div>
+
+        {isDirty && (
+          <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-700/30">
+            <RiAlertLine className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+            <span className="text-sm text-amber-700 dark:text-amber-400 flex-1">有未保存的更改，切换页面后请记得保存</span>
+            <Button
+              size="sm"
+              onClick={handleSave}
+              disabled={saving}
+              className="h-7 px-3 text-xs rounded-lg gap-1.5 shrink-0 bg-amber-600 hover:bg-amber-700 text-white border-0"
+            >
+              {saving ? <RiLoader4Line className="w-3 h-3 animate-spin" /> : <RiSaveLine className="w-3 h-3" />}
+              立即保存
+            </Button>
+          </div>
+        )}
 
         {loading ? (
           <div className="flex justify-center py-20">
@@ -531,7 +738,7 @@ export default function AdminSettingsPage() {
                         <h3 className="text-sm font-bold">{section.title}</h3>
                       </div>
                       <div className="p-5 space-y-5">
-                        {section.fields?.map(({ key, label, desc, placeholder, icon: Icon, multiline, isImage }) => (
+                        {section.fields?.map(({ key, label, desc, placeholder, icon: Icon, multiline, isImage, customEditor }) => (
                           <div key={key} className="space-y-1.5">
                             <div className="flex items-start gap-1.5">
                               <Icon className="w-3.5 h-3.5 text-muted-foreground mt-0.5 shrink-0" />
@@ -547,6 +754,10 @@ export default function AdminSettingsPage() {
                                 placeholder={placeholder}
                                 hint={key}
                               />
+                            ) : customEditor === "thanks-list" ? (
+                              <ThanksListEditor value={form[key]} onChange={v => set(key, v)} />
+                            ) : customEditor === "extra-links" ? (
+                              <ExtraLinksEditor value={form[key]} onChange={v => set(key, v)} />
                             ) : multiline ? (
                               <TextArea
                                 value={form[key]}
