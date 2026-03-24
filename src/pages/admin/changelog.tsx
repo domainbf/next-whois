@@ -11,6 +11,7 @@ import {
 import {
   RiAddLine, RiEditLine, RiDeleteBinLine, RiLoader4Line, RiRefreshLine,
   RiAddCircleLine, RiStarLine, RiFlashlightLine, RiBugLine, RiToolsLine,
+  RiDownloadLine,
 } from "@remixicon/react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -71,6 +72,7 @@ export default function AdminChangelogPage() {
   const [form, setForm] = React.useState(EMPTY_FORM);
   const [saving, setSaving] = React.useState(false);
   const [deleting, setDeleting] = React.useState<string | null>(null);
+  const [syncing, setSyncing] = React.useState(false);
   const zhInputRef = React.useRef<HTMLInputElement>(null);
 
   async function load() {
@@ -148,6 +150,25 @@ export default function AdminChangelogPage() {
     }
   }
 
+  async function handleSync() {
+    setSyncing(true);
+    try {
+      const res = await fetch("/api/admin/changelog-sync", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      if (data.inserted > 0) {
+        toast.success(`已同步 ${data.inserted} 条版本记录（跳过 ${data.skipped} 条已存在）`);
+        await load();
+      } else {
+        toast.info(`所有版本记录已是最新，无需同步`);
+      }
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "同步失败");
+    } finally {
+      setSyncing(false);
+    }
+  }
+
   async function handleDelete(id: string, zh: string) {
     if (!confirm(`确认删除：「${zh.slice(0, 30)}」？`)) return;
     setDeleting(id);
@@ -174,9 +195,17 @@ export default function AdminChangelogPage() {
             <h1 className="text-xl font-bold">更新记录管理</h1>
             <p className="text-sm text-muted-foreground mt-0.5">每次部署后快速添加一条，按月/日自动归档展示</p>
           </div>
-          <Button size="sm" variant="outline" onClick={load} disabled={loading}>
-            <RiRefreshLine className={cn("w-3.5 h-3.5 mr-1.5", loading && "animate-spin")} />刷新
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" onClick={handleSync} disabled={syncing} title="根据版本历史自动导入缺失条目">
+              {syncing
+                ? <RiLoader4Line className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                : <RiDownloadLine className="w-3.5 h-3.5 mr-1.5" />}
+              同步版本历史
+            </Button>
+            <Button size="sm" variant="outline" onClick={load} disabled={loading}>
+              <RiRefreshLine className={cn("w-3.5 h-3.5 mr-1.5", loading && "animate-spin")} />刷新
+            </Button>
+          </div>
         </div>
 
         {/* ── Quick-add form ── */}

@@ -1307,12 +1307,7 @@ export default function DashboardPage() {
                                 {cfg.label}
                               </span>
                             )}
-                            {tierCfg && rs === "unregistered" && (
-                              <span className={`shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-md border ${tierCfg.cls}`}>
-                                {tierCfg.label}
-                              </span>
-                            )}
-                            <span className="shrink-0 text-[11px] text-muted-foreground tabular-nums whitespace-nowrap">
+                              <span className="shrink-0 text-[11px] text-muted-foreground tabular-nums whitespace-nowrap">
                               {QUERY_TYPE_LABEL[item.queryType] ?? item.queryType}{" · "}{ts}
                             </span>
                           </Link>

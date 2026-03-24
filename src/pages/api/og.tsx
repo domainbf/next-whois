@@ -161,10 +161,14 @@ export default async function handler(req: NextRequest) {
   ]);
 
   let enabledStyles = [0, 1, 2, 3, 4, 5, 6, 7];
+  let brandName = "RDAP+WHOIS";
+  let tagline = "WHOIS / RDAP · Domain Lookup Tool";
   if (configRes?.ok) {
     try {
       const cfg = await configRes.json();
       enabledStyles = parseEnabledStyles(cfg.enabled_styles);
+      if (cfg.brand_name) brandName = cfg.brand_name;
+      if (cfg.tagline) tagline = cfg.tagline;
     } catch {}
   }
 
@@ -765,7 +769,7 @@ export default async function handler(req: NextRequest) {
                   display: "flex",
                 }}
               >
-                RDAP+WHOIS
+                {brandName}
               </span>
             </div>
             <div
@@ -836,7 +840,7 @@ export default async function handler(req: NextRequest) {
                 display: "flex",
               }}
             >
-              RDAP+WHOIS
+              {brandName}
             </span>
           </div>
           <div
@@ -911,7 +915,7 @@ export default async function handler(req: NextRequest) {
                 display: "flex",
               }}
             >
-              WHOIS / RDAP · Domain Lookup Tool
+              {tagline}
             </span>
           </div>
           <div
@@ -979,7 +983,7 @@ export default async function handler(req: NextRequest) {
               display: "flex",
             }}
           >
-            RDAP+WHOIS
+            {brandName}
           </span>
         </div>
 
@@ -1109,7 +1113,7 @@ export default async function handler(req: NextRequest) {
               display: "flex",
             }}
           >
-            WHOIS / RDAP · Domain Intelligence Platform
+            {tagline}
           </span>
           <span
             style={{
@@ -1159,7 +1163,7 @@ export default async function handler(req: NextRequest) {
               display: "flex",
             }}
           >
-            RDAP+WHOIS
+            {brandName}
           </span>
           <div style={{ flex: 1 }} />
           <div
@@ -1366,7 +1370,7 @@ export default async function handler(req: NextRequest) {
                 display: "flex",
               }}
             >
-              RDAP+WHOIS
+              {brandName}
             </span>
           </div>
           <span
@@ -1494,7 +1498,7 @@ export default async function handler(req: NextRequest) {
                 display: "flex",
               }}
             >
-              RDAP+WHOIS · DOMAIN LOOKUP SYSTEM v2
+              {`${brandName} · DOMAIN LOOKUP SYSTEM`}
             </span>
             <div
               style={{
@@ -1575,7 +1579,7 @@ export default async function handler(req: NextRequest) {
                   display: "flex",
                 }}
               >
-                protocol: RDAP+WHOIS
+                {`protocol: ${brandName}`}
               </span>
             </div>
           </div>
@@ -1598,7 +1602,7 @@ export default async function handler(req: NextRequest) {
                 display: "flex",
               }}
             >
-              WHOIS · RDAP · DNS · SSL · IP · ICP
+              {tagline}
             </span>
             <span
               style={{
@@ -1658,7 +1662,7 @@ export default async function handler(req: NextRequest) {
                 display: "flex",
               }}
             >
-              RDAP+WHOIS
+              {brandName}
             </span>
             <div
               style={{ display: "flex", alignItems: "center", gap: "16px" }}
@@ -1782,7 +1786,7 @@ export default async function handler(req: NextRequest) {
               display: "flex",
             }}
           >
-            RDAP+WHOIS
+            {brandName}
           </span>
         </div>
 
@@ -1910,7 +1914,7 @@ export default async function handler(req: NextRequest) {
               display: "flex",
             }}
           >
-            RDAP+WHOIS
+            {brandName}
           </span>
         </div>
 

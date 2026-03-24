@@ -1,8 +1,19 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { one } from "@/lib/db-query";
+import { many, run } from "@/lib/db-query";
 
-let cachedStyles: number[] | null = null;
-let cacheTime = 0;
+const DEFAULT_BRAND_NAME = "RDAP+WHOIS";
+const DEFAULT_TAGLINE    = "WHOIS / RDAP · Domain Lookup Tool";
+
+export { DEFAULT_BRAND_NAME, DEFAULT_TAGLINE };
+
+interface OgConfig {
+  enabled_styles: number[];
+  brand_name: string;
+  tagline: string;
+}
+
+let _cache: OgConfig | null = null;
+let _cacheTime = 0;
 const CACHE_TTL = 5 * 60 * 1000;
 
 export const TOTAL_STYLES = 8;
@@ -19,23 +30,64 @@ export function parseEnabledStyles(val: string | undefined | null): number[] {
 }
 
 export function invalidateOgConfigCache() {
-  cacheTime = 0;
-  cachedStyles = null;
+  _cacheTime = 0;
+  _cache = null;
+}
+
+async function loadConfig(): Promise<OgConfig> {
+  const rows = await many<{ key: string; value: string }>(
+    `SELECT key, value FROM site_settings WHERE key IN ('og_enabled_styles','og_brand_name','og_tagline')`,
+  );
+  const map: Record<string, string> = {};
+  for (const r of rows) map[r.key] = r.value;
+  return {
+    enabled_styles: parseEnabledStyles(map.og_enabled_styles),
+    brand_name: map.og_brand_name || DEFAULT_BRAND_NAME,
+    tagline: map.og_tagline || DEFAULT_TAGLINE,
+  };
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== "GET") return res.status(405).end();
-  try {
-    if (!cachedStyles || Date.now() - cacheTime > CACHE_TTL) {
-      const row = await one<{ value: string }>(
-        "SELECT value FROM site_settings WHERE key = 'og_enabled_styles'",
-      );
-      cachedStyles = parseEnabledStyles(row?.value);
-      cacheTime = Date.now();
+  if (req.method === "GET") {
+    try {
+      if (!_cache || Date.now() - _cacheTime > CACHE_TTL) {
+        _cache = await loadConfig();
+        _cacheTime = Date.now();
+      }
+      res.setHeader("Cache-Control", "public, max-age=300");
+      return res.json(_cache);
+    } catch {
+      return res.json({
+        enabled_styles: Array.from({ length: TOTAL_STYLES }, (_, i) => i),
+        brand_name: DEFAULT_BRAND_NAME,
+        tagline: DEFAULT_TAGLINE,
+      });
     }
-    res.setHeader("Cache-Control", "public, max-age=300");
-    return res.json({ enabled_styles: cachedStyles });
-  } catch {
-    return res.json({ enabled_styles: Array.from({ length: TOTAL_STYLES }, (_, i) => i) });
   }
+
+  if (req.method === "PUT") {
+    const { brand_name, tagline } = req.body as { brand_name?: string; tagline?: string };
+    try {
+      if (brand_name !== undefined) {
+        await run(
+          `INSERT INTO site_settings (key, value, updated_at) VALUES ('og_brand_name', $1, NOW())
+           ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = NOW()`,
+          [brand_name.trim() || DEFAULT_BRAND_NAME],
+        );
+      }
+      if (tagline !== undefined) {
+        await run(
+          `INSERT INTO site_settings (key, value, updated_at) VALUES ('og_tagline', $1, NOW())
+           ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = NOW()`,
+          [tagline.trim() || DEFAULT_TAGLINE],
+        );
+      }
+      invalidateOgConfigCache();
+      return res.json({ ok: true });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
+  return res.status(405).end();
 }

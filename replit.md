@@ -1,10 +1,24 @@
-# Next Whois UI — v3.9
+# Next Whois UI — v3.10
 
 A fast, modern WHOIS and RDAP lookup tool supporting domains, IPv4/IPv6, ASN, and CIDR. Also includes built-in DNS, SSL certificate, and IP/ASN geolocation tools.
 
 ---
 
 ## Changelog
+
+### v3.10 — OG Image Text Editor, Changelog Sync & UX Cleanup (2026-03-24)
+
+**Scope:** Admin panel enhancements and UX improvements.
+
+**New features / fixes:**
+
+- **OG image text editor (`/admin/og-styles`):** Brand name and tagline are now fully editable in the admin panel. Settings stored in `site_settings` (`og_brand_name`, `og_tagline`) with 5-minute server-side cache invalidation. Both fields are immediately reflected across all 8 OG card styles without code changes.
+- **`api/og.tsx` — dynamic text:** All 10 hardcoded `"RDAP+WHOIS"` brand label occurrences across the 8 OG styles now read from the config API. Taglines similarly use the configurable tagline field. Default values remain `"RDAP+WHOIS"` and `"WHOIS / RDAP · Domain Lookup Tool"` when not overridden.
+- **`api/og-config.ts` — extended config:** Config API now returns `brand_name` and `tagline` alongside `enabled_styles`, and accepts `PUT` requests to update them.
+- **Changelog sync button (`/admin/changelog`):** "同步版本历史" button batch-imports predefined version entries (v3.6–v3.10) from the `changelog-sync` API, skipping duplicates. Useful for seeding a fresh DB.
+- **User dashboard — value-tier badges hidden:** High-value / valuable domain badges in the search history list are no longer shown to users (data is still recorded server-side for admin analytics). Removed `tierCfg` badge render; `TIER_CFG` definition and `value_tier` recording untouched.
+
+---
 
 ### v3.9 — API Key Authentication System (2026-03-24)
 

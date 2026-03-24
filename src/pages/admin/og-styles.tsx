@@ -3,6 +3,8 @@ import Head from "next/head";
 import { GetServerSideProps } from "next";
 import { AdminLayout } from "@/components/admin-layout";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   RiLoader4Line,
   RiSaveLine,
@@ -15,11 +17,14 @@ import {
   RiSunLine,
   RiShuffleLine,
   RiFlipHorizontalLine,
+  RiPencilLine,
 } from "@remixicon/react";
 import { toast } from "sonner";
 import { requireAdmin } from "@/lib/admin";
 import { many } from "@/lib/db-query";
 import { cn } from "@/lib/utils";
+const DEFAULT_BRAND_NAME = "RDAP+WHOIS";
+const DEFAULT_TAGLINE    = "WHOIS / RDAP · Domain Lookup Tool";
 
 const TOTAL_STYLES = 8;
 
@@ -77,6 +82,8 @@ const STYLE_META: { id: number; name: string; desc: string; emoji: string }[] =
 
 interface Props {
   initialEnabledStyles: number[];
+  initialBrandName: string;
+  initialTagline: string;
 }
 
 export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
@@ -84,13 +91,16 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
     ctx.req as never,
     ctx.res as never,
   );
-  if (stop) return { props: { initialEnabledStyles: [] } };
+  if (stop) return { props: { initialEnabledStyles: [], initialBrandName: DEFAULT_BRAND_NAME, initialTagline: DEFAULT_TAGLINE } };
 
   try {
     const rows = await many<{ key: string; value: string }>(
-      "SELECT key, value FROM site_settings WHERE key = 'og_enabled_styles'",
+      "SELECT key, value FROM site_settings WHERE key IN ('og_enabled_styles','og_brand_name','og_tagline')",
     );
-    const raw = rows[0]?.value || "";
+    const map: Record<string, string> = {};
+    for (const r of rows) map[r.key] = r.value;
+
+    const raw = map.og_enabled_styles || "";
     const parsed = raw
       .split(",")
       .map((s) => parseInt(s.trim(), 10))
@@ -99,20 +109,26 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
       parsed.length > 0
         ? parsed
         : Array.from({ length: TOTAL_STYLES }, (_, i) => i);
-    return { props: { initialEnabledStyles: enabled } };
+
+    return {
+      props: {
+        initialEnabledStyles: enabled,
+        initialBrandName: map.og_brand_name || DEFAULT_BRAND_NAME,
+        initialTagline: map.og_tagline || DEFAULT_TAGLINE,
+      },
+    };
   } catch {
     return {
       props: {
-        initialEnabledStyles: Array.from(
-          { length: TOTAL_STYLES },
-          (_, i) => i,
-        ),
+        initialEnabledStyles: Array.from({ length: TOTAL_STYLES }, (_, i) => i),
+        initialBrandName: DEFAULT_BRAND_NAME,
+        initialTagline: DEFAULT_TAGLINE,
       },
     };
   }
 };
 
-export default function OgStylesPage({ initialEnabledStyles }: Props) {
+export default function OgStylesPage({ initialEnabledStyles, initialBrandName, initialTagline }: Props) {
   const [enabled, setEnabled] = React.useState<Set<number>>(
     new Set(initialEnabledStyles),
   );
@@ -131,6 +147,15 @@ export default function OgStylesPage({ initialEnabledStyles }: Props) {
     Record<number, boolean>
   >({});
   const [imgKey, setImgKey] = React.useState(0);
+
+  // Text customization
+  const [brandName, setBrandName] = React.useState(initialBrandName);
+  const [tagline, setTagline] = React.useState(initialTagline);
+  const [savedBrandName, setSavedBrandName] = React.useState(initialBrandName);
+  const [savedTagline, setSavedTagline] = React.useState(initialTagline);
+  const [savingText, setSavingText] = React.useState(false);
+
+  const hasUnsavedText = brandName !== savedBrandName || tagline !== savedTagline;
 
   const hasUnsaved = React.useMemo(() => {
     if (enabled.size !== savedEnabled.size) return true;
@@ -219,6 +244,26 @@ export default function OgStylesPage({ initialEnabledStyles }: Props) {
     }
   }
 
+  async function saveText() {
+    setSavingText(true);
+    try {
+      const res = await fetch("/api/og-config", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ brand_name: brandName, tagline }),
+      });
+      if (!res.ok) throw new Error("保存失败");
+      setSavedBrandName(brandName);
+      setSavedTagline(tagline);
+      refreshPreviews();
+      toast.success("OG 图片文字已保存，预览已刷新");
+    } catch {
+      toast.error("保存失败，请重试");
+    } finally {
+      setSavingText(false);
+    }
+  }
+
   const previewUrl = (id: number) =>
     `/api/og?style=${id}&query=${encodeURIComponent(previewQuery)}&theme=${previewTheme}&preview=1&_k=${imgKey}`;
 
@@ -259,6 +304,63 @@ export default function OgStylesPage({ initialEnabledStyles }: Props) {
                 <RiSaveLine className="size-4" />
               )}
               保存配置
+            </Button>
+          </div>
+        </div>
+
+        {/* ── Text customization panel ── */}
+        <div className="rounded-xl border border-border bg-muted/20 p-4 space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <RiPencilLine className="size-4 text-muted-foreground" />
+              <span className="text-sm font-semibold">图片文字内容</span>
+              <span className="text-xs text-muted-foreground">（品牌名 · 标语，显示在所有样式的 OG 图片中）</span>
+            </div>
+            {hasUnsavedText && (
+              <span className="text-xs text-amber-600 dark:text-amber-400 font-medium">未保存</span>
+            )}
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs">品牌名称</Label>
+              <Input
+                value={brandName}
+                onChange={e => setBrandName(e.target.value)}
+                placeholder={DEFAULT_BRAND_NAME}
+                className="h-9 rounded-xl font-mono text-sm"
+                maxLength={40}
+              />
+              <p className="text-[10px] text-muted-foreground px-0.5">显示在图片角落或顶栏，如：RDAP+WHOIS</p>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">标语 / 副标题</Label>
+              <Input
+                value={tagline}
+                onChange={e => setTagline(e.target.value)}
+                placeholder={DEFAULT_TAGLINE}
+                className="h-9 rounded-xl text-sm"
+                maxLength={80}
+              />
+              <p className="text-[10px] text-muted-foreground px-0.5">显示在图片中的辅助说明文字</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 justify-end">
+            {(brandName !== initialBrandName || tagline !== initialTagline) && (
+              <button
+                onClick={() => { setBrandName(initialBrandName); setTagline(initialTagline); }}
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors px-2"
+              >
+                还原
+              </button>
+            )}
+            <Button
+              size="sm"
+              onClick={saveText}
+              disabled={savingText || !hasUnsavedText}
+              className="gap-1.5 h-8 rounded-xl"
+            >
+              {savingText ? <RiLoader4Line className="size-3.5 animate-spin" /> : <RiSaveLine className="size-3.5" />}
+              保存文字
             </Button>
           </div>
         </div>
