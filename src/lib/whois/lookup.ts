@@ -46,6 +46,7 @@ void getWhoiser();
 import { domainToASCII } from "url";
 import {
   getCustomServerEntry,
+  isTldKnownNoServer,
   isHttpEntry,
   isScraperEntry,
   getTcpHost,
@@ -409,6 +410,12 @@ async function getLookupWhois(domain: string): Promise<WhoisRawResult> {
         }
       }
     }
+  }
+
+  // Short-circuit: TLD is explicitly listed as having no public WHOIS server.
+  // Avoids the whoiser attempt + TCP timeout and returns a fast informative error.
+  if (await isTldKnownNoServer(tld || tldSuffix)) {
+    throw new Error(`No public WHOIS server available for .${tld || tldSuffix} domains`);
   }
 
   const { whoisDomain } = await getWhoiser();

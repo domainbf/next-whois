@@ -86,9 +86,14 @@ let _allServersCache: CustomServerMap | null = null;
 let _allServersCacheAt = 0;
 const ALL_SERVERS_TTL_MS = 30_000;
 
+// TLDs explicitly recorded as having NO public WHOIS server in our cctld file.
+// Kept separate so lookup.ts can short-circuit without calling whoiser.
+let _knownNoServerCache: Set<string> | null = null;
+
 function invalidateAllServersCache() {
   _allServersCache = null;
   _allServersCacheAt = 0;
+  _knownNoServerCache = null;
 }
 
 async function writeDbServer(tld: string, entry: CustomServerEntry): Promise<void> {
@@ -113,12 +118,31 @@ export async function getAllCustomServers(): Promise<CustomServerMap> {
   }
   const cctld = readCctldServers();
   const user  = await readUserManagedServers();
+
+  // Build the no-server set from cctld nulls (not overridden by user DB entries)
+  _knownNoServerCache = new Set(
+    Object.entries(cctld)
+      .filter(([tld, v]) => v === null && !(tld in user))
+      .map(([tld]) => tld),
+  );
+
   const cctldFiltered = Object.fromEntries(
     Object.entries(cctld).filter(([, v]) => v !== null),
   ) as CustomServerMap;
   _allServersCache = { ...BUILTIN_SERVERS, ...cctldFiltered, ...user };
   _allServersCacheAt = now;
   return _allServersCache;
+}
+
+/**
+ * Returns true when the TLD is explicitly listed in our cctld file as having
+ * NO public WHOIS server (value = null).  Used to skip the whoiser call and
+ * return a fast "no server available" error without a TCP timeout.
+ */
+export async function isTldKnownNoServer(tld: string): Promise<boolean> {
+  await getAllCustomServers(); // populates _knownNoServerCache
+  const t = tld.toLowerCase().replace(/^\./, "");
+  return _knownNoServerCache?.has(t) ?? false;
 }
 
 export async function getUserManagedServers(): Promise<CustomServerMap> {
