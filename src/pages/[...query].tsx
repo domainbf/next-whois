@@ -2803,6 +2803,7 @@ export default function LookupPage({
   const isZh = isChinese;
 
   const [reminderDialogOpen, setReminderDialogOpen] = React.useState(false);
+  const [stampDetailOpen, setStampDetailOpen] = React.useState(false);
 
   const [verifiedStamps, setVerifiedStamps] = React.useState<
     { id: string; tagName: string; tagStyle: string; link: string; nickname: string; description?: string }[]
@@ -3362,23 +3363,6 @@ export default function LookupPage({
                         >
                           {queryType}
                         </Badge>
-                        {verifiedStamps.length === 0 && (
-                        <button
-                          onClick={() => {
-                            if (!session) {
-                              toast.info(isChinese ? "请先登录再认领品牌" : "Please log in to claim a brand stamp");
-                              router.push(`/login?callbackUrl=${encodeURIComponent(`/stamp?domain=${encodeURIComponent(result.domain || target)}`)}`);
-                              return;
-                            }
-                            suppressNextLoad.current = true;
-                            router.push(`/stamp?domain=${encodeURIComponent(result.domain || target)}`);
-                          }}
-                          title={isChinese ? "品牌认领" : "Claim"}
-                          className="sm:hidden flex items-center justify-center w-6 h-6 rounded-full text-xs border transition-all active:scale-[0.93] bg-muted/50 border-border/50 text-muted-foreground hover:border-violet-400/50 hover:text-violet-500"
-                        >
-                          <RiShieldCheckLine className="w-3 h-3" />
-                        </button>
-                        )}
                         <button
                           onClick={() => {
                             if (!session) {
@@ -3404,6 +3388,15 @@ export default function LookupPage({
                         >
                           <RiTimerLine className="w-3 h-3" />
                         </button>
+                        {verifiedStamps.length > 0 && (
+                          <button
+                            onClick={() => setStampDetailOpen(true)}
+                            className="sm:hidden flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border transition-all active:scale-[0.93] bg-teal-50 dark:bg-teal-900/20 border-teal-400/50 text-teal-600 dark:text-teal-400"
+                          >
+                            <RiShieldCheckLine className="w-3 h-3" />
+                            {isChinese ? "已认领" : "Claimed"}
+                          </button>
+                        )}
                       </div>
                       <motion.h2
                         className="text-3xl sm:text-4xl font-bold tracking-tight mb-1 cursor-pointer hover:opacity-80 transition-opacity uppercase select-none"
@@ -3511,24 +3504,7 @@ export default function LookupPage({
                             </span>
                           </div>
                         )}
-                        {/* Desktop-only Claim/Subscribe text buttons */}
-                        {verifiedStamps.length === 0 && (
-                        <button
-                          onClick={() => {
-                            if (!session) {
-                              toast.info(isChinese ? "请先登录再认领品牌" : "Please log in to claim a brand stamp");
-                              router.push(`/login?callbackUrl=${encodeURIComponent(`/stamp?domain=${encodeURIComponent(result.domain || target)}`)}`);
-                              return;
-                            }
-                            suppressNextLoad.current = true;
-                            router.push(`/stamp?domain=${encodeURIComponent(result.domain || target)}`);
-                          }}
-                          className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-all active:scale-[0.93] bg-muted/50 border-border/50 text-muted-foreground hover:border-violet-400/50 hover:text-violet-500"
-                        >
-                          <RiShieldCheckLine className="w-3 h-3" />
-                          {isChinese ? "品牌认领" : "Claim"}
-                        </button>
-                        )}
+                        {/* Desktop-only Subscribe text button */}
                         <button
                           onClick={() => {
                             if (!session) {
@@ -3554,6 +3530,15 @@ export default function LookupPage({
                           <RiTimerLine className="w-3 h-3" />
                           {isChinese ? "域名订阅" : "Subscribe"}
                         </button>
+                        {verifiedStamps.length > 0 && (
+                          <button
+                            onClick={() => setStampDetailOpen(true)}
+                            className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border transition-all active:scale-[0.93] bg-teal-50 dark:bg-teal-900/20 border-teal-400/50 text-teal-600 dark:text-teal-400 hover:bg-teal-100 dark:hover:bg-teal-900/40"
+                          >
+                            <RiShieldCheckLine className="w-3 h-3" />
+                            {isChinese ? "已认领" : "Claimed"}
+                          </button>
+                        )}
                       </div>
                       <div className="flex items-center gap-2 mt-2">
                         <span className="text-[10px] text-muted-foreground font-mono">
@@ -3821,47 +3806,53 @@ export default function LookupPage({
                       </div>
                     )}
 
-                    {/* Ownership stamp card — between dates and registrant */}
-                    {verifiedStamps.length > 0 && (
-                      <div className="mt-6 pt-6 border-t border-border/50 space-y-3">
-                        {verifiedStamps.map((stamp) => {
-                          const cardStyle = STAMP_CARD_MAP[stamp.tagStyle] || STAMP_CARD_MAP.default;
-                          const badgeCls = STAMP_STYLE_MAP[stamp.tagStyle] || STAMP_STYLE_MAP.default;
-                          const card = (
-                            <div className={cn(
-                              "rounded-xl px-4 py-3.5 transition-opacity",
-                              cardStyle.bg,
-                              stamp.link && "hover:opacity-80",
-                            )}>
-                              <div className="flex items-start justify-between gap-2">
-                                <div className="min-w-0 flex-1">
-                                  <div className="flex items-center gap-2 mb-1.5">
-                                    <span className={cn("inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full tracking-wide", badgeCls)}>
-                                      <RiShieldCheckLine className="w-2.5 h-2.5" />
-                                      {isChinese ? "已认证" : "Verified"}
-                                    </span>
+                    {/* Stamp detail dialog — triggered by "已认领" badge */}
+                    <Dialog open={stampDetailOpen} onOpenChange={setStampDetailOpen}>
+                      <DialogContent className="max-w-[400px] p-0 overflow-hidden gap-0">
+                        <DialogHeader className="px-5 pt-5 pb-4 border-b border-border/50">
+                          <DialogTitle className="flex items-center gap-2 text-base">
+                            <RiShieldCheckLine className="w-4 h-4 text-teal-500" />
+                            {isChinese ? "品牌认领信息" : "Claimed Brand"}
+                          </DialogTitle>
+                        </DialogHeader>
+                        <div className="px-5 py-4 space-y-3">
+                          {verifiedStamps.map((stamp) => {
+                            const cardStyle = STAMP_CARD_MAP[stamp.tagStyle] || STAMP_CARD_MAP.default;
+                            const badgeCls = STAMP_STYLE_MAP[stamp.tagStyle] || STAMP_STYLE_MAP.default;
+                            const card = (
+                              <div key={stamp.id} className={cn(
+                                "rounded-xl px-4 py-3.5 transition-opacity",
+                                cardStyle.bg,
+                                stamp.link && "hover:opacity-80 cursor-pointer",
+                              )}>
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex items-center gap-2 mb-1.5">
+                                      <span className={cn("inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full tracking-wide", badgeCls)}>
+                                        <RiShieldCheckLine className="w-2.5 h-2.5" />
+                                        {isChinese ? "已认证" : "Verified"}
+                                      </span>
+                                    </div>
+                                    <p className="text-base font-bold text-foreground leading-snug mb-1">{stamp.tagName}</p>
+                                    {stamp.description && (
+                                      <p className="text-xs text-muted-foreground leading-relaxed break-words">{stamp.description}</p>
+                                    )}
                                   </div>
-                                  <p className="text-base font-bold text-foreground leading-snug mb-1">{stamp.tagName}</p>
-                                  {stamp.description && (
-                                    <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3 break-words">{stamp.description}</p>
+                                  {stamp.link && (
+                                    <RiArrowRightSLine className="w-5 h-5 shrink-0 text-muted-foreground/40 mt-1" />
                                   )}
                                 </div>
-                                {stamp.link && (
-                                  <RiArrowRightSLine className="w-5 h-5 shrink-0 text-muted-foreground/40 mt-1" />
-                                )}
                               </div>
-                            </div>
-                          );
-                          return stamp.link ? (
-                            <a key={stamp.id} href={stamp.link} target="_blank" rel="noopener noreferrer" className="block">
-                              {card}
-                            </a>
-                          ) : (
-                            <div key={stamp.id}>{card}</div>
-                          );
-                        })}
-                      </div>
-                    )}
+                            );
+                            return stamp.link ? (
+                              <a key={stamp.id} href={stamp.link} target="_blank" rel="noopener noreferrer" className="block">
+                                {card}
+                              </a>
+                            ) : card;
+                          })}
+                        </div>
+                      </DialogContent>
+                    </Dialog>
 
                     {hasRegistrant && (
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-6 pt-6 border-t border-border/50">
