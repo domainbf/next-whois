@@ -730,8 +730,10 @@ export default function DashboardPage() {
       });
       const data = await res.json();
       if (!res.ok) { toast.error(data.error || "邀请码验证失败"); return; }
-      toast.success("邀请码验证成功，已解锁订阅功能！");
+      toast.success("邀请码验证成功，已解锁域名订阅功能！");
       await updateSession({ subscriptionAccess: true });
+      setInviteCodeInput("");
+      setTab("subscriptions");
     } catch {
       toast.error("操作失败，请稍后重试");
     } finally {

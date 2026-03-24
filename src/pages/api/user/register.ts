@@ -6,6 +6,21 @@ import { sendEmail, welcomeHtml, getSiteLabel } from "@/lib/email";
 import { getRedisValue, deleteRedisValue } from "@/lib/server/redis";
 import { getCaptchaConfig, verifyCaptchaToken } from "@/lib/server/captcha";
 
+type CodeRow = { id: string; is_active: boolean; use_count: number; max_uses: number; expires_at: string | null };
+
+async function validateInviteCode(code: string): Promise<{ codeRow: CodeRow | null; error: string | null }> {
+  const codeRow = await one<CodeRow>(
+    "SELECT id, is_active, use_count, max_uses, expires_at FROM invite_codes WHERE code = $1",
+    [code.trim().toUpperCase()]
+  );
+  if (!codeRow) return { codeRow: null, error: "邀请码无效" };
+  if (!codeRow.is_active) return { codeRow: null, error: "邀请码已停用" };
+  if (codeRow.expires_at && new Date(codeRow.expires_at) < new Date())
+    return { codeRow: null, error: "邀请码已过期" };
+  if (codeRow.use_count >= codeRow.max_uses) return { codeRow: null, error: "邀请码已达使用上限" };
+  return { codeRow, error: null };
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).end();
 
@@ -32,16 +47,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const requireInvite = await one<{ value: string }>("SELECT value FROM site_settings WHERE key = 'require_invite_code'");
   const needsInvite = requireInvite?.value === "1";
 
-  let codeRow: { id: string; is_active: boolean; use_count: number; max_uses: number } | null = null;
+  let codeRow: CodeRow | null = null;
+  const cleanInviteCode = inviteCode?.trim() ? String(inviteCode).trim().toUpperCase() : null;
+
   if (needsInvite) {
-    if (!inviteCode?.trim()) return res.status(400).json({ error: "注册需要邀请码" });
-    codeRow = await one<{ id: string; is_active: boolean; use_count: number; max_uses: number }>(
-      "SELECT id, is_active, use_count, max_uses FROM invite_codes WHERE code = $1",
-      [String(inviteCode).trim().toUpperCase()]
-    );
-    if (!codeRow) return res.status(400).json({ error: "邀请码无效" });
-    if (!codeRow.is_active) return res.status(400).json({ error: "邀请码已停用" });
-    if (codeRow.use_count >= codeRow.max_uses) return res.status(400).json({ error: "邀请码已达使用上限" });
+    if (!cleanInviteCode) return res.status(400).json({ error: "注册需要邀请码" });
+    const { codeRow: cr, error } = await validateInviteCode(cleanInviteCode);
+    if (error) return res.status(400).json({ error });
+    codeRow = cr;
+  } else if (cleanInviteCode) {
+    const { codeRow: cr } = await validateInviteCode(cleanInviteCode);
+    codeRow = cr;
   }
 
   const cleanEmail = String(email).toLowerCase().trim();
@@ -63,7 +79,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     await run(
       "INSERT INTO users (id, email, password_hash, name, subscription_access, invite_code_used) VALUES ($1, $2, $3, $4, $5, $6)",
-      [id, cleanEmail, passwordHash, cleanName, subscriptionAccess, codeRow ? String(inviteCode).trim().toUpperCase() : null],
+      [id, cleanEmail, passwordHash, cleanName, subscriptionAccess, cleanInviteCode ?? null],
     );
     if (codeRow) {
       await run("UPDATE invite_codes SET use_count = use_count + 1 WHERE id = $1", [codeRow.id]);

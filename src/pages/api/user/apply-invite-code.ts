@@ -23,15 +23,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!inviteCode?.trim()) return res.status(400).json({ error: "请输入邀请码" });
 
   const code = String(inviteCode).trim().toUpperCase();
-  const codeRow = await one<{ id: string; is_active: boolean; use_count: number; max_uses: number }>(
-    "SELECT id, is_active, use_count, max_uses FROM invite_codes WHERE code = $1",
+  const codeRow = await one<{
+    id: string; is_active: boolean; use_count: number; max_uses: number; expires_at: string | null;
+  }>(
+    "SELECT id, is_active, use_count, max_uses, expires_at FROM invite_codes WHERE code = $1",
     [code]
   );
   if (!codeRow) return res.status(400).json({ error: "邀请码无效" });
   if (!codeRow.is_active) return res.status(400).json({ error: "邀请码已停用" });
+  if (codeRow.expires_at && new Date(codeRow.expires_at) < new Date())
+    return res.status(400).json({ error: "邀请码已过期" });
   if (codeRow.use_count >= codeRow.max_uses) return res.status(400).json({ error: "邀请码已达使用上限" });
 
-  await run("UPDATE users SET subscription_access = TRUE, invite_code_used = $1 WHERE id = $2", [code, user.id]);
+  await run("UPDATE users SET subscription_access = TRUE, invite_code_used = $1, updated_at = NOW() WHERE id = $2", [code, user.id]);
   await run("UPDATE invite_codes SET use_count = use_count + 1 WHERE id = $1", [codeRow.id]);
 
   return res.status(200).json({ ok: true });

@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import {
   RiKeyLine, RiAddLine, RiDeleteBinLine, RiFileCopyLine,
   RiToggleLine, RiToggleFill, RiLoader4Line, RiCloseLine,
-  RiCheckLine, RiFilterLine,
+  RiCheckLine, RiFilterLine, RiTimeLine,
 } from "@remixicon/react";
 
 type InviteCode = {
@@ -20,20 +20,45 @@ type InviteCode = {
   max_uses: number;
   use_count: number;
   created_at: string;
+  expires_at: string | null;
 };
 
-type FilterTab = "all" | "active" | "disabled" | "exhausted";
+type FilterTab = "all" | "active" | "disabled" | "exhausted" | "expired";
 
 const FILTER_TABS: { key: FilterTab; label: string }[] = [
   { key: "all",      label: "全部" },
   { key: "active",   label: "可用" },
   { key: "disabled", label: "已停用" },
   { key: "exhausted",label: "已耗尽" },
+  { key: "expired",  label: "已过期" },
 ];
 
-function isExhausted(c: InviteCode) { return c.use_count >= c.max_uses; }
-function isActive(c: InviteCode)    { return c.is_active && !isExhausted(c); }
-function isDisabled(c: InviteCode)  { return !c.is_active && !isExhausted(c); }
+const EXPIRY_OPTIONS = [
+  { value: "permanent", label: "永久有效" },
+  { value: "1d",        label: "1 天" },
+  { value: "7d",        label: "1 周" },
+  { value: "30d",       label: "1 个月" },
+  { value: "365d",      label: "1 年" },
+];
+
+function isExpired(c: InviteCode)    { return !!c.expires_at && new Date(c.expires_at) < new Date(); }
+function isExhausted(c: InviteCode)  { return c.use_count >= c.max_uses && !isExpired(c); }
+function isActive(c: InviteCode)     { return c.is_active && !isExhausted(c) && !isExpired(c); }
+function isDisabled(c: InviteCode)   { return !c.is_active && !isExhausted(c) && !isExpired(c); }
+
+function fmtExpiry(expires_at: string | null): string {
+  if (!expires_at) return "永久";
+  const d = new Date(expires_at);
+  const now = new Date();
+  const diff = d.getTime() - now.getTime();
+  if (diff < 0) return "已过期";
+  const days = Math.ceil(diff / 86400000);
+  if (days <= 1) return "< 1 天";
+  if (days < 7) return `${days} 天`;
+  if (days < 30) return `${Math.floor(days / 7)} 周`;
+  if (days < 365) return `约 ${Math.floor(days / 30)} 月`;
+  return `约 ${Math.floor(days / 365)} 年`;
+}
 
 export default function InviteCodesPage() {
   const [codes, setCodes] = React.useState<InviteCode[]>([]);
@@ -42,6 +67,7 @@ export default function InviteCodesPage() {
   const [count, setCount] = React.useState("1");
   const [maxUses, setMaxUses] = React.useState("1");
   const [description, setDescription] = React.useState("");
+  const [expiresIn, setExpiresIn] = React.useState("permanent");
   const [creating, setCreating] = React.useState(false);
   const [copied, setCopied] = React.useState<string | null>(null);
   const [activeFilter, setActiveFilter] = React.useState<FilterTab>("all");
@@ -67,7 +93,12 @@ export default function InviteCodesPage() {
       const r = await fetch("/api/admin/invite-codes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ count: parseInt(count) || 1, max_uses: parseInt(maxUses) || 1, description }),
+        body: JSON.stringify({
+          count: parseInt(count) || 1,
+          max_uses: parseInt(maxUses) || 1,
+          description,
+          expires_in: expiresIn,
+        }),
       });
       const d = await r.json();
       if (d.created) {
@@ -76,6 +107,7 @@ export default function InviteCodesPage() {
         setDescription("");
         setCount("1");
         setMaxUses("1");
+        setExpiresIn("permanent");
         load();
       }
     } finally {
@@ -105,21 +137,21 @@ export default function InviteCodesPage() {
   }
 
   async function purgeExhausted() {
-    const exhaustedList = codes.filter(isExhausted);
-    if (exhaustedList.length === 0) return;
-    if (!confirm(`确认删除全部 ${exhaustedList.length} 个已耗尽的邀请码？`)) return;
+    const targets = codes.filter(c => isExhausted(c) || isExpired(c));
+    if (targets.length === 0) return;
+    if (!confirm(`确认删除全部 ${targets.length} 个已耗尽/已过期的邀请码？`)) return;
     setPurgingExhausted(true);
     try {
-      await Promise.all(exhaustedList.map(c =>
+      await Promise.all(targets.map(c =>
         fetch("/api/admin/invite-codes", {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ id: c.id }),
         })
       ));
-      setCodes(cs => cs.filter(c => !isExhausted(c)));
-      toast.success(`已清除 ${exhaustedList.length} 个耗尽邀请码`);
-      if (activeFilter === "exhausted") setActiveFilter("all");
+      setCodes(cs => cs.filter(c => !isExhausted(c) && !isExpired(c)));
+      toast.success(`已清除 ${targets.length} 个邀请码`);
+      if (activeFilter === "exhausted" || activeFilter === "expired") setActiveFilter("all");
     } finally {
       setPurgingExhausted(false);
     }
@@ -132,15 +164,18 @@ export default function InviteCodesPage() {
     });
   }
 
-  const activeCount   = codes.filter(isActive).length;
-  const disabledCount = codes.filter(isDisabled).length;
+  const expiredCount   = codes.filter(isExpired).length;
   const exhaustedCount = codes.filter(isExhausted).length;
-  const totalUses     = codes.reduce((s, c) => s + c.use_count, 0);
+  const activeCount    = codes.filter(isActive).length;
+  const disabledCount  = codes.filter(isDisabled).length;
+  const totalUses      = codes.reduce((s, c) => s + c.use_count, 0);
+  const canPurge       = exhaustedCount + expiredCount;
 
   const filtered = codes.filter(c => {
     if (activeFilter === "active")   return isActive(c);
     if (activeFilter === "disabled") return isDisabled(c);
     if (activeFilter === "exhausted") return isExhausted(c);
+    if (activeFilter === "expired")  return isExpired(c);
     return true;
   });
 
@@ -160,7 +195,7 @@ export default function InviteCodesPage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            {exhaustedCount > 0 && (
+            {canPurge > 0 && (
               <Button
                 variant="outline" size="sm"
                 className="gap-1.5 rounded-xl h-8 text-muted-foreground border-border/60"
@@ -170,7 +205,7 @@ export default function InviteCodesPage() {
                 {purgingExhausted
                   ? <RiLoader4Line className="w-3.5 h-3.5 animate-spin" />
                   : <RiDeleteBinLine className="w-3.5 h-3.5" />}
-                清理耗尽 ({exhaustedCount})
+                清理无效 ({canPurge})
               </Button>
             )}
             <Button size="sm" className="gap-1.5 rounded-xl h-8" onClick={() => setShowCreate(true)}>
@@ -181,12 +216,13 @@ export default function InviteCodesPage() {
 
         {/* Stats */}
         {codes.length > 0 && (
-          <div className="grid grid-cols-4 gap-2.5">
+          <div className="grid grid-cols-5 gap-2">
             {[
-              { label: "全部", value: codes.length,    color: "text-foreground" },
-              { label: "可用",  value: activeCount,    color: "text-emerald-500" },
+              { label: "全部",   value: codes.length,   color: "text-foreground" },
+              { label: "可用",   value: activeCount,    color: "text-emerald-500" },
               { label: "已停用", value: disabledCount,  color: "text-muted-foreground" },
               { label: "已耗尽", value: exhaustedCount, color: "text-amber-500" },
+              { label: "已过期", value: expiredCount,   color: "text-red-500" },
             ].map(s => (
               <div key={s.label} className="glass-panel border border-border rounded-xl p-3 text-center">
                 <p className={cn("text-2xl font-bold tabular-nums", s.color)}>{s.value}</p>
@@ -201,7 +237,12 @@ export default function InviteCodesPage() {
           <div className="flex items-center gap-1.5 flex-wrap">
             <RiFilterLine className="w-3.5 h-3.5 text-muted-foreground/60 shrink-0" />
             {FILTER_TABS.map(tab => {
-              const cnt = tab.key === "all" ? codes.length : tab.key === "active" ? activeCount : tab.key === "disabled" ? disabledCount : exhaustedCount;
+              const cnt =
+                tab.key === "all"      ? codes.length :
+                tab.key === "active"   ? activeCount :
+                tab.key === "disabled" ? disabledCount :
+                tab.key === "exhausted"? exhaustedCount :
+                expiredCount;
               return (
                 <button
                   key={tab.key}
@@ -243,6 +284,32 @@ export default function InviteCodesPage() {
                     <Input type="number" min="1" value={maxUses} onChange={e => setMaxUses(e.target.value)} className="h-9 rounded-xl" />
                   </div>
                 </div>
+
+                {/* Expiry */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs flex items-center gap-1.5">
+                    <RiTimeLine className="w-3.5 h-3.5 text-muted-foreground/70" />
+                    有效期
+                  </Label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {EXPIRY_OPTIONS.map(opt => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => setExpiresIn(opt.value)}
+                        className={cn(
+                          "text-xs px-3 py-1.5 rounded-full font-medium border transition-all",
+                          expiresIn === opt.value
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : "border-border text-muted-foreground hover:bg-muted hover:text-foreground"
+                        )}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 <div className="space-y-1">
                   <Label className="text-xs">备注 <span className="text-muted-foreground font-normal">（可选）</span></Label>
                   <Input value={description} onChange={e => setDescription(e.target.value)} placeholder="这批邀请码的用途" className="h-9 rounded-xl" maxLength={100} />
@@ -271,6 +338,7 @@ export default function InviteCodesPage() {
                 <tr className="bg-muted/40 border-b border-border text-xs text-muted-foreground">
                   <th className="text-left px-4 py-2.5 font-semibold">邀请码</th>
                   <th className="text-left px-4 py-2.5 font-semibold hidden sm:table-cell">备注</th>
+                  <th className="text-left px-4 py-2.5 font-semibold hidden md:table-cell">有效期</th>
                   <th className="text-left px-4 py-2.5 font-semibold">使用进度</th>
                   <th className="text-center px-3 py-2.5 font-semibold">状态</th>
                   <th className="text-right px-4 py-2.5 font-semibold">操作</th>
@@ -278,10 +346,12 @@ export default function InviteCodesPage() {
               </thead>
               <tbody className="divide-y divide-border">
                 {filtered.map(c => {
+                  const expired   = isExpired(c);
                   const exhausted = isExhausted(c);
                   const pct = c.max_uses > 0 ? Math.round((c.use_count / c.max_uses) * 100) : 0;
+                  const faded = (!c.is_active && !exhausted && !expired) || exhausted || expired;
                   return (
-                    <tr key={c.id} className={cn("hover:bg-muted/20 transition-colors", !c.is_active && !exhausted && "opacity-50")}>
+                    <tr key={c.id} className={cn("hover:bg-muted/20 transition-colors", faded && "opacity-50")}>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
                           <span className="font-mono text-xs font-semibold tracking-wider">{c.code}</span>
@@ -302,13 +372,28 @@ export default function InviteCodesPage() {
                       <td className="px-4 py-3 hidden sm:table-cell">
                         <span className="text-xs text-muted-foreground">{c.description || "—"}</span>
                       </td>
+                      <td className="px-4 py-3 hidden md:table-cell">
+                        <span className={cn(
+                          "text-xs font-medium flex items-center gap-1",
+                          expired ? "text-red-500" :
+                          c.expires_at ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"
+                        )}>
+                          <RiTimeLine className="w-3 h-3" />
+                          {fmtExpiry(c.expires_at)}
+                        </span>
+                        {c.expires_at && !expired && (
+                          <p className="text-[10px] text-muted-foreground/60 mt-0.5">
+                            {new Date(c.expires_at).toLocaleDateString("zh-CN")}
+                          </p>
+                        )}
+                      </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2.5 min-w-[90px]">
                           <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
                             <div
                               className={cn(
                                 "h-full rounded-full transition-all",
-                                exhausted ? "bg-muted-foreground/40" :
+                                exhausted || expired ? "bg-muted-foreground/40" :
                                 pct >= 80 ? "bg-amber-500" : "bg-emerald-500"
                               )}
                               style={{ width: `${pct}%` }}
@@ -322,16 +407,17 @@ export default function InviteCodesPage() {
                       <td className="px-3 py-3 text-center">
                         <span className={cn(
                           "text-xs px-2 py-0.5 rounded-full font-medium",
-                          exhausted ? "bg-muted text-muted-foreground" :
-                          c.is_active ? "bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400" :
-                          "bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400"
+                          expired    ? "bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400" :
+                          exhausted  ? "bg-muted text-muted-foreground" :
+                          c.is_active? "bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400" :
+                                       "bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400"
                         )}>
-                          {exhausted ? "已耗尽" : c.is_active ? "可用" : "已停用"}
+                          {expired ? "已过期" : exhausted ? "已耗尽" : c.is_active ? "可用" : "已停用"}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex items-center justify-end gap-1">
-                          {!exhausted && (
+                          {!exhausted && !expired && (
                             <button
                               onClick={() => toggleActive(c)}
                               title={c.is_active ? "停用" : "启用"}

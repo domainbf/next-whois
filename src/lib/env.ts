@@ -1,4 +1,4 @@
-export const VERSION = "3.19";
+export const VERSION = "3.20";
 
 export const HISTORY_LIMIT: number = intEnv("NEXT_PUBLIC_HISTORY_LIMIT", -1);
 

@@ -8,6 +8,21 @@ function genCode(): string {
   return `${seg()}-${seg()}-${seg()}`;
 }
 
+function parseExpiresAt(duration: string | undefined): string | null {
+  if (!duration || duration === "permanent") return null;
+  const now = new Date();
+  const map: Record<string, number> = {
+    "1d":  1,
+    "7d":  7,
+    "30d": 30,
+    "365d": 365,
+  };
+  const days = map[duration];
+  if (!days) return null;
+  now.setDate(now.getDate() + days);
+  return now.toISOString();
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const session = await requireAdmin(req, res);
   if (!session) return;
@@ -16,8 +31,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method === "GET") {
     const data = await many<{
       id: string; code: string; description: string | null;
-      is_active: boolean; max_uses: number; use_count: number; created_at: string;
-    }>("SELECT id, code, description, is_active, max_uses, use_count, created_at FROM invite_codes ORDER BY created_at DESC");
+      is_active: boolean; max_uses: number; use_count: number;
+      created_at: string; expires_at: string | null;
+    }>("SELECT id, code, description, is_active, max_uses, use_count, created_at, expires_at FROM invite_codes ORDER BY created_at DESC");
     return res.json({ codes: data });
   }
 
@@ -25,6 +41,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const count = Math.min(Math.max(1, parseInt(req.body.count) || 1), 50);
     const max_uses = Math.max(1, parseInt(req.body.max_uses) || 1);
     const description = String(req.body.description || "").trim().slice(0, 100) || null;
+    const expires_at = parseExpiresAt(req.body.expires_in);
     const adminUser = await one<{ id: string }>("SELECT id FROM users WHERE email = $1", [(session.user as any).email]);
     const creatorId = adminUser?.id ?? null;
     const created: string[] = [];
@@ -32,8 +49,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const id = randomBytes(8).toString("hex");
       const code = genCode();
       await run(
-        "INSERT INTO invite_codes (id, code, description, max_uses, created_by) VALUES ($1, $2, $3, $4, $5)",
-        [id, code, description, max_uses, creatorId]
+        "INSERT INTO invite_codes (id, code, description, max_uses, created_by, expires_at) VALUES ($1, $2, $3, $4, $5, $6)",
+        [id, code, description, max_uses, creatorId, expires_at]
       );
       created.push(code);
     }

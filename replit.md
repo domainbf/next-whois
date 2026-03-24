@@ -1,10 +1,28 @@
-# Next Whois UI — v3.19
+# Next Whois UI — v3.20
 
 A fast, modern WHOIS and RDAP lookup tool supporting domains, IPv4/IPv6, ASN, and CIDR. Also includes built-in DNS, SSL certificate, and IP/ASN geolocation tools.
 
 ---
 
 ## Changelog
+
+### v3.20 — Invite Code System Overhaul + UX Fixes (2026-03-24)
+
+**Scope:** Complete rebuild of invite code expiry, validation, and activation flow; fixed critical bug where optional invite codes were silently ignored during registration.
+
+**Changes:**
+
+| File | Change | Detail |
+|---|---|---|
+| `src/lib/db.ts` | Schema: `expires_at` | Added `ALTER TABLE invite_codes ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ` migration. |
+| `src/pages/api/admin/invite-codes.ts` | Expiry support | POST now accepts `expires_in` (1d / 7d / 30d / 365d / permanent); GET returns `expires_at`; `parseExpiresAt()` helper converts preset to absolute timestamp. |
+| `src/pages/api/user/apply-invite-code.ts` | Expiry + updated_at | Validates `expires_at` (rejects if past); updates `updated_at` on user row. |
+| `src/pages/api/user/register.ts` | Critical bug fix | Previously, if `require_invite_code = "0"`, any invite code filled in by the user was silently ignored and `subscription_access` stayed `false`. Now: optional codes are still validated + applied, granting `subscription_access = true` on registration. Also adds expiry check. |
+| `src/pages/admin/invite-codes.tsx` | UI overhaul | Stats grid → 5 columns (adds 已过期/red); filter tabs → 5 tabs (adds 已过期); create modal → expiry pill picker (永久/1天/1周/1月/1年); table → 有效期 column with relative display; purge button now targets both exhausted AND expired codes. |
+| `src/pages/dashboard.tsx` | Better UX after activation | After successful code redemption: clears the input, switches to the subscriptions tab immediately, so users see their newly unlocked feature at once. |
+| `src/lib/env.ts` | VERSION bumped to "3.20" | |
+
+---
 
 ### v3.19 — Fix Search Spinner on Nav Link Clicks (2026-03-24)
 
