@@ -14,7 +14,7 @@ import {
 } from "@/lib/whois/types";
 
 const TIANHU_API = "https://api.tian.hu/whois";
-const TIANHU_TIMEOUT = 10_000;
+const TIANHU_TIMEOUT = 4_000;
 
 interface TianhuDomain {
   name_servers?: string[];

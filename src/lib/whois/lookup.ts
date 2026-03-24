@@ -609,10 +609,16 @@ export async function lookupWhoisWithCache(
 const WHOIS_MERGE_WAIT_MS = 350;
 
 // Separate timeout caps for each protocol.
-// RDAP is HTTP/JSON (fast on Vercel's network) — 3 s is generous.
-// WHOIS TCP varies more; give legitimate slow servers 7 s before giving up.
-const RDAP_TIMEOUT  = intEnv("RDAP_TIMEOUT_MS",  3_000);
-const WHOIS_TIMEOUT = intEnv("WHOIS_TIMEOUT_MS", 7_000);
+// RDAP is HTTP/JSON (fast on Vercel's network) — 2 s is generous.
+// WHOIS TCP varies more; give legitimate slow servers 4 s before giving up.
+const RDAP_TIMEOUT  = intEnv("RDAP_TIMEOUT_MS",  2_000);
+const WHOIS_TIMEOUT = intEnv("WHOIS_TIMEOUT_MS", 4_000);
+
+// How long to wait for native lookups before starting third-party fallbacks
+// in parallel.  Set shorter than WHOIS_TIMEOUT so that slow WHOIS servers
+// don't block the response: fallbacks start racing at t=2.5 s while WHOIS
+// TCP is still open, whichever responds first wins.
+const FALLBACK_START_MS = intEnv("FALLBACK_START_MS", 2_000);
 
 export async function lookupWhois(domain: string): Promise<WhoisResult> {
   const startTime = performance.now();
@@ -653,29 +659,34 @@ export async function lookupWhois(domain: string): Promise<WhoisResult> {
       ]).then(([t, y]) => t ?? y)
     : Promise.resolve(null);
 
-  // Progressive fallback: only fires AFTER both native lookups have fully settled
-  // (succeeded, failed, or timed out). This is true "local-first" — third-party
-  // APIs are never contacted while native RDAP/WHOIS is still running.
+  // Progressive fallback: fires after FALLBACK_START_MS even while native
+  // lookups are still in-flight, so third-party APIs race alongside a slow
+  // WHOIS TCP connection instead of waiting for it to fully time out.
   //
   // If the early-gate is already open (useFallbackEarly=true), yisiEarlyPromise
   // is already racing; no need to run the progressive path at all.
   //
   // nativeWon is set to true as soon as firstNonNull() resolves with a non-null
-  // winner, so that if native finishes before the allSettled resolves we skip
-  // the third-party calls entirely.
+  // winner, so that if native finishes before the delay we skip third-party calls.
   let nativeWon = false;
   const progressiveFallbackRacer: Promise<WhoisResult | null> = isDomainQuery
     ? (async () => {
         // Skip if early-gate yisi/tianhu are already racing in parallel
         if (useFallbackEarly) return null;
-        // Wait for ALL native lookups to settle (resolve or reject/timeout)
-        await Promise.allSettled([
-          ...(skipRdap ? [] : [rdapPromise]),
-          whoisPromise,
+        // Wait for EITHER all native lookups to settle OR the eager-start timer,
+        // whichever comes first.  This way a slow WHOIS TCP server doesn't block
+        // the response — fallbacks start racing at FALLBACK_START_MS.
+        await Promise.race([
+          Promise.allSettled([
+            ...(skipRdap ? [] : [rdapPromise]),
+            whoisPromise,
+          ]),
+          new Promise<void>(resolve => setTimeout(resolve, FALLBACK_START_MS)),
         ]);
         // Native won the race — no third-party calls needed
         if (nativeWon) return null;
-        // Both native methods genuinely failed → fall through to third-party
+        // Native is slow or failed → fire third-party in parallel with any
+        // still-running native; whichever responds first wins overall.
         const [t, y] = await Promise.all([
           lookupTianhu(domain).catch(() => null),
           lookupYisi(domain).catch(() => null),

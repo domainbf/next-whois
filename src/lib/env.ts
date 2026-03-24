@@ -1,10 +1,10 @@
-export const VERSION = "3.13";
+export const VERSION = "3.14";
 
 export const HISTORY_LIMIT: number = intEnv("NEXT_PUBLIC_HISTORY_LIMIT", -1);
 
 export const MAX_WHOIS_FOLLOW = intEnv("NEXT_PUBLIC_MAX_WHOIS_FOLLOW", 0);
 
-export const LOOKUP_TIMEOUT = intEnv("WHOIS_TIMEOUT_MS", 7_000);
+export const LOOKUP_TIMEOUT = intEnv("WHOIS_TIMEOUT_MS", 4_000);
 
 function intEnv(name: string, defaultValue: number): number {
   const value = process.env[name];

@@ -8,7 +8,7 @@
 import { WhoisResult, WhoisAnalyzeResult, DomainStatusProps, initialWhoisAnalyzeResult } from "@/lib/whois/types";
 
 const YISI_API = "https://yisi.yun/api/lookup";
-const YISI_TIMEOUT = 8_000;
+const YISI_TIMEOUT = 4_000;
 
 interface YisiStatus {
   status: string;

@@ -116,7 +116,7 @@ async function fetchNazhumiData(
     const url = `${NAZHUMI_API_URL}?domain=${encodeURIComponent(tld)}&order=${type}`;
     const response = await fetch(url, {
       headers: { Accept: "application/json" },
-      signal: AbortSignal.timeout(8000),
+      signal: AbortSignal.timeout(4000),
     });
     if (!response.ok) return [];
     const res = await response.json();
@@ -154,7 +154,7 @@ async function fetchTianhuData(
     const url = `${TIANHU_API_URL}/${encodeURIComponent(tld)}`;
     const response = await fetch(url, {
       headers: { Accept: "application/json" },
-      signal: AbortSignal.timeout(8000),
+      signal: AbortSignal.timeout(4000),
     });
     if (!response.ok) return [];
     const json = await response.json();
@@ -198,7 +198,7 @@ async function fetchMiqingjuData(
     const url = `${MIQINGJU_API_URL}?tld=${encodeURIComponent(tld)}`;
     const response = await fetch(url, {
       headers: { Accept: "application/json" },
-      signal: AbortSignal.timeout(8000),
+      signal: AbortSignal.timeout(4000),
     });
     if (!response.ok) return [];
     const json: MiqingjuResponse = await response.json();
