@@ -1,11 +1,13 @@
 import React from "react";
 import { useRouter } from "next/router";
 import { AdminLayout } from "@/components/admin-layout";
+import { cn } from "@/lib/utils";
 import {
   RiUserLine, RiShieldCheckLine, RiBellLine, RiSearchLine,
   RiSettings4Line, RiLoader4Line, RiArrowRightLine, RiUserForbidLine,
   RiFeedbackLine, RiTimeLine, RiGhostLine, RiVipCrownLine,
   RiAddLine, RiBarChartLine, RiBankCardLine, RiCheckDoubleLine,
+  RiRefreshLine,
 } from "@remixicon/react";
 
 type Stats = {
@@ -83,16 +85,22 @@ export default function AdminIndexPage() {
   const router = useRouter();
   const [stats, setStats] = React.useState<Stats | null>(null);
   const [error, setError] = React.useState<string | null>(null);
+  const [refreshing, setRefreshing] = React.useState(false);
 
-  React.useEffect(() => {
+  function loadStats() {
+    setRefreshing(true);
+    setError(null);
     fetch("/api/admin/stats")
       .then(r => r.json())
       .then(data => {
         if (data.error) setError(data.error);
         else setStats(data);
       })
-      .catch(() => setError("加载失败"));
-  }, []);
+      .catch(() => setError("加载失败"))
+      .finally(() => setRefreshing(false));
+  }
+
+  React.useEffect(() => { loadStats(); }, []);
 
   const QUICK_ACTIONS = [
     { href: "/admin/search-records",    label: "查询记录", desc: "查看统计、分类、逐条清理" },
@@ -110,9 +118,19 @@ export default function AdminIndexPage() {
   return (
     <AdminLayout title="概览">
       <div className="space-y-6">
-        <div>
-          <h2 className="text-lg font-bold">系统概览</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">所有核心数据汇总</p>
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-bold">系统概览</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">所有核心数据汇总</p>
+          </div>
+          <button
+            onClick={loadStats}
+            disabled={refreshing}
+            className="p-2 rounded-xl hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+            title="刷新统计"
+          >
+            <RiRefreshLine className={cn("w-4 h-4", refreshing && "animate-spin")} />
+          </button>
         </div>
 
         {error && (

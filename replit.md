@@ -1302,3 +1302,43 @@ All persistent state lives in PostgreSQL (`src/lib/db.ts`). Tables auto-created 
 - Register page: loads CAPTCHA script dynamically (explicit render mode), shows widget after invite code field
 - Register API: verifies token server-side before account creation
 - Admin Settings → 人机验证: provider dropdown, site key input, secret key (password) input
+
+## Admin Backend Comprehensive Enhancement (2026-03-24)
+
+### Critical Bug Fixes
+- **Refund auto-revokes subscription**: `mark_refunded` in `/api/admin/payment/orders.ts` now also sets `subscription_access=FALSE` on the user (by `user_id` first, then `user_email` fallback). Returns `subscriptionRevoked: true` flag so UI can show a relevant toast.
+
+### Cross-Page Deep Links
+- **Orders → Users**: User email/name in orders list is now a clickable button that navigates to `/admin/users?search=EMAIL`
+- **Users → Orders**: Edit modal has a "订单" button that navigates to `/admin/payment/orders?search=EMAIL`
+- **URL pre-population**: Both orders and users pages read `?search` query param on mount to pre-fill search input when navigated from cross-links
+
+### Inline Confirm Dialogs (replace native browser `confirm()`)
+- **Users page delete**: First click on trash icon shows inline "确认删除 | ✕" row. Second click executes. Auto-clears after 4 seconds.
+- **Orders page actions**: First click on mark-paid / refund shows inline amber warning banner "再次点击确认". Auto-clears after 4 seconds.
+- **Feedback page delete**: Same inline confirm pattern with 4-second auto-cancel.
+
+### Users Page CSV Export
+- "导出 CSV" button in header exports all currently-loaded users with UTF-8 BOM for Excel compatibility
+- Fields: email, name, registration time, email_verified, subscription_access, disabled, search_count, stamp_count, reminder_count, admin_notes
+
+### Orders Stats — Per-Currency Revenue
+- Stats query now groups by currency; returns `byCurrency: [{currency, revenue, count}]`
+- UI shows single value for single-currency setups, per-currency table for multi-currency
+- Added "已退款" count stat card alongside total/paid
+
+### Dashboard Refresh Button
+- `/admin/index.tsx`: refresh icon button next to "系统概览" heading; triggers `loadStats()`; spins during load
+
+### Missing AdminLayout Titles Fixed
+- `changelog.tsx`: `<AdminLayout title="更新日志">`
+- `og-styles.tsx`: `<AdminLayout title="OG 卡片样式">`
+
+### OG Styles SSP Auth Fixed
+- `og-styles.tsx` used `requireAdmin` (API-route style) from `getServerSideProps` causing `res.status is not a function` 500 error
+- Fixed to use `getServerSession` + `isAdmin` directly with proper SSR `redirect` instead
+
+### Feedback Page Enhancements
+- Reply-by-email button (envelope icon) appears on hover next to delete; opens pre-filled mailto: with domain in subject
+- Expanded panel now shows: user description + action buttons ("复制域名", "RDAP 查看", "回复 EMAIL")
+- All in-place confirm dialogs replace native `confirm()` calls

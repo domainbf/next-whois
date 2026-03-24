@@ -1,4 +1,5 @@
 import React from "react";
+import { useRouter } from "next/router";
 import { AdminLayout } from "@/components/admin-layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +14,7 @@ import {
   RiSaveLine, RiShieldUserLine, RiFileTextLine,
   RiFilterLine, RiCheckboxCircleLine, RiVipCrownLine,
   RiHistoryLine, RiStarLine, RiBellLine,
+  RiDownloadLine, RiAlertLine, RiBankCardLine,
 } from "@remixicon/react";
 
 type User = {
@@ -63,10 +65,11 @@ function Toggle({ checked, onChange, label, desc, color }: {
   );
 }
 
-function EditModal({ user, onClose, onSaved }: {
+function EditModal({ user, onClose, onSaved, onViewOrders }: {
   user: User;
   onClose: () => void;
   onSaved: (updated: User) => void;
+  onViewOrders: (email: string) => void;
 }) {
   const [name, setName] = React.useState(user.name || "");
   const [email, setEmail] = React.useState(user.email);
@@ -202,6 +205,15 @@ function EditModal({ user, onClose, onSaved }: {
           <Button onClick={handleSave} disabled={saving} className="flex-1 rounded-xl h-10 gap-2">
             {saving ? <><RiLoader4Line className="w-4 h-4 animate-spin" />保存中…</> : <><RiSaveLine className="w-4 h-4" />保存更改</>}
           </Button>
+          <Button
+            variant="outline"
+            onClick={() => { onClose(); onViewOrders(user.email); }}
+            disabled={saving}
+            className="rounded-xl h-10 gap-1.5"
+            title="查看该用户的全部订单"
+          >
+            <RiBankCardLine className="w-3.5 h-3.5" />订单
+          </Button>
           <Button variant="outline" onClick={onClose} disabled={saving} className="rounded-xl h-10">取消</Button>
         </div>
       </div>
@@ -210,6 +222,7 @@ function EditModal({ user, onClose, onSaved }: {
 }
 
 export default function AdminUsersPage() {
+  const router = useRouter();
   const [users, setUsers] = React.useState<User[]>([]);
   const [total, setTotal] = React.useState(0);
   const [disabledCount, setDisabledCount] = React.useState(0);
@@ -223,6 +236,8 @@ export default function AdminUsersPage() {
   const [toggling, setToggling] = React.useState<string | null>(null);
   const [editUser, setEditUser] = React.useState<User | null>(null);
   const [offset, setOffset] = React.useState(0);
+  const [pendingDelete, setPendingDelete] = React.useState<string | null>(null);
+  const pendingDeleteTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const LIMIT = 50;
 
   function load(q: string, filter: FilterTab, off = 0) {
@@ -243,7 +258,41 @@ export default function AdminUsersPage() {
       .finally(() => setLoading(false));
   }
 
-  React.useEffect(() => { load("", "all", 0); }, []);
+  React.useEffect(() => {
+    const q = typeof router.query.search === "string" ? router.query.search : "";
+    if (q) setSearch(q);
+    load(q, "all", 0);
+  }, []);
+
+  function exportCsv() {
+    if (users.length === 0) { toast.error("没有数据可导出"); return; }
+    const headers = ["邮箱", "昵称", "注册时间", "邮箱已验证", "已订阅", "已停用", "查询数", "品牌数", "提醒数", "备注"];
+    const rows = users.map(u => [
+      u.email,
+      u.name || "",
+      new Date(u.created_at).toLocaleString("zh-CN"),
+      u.email_verified ? "是" : "否",
+      u.subscription_access ? "是" : "否",
+      u.disabled ? "是" : "否",
+      u.search_count,
+      u.stamp_count,
+      u.reminder_count,
+      u.admin_notes || "",
+    ]);
+    const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `users_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`已导出 ${users.length} 名用户`);
+  }
+
+  function goToOrders(email: string) {
+    router.push(`/admin/payment/orders?search=${encodeURIComponent(email)}`, undefined, { locale: false });
+  }
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
@@ -257,8 +306,19 @@ export default function AdminUsersPage() {
     load(search, f, 0);
   }
 
-  async function deleteUser(id: string, email: string) {
-    if (!confirm(`确定要永久删除用户 ${email} 吗？\n此操作不可撤销，将同时删除其所有搜索记录和数据。`)) return;
+  function requestDelete(id: string) {
+    if (pendingDelete === id) {
+      if (pendingDeleteTimer.current) clearTimeout(pendingDeleteTimer.current);
+      setPendingDelete(null);
+      executeDelete(id);
+    } else {
+      setPendingDelete(id);
+      if (pendingDeleteTimer.current) clearTimeout(pendingDeleteTimer.current);
+      pendingDeleteTimer.current = setTimeout(() => setPendingDelete(null), 4000);
+    }
+  }
+
+  async function executeDelete(id: string) {
     setDeleting(id);
     try {
       const res = await fetch(`/api/admin/users?id=${id}`, { method: "DELETE" });
@@ -333,6 +393,7 @@ export default function AdminUsersPage() {
         <EditModal
           user={editUser}
           onClose={() => setEditUser(null)}
+          onViewOrders={goToOrders}
           onSaved={updated => {
             setUsers(prev => prev.map(u => u.id === updated.id ? updated : u));
             if (!editUser.disabled && updated.disabled) {
@@ -357,18 +418,28 @@ export default function AdminUsersPage() {
               {subscribedCount > 0 && <span className="ml-1.5 text-amber-500">· {subscribedCount} 已订阅</span>}
             </p>
           </div>
-          <form onSubmit={handleSearch} className="flex items-center gap-2">
-            <div className="relative">
-              <RiSearchLine className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/60" />
-              <Input
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                placeholder="搜索邮箱或昵称…"
-                className="pl-8 h-9 rounded-xl text-sm w-52"
-              />
-            </div>
-            <Button type="submit" size="sm" className="h-9 rounded-xl px-4">搜索</Button>
-          </form>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={exportCsv}
+              disabled={users.length === 0}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-border text-xs font-medium text-muted-foreground hover:text-foreground hover:border-primary/30 hover:bg-muted/40 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              title="导出当前列表为 CSV"
+            >
+              <RiDownloadLine className="w-3.5 h-3.5" />导出 CSV
+            </button>
+            <form onSubmit={handleSearch} className="flex items-center gap-2">
+              <div className="relative">
+                <RiSearchLine className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/60" />
+                <Input
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  placeholder="搜索邮箱或昵称…"
+                  className="pl-8 h-9 rounded-xl text-sm w-48"
+                />
+              </div>
+              <Button type="submit" size="sm" className="h-9 rounded-xl px-4">搜索</Button>
+            </form>
+          </div>
         </div>
 
         {/* Filter tabs */}
@@ -527,17 +598,36 @@ export default function AdminUsersPage() {
                       }
                     </button>
                     {/* Delete */}
-                    <button
-                      onClick={() => deleteUser(user.id, user.email)}
-                      disabled={deleting === user.id}
-                      className="p-2 rounded-lg transition-colors text-muted-foreground hover:bg-red-50 dark:hover:bg-red-950/30 hover:text-red-500"
-                      title="永久删除"
-                    >
-                      {deleting === user.id
-                        ? <RiLoader4Line className="w-3.5 h-3.5 animate-spin" />
-                        : <RiDeleteBinLine className="w-3.5 h-3.5" />
-                      }
-                    </button>
+                    {pendingDelete === user.id ? (
+                      <div className="flex items-center gap-1 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg px-1.5 py-1">
+                        <RiAlertLine className="w-3 h-3 text-red-500 shrink-0" />
+                        <button
+                          onClick={() => requestDelete(user.id)}
+                          disabled={deleting === user.id}
+                          className="text-[10px] text-red-600 dark:text-red-400 font-semibold whitespace-nowrap hover:underline"
+                        >
+                          确认删除
+                        </button>
+                        <button
+                          onClick={() => setPendingDelete(null)}
+                          className="ml-0.5 text-red-300 hover:text-red-500"
+                        >
+                          <RiCloseLine className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => requestDelete(user.id)}
+                        disabled={deleting === user.id}
+                        className="p-2 rounded-lg transition-colors text-muted-foreground hover:bg-red-50 dark:hover:bg-red-950/30 hover:text-red-500"
+                        title="永久删除"
+                      >
+                        {deleting === user.id
+                          ? <RiLoader4Line className="w-3.5 h-3.5 animate-spin" />
+                          : <RiDeleteBinLine className="w-3.5 h-3.5" />
+                        }
+                      </button>
+                    )}
                   </div>
                 )}
               </div>

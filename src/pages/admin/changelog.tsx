@@ -187,7 +187,7 @@ export default function AdminChangelogPage() {
   const grouped = groupByMonth(entries);
 
   return (
-    <AdminLayout>
+    <AdminLayout title="更新日志">
       <Head><title>更新记录管理 · 管理</title></Head>
       <div className="space-y-5 p-4 md:p-6 max-w-3xl">
         <div className="flex items-center justify-between gap-3 flex-wrap">

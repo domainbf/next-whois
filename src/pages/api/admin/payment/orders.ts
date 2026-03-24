@@ -40,11 +40,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       one<{ count: string }>(countQ, params),
     ]);
 
-    const stats = await one<{ total: string; paid_count: string; revenue: string }>(
+    const stats = await one<{ total: string; paid_count: string; refunded_count: string }>(
       `SELECT COUNT(*) AS total,
               SUM(CASE WHEN status='paid' THEN 1 ELSE 0 END) AS paid_count,
-              COALESCE(SUM(CASE WHEN status='paid' THEN amount ELSE 0 END),0)::float AS revenue
+              SUM(CASE WHEN status='refunded' THEN 1 ELSE 0 END) AS refunded_count
        FROM payment_orders`
+    );
+
+    const currencyRows = await many<{ currency: string; revenue: string; count: string }>(
+      `SELECT currency,
+              COALESCE(SUM(CASE WHEN status='paid' THEN amount ELSE 0 END),0)::float AS revenue,
+              SUM(CASE WHEN status='paid' THEN 1 ELSE 0 END)::int AS count
+       FROM payment_orders
+       GROUP BY currency
+       ORDER BY revenue DESC`
     );
 
     return res.json({
@@ -53,7 +62,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       stats: {
         total: parseInt(stats?.total || "0"),
         paid: parseInt(stats?.paid_count || "0"),
-        revenue: parseFloat(String(stats?.revenue || "0")),
+        refunded: parseInt(stats?.refunded_count || "0"),
+        revenue: currencyRows.reduce((s, r) => s + parseFloat(r.revenue), 0),
+        byCurrency: currencyRows.map(r => ({
+          currency: r.currency,
+          revenue: parseFloat(r.revenue),
+          count: parseInt(String(r.count)),
+        })),
       },
     });
   }
@@ -69,8 +84,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     if (action === "mark_refunded") {
+      const order = await one<{ user_id: string | null; user_email: string | null }>(
+        `SELECT user_id, user_email FROM payment_orders WHERE id=$1`, [orderId]
+      );
       await run(`UPDATE payment_orders SET status='refunded' WHERE id=$1`, [orderId]);
-      return res.json({ ok: true });
+      if (order?.user_id) {
+        await run(`UPDATE users SET subscription_access=FALSE, updated_at=NOW() WHERE id=$1`, [order.user_id]);
+      } else if (order?.user_email) {
+        await run(`UPDATE users SET subscription_access=FALSE, updated_at=NOW() WHERE email=$1`, [order.user_email]);
+      }
+      return res.json({ ok: true, subscriptionRevoked: !!(order?.user_id || order?.user_email) });
     }
 
     return res.status(400).json({ error: "未知操作" });

@@ -20,7 +20,9 @@ import {
   RiPencilLine,
 } from "@remixicon/react";
 import { toast } from "sonner";
-import { requireAdmin } from "@/lib/admin";
+import { isAdmin } from "@/lib/admin";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/pages/api/auth/[...nextauth]";
 import { many } from "@/lib/db-query";
 import { cn } from "@/lib/utils";
 const DEFAULT_BRAND_NAME = "RDAP+WHOIS";
@@ -87,11 +89,10 @@ interface Props {
 }
 
 export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
-  const stop = await requireAdmin(
-    ctx.req as never,
-    ctx.res as never,
-  );
-  if (stop) return { props: { initialEnabledStyles: [], initialBrandName: DEFAULT_BRAND_NAME, initialTagline: DEFAULT_TAGLINE } };
+  const session = await getServerSession(ctx.req, ctx.res, authOptions);
+  if (!isAdmin((session?.user as any)?.email)) {
+    return { redirect: { destination: "/login", permanent: false } };
+  }
 
   try {
     const rows = await many<{ key: string; value: string }>(
@@ -270,7 +271,7 @@ export default function OgStylesPage({ initialEnabledStyles, initialBrandName, i
   const enabledCount = enabled.size;
 
   return (
-    <AdminLayout>
+    <AdminLayout title="OG 卡片样式">
       <Head>
         <title>OG 卡片样式 · 管理后台</title>
       </Head>

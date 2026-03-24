@@ -7,7 +7,8 @@ import { cn } from "@/lib/utils";
 import {
   RiLoader4Line, RiSearchLine, RiDeleteBinLine,
   RiFeedbackLine, RiMailLine, RiCalendarLine,
-  RiFilterLine,
+  RiFilterLine, RiReplyLine, RiAlertLine, RiCloseLine,
+  RiFileCopyLine, RiExternalLinkLine,
 } from "@remixicon/react";
 
 type FeedbackItem = {
@@ -46,6 +47,8 @@ export default function AdminFeedbackPage() {
   const [loading, setLoading] = React.useState(false);
   const [deleting, setDeleting] = React.useState<string | null>(null);
   const [expanded, setExpanded] = React.useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = React.useState<string | null>(null);
+  const pendingDeleteTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   function load(q: string, type: string) {
     setLoading(true);
@@ -78,8 +81,19 @@ export default function AdminFeedbackPage() {
     load(search, type);
   }
 
-  async function deleteItem(id: string) {
-    if (!confirm("确定要删除这条反馈吗？")) return;
+  function requestDelete(id: string) {
+    if (pendingDelete === id) {
+      if (pendingDeleteTimer.current) clearTimeout(pendingDeleteTimer.current);
+      setPendingDelete(null);
+      executeDelete(id);
+    } else {
+      setPendingDelete(id);
+      if (pendingDeleteTimer.current) clearTimeout(pendingDeleteTimer.current);
+      pendingDeleteTimer.current = setTimeout(() => setPendingDelete(null), 4000);
+    }
+  }
+
+  async function executeDelete(id: string) {
     setDeleting(id);
     try {
       const res = await fetch(`/api/admin/feedback?id=${id}`, { method: "DELETE" });
@@ -92,6 +106,12 @@ export default function AdminFeedbackPage() {
     } finally {
       setDeleting(null);
     }
+  }
+
+  function buildMailtoReply(item: FeedbackItem): string {
+    const subject = encodeURIComponent(`关于您反馈的域名 ${item.query}`);
+    const body = encodeURIComponent(`您好，\n\n感谢您反馈了关于域名 ${item.query} 的问题。\n\n`);
+    return `mailto:${item.email}?subject=${subject}&body=${body}`;
   }
 
   function fmt(d: string) {
@@ -239,33 +259,85 @@ export default function AdminFeedbackPage() {
                         </span>
                       </div>
                     </div>
-                    <button
-                      onClick={e => { e.stopPropagation(); deleteItem(item.id); }}
-                      disabled={deleting === item.id}
-                      className={cn(
-                        "p-2 rounded-lg transition-colors text-muted-foreground shrink-0",
-                        "hover:bg-red-50 dark:hover:bg-red-950/30 hover:text-red-500",
-                        "opacity-0 group-hover:opacity-100"
-                      )}
+                    <div
+                      className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={e => e.stopPropagation()}
                     >
-                      {deleting === item.id
-                        ? <RiLoader4Line className="w-3.5 h-3.5 animate-spin" />
-                        : <RiDeleteBinLine className="w-3.5 h-3.5" />
-                      }
-                    </button>
+                      {item.email && (
+                        <a
+                          href={buildMailtoReply(item)}
+                          className="p-2 rounded-lg transition-colors text-muted-foreground hover:bg-blue-50 dark:hover:bg-blue-950/20 hover:text-blue-500"
+                          title="回复邮件"
+                        >
+                          <RiReplyLine className="w-3.5 h-3.5" />
+                        </a>
+                      )}
+                      {pendingDelete === item.id ? (
+                        <div className="flex items-center gap-1 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg px-1.5 py-1">
+                          <RiAlertLine className="w-3 h-3 text-red-500 shrink-0" />
+                          <button
+                            onClick={() => requestDelete(item.id)}
+                            disabled={deleting === item.id}
+                            className="text-[10px] text-red-600 dark:text-red-400 font-semibold whitespace-nowrap hover:underline"
+                          >
+                            确认删除
+                          </button>
+                          <button onClick={() => setPendingDelete(null)} className="ml-0.5 text-red-300 hover:text-red-500">
+                            <RiCloseLine className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => requestDelete(item.id)}
+                          disabled={deleting === item.id}
+                          className="p-2 rounded-lg transition-colors text-muted-foreground hover:bg-red-50 dark:hover:bg-red-950/30 hover:text-red-500"
+                          title="删除反馈"
+                        >
+                          {deleting === item.id
+                            ? <RiLoader4Line className="w-3.5 h-3.5 animate-spin" />
+                            : <RiDeleteBinLine className="w-3.5 h-3.5" />
+                          }
+                        </button>
+                      )}
+                    </div>
                   </button>
 
-                  {isExpanded && item.description && (
-                    <div className="px-4 pb-4 pt-0 border-t border-border/50">
-                      <p className="text-xs text-muted-foreground mt-3 mb-1 font-medium">用户描述</p>
-                      <p className="text-sm text-foreground/80 bg-muted/30 rounded-xl px-3 py-2 leading-relaxed">
-                        {item.description}
-                      </p>
-                    </div>
-                  )}
-                  {isExpanded && !item.description && (
-                    <div className="px-4 pb-4 border-t border-border/50">
-                      <p className="text-xs text-muted-foreground mt-3 italic">用户未填写描述</p>
+                  {isExpanded && (
+                    <div className="px-4 pb-4 pt-0 border-t border-border/50 space-y-3">
+                      {item.description ? (
+                        <>
+                          <p className="text-xs text-muted-foreground mt-3 mb-1 font-medium">用户描述</p>
+                          <p className="text-sm text-foreground/80 bg-muted/30 rounded-xl px-3 py-2 leading-relaxed">
+                            {item.description}
+                          </p>
+                        </>
+                      ) : (
+                        <p className="text-xs text-muted-foreground mt-3 italic">用户未填写描述</p>
+                      )}
+                      <div className="flex items-center gap-2 flex-wrap pt-1">
+                        <button
+                          onClick={() => { navigator.clipboard.writeText(item.query); toast.success("域名已复制"); }}
+                          className="flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-all"
+                        >
+                          <RiFileCopyLine className="w-3 h-3" />复制域名
+                        </button>
+                        <a
+                          href={`https://rdap.org/domain/${item.query}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-all"
+                        >
+                          <RiExternalLinkLine className="w-3 h-3" />RDAP 查看
+                        </a>
+                        {item.email && (
+                          <a
+                            href={buildMailtoReply(item)}
+                            className="flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-lg border border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/20 transition-all"
+                          >
+                            <RiReplyLine className="w-3 h-3" />回复 {item.email}
+                          </a>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
