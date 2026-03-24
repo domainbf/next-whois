@@ -1,10 +1,98 @@
-# Next Whois UI — v3.10
+# Next Whois UI — v3.16
 
 A fast, modern WHOIS and RDAP lookup tool supporting domains, IPv4/IPv6, ASN, and CIDR. Also includes built-in DNS, SSL certificate, and IP/ASN geolocation tools.
 
 ---
 
 ## Changelog
+
+### v3.16 — UX Animations Overhaul + No-Server TLD Fast-Fail (2026-03-24)
+
+**Scope:** Mobile UX polish and WHOIS lookup hot-path optimization.
+
+**Changes:**
+
+| File | Change | Detail |
+|---|---|---|
+| `src/pages/_app.tsx` | Removed `RouteLoadingBar` | Deleted the 2 px top loading bar and its 50-line component. Text skeleton + shimmer already provide query feedback; the bar was visually redundant. |
+| `src/pages/_app.tsx` | Smoother page transition | `pageTransition` duration 0.13 s → 0.20 s; easing `"easeOut"` → cubic-bezier `[0.22, 1, 0.36, 1]` (iOS-style spring feel). |
+| `src/pages/[...query].tsx` | Improved card stagger | `CARD_CONTAINER_VARIANTS` stagger 0.025 s → 0.09 s; `CARD_ITEM_VARIANTS` now includes `y: 10 → 0` slide-up with `[0.22, 1, 0.36, 1]` easing, creating a natural "main content first, secondary sidebar after" reveal on mobile. |
+| `src/pages/[...query].tsx` | WHOIS/RDAP tab fade | `ResponsePanel` tab content wrapped in `AnimatePresence mode="wait"` — switching between WHOIS and RDAP now cross-fades (0.15 s) instead of hard-cutting. |
+| `src/lib/whois/lookup.ts` | `isTldKnownNoServer` hot-path check | Imported from `custom-servers.ts` and checked immediately before the whoiser TCP call. When a TLD is explicitly listed as `null` in `cctld-whois-servers.json`, throws instantly (0 ms) instead of waiting for a TCP timeout, letting the tianhu/yisi fallback race immediately. |
+| `src/lib/env.ts` | VERSION bumped to "3.16" | |
+
+---
+
+### v3.15 — DB Cache Fix: In-Memory TLD Gate + Expanded RDAP/WHOIS Skip Lists (2026-03-24)
+
+**Scope:** Eliminated the biggest remaining latency source — a Supabase DB query on every single WHOIS request — and expanded both the RDAP-skip and ccTLD-server lists.
+
+**Changes:**
+
+| File | Change | Detail |
+|---|---|---|
+| `src/lib/whois/tld-fallback-gate.ts` | Rewrote with in-memory startup cache | `isTldFallbackEnabled()` was hitting Supabase on every call. Now loads the entire `tld_fallback_overrides` table once at startup into a `Map`; subsequent calls are pure memory lookups (0 ms). Cache invalidated via `invalidateFallbackCache()`. Result: `ab.cd` query time 12 s → 1.26 s. |
+| `src/lib/whois/tld-rdap-skip.ts` | Expanded `STATIC_NO_RDAP` | Added 17 confirmed no-RDAP ccTLDs: `.ac .aw .ax .bj .bv .cc .cg .cx .gg .hm .im .je .ms .pm .re .sh .yt`. Prevents wasted RDAP round-trips for these TLDs. |
+| `src/data/cctld-whois-servers.json` | Comprehensive ccTLD server list | Grew from 206 → 255 entries covering all IANA ccTLDs. Added working servers for `.ad` (nic.ad), `.bh` (nic.bh), `.fm` (nic.fm), `.gf/.gp/.mq` (whois.nic.mq), `.gn` (ande.gov.gn), `.ls/.mc/.mr/.sl/.sm/.ss/.td` (nic.{tld}), `.mt` (whois.ripe.net), `.sr` (whois.sr), `.ye` (y.net.ye). `null` entries for TLDs with no reachable public server (`.cu`, `.kp`, `.gb`, etc.). |
+| `src/lib/whois/custom-servers.ts` | `isTldKnownNoServer()` added | Exposes which TLDs are explicitly `null` in the cctld file. Builds a `Set<string>` (`_knownNoServerCache`) during `getAllCustomServers()` load; `isTldKnownNoServer(tld)` is a fast O(1) lookup. |
+| `src/lib/env.ts` | VERSION bumped to "3.15" | |
+
+---
+
+### v3.14 — Query Speed: Timeout Tuning + Parallel Fallback Racing (2026-03-24)
+
+**Scope:** Reduced all network timeouts and started the third-party fallback in parallel with native lookups instead of waiting for full TCP failure.
+
+**Changes:**
+
+| File | Change | Detail |
+|---|---|---|
+| `src/lib/whois/lookup.ts` | Timeout reductions | `RDAP_TIMEOUT` 7 s → 2 s; `WHOIS_TIMEOUT` 7 s → 4 s; `FALLBACK_START_MS` added at 2 s — fallback races natively after this delay instead of waiting for TCP timeout. |
+| `src/lib/whois/tianhu-fallback.ts` | `TIANHU_TIMEOUT` | Set to 4 s (was unbounded). |
+| `src/lib/whois/yisi-fallback.ts` | `YISI_TIMEOUT` | Set to 4 s (was unbounded). |
+| `src/lib/pricing/client.ts` | Pricing timeout | Reduced to 4 s. |
+| `src/lib/env.ts` | VERSION bumped to "3.14" | |
+
+---
+
+### v3.13 — Remove MOZ DA/PA/Spam Feature (2026-03-24)
+
+**Scope:** Removed the MOZ Domain Authority / Page Authority / Spam Score feature entirely from the domain result page.
+
+**Changes:**
+
+- Removed all MOZ API calls, UI components, and related code from `src/pages/[...query].tsx`
+- Removed MOZ-related environment variable references
+- Cleaned up unused imports and state variables
+- `src/lib/env.ts` VERSION bumped to "3.13"
+
+---
+
+### v3.12 — X.RW Full Rebranding + WeChat OG Image Fix (2026-03-24)
+
+**Scope:** Complete visual rebranding to X.RW identity, with brand image assets and social sharing fixes.
+
+**Changes:**
+
+- Replaced all NEXT WHOIS branding with X.RW across navbar, OG images, meta tags, and site settings defaults
+- Added X.RW brand images (`/public/brand/`) for OG cards and apple-touch-icon
+- Fixed WeChat `og:image` — now always resolves to an absolute URL using canonical site origin
+- Updated `apple-touch-icon`, `manifest.json` icons, and PWA manifest to X.RW assets
+- `src/lib/env.ts` VERSION bumped to "3.12"
+
+---
+
+### v3.11 — Brand Stamp Certification: tian.hu / nazhumi.com / yisi.yun (2026-03-24)
+
+**Scope:** Certified three technology-partner domains as official brand stamps in the X.RW stamp registry.
+
+**Changes:**
+
+- Added verified brand stamps for `tian.hu` (tianhu WHOIS data provider), `nazhumi.com` (domain pricing data), and `yisi.yun` (WHOIS fallback API)
+- Stamp records created with `brand` style and appropriate card themes
+- `src/lib/env.ts` VERSION bumped to "3.11"
+
+---
 
 ### v3.10 — OG Image Text Editor, Changelog Sync & UX Cleanup (2026-03-24)
 
