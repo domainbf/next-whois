@@ -201,9 +201,20 @@ function Notes({ items }: { items: React.ReactNode[] }) {
 }
 
 // ── Quick nav pill ───────────────────────────────────────────────────────────
-function NavPill({ href, children }: { href: string; children: React.ReactNode }) {
+const PILL_COLOR_MAP: Record<string, string> = {
+  blue:   "bg-blue-500/10   text-blue-600   dark:text-blue-400   border-blue-500/20   hover:bg-blue-500/20   hover:border-blue-500/40",
+  violet: "bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20 hover:bg-violet-500/20 hover:border-violet-500/40",
+  emerald:"bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20 hover:border-emerald-500/40",
+  orange: "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20 hover:bg-orange-500/20 hover:border-orange-500/40",
+  pink:   "bg-pink-500/10   text-pink-600   dark:text-pink-400   border-pink-500/20   hover:bg-pink-500/20   hover:border-pink-500/40",
+  rose:   "bg-rose-500/10   text-rose-600   dark:text-rose-400   border-rose-500/20   hover:bg-rose-500/20   hover:border-rose-500/40",
+  zinc:   "bg-muted/50      text-foreground/70                    border-border/60     hover:bg-muted        hover:border-border",
+};
+
+function NavPill({ href, color = "zinc", children }: { href: string; color?: string; children: React.ReactNode }) {
+  const colorCls = PILL_COLOR_MAP[color] ?? PILL_COLOR_MAP.zinc;
   return (
-    <a href={href} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border border-border/60 bg-muted/40 hover:bg-muted/80 hover:border-border transition-all whitespace-nowrap text-foreground/80 hover:text-foreground">
+    <a href={href} className={`inline-flex items-center gap-1.5 px-3 py-2 sm:py-1.5 rounded-full text-xs font-medium border transition-all whitespace-nowrap ${colorCls}`}>
       {children}
     </a>
   );
@@ -248,15 +259,18 @@ export default function DocsPage({ origin }: { origin: string }) {
           <p className="text-sm text-muted-foreground leading-relaxed mb-6">{t("docs.description")}</p>
 
           {/* Quick navigation */}
-          <div className="flex flex-wrap gap-2 mb-8">
-            <NavPill href="#whois"><RiGlobalLine className="w-3 h-3" />WHOIS / 查询</NavPill>
-            <NavPill href="#dns-records"><RiSignalWifiLine className="w-3 h-3" />DNS 记录</NavPill>
-            <NavPill href="#dns-txt"><RiListCheck2 className="w-3 h-3" />DNS TXT</NavPill>
-            <NavPill href="#ssl"><RiShieldCheckLine className="w-3 h-3" />SSL 证书</NavPill>
-            <NavPill href="#ip"><RiMapPinLine className="w-3 h-3" />IP / ASN</NavPill>
-            <NavPill href="#og"><RiImageLine className="w-3 h-3" />OG 卡片</NavPill>
-            <NavPill href="#icp"><RiFileList2Line className="w-3 h-3" />ICP 备案</NavPill>
-            <NavPill href="#rate-limit">限流规则</NavPill>
+          <div className="rounded-xl border border-border/50 bg-muted/20 p-3 mb-8">
+            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-widest mb-2.5 px-0.5">快速跳转</p>
+            <div className="flex flex-wrap gap-2">
+              <NavPill href="#whois"       color="blue">   <RiGlobalLine      className="w-3 h-3" />WHOIS / 查询</NavPill>
+              <NavPill href="#dns-records" color="violet">  <RiSignalWifiLine  className="w-3 h-3" />DNS 记录</NavPill>
+              <NavPill href="#dns-txt"     color="violet">  <RiListCheck2      className="w-3 h-3" />DNS TXT</NavPill>
+              <NavPill href="#ssl"         color="emerald"> <RiShieldCheckLine className="w-3 h-3" />SSL 证书</NavPill>
+              <NavPill href="#ip"          color="orange">  <RiMapPinLine      className="w-3 h-3" />IP / ASN</NavPill>
+              <NavPill href="#og"          color="pink">    <RiImageLine       className="w-3 h-3" />OG 卡片</NavPill>
+              <NavPill href="#icp"         color="rose">    <RiFileList2Line   className="w-3 h-3" />ICP 备案</NavPill>
+              <NavPill href="#rate-limit"  color="zinc">                                             限流规则</NavPill>
+            </div>
           </div>
 
           <div className="space-y-8">
