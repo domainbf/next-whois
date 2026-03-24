@@ -176,9 +176,12 @@ export function SiteSettingsProvider({
   children: React.ReactNode;
   initialSettings?: Partial<SiteSettings>;
 }) {
-  const [settings, setSettings] = React.useState<SiteSettings>(() => {
-    const cache = readSessionCache();
-    return { ...DEFAULT_SETTINGS, ...(cache || {}), ...(initialSettings || {}) };
+  // NOTE: Do NOT read sessionStorage here — the initializer runs on the server
+  // too (as undefined), causing a hydration mismatch when the client has a
+  // cached value. Apply the session cache only after mount in useEffect.
+  const [settings, setSettings] = React.useState<SiteSettings>({
+    ...DEFAULT_SETTINGS,
+    ...(initialSettings || {}),
   });
 
   const fetchSettings = React.useCallback(() => {
@@ -195,6 +198,12 @@ export function SiteSettingsProvider({
   }, []);
 
   React.useEffect(() => {
+    // Apply any previously-cached settings first (instant, no network round-trip),
+    // then fetch fresh settings from the API.
+    const cache = readSessionCache();
+    if (cache) {
+      setSettings({ ...DEFAULT_SETTINGS, ...(initialSettings || {}), ...cache });
+    }
     fetchSettings();
 
     function onStorage(e: StorageEvent) {
