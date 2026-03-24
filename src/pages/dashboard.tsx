@@ -458,6 +458,29 @@ function SubscribeGuideModal({ onClose }: { onClose: () => void }) {
   );
 }
 
+// ── Module-level dashboard data cache (survives tab switches / soft-navs) ────
+interface DashData { subscriptions: Subscription[]; stamps: Stamp[] }
+let _dashCache: DashData | null = null;
+let _dashCacheTs = 0;
+const DASH_CACHE_TTL = 60_000; // 60 s
+
+async function fetchDashData(): Promise<DashData> {
+  const res = await fetch("/api/user/dashboard");
+  const data = await res.json();
+  const result: DashData = {
+    subscriptions: data.subscriptions ?? [],
+    stamps: data.stamps ?? [],
+  };
+  _dashCache = result;
+  _dashCacheTs = Date.now();
+  return result;
+}
+
+function invalidateDashCache() {
+  _dashCache = null;
+  _dashCacheTs = 0;
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const router = useRouter();
@@ -513,13 +536,23 @@ export default function DashboardPage() {
 
   React.useEffect(() => {
     if (status !== "authenticated") return;
+
+    // Serve cached data immediately so the UI is populated on re-visits
+    if (_dashCache && Date.now() - _dashCacheTs < DASH_CACHE_TTL) {
+      setSubscriptions(_dashCache.subscriptions);
+      setStamps(_dashCache.stamps);
+      // Still refresh in background without a visible spinner
+      fetchDashData().then(d => {
+        setSubscriptions(d.subscriptions);
+        setStamps(d.stamps);
+      }).catch(() => {});
+      return;
+    }
+
     setLoadingData(true);
-    Promise.all([
-      fetch("/api/user/subscriptions").then(r => r.json()),
-      fetch("/api/user/stamps").then(r => r.json()),
-    ]).then(([subData, stampData]) => {
-      if (subData.subscriptions) setSubscriptions(subData.subscriptions);
-      if (stampData.stamps) setStamps(stampData.stamps);
+    fetchDashData().then(d => {
+      setSubscriptions(d.subscriptions);
+      setStamps(d.stamps);
     }).catch(() => {}).finally(() => setLoadingData(false));
   }, [status]);
 
@@ -545,12 +578,10 @@ export default function DashboardPage() {
   }, [tab, status]);
 
   function refreshData() {
-    Promise.all([
-      fetch("/api/user/subscriptions").then(r => r.json()),
-      fetch("/api/user/stamps").then(r => r.json()),
-    ]).then(([subData, stampData]) => {
-      if (subData.subscriptions) setSubscriptions(subData.subscriptions);
-      if (stampData.stamps) setStamps(stampData.stamps);
+    invalidateDashCache();
+    fetchDashData().then(d => {
+      setSubscriptions(d.subscriptions);
+      setStamps(d.stamps);
     }).catch(() => {});
   }
 
@@ -559,6 +590,7 @@ export default function DashboardPage() {
     try {
       await fetch(`/api/user/subscriptions?id=${id}`, { method: "DELETE" });
       setSubscriptions(prev => prev.map(s => s.id === id ? { ...s, active: false } : s));
+      invalidateDashCache();
       toast.success("已取消订阅");
     } catch {
       toast.error("操作失败");
@@ -577,6 +609,7 @@ export default function DashboardPage() {
       });
       if (!res.ok) throw new Error((await res.json()).error);
       setSubscriptions(prev => prev.map(s => s.id === id ? { ...s, days_before: days } : s));
+      invalidateDashCache();
       toast.success(`提前 ${days} 天提醒已更新`);
     } catch (e: any) {
       toast.error(e.message || "更新失败");
@@ -591,6 +624,7 @@ export default function DashboardPage() {
       const res = await fetch(`/api/user/stamps?id=${id}`, { method: "DELETE" });
       if (!res.ok) throw new Error((await res.json()).error);
       setStamps(prev => prev.filter(s => s.id !== id));
+      invalidateDashCache();
       toast.success("已删除品牌认领");
     } catch (e: any) {
       toast.error(e.message || "删除失败");
@@ -833,6 +867,7 @@ export default function DashboardPage() {
             setSubscriptions(prev => prev.map(s =>
               s.id === editingSubscription.id ? { ...s, expiration_date: newDate } : s
             ));
+            invalidateDashCache();
           }}
         />
       )}
