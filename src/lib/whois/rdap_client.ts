@@ -88,42 +88,69 @@ function isASNumber(query: string): boolean {
  *   • registry public announcements for TLDs not yet in IANA bootstrap
  */
 const CCTLD_RDAP_OVERRIDES: Record<string, string> = {
-  // ── Western Europe (IANA) ────────────────────────────────────────────────
+  // ── Western Europe ───────────────────────────────────────────────────────
   ad: "https://rdap.nic.ad/",
+  at: "https://rdap.nic.at/",
+  be: "https://rdap.dns.be/",
+  ch: "https://rdap.nic.ch/",
+  de: "https://rdap.denic.de/",
+  dk: "https://rdap.punktum.dk/",
+  ee: "https://rdap.tld.ee/",
+  es: "https://rdap.nic.es/",
   fi: "https://rdap.fi/rdap/rdap/",
-  fo: "https://rdap.centralnic.com/fo/",        // IANA: CentralNIC hosts .fo
+  fo: "https://rdap.centralnic.com/fo/",          // IANA: CentralNIC
   fr: "https://rdap.nic.fr/",
-  is: "https://rdap.isnic.is/rdap/",            // IANA: /rdap/ suffix required
+  gr: "https://rdap.gr/",
+  hr: "https://rdap.dns.hr/",
+  hu: "https://rdap.hu/",
+  ie: "https://rdap.iedr.ie/",
+  is: "https://rdap.isnic.is/rdap/",              // IANA: /rdap/ suffix
+  it: "https://rdap.nic.it/",
+  li: "https://rdap.nic.li/",
+  lt: "https://rdap.domreg.lt/",
+  lu: "https://rdap.dns.lu/",
+  lv: "https://rdap.nic.lv/",
+  me: "https://rdap.nic.me/",
   nl: "https://rdap.sidn.nl/",
   no: "https://rdap.norid.no/",
   pl: "https://rdap.dns.pl/",
+  pt: "https://rdap.dns.pt/",
+  ro: "https://rdap.rotld.ro/",
+  rs: "https://rdap.rnids.rs/",
+  se: "https://rdap.iis.se/",
   si: "https://rdap.register.si/",
+  sk: "https://rdap.sk-nic.sk/",
   uk: "https://rdap.nominet.uk/uk/",
   // ── Eastern Europe / CIS ────────────────────────────────────────────────
   al: "https://rdap.nic.al/",
   am: "https://rdap.nic.am/",
   az: "https://rdap.nic.az/",
   ba: "https://rdap.nic.ba/",
+  by: "https://rdap.cctld.by/",                   // confirmed: rdap.cctld.by
   cy: "https://rdap.nic.cy/",
   cz: "https://rdap.nic.cz/",
   ge: "https://rdap.nic.ge/",
-  kg: "http://rdap.cctld.kg/",                  // IANA: http (server does not do TLS)
+  kg: "http://rdap.cctld.kg/",                    // IANA: http only (no TLS)
+  kz: "https://rdap.nic.kz/",                     // confirmed: rdap.nic.kz
   md: "https://rdap.nic.md/",
   mk: "https://rdap.nic.mk/",
   mt: "https://rdap.nic.mt/",
+  ru: "https://rdap.nic.ru/",                     // confirmed: rdap.nic.ru
+  su: "https://rdap.tcinet.ru/",                  // Soviet Union legacy TLD (same operator)
   tj: "https://rdap.nic.tj/",
   tm: "https://rdap.nic.tm/",
   ua: "https://rdap.hostmaster.ua/",
-  uz: "https://rdap.cctld.uz/",                 // IANA: cctld.uz, not nic.uz
-  // ── Northern / Other Europe ─────────────────────────────────────────────
+  uz: "https://rdap.cctld.uz/",                   // IANA: cctld.uz, not nic.uz
+  // ── Other Europe ─────────────────────────────────────────────────────────
   gl: "https://rdap.nic.gl/",
+  im: "https://rdap.centralnic.com/im/",           // Isle of Man via CentralNIC
   xk: "https://rdap.nic.xk/",
-  // ── Africa ──────────────────────────────────────────────────────────────
+  // ── Africa ───────────────────────────────────────────────────────────────
   ao: "https://rdap.nic.ao/",
   bw: "https://rdap.nic.bw/",
   cd: "https://rdap.nic.cd/",
   ci: "https://rdap.nic.ci/",
-  cm: "https://rdap.nic.cm/",                   // IANA: nic.cm, not netcom.cm
+  cm: "https://rdap.nic.cm/",                     // IANA: nic.cm, not netcom.cm
   dj: "https://rdap.nic.dj/",
   et: "https://rdap.nic.et/",
   gh: "https://rdap.nic.gh/",
@@ -131,23 +158,25 @@ const CCTLD_RDAP_OVERRIDES: Record<string, string> = {
   ly: "https://rdap.nic.ly/",
   mg: "https://rdap.nic.mg/",
   ml: "https://rdap.nic.ml/",
-  mu: "https://rdap.identitydigital.services/rdap/",  // IANA: IdentityDigital
+  mu: "https://rdap.identitydigital.services/rdap/", // IANA: IdentityDigital
   mw: "https://rdap.nic.mw/",
   mz: "https://rdap.nic.mz/",
-  na: "https://keetmans.omadhina.co.na/",       // IANA: Namibian ccTLD registrar
+  na: "https://keetmans.omadhina.co.na/",          // IANA: Namibian ccTLD registrar
   ng: "https://rdap.nic.net.ng/",
   rw: "https://rdap.ricta.org.rw/",
   sc: "https://rdap.nic.sc/",
   sd: "https://rdap.nic.sd/",
-  sn: "https://rdap.nic.sn/whois43/",           // IANA: /whois43/ path required
+  sn: "https://rdap.nic.sn/whois43/",             // IANA: /whois43/ path required
   so: "https://rdap.nic.so/",
   ss: "https://rdap.nic.ss/",
   td: "https://rdap.nic.td/",
-  tz: "https://whois.tznic.or.tz/rdap/",        // IANA: whois.tznic.or.tz/rdap/
+  tz: "https://whois.tznic.or.tz/rdap/",          // IANA: whois.tznic.or.tz/rdap/
   ug: "https://rdap.nic.ug/",
-  zm: "https://rdap.nic.zm/",                   // IANA: nic.zm, not zicta.zm
+  za: "https://rdap.registry.net.za/",             // confirmed: registry.net.za
+  zm: "https://rdap.nic.zm/",                      // IANA: nic.zm, not zicta.zm
   zw: "https://rdap.zispa.co.zw/",
-  // ── Middle East ─────────────────────────────────────────────────────────
+  // ── Middle East ──────────────────────────────────────────────────────────
+  ae: "https://rdap.aeda.net.ae/",                 // confirmed: aeda.net.ae
   bh: "https://rdap.nic.bh/",
   iq: "https://rdap.nic.iq/",
   jo: "https://rdap.nic.jo/",
@@ -156,7 +185,7 @@ const CCTLD_RDAP_OVERRIDES: Record<string, string> = {
   ps: "https://rdap.nic.ps/",
   sy: "https://rdap.nic.sy/",
   ye: "https://rdap.y.net.ye/",
-  // ── Asia / Pacific ──────────────────────────────────────────────────────
+  // ── Asia / Pacific ───────────────────────────────────────────────────────
   af: "https://rdap.nic.af/",
   as: "https://rdap.nic.as/",
   au: "https://rdap.cctld.au/rdap/",
@@ -164,32 +193,41 @@ const CCTLD_RDAP_OVERRIDES: Record<string, string> = {
   bt: "https://rdap.nic.bt/",
   cc: "https://tld-rdap.verisign.com/cc/v1/",
   cx: "https://rdap.nic.cx/",
-  fj: "https://www.rdap.fj/",                   // IANA: www.rdap.fj
+  fj: "https://www.rdap.fj/",                      // IANA: www.rdap.fj
   fm: "https://rdap.centralnic.com/fm/",
   gs: "https://rdap.nic.gs/",
+  hk: "https://rdap.hkirc.hk/",
   id: "https://rdap.pandi.id/rdap/",
   in: "https://rdap.nixiregistry.in/rdap/",
+  io: "https://rdap.identitydigital.services/rdap/", // confirmed: IdentityDigital
+  jp: "https://rdap.jprs.jp/",
   kh: "https://rdap.nic.kh/",
+  kr: "https://rdap.kr/",
   la: "https://rdap.nic.la/",
   mm: "https://rdap.nic.mm/",
+  mn: "https://rdap.nic.mn/",
   ms: "https://rdap.nic.ms/",
   mv: "https://rdap.nic.mv/",
+  my: "https://rdap.mynic.my/rdap/",               // confirmed: mynic.my/rdap/
   nf: "https://rdap.nic.nf/",
   np: "https://rdap.nic.np/",
+  nu: "https://rdap.nic.nu/",
   nz: "https://rdap.srs.net.nz/",
   pg: "https://rdap.nic.pg/",
+  ph: "https://rdap.dot.ph/",
   pk: "https://rdap.pknic.net.pk/",
   pn: "https://rdap.nominet.uk/pn/",
   pw: "https://rdap.radix.host/rdap/",
   sb: "https://rdap.nic.sb/",
   sg: "https://rdap.sgnic.sg/rdap/",
   th: "https://rdap.thains.co.th/",
-  to: "https://rdap.tonicregistry.to/rdap/",    // IANA: tonicregistry.to
+  tl: "https://rdap.nic.tl/",                      // confirmed: rdap.nic.tl
+  to: "https://rdap.tonicregistry.to/rdap/",       // IANA: tonicregistry.to
   tv: "https://rdap.nic.tv/",
   tw: "https://ccrdap.twnic.tw/tw/",
   vu: "https://rdap.nic.vu/",
   ws: "https://rdap.nic.ws/",
-  // ── Caribbean / Americas ─────────────────────────────────────────────────
+  // ── Americas ─────────────────────────────────────────────────────────────
   ag: "https://rdap.nic.ag/",
   ai: "https://rdap.identitydigital.services/rdap/",
   ar: "https://rdap.nic.ar/",
@@ -198,29 +236,51 @@ const CCTLD_RDAP_OVERRIDES: Record<string, string> = {
   br: "https://rdap.registro.br/",
   bz: "https://rdap.nic.bz/",
   ca: "https://rdap.ca.fury.ca/rdap/",
+  co: "https://rdap.cctld.co/",
   cr: "https://rdap.nic.cr/",
   cu: "https://rdap.nic.cu/",
   cv: "https://rdap.nic.cv/",
   dm: "https://rdap.nic.dm/",
   ec: "https://rdap.registry.ec/",
-  gd: "https://rdap.centralnic.com/gd/",        // IANA: CentralNIC hosts .gd
-  gy: "https://rdap.registry.gy/",              // IANA: registry.gy
+  gd: "https://rdap.centralnic.com/gd/",           // IANA: CentralNIC
+  gy: "https://rdap.registry.gy/",                 // IANA: registry.gy
   hn: "https://rdap.nic.hn/",
   ht: "https://rdap.nic.ht/",
   jm: "https://rdap.nic.jm/",
   kn: "https://rdap.nic.kn/",
   ky: "https://whois.kyregistry.ky/rdap/",
   lc: "https://rdap.nic.lc/",
+  mx: "https://rdap.mx/",
+  pe: "https://rdap.nic.pe/",
   pm: "https://rdap.nic.pm/",
   re: "https://rdap.nic.re/",
-  sr: "https://whois.sr/rdap/",                 // IANA: whois.sr/rdap/
+  sr: "https://whois.sr/rdap/",                    // IANA: whois.sr/rdap/
   tf: "https://rdap.nic.tf/",
   tt: "https://rdap.nic.tt/",
   vc: "https://rdap.nic.vc/",
+  ve: "https://rdap.nic.ve/",                      // confirmed: rdap.nic.ve
   vg: "https://rdap.centralnic.com/vg/",
   vi: "https://rdap.nic.vi/",
   wf: "https://rdap.nic.wf/",
   yt: "https://rdap.nic.yt/",
+};
+
+/**
+ * Per-TLD RDAP timeout overrides (milliseconds).
+ * Used for registries that are consistently slow to respond.
+ * Default timeout is 4000ms; entries here extend that for specific TLDs.
+ */
+const RDAP_TLD_TIMEOUT_MS: Record<string, number> = {
+  // CIS / Eastern Europe — some servers have higher latency
+  ru: 7000, su: 7000, by: 6000, kz: 6000, kg: 6000,
+  // Africa — many registries are slower from global infra
+  ng: 8000, ke: 7000, tz: 7000, gh: 6000, ug: 6000, rw: 6000,
+  zm: 6000, zw: 6000, na: 6000, za: 6000, cm: 6000, cd: 6000,
+  // Middle East
+  iq: 7000, sy: 7000, ye: 7000, ps: 6000,
+  // Asia / Pacific — some have higher latency
+  pk: 6000, np: 6000, mm: 6000, la: 6000, kh: 6000, bn: 6000,
+  bt: 6000, mv: 6000, pg: 6000, sb: 6000, tl: 6000,
 };
 
 /**
@@ -277,7 +337,8 @@ export async function lookupRdap(query: string): Promise<any> {
     // any TLD we know about locally (130+ ccTLDs + 1128+ gTLDs = ~1260 TLDs total).
     const localServer = CCTLD_RDAP_OVERRIDES[tld] ?? getGtldRdapServer(tld);
     if (localServer) {
-      const result = await tryRdapWithUrl(localServer, domainToQuery, 4000);
+      const timeoutMs = RDAP_TLD_TIMEOUT_MS[tld] ?? 4000;
+      const result = await tryRdapWithUrl(localServer, domainToQuery, timeoutMs);
       if (result !== null) return result;
       // Network/timeout failure on the local-bootstrap server.
       // For ccTLDs: we committed to this server — fail immediately (no fallback).

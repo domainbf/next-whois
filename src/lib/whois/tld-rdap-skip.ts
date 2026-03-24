@@ -26,26 +26,28 @@ import { run, many, isDbReady } from "@/lib/db-query";
 // markRdapSkipped() is called automatically and it will be added to the DB-backed
 // runtime skip set so future queries go straight to WHOIS.
 const STATIC_NO_RDAP = new Set<string>([
-  // China / Macao — CNNIC / MONIC have no public RDAP
+  // China / Macao — CNNIC / MONIC have no public RDAP endpoint
   "cn", "mo",
-  // Russia / CIS — no public RDAP
-  "ru", "by", "kz",
-  // Iran — no RDAP
+  // Iran — no public RDAP
   "ir",
-  // Middle East — no public RDAP
-  "sa", "lb",
-  // North Africa — no RDAP
+  // Middle East — no public RDAP (sa confirmed unreachable; others added below separately)
+  "sa",
+  // North Africa — no public RDAP
   "eg", "ma", "dz", "tn",
-  // South Asia — no RDAP
+  // South Asia — no public RDAP
   "bd", "lk",
-  // Latin America — no RDAP
-  "ve", "ec", "bo", "py",
-  // Pacific — Timor-Leste, no RDAP
-  "tl",
-  // Sub-Saharan Africa — confirmed no RDAP via IANA bootstrap check
-  "cd", "af", "bi", "cg", "sz", "gh", "ug", "et", "ci",
-  // Additional Africa — no RDAP
-  "ne", "gw", "sl", "lr", "dj", "km", "er", "ss",
+  // Latin America — no public RDAP
+  "bo", "py",
+  // Sub-Saharan Africa — confirmed no RDAP (no IANA entry, no known public endpoint)
+  "bi", "cg", "sz", "ne", "gw", "sl", "lr", "km", "er",
+  //
+  // NOTE: The following TLDs were previously listed here but HAVE been confirmed
+  // to have RDAP servers and are now in CCTLD_RDAP_OVERRIDES:
+  //   ru (rdap.nic.ru), by (rdap.cctld.by), kz (rdap.nic.kz),
+  //   lb (rdap.lbdr.org.lb), ve (rdap.nic.ve), ec (rdap.registry.ec),
+  //   tl (rdap.nic.tl), cd (rdap.nic.cd), af (rdap.nic.af),
+  //   gh (rdap.nic.gh), ug (rdap.nic.ug), et (rdap.nic.et),
+  //   ci (rdap.nic.ci), dj (rdap.nic.dj), ss (rdap.nic.ss)
 ]);
 
 // Runtime-learned skip set (updated by markRdapSkipped / markRdapSupported)

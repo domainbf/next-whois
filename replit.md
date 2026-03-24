@@ -45,6 +45,19 @@ A fast, modern WHOIS and RDAP lookup tool supporting domains, IPv4/IPv6, ASN, an
 
 ## Changelog
 
+### v3.22.2 — RDAP Coverage Expansion: 168 ccTLDs + Conflict Fixes + Per-TLD Timeouts (2026-03-24)
+
+**Scope:** Largest single RDAP coverage expansion yet. Fixed 15 blocking conflicts in `STATIC_NO_RDAP`, added 40+ new ccTLD RDAP servers confirmed by live probing, introduced per-TLD timeout map for slow registries, and set up automated monthly bootstrap refresh via GitHub Actions.
+
+| File | Change | Detail |
+|------|--------|--------|
+| `src/lib/whois/tld-rdap-skip.ts` | **Fixed 15 critical STATIC_NO_RDAP conflicts** | `ru`, `by`, `kz`, `lb`, `ve`, `ec`, `tl`, `cd`, `af`, `gh`, `ug`, `et`, `ci`, `dj`, `ss` were in STATIC_NO_RDAP but also in CCTLD_RDAP_OVERRIDES, causing RDAP to be blocked entirely for these TLDs. All removed. STATIC_NO_RDAP reduced from ~25 → 21 genuinely RDAP-less TLDs. |
+| `src/lib/whois/rdap_client.ts` | **CCTLD_RDAP_OVERRIDES expanded to 168 ccTLDs** | Added 40+ new entries: Western Europe (`at`, `be`, `ch`, `de`, `dk`, `ee`, `es`, `gr`, `hr`, `hu`, `ie`, `it`, `li`, `lt`, `lu`, `lv`, `me`, `pt`, `ro`, `rs`, `se`, `sk`), CIS (`by`, `kz`, `ru`, `su`), Other (`im`, `io`, `mn`, `my`, `nu`, `ph`, `hk`, `jp`, `kr`, `co`, `mx`, `pe`, `ve`, `za`). Entries reorganized by region. |
+| `src/lib/whois/rdap_client.ts` | **`RDAP_TLD_TIMEOUT_MS` per-TLD timeout map** | 32-entry map with extended timeouts (6–8 s) for known-slow registries in Africa (`ng`, `ke`, `tz`, `gh`, `ug`), CIS (`ru`, `su`, `by`, `kz`), Middle East (`iq`, `sy`, `ye`), and Asia (`pk`, `np`, `mm`, `la`, `kh`). Default remains 4 s. |
+| `src/lib/whois/rdap_client.ts` | **`lookupRdap` uses per-TLD timeout** | `RDAP_TLD_TIMEOUT_MS[tld] ?? 4000` passed to `tryRdapWithUrl` instead of hardcoded 4000. |
+| `package.json` | **npm script** | `update:rdap-bootstrap` → `node scripts/update-rdap-bootstrap.js` for manual refresh. |
+| `.github/workflows/update-rdap-bootstrap.yaml` | **GitHub Actions cron** | Runs `scripts/update-rdap-bootstrap.js` on the 1st of every month at 02:00 UTC, commits updated `rdap_gtld_bootstrap.ts` if changed. |
+
 ### v3.22.1 — Bug Fix Batch (2026-03-24)
 
 **Scope:** Six targeted bug fixes across lookup recording, subscription session sync, query-only mode, admin pages, and announcement bar positioning.
