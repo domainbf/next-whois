@@ -1,10 +1,26 @@
-# Next Whois UI — v3.16
+# Next Whois UI — v3.17
 
 A fast, modern WHOIS and RDAP lookup tool supporting domains, IPv4/IPv6, ASN, and CIDR. Also includes built-in DNS, SSL certificate, and IP/ASN geolocation tools.
 
 ---
 
 ## Changelog
+
+### v3.17 — Admin Page Enrichment: Feedback, Invite Codes & Links (2026-03-24)
+
+**Scope:** Enriched three admin management pages with richer filtering, stats, and bulk operations.
+
+**Changes:**
+
+| File | Change | Detail |
+|---|---|---|
+| `src/pages/api/admin/feedback.ts` | Issue-type filter + typeCounts | `GET` now accepts `issue_type` query param to filter by a single issue type; response includes `typeCounts` map (aggregated via `jsonb_array_elements_text`). |
+| `src/pages/admin/feedback.tsx` | Stats bar + filter tabs | Added 5-card issue-type stats bar (不准确/不完整/过期/解析错误/其他) with percentage, each card clickable as a filter shortcut; pill-style filter tabs with per-type count badges; search and type filter compose together. |
+| `src/pages/admin/invite-codes.tsx` | Stats grid + filter tabs + usage progress + bulk-delete | Added 4-stat grid (全部/可用/停用/耗尽); pill filter tabs (全部/可用/已停用/已耗尽); each code row now shows a colour-coded progress bar (green→amber at ≥80%); "清理耗尽" button batch-deletes all exhausted codes. |
+| `src/pages/admin/links.tsx` | Category filter tabs + visibility toggle + stats | Added 3-stat grid (总数/已显示/分类数); dynamic per-category pill tabs derived from existing category values; "未分类" tab when uncategorised links exist; "隐藏已隐藏/显示已隐藏" toggle button shows count of hidden links. |
+| `src/lib/env.ts` | VERSION bumped to "3.17" | |
+
+---
 
 ### v3.16 — UX Animations Overhaul + No-Server TLD Fast-Fail (2026-03-24)
 

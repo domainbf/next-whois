@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import {
   RiKeyLine, RiAddLine, RiDeleteBinLine, RiFileCopyLine,
   RiToggleLine, RiToggleFill, RiLoader4Line, RiCloseLine,
-  RiCheckLine,
+  RiCheckLine, RiFilterLine,
 } from "@remixicon/react";
 
 type InviteCode = {
@@ -22,6 +22,19 @@ type InviteCode = {
   created_at: string;
 };
 
+type FilterTab = "all" | "active" | "disabled" | "exhausted";
+
+const FILTER_TABS: { key: FilterTab; label: string }[] = [
+  { key: "all",      label: "全部" },
+  { key: "active",   label: "可用" },
+  { key: "disabled", label: "已停用" },
+  { key: "exhausted",label: "已耗尽" },
+];
+
+function isExhausted(c: InviteCode) { return c.use_count >= c.max_uses; }
+function isActive(c: InviteCode)    { return c.is_active && !isExhausted(c); }
+function isDisabled(c: InviteCode)  { return !c.is_active && !isExhausted(c); }
+
 export default function InviteCodesPage() {
   const [codes, setCodes] = React.useState<InviteCode[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -31,6 +44,8 @@ export default function InviteCodesPage() {
   const [description, setDescription] = React.useState("");
   const [creating, setCreating] = React.useState(false);
   const [copied, setCopied] = React.useState<string | null>(null);
+  const [activeFilter, setActiveFilter] = React.useState<FilterTab>("all");
+  const [purgingExhausted, setPurgingExhausted] = React.useState(false);
 
   async function load() {
     setLoading(true);
@@ -89,6 +104,27 @@ export default function InviteCodesPage() {
     toast.success("已删除");
   }
 
+  async function purgeExhausted() {
+    const exhaustedList = codes.filter(isExhausted);
+    if (exhaustedList.length === 0) return;
+    if (!confirm(`确认删除全部 ${exhaustedList.length} 个已耗尽的邀请码？`)) return;
+    setPurgingExhausted(true);
+    try {
+      await Promise.all(exhaustedList.map(c =>
+        fetch("/api/admin/invite-codes", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: c.id }),
+        })
+      ));
+      setCodes(cs => cs.filter(c => !isExhausted(c)));
+      toast.success(`已清除 ${exhaustedList.length} 个耗尽邀请码`);
+      if (activeFilter === "exhausted") setActiveFilter("all");
+    } finally {
+      setPurgingExhausted(false);
+    }
+  }
+
   function copy(code: string) {
     navigator.clipboard.writeText(code).then(() => {
       setCopied(code);
@@ -96,8 +132,17 @@ export default function InviteCodesPage() {
     });
   }
 
-  const active = codes.filter(c => c.is_active && c.use_count < c.max_uses).length;
-  const used = codes.filter(c => c.use_count >= c.max_uses).length;
+  const activeCount   = codes.filter(isActive).length;
+  const disabledCount = codes.filter(isDisabled).length;
+  const exhaustedCount = codes.filter(isExhausted).length;
+  const totalUses     = codes.reduce((s, c) => s + c.use_count, 0);
+
+  const filtered = codes.filter(c => {
+    if (activeFilter === "active")   return isActive(c);
+    if (activeFilter === "disabled") return isDisabled(c);
+    if (activeFilter === "exhausted") return isExhausted(c);
+    return true;
+  });
 
   return (
     <AdminLayout title="邀请码管理">
@@ -111,13 +156,70 @@ export default function InviteCodesPage() {
               <RiKeyLine className="w-5 h-5 text-primary" />邀请码管理
             </h1>
             <p className="text-xs text-muted-foreground mt-0.5">
-              共 {codes.length} 个 · 可用 {active} 个 · 已耗尽 {used} 个
+              共 {codes.length} 个 · 累计使用 {totalUses} 次
             </p>
           </div>
-          <Button size="sm" className="gap-1.5 rounded-xl h-8" onClick={() => setShowCreate(true)}>
-            <RiAddLine className="w-3.5 h-3.5" />生成邀请码
-          </Button>
+          <div className="flex items-center gap-2">
+            {exhaustedCount > 0 && (
+              <Button
+                variant="outline" size="sm"
+                className="gap-1.5 rounded-xl h-8 text-muted-foreground border-border/60"
+                onClick={purgeExhausted}
+                disabled={purgingExhausted}
+              >
+                {purgingExhausted
+                  ? <RiLoader4Line className="w-3.5 h-3.5 animate-spin" />
+                  : <RiDeleteBinLine className="w-3.5 h-3.5" />}
+                清理耗尽 ({exhaustedCount})
+              </Button>
+            )}
+            <Button size="sm" className="gap-1.5 rounded-xl h-8" onClick={() => setShowCreate(true)}>
+              <RiAddLine className="w-3.5 h-3.5" />生成邀请码
+            </Button>
+          </div>
         </div>
+
+        {/* Stats */}
+        {codes.length > 0 && (
+          <div className="grid grid-cols-4 gap-2.5">
+            {[
+              { label: "全部", value: codes.length,    color: "text-foreground" },
+              { label: "可用",  value: activeCount,    color: "text-emerald-500" },
+              { label: "已停用", value: disabledCount,  color: "text-muted-foreground" },
+              { label: "已耗尽", value: exhaustedCount, color: "text-amber-500" },
+            ].map(s => (
+              <div key={s.label} className="glass-panel border border-border rounded-xl p-3 text-center">
+                <p className={cn("text-2xl font-bold tabular-nums", s.color)}>{s.value}</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">{s.label}</p>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Filter tabs */}
+        {codes.length > 0 && (
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <RiFilterLine className="w-3.5 h-3.5 text-muted-foreground/60 shrink-0" />
+            {FILTER_TABS.map(tab => {
+              const cnt = tab.key === "all" ? codes.length : tab.key === "active" ? activeCount : tab.key === "disabled" ? disabledCount : exhaustedCount;
+              return (
+                <button
+                  key={tab.key}
+                  onClick={() => setActiveFilter(tab.key)}
+                  className={cn(
+                    "text-xs px-3 py-1.5 rounded-full font-medium transition-all",
+                    activeFilter === tab.key
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground"
+                  )}
+                >
+                  {tab.label}
+                  <span className={cn("ml-1.5 text-[10px]", activeFilter === tab.key ? "opacity-70" : "opacity-60")}>{cnt}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {/* Create modal */}
         {showCreate && (
@@ -158,9 +260,9 @@ export default function InviteCodesPage() {
           <div className="flex justify-center py-12">
             <RiLoader4Line className="w-6 h-6 animate-spin text-muted-foreground" />
           </div>
-        ) : codes.length === 0 ? (
+        ) : filtered.length === 0 ? (
           <div className="text-center py-12 text-sm text-muted-foreground">
-            暂无邀请码，点击右上角生成
+            {codes.length === 0 ? "暂无邀请码，点击右上角生成" : "该筛选条件下暂无邀请码"}
           </div>
         ) : (
           <div className="rounded-2xl border border-border overflow-hidden">
@@ -169,16 +271,17 @@ export default function InviteCodesPage() {
                 <tr className="bg-muted/40 border-b border-border text-xs text-muted-foreground">
                   <th className="text-left px-4 py-2.5 font-semibold">邀请码</th>
                   <th className="text-left px-4 py-2.5 font-semibold hidden sm:table-cell">备注</th>
-                  <th className="text-center px-3 py-2.5 font-semibold">使用</th>
+                  <th className="text-left px-4 py-2.5 font-semibold">使用进度</th>
                   <th className="text-center px-3 py-2.5 font-semibold">状态</th>
                   <th className="text-right px-4 py-2.5 font-semibold">操作</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {codes.map(c => {
-                  const exhausted = c.use_count >= c.max_uses;
+                {filtered.map(c => {
+                  const exhausted = isExhausted(c);
+                  const pct = c.max_uses > 0 ? Math.round((c.use_count / c.max_uses) * 100) : 0;
                   return (
-                    <tr key={c.id} className={cn("hover:bg-muted/20 transition-colors", !c.is_active && "opacity-50")}>
+                    <tr key={c.id} className={cn("hover:bg-muted/20 transition-colors", !c.is_active && !exhausted && "opacity-50")}>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
                           <span className="font-mono text-xs font-semibold tracking-wider">{c.code}</span>
@@ -199,13 +302,22 @@ export default function InviteCodesPage() {
                       <td className="px-4 py-3 hidden sm:table-cell">
                         <span className="text-xs text-muted-foreground">{c.description || "—"}</span>
                       </td>
-                      <td className="px-3 py-3 text-center">
-                        <span className={cn(
-                          "text-xs font-semibold px-2 py-0.5 rounded-full",
-                          exhausted ? "bg-muted text-muted-foreground" : "bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400"
-                        )}>
-                          {c.use_count}/{c.max_uses}
-                        </span>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2.5 min-w-[90px]">
+                          <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+                            <div
+                              className={cn(
+                                "h-full rounded-full transition-all",
+                                exhausted ? "bg-muted-foreground/40" :
+                                pct >= 80 ? "bg-amber-500" : "bg-emerald-500"
+                              )}
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                          <span className="text-xs font-semibold tabular-nums text-muted-foreground w-12 text-right shrink-0">
+                            {c.use_count}/{c.max_uses}
+                          </span>
+                        </div>
                       </td>
                       <td className="px-3 py-3 text-center">
                         <span className={cn(
@@ -219,15 +331,17 @@ export default function InviteCodesPage() {
                       </td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex items-center justify-end gap-1">
-                          <button
-                            onClick={() => toggleActive(c)}
-                            title={c.is_active ? "停用" : "启用"}
-                            className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                          >
-                            {c.is_active
-                              ? <RiToggleFill className="w-4 h-4 text-emerald-500" />
-                              : <RiToggleLine className="w-4 h-4" />}
-                          </button>
+                          {!exhausted && (
+                            <button
+                              onClick={() => toggleActive(c)}
+                              title={c.is_active ? "停用" : "启用"}
+                              className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                            >
+                              {c.is_active
+                                ? <RiToggleFill className="w-4 h-4 text-emerald-500" />
+                                : <RiToggleLine className="w-4 h-4" />}
+                            </button>
+                          )}
                           <button
                             onClick={() => deleteCode(c)}
                             title="删除"

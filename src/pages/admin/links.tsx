@@ -9,7 +9,8 @@ import { cn } from "@/lib/utils";
 import {
   RiLinksLine, RiAddLine, RiDeleteBinLine, RiEditLine,
   RiLoader4Line, RiCloseLine, RiCheckLine, RiExternalLinkLine,
-  RiToggleLine, RiToggleFill, RiDraggable, RiGlobalLine,
+  RiToggleLine, RiToggleFill, RiGlobalLine, RiFilterLine,
+  RiEyeLine, RiEyeOffLine,
 } from "@remixicon/react";
 
 type FriendlyLink = {
@@ -33,6 +34,8 @@ export default function AdminLinksPage() {
   const [form, setForm] = React.useState(EMPTY_FORM);
   const [saving, setSaving] = React.useState(false);
   const [deletingId, setDeletingId] = React.useState<number | null>(null);
+  const [categoryFilter, setCategoryFilter] = React.useState<string>("__all__");
+  const [showHidden, setShowHidden] = React.useState(true);
 
   async function load() {
     setLoading(true);
@@ -137,11 +140,20 @@ export default function AdminLinksPage() {
   }
 
   const categories = Array.from(new Set(links.map(l => l.category).filter(Boolean))) as string[];
+  const activeCount = links.filter(l => l.active).length;
+  const hiddenCount = links.filter(l => !l.active).length;
+
+  const filtered = links.filter(l => {
+    const catOk = categoryFilter === "__all__" || l.category === categoryFilter || (categoryFilter === "__none__" && !l.category);
+    const visOk = showHidden || l.active;
+    return catOk && visOk;
+  });
 
   return (
     <AdminLayout title="友情链接管理">
       <Head><title>友情链接 · Admin</title></Head>
       <div className="space-y-4">
+        {/* Header */}
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>
             <h2 className="text-lg font-bold">友情链接</h2>
@@ -151,6 +163,89 @@ export default function AdminLinksPage() {
             <RiAddLine className="w-4 h-4" />添加链接
           </Button>
         </div>
+
+        {/* Stats */}
+        {links.length > 0 && (
+          <div className="grid grid-cols-3 gap-2.5">
+            <div className="glass-panel border border-border rounded-xl p-3 text-center">
+              <p className="text-2xl font-bold tabular-nums">{links.length}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">全部链接</p>
+            </div>
+            <div className="glass-panel border border-border rounded-xl p-3 text-center">
+              <p className="text-2xl font-bold tabular-nums text-emerald-500">{activeCount}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">已显示</p>
+            </div>
+            <div className="glass-panel border border-border rounded-xl p-3 text-center">
+              <p className="text-2xl font-bold tabular-nums text-muted-foreground">{categories.length}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">分类数</p>
+            </div>
+          </div>
+        )}
+
+        {/* Category filter + visibility toggle */}
+        {links.length > 0 && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <RiFilterLine className="w-3.5 h-3.5 text-muted-foreground/60 shrink-0" />
+            <button
+              onClick={() => setCategoryFilter("__all__")}
+              className={cn(
+                "text-xs px-3 py-1.5 rounded-full font-medium transition-all",
+                categoryFilter === "__all__"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground"
+              )}
+            >
+              全部<span className={cn("ml-1.5 text-[10px]", categoryFilter === "__all__" ? "opacity-70" : "opacity-60")}>{links.length}</span>
+            </button>
+            {categories.map(cat => (
+              <button
+                key={cat}
+                onClick={() => setCategoryFilter(cat)}
+                className={cn(
+                  "text-xs px-3 py-1.5 rounded-full font-medium transition-all",
+                  categoryFilter === cat
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground"
+                )}
+              >
+                {cat}
+                <span className={cn("ml-1.5 text-[10px]", categoryFilter === cat ? "opacity-70" : "opacity-60")}>
+                  {links.filter(l => l.category === cat).length}
+                </span>
+              </button>
+            ))}
+            {links.some(l => !l.category) && (
+              <button
+                onClick={() => setCategoryFilter("__none__")}
+                className={cn(
+                  "text-xs px-3 py-1.5 rounded-full font-medium transition-all",
+                  categoryFilter === "__none__"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground"
+                )}
+              >
+                未分类
+                <span className={cn("ml-1.5 text-[10px]", categoryFilter === "__none__" ? "opacity-70" : "opacity-60")}>
+                  {links.filter(l => !l.category).length}
+                </span>
+              </button>
+            )}
+            {hiddenCount > 0 && (
+              <button
+                onClick={() => setShowHidden(v => !v)}
+                className={cn(
+                  "ml-auto text-xs px-3 py-1.5 rounded-full font-medium transition-all flex items-center gap-1.5",
+                  showHidden
+                    ? "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground"
+                    : "bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400"
+                )}
+              >
+                {showHidden ? <RiEyeOffLine className="w-3 h-3" /> : <RiEyeLine className="w-3 h-3" />}
+                {showHidden ? `隐藏已隐藏 (${hiddenCount})` : `显示已隐藏 (${hiddenCount})`}
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Create / Edit form */}
         {(showCreate || editId !== null) && (
@@ -237,9 +332,11 @@ export default function AdminLinksPage() {
           <div className="px-5 py-3 flex items-center justify-between border-b border-border bg-muted/30">
             <div className="flex items-center gap-2">
               <RiLinksLine className="w-4 h-4 text-muted-foreground" />
-              <h3 className="text-sm font-bold">全部链接</h3>
+              <h3 className="text-sm font-bold">
+                {categoryFilter === "__all__" ? "全部链接" : categoryFilter === "__none__" ? "未分类链接" : `分类：${categoryFilter}`}
+              </h3>
             </div>
-            <span className="text-xs text-muted-foreground">{links.length} 条</span>
+            <span className="text-xs text-muted-foreground">{filtered.length} 条</span>
           </div>
 
           {loading ? (
@@ -247,15 +344,19 @@ export default function AdminLinksPage() {
               <RiLoader4Line className="w-5 h-5 animate-spin" />
               <span className="text-sm">加载中…</span>
             </div>
-          ) : links.length === 0 ? (
+          ) : filtered.length === 0 ? (
             <div className="py-16 text-center">
               <RiLinksLine className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
-              <p className="text-sm text-muted-foreground">还没有添加任何链接</p>
-              <p className="text-xs text-muted-foreground/60 mt-1">点击"添加链接"来创建第一条友情链接</p>
+              <p className="text-sm text-muted-foreground">
+                {links.length === 0 ? "还没有添加任何链接" : "该筛选条件下暂无链接"}
+              </p>
+              {links.length === 0 && (
+                <p className="text-xs text-muted-foreground/60 mt-1">点击"添加链接"来创建第一条友情链接</p>
+              )}
             </div>
           ) : (
             <div className="divide-y divide-border">
-              {links.map(link => (
+              {filtered.map(link => (
                 <div
                   key={link.id}
                   className={cn(

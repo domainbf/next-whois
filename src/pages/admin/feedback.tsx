@@ -6,7 +6,8 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
   RiLoader4Line, RiSearchLine, RiDeleteBinLine,
-  RiFeedbackLine, RiMailLine, RiCalendarLine, RiGlobalLine,
+  RiFeedbackLine, RiMailLine, RiCalendarLine,
+  RiFilterLine,
 } from "@remixicon/react";
 
 type FeedbackItem = {
@@ -19,39 +20,62 @@ type FeedbackItem = {
   created_at: string;
 };
 
-const ISSUE_LABELS: Record<string, { label: string; color: string }> = {
-  inaccurate:  { label: "数据不准确",  color: "bg-red-100 dark:bg-red-950/30 text-red-600 dark:text-red-400" },
-  incomplete:  { label: "数据不完整",  color: "bg-orange-100 dark:bg-orange-950/30 text-orange-600 dark:text-orange-400" },
-  outdated:    { label: "数据已过期",  color: "bg-yellow-100 dark:bg-yellow-950/30 text-yellow-600 dark:text-yellow-400" },
-  parse_error: { label: "解析错误",    color: "bg-blue-100 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400" },
-  other:       { label: "其他",        color: "bg-muted text-muted-foreground" },
+const ISSUE_META: Record<string, { label: string; color: string; dot: string }> = {
+  inaccurate:  { label: "数据不准确",  color: "bg-red-100 dark:bg-red-950/30 text-red-600 dark:text-red-400",         dot: "bg-red-500" },
+  incomplete:  { label: "数据不完整",  color: "bg-orange-100 dark:bg-orange-950/30 text-orange-600 dark:text-orange-400", dot: "bg-orange-500" },
+  outdated:    { label: "数据已过期",  color: "bg-yellow-100 dark:bg-yellow-950/30 text-yellow-600 dark:text-yellow-400", dot: "bg-yellow-500" },
+  parse_error: { label: "解析错误",    color: "bg-blue-100 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400",      dot: "bg-blue-500" },
+  other:       { label: "其他",        color: "bg-muted text-muted-foreground",                                         dot: "bg-muted-foreground/50" },
 };
+
+const FILTER_TABS: { key: string; label: string }[] = [
+  { key: "", label: "全部" },
+  { key: "inaccurate",  label: "数据不准确" },
+  { key: "incomplete",  label: "数据不完整" },
+  { key: "outdated",    label: "数据已过期" },
+  { key: "parse_error", label: "解析错误" },
+  { key: "other",       label: "其他" },
+];
 
 export default function AdminFeedbackPage() {
   const [items, setItems] = React.useState<FeedbackItem[]>([]);
   const [total, setTotal] = React.useState(0);
+  const [typeCounts, setTypeCounts] = React.useState<Record<string, number>>({});
   const [search, setSearch] = React.useState("");
+  const [activeType, setActiveType] = React.useState("");
   const [loading, setLoading] = React.useState(false);
   const [deleting, setDeleting] = React.useState<string | null>(null);
   const [expanded, setExpanded] = React.useState<string | null>(null);
 
-  function load(q: string) {
+  function load(q: string, type: string) {
     setLoading(true);
-    fetch(`/api/admin/feedback?search=${encodeURIComponent(q)}&limit=50`)
+    const params = new URLSearchParams({ limit: "50" });
+    if (q) params.set("search", q);
+    if (type) params.set("issue_type", type);
+    fetch(`/api/admin/feedback?${params}`)
       .then(r => r.json())
       .then(data => {
         if (data.error) toast.error(data.error);
-        else { setItems(data.feedback || []); setTotal(data.total || 0); }
+        else {
+          setItems(data.feedback || []);
+          setTotal(data.total || 0);
+          if (data.typeCounts) setTypeCounts(data.typeCounts);
+        }
       })
       .catch(() => toast.error("加载失败"))
       .finally(() => setLoading(false));
   }
 
-  React.useEffect(() => { load(""); }, []);
+  React.useEffect(() => { load("", ""); }, []);
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
-    load(search);
+    load(search, activeType);
+  }
+
+  function selectType(type: string) {
+    setActiveType(type);
+    load(search, type);
   }
 
   async function deleteItem(id: string) {
@@ -81,13 +105,16 @@ export default function AdminFeedbackPage() {
     try { return JSON.parse(raw); } catch { return raw ? [raw] : []; }
   }
 
+  const grandTotal = Object.values(typeCounts).reduce((a, b) => a + b, 0) || total;
+
   return (
     <AdminLayout title="用户反馈">
       <div className="space-y-5">
+        {/* Header */}
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
             <h2 className="text-lg font-bold">用户反馈</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">共 {total.toLocaleString()} 条反馈记录</p>
+            <p className="text-xs text-muted-foreground mt-0.5">共 {total.toLocaleString()} 条记录</p>
           </div>
           <form onSubmit={handleSearch} className="flex items-center gap-2">
             <div className="relative">
@@ -96,13 +123,68 @@ export default function AdminFeedbackPage() {
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 placeholder="搜索查询、邮箱或描述…"
-                className="pl-8 h-9 rounded-xl text-sm w-56"
+                className="pl-8 h-9 rounded-xl text-sm w-52"
               />
             </div>
             <Button type="submit" size="sm" className="h-9 rounded-xl px-4">搜索</Button>
           </form>
         </div>
 
+        {/* Stats bar */}
+        {grandTotal > 0 && (
+          <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+            {(["inaccurate", "incomplete", "outdated", "parse_error", "other"] as const).map(key => {
+              const meta = ISSUE_META[key];
+              const count = typeCounts[key] ?? 0;
+              const pct = grandTotal > 0 ? Math.round((count / grandTotal) * 100) : 0;
+              return (
+                <button
+                  key={key}
+                  onClick={() => selectType(activeType === key ? "" : key)}
+                  className={cn(
+                    "glass-panel border rounded-xl p-3 text-left transition-all hover:border-primary/30",
+                    activeType === key ? "border-primary/50 bg-primary/5" : "border-border"
+                  )}
+                >
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <span className={cn("w-2 h-2 rounded-full shrink-0", meta.dot)} />
+                    <span className="text-[10px] font-semibold text-muted-foreground truncate">{meta.label}</span>
+                  </div>
+                  <p className="text-xl font-bold tabular-nums">{count}</p>
+                  <p className="text-[10px] text-muted-foreground/60">{pct}%</p>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Filter tabs */}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <RiFilterLine className="w-3.5 h-3.5 text-muted-foreground/60 shrink-0" />
+          {FILTER_TABS.map(tab => (
+            <button
+              key={tab.key}
+              onClick={() => selectType(tab.key)}
+              className={cn(
+                "text-xs px-3 py-1.5 rounded-full font-medium transition-all",
+                activeType === tab.key
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground"
+              )}
+            >
+              {tab.label}
+              {tab.key && typeCounts[tab.key] ? (
+                <span className={cn("ml-1.5 text-[10px]", activeType === tab.key ? "opacity-70" : "opacity-60")}>
+                  {typeCounts[tab.key]}
+                </span>
+              ) : tab.key === "" && total > 0 ? (
+                <span className="ml-1.5 text-[10px] opacity-60">{total}</span>
+              ) : null}
+            </button>
+          ))}
+        </div>
+
+        {/* List */}
         {loading ? (
           <div className="flex justify-center py-12">
             <RiLoader4Line className="w-5 h-5 animate-spin text-muted-foreground" />
@@ -110,7 +192,9 @@ export default function AdminFeedbackPage() {
         ) : items.length === 0 ? (
           <div className="text-center py-12 space-y-2">
             <RiFeedbackLine className="w-10 h-10 text-muted-foreground/30 mx-auto" />
-            <p className="text-sm text-muted-foreground">暂无反馈记录</p>
+            <p className="text-sm text-muted-foreground">
+              {activeType ? "该分类暂无反馈记录" : "暂无反馈记录"}
+            </p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -136,7 +220,7 @@ export default function AdminFeedbackPage() {
                       </div>
                       <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
                         {issues.map(issue => {
-                          const meta = ISSUE_LABELS[issue] || ISSUE_LABELS.other;
+                          const meta = ISSUE_META[issue] || ISSUE_META.other;
                           return (
                             <span key={issue} className={cn("text-[10px] px-1.5 py-0.5 rounded font-semibold", meta.color)}>
                               {meta.label}
