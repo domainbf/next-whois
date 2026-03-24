@@ -5,7 +5,7 @@ import {
   RiUserLine, RiShieldCheckLine, RiBellLine, RiSearchLine,
   RiSettings4Line, RiLoader4Line, RiArrowRightLine, RiUserForbidLine,
   RiFeedbackLine, RiTimeLine, RiGhostLine, RiVipCrownLine,
-  RiAddLine, RiBarChartLine,
+  RiAddLine, RiBarChartLine, RiBankCardLine, RiCheckDoubleLine,
 } from "@remixicon/react";
 
 type Stats = {
@@ -20,6 +20,8 @@ type Stats = {
   todaySearches: number;
   todayUsers: number;
   subscribedUsers: number;
+  totalOrders: number;
+  paidOrders: number;
   recentUsers: { id: string; email: string; name: string | null; created_at: string; disabled: boolean }[];
   recentSearches: { id: string; query: string; query_type: string; created_at: string; user_id: string | null }[];
 };
@@ -93,14 +95,16 @@ export default function AdminIndexPage() {
   }, []);
 
   const QUICK_ACTIONS = [
-    { href: "/admin/search-records", label: "查询记录", desc: "查看统计、分类、逐条清理" },
-    { href: "/admin/settings",       label: "网站设置", desc: "标题、OG标签、公告" },
-    { href: "/admin/users",          label: "用户管理", desc: "编辑、订阅、停用、删除" },
-    { href: "/admin/stamps",         label: "品牌审核", desc: "审核品牌认领申请" },
-    { href: "/admin/reminders",      label: "提醒管理", desc: "管理域名到期订阅" },
-    { href: "/admin/feedback",       label: "用户反馈", desc: "查看用户提交的反馈" },
-    { href: "/admin/tld-fallback",   label: "TLD 兜底", desc: "查看并管理第三方备用查询" },
-    { href: "/admin/system",         label: "系统状态", desc: "数据库、查询趋势" },
+    { href: "/admin/search-records",    label: "查询记录", desc: "查看统计、分类、逐条清理" },
+    { href: "/admin/settings",          label: "网站设置", desc: "标题、OG标签、公告" },
+    { href: "/admin/users",             label: "用户管理", desc: "编辑、订阅、停用、删除" },
+    { href: "/admin/stamps",            label: "品牌审核", desc: "审核品牌认领申请" },
+    { href: "/admin/reminders",         label: "提醒管理", desc: "管理域名到期订阅" },
+    { href: "/admin/feedback",          label: "用户反馈", desc: "查看用户提交的反馈" },
+    { href: "/admin/payment/plans",     label: "套餐管理", desc: "新增/编辑订阅套餐" },
+    { href: "/admin/payment/orders",    label: "订单管理", desc: "查看支付订单与收款" },
+    { href: "/admin/tld-fallback",      label: "TLD 兜底", desc: "查看并管理第三方备用查询" },
+    { href: "/admin/system",            label: "系统状态", desc: "数据库、查询趋势" },
   ];
 
   return (
@@ -177,6 +181,21 @@ export default function AdminIndexPage() {
             href="/admin/users"
             color="bg-amber-100 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400"
           />
+          {(stats?.totalOrders ?? 0) > 0 && (
+            <StatCard
+              icon={RiBankCardLine} label="支付订单" value={stats?.totalOrders}
+              sub="已付款" subValue={stats?.paidOrders}
+              href="/admin/payment/orders"
+              color="bg-teal-100 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400"
+            />
+          )}
+          {(stats?.totalOrders ?? 0) > 0 && (
+            <StatCard
+              icon={RiCheckDoubleLine} label="已完成订单" value={stats?.paidOrders}
+              href="/admin/payment/orders"
+              color="bg-green-100 dark:bg-green-950/40 text-green-600 dark:text-green-400"
+            />
+          )}
         </div>
 
         {/* Recent users */}

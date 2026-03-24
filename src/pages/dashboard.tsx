@@ -495,7 +495,7 @@ export default function DashboardPage() {
   const { t } = useTranslation();
   const { data: session, status, update: updateSession } = useSession();
   const siteSettings = useSiteSettings();
-  const paymentEnabled = !!(siteSettings.payment_stripe_enabled || siteSettings.payment_xunhupay_enabled || siteSettings.payment_alipay_enabled);
+  const paymentEnabled = !!(siteSettings.payment_stripe_enabled || siteSettings.payment_xunhupay_enabled || siteSettings.payment_alipay_enabled || siteSettings.payment_paypal_enabled);
   const [tab, setTab] = React.useState<"subscriptions" | "stamps" | "account" | "history">("stamps");
   const [subscriptions, setSubscriptions] = React.useState<Subscription[]>([]);
   const [stamps, setStamps] = React.useState<Stamp[]>([]);

@@ -15,6 +15,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const [
       users, disabledUsers, stamps, verifiedStamps, reminders, history, feedback,
       anonSearches, todaySearches, todayUsers, subscribedUsers,
+      totalOrders, paidOrders,
     ] = await Promise.all([
       one<{ count: string }>("SELECT COUNT(*) AS count FROM users"),
       one<{ count: string }>("SELECT COUNT(*) AS count FROM users WHERE disabled = true"),
@@ -27,6 +28,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       one<{ count: string }>("SELECT COUNT(*) AS count FROM search_history WHERE created_at >= NOW() - INTERVAL '1 day'"),
       one<{ count: string }>("SELECT COUNT(*) AS count FROM users WHERE created_at >= NOW() - INTERVAL '1 day'"),
       one<{ count: string }>("SELECT COUNT(*) AS count FROM users WHERE subscription_access = true").catch(() => ({ count: "0" })),
+      one<{ count: string }>("SELECT COUNT(*) AS count FROM payment_orders").catch(() => ({ count: "0" })),
+      one<{ count: string }>("SELECT COUNT(*) AS count FROM payment_orders WHERE status = 'paid'").catch(() => ({ count: "0" })),
     ]);
 
     const [recentUsers, recentSearches] = await Promise.all([
@@ -50,6 +53,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       todaySearches: parseInt(todaySearches?.count ?? "0"),
       todayUsers: parseInt(todayUsers?.count ?? "0"),
       subscribedUsers: parseInt(subscribedUsers?.count ?? "0"),
+      totalOrders: parseInt(totalOrders?.count ?? "0"),
+      paidOrders: parseInt(paidOrders?.count ?? "0"),
       recentUsers,
       recentSearches,
     });

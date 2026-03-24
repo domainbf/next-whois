@@ -292,14 +292,14 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { labelKey: "nav_api_docs",      descKey: "nav_api_docs_desc",      href: "/docs",    icon: <RiCodeSSlashLine className="h-6 w-6" /> },
+  { labelKey: "nav_api_docs",      descKey: "nav_api_docs_desc",      href: "/docs",    icon: <RiCodeSSlashLine className="h-6 w-6" />, settingKey: "enable_docs" },
   { labelKey: "nav_tlds",          descKey: "nav_tlds_desc",          href: "/tlds",    icon: <RiServerLine className="h-6 w-6" /> },
   { labelKey: "nav_domain_lookup", descKey: "nav_domain_lookup_desc", href: "/",        icon: <RiGlobalLine className="h-6 w-6" /> },
-  { labelKey: "nav_dns",           descKey: "nav_dns_desc",           href: "/dns",     icon: <RiServerLine className="h-6 w-6" /> },
-  { labelKey: "nav_ssl",           descKey: "nav_ssl_desc",           href: "/ssl",     icon: <RiLockLine className="h-6 w-6" /> },
-  { labelKey: "nav_ip",            descKey: "nav_ip_desc",            href: "/ip",      icon: <RiMapPinLine className="h-6 w-6" /> },
+  { labelKey: "nav_dns",           descKey: "nav_dns_desc",           href: "/dns",     icon: <RiServerLine className="h-6 w-6" />, settingKey: "enable_dns" },
+  { labelKey: "nav_ssl",           descKey: "nav_ssl_desc",           href: "/ssl",     icon: <RiLockLine className="h-6 w-6" />, settingKey: "enable_ssl" },
+  { labelKey: "nav_ip",            descKey: "nav_ip_desc",            href: "/ip",      icon: <RiMapPinLine className="h-6 w-6" />, settingKey: "enable_ip" },
   { labelKey: "nav_icp",           descKey: "nav_icp_desc",           href: "/icp",     icon: <RiFileList2Line className="h-6 w-6" /> },
-  { labelKey: "nav_about",         descKey: "nav_about_desc",         href: "/about",   icon: <RiInformationLine className="h-6 w-6" /> },
+  { labelKey: "nav_about",         descKey: "nav_about_desc",         href: "/about",   icon: <RiInformationLine className="h-6 w-6" />, settingKey: "enable_about" },
   { labelKey: "nav_sponsor",       descKey: "nav_sponsor_desc",       href: "/sponsor", icon: <RiHeart3Line className="h-6 w-6" />, settingKey: "enable_sponsor" },
 ];
 
@@ -542,15 +542,17 @@ export function Navbar() {
         <div className="flex items-center gap-3">
           <ThemeToggle />
           <LanguageSwitcher />
-          <motion.div {...TAP} style={{ display: "inline-flex" }}>
-            <Link
-              href="/tools"
-              className="p-2 pr-0 inline-flex items-center justify-center touch-manipulation"
-              aria-label={t("nav_toolbox")}
-            >
-              <RiToolsLine className="h-[1rem] w-[1rem]" />
-            </Link>
-          </motion.div>
+          {settings.enable_tools && (
+            <motion.div {...TAP} style={{ display: "inline-flex" }}>
+              <Link
+                href="/tools"
+                className="p-2 pr-0 inline-flex items-center justify-center touch-manipulation"
+                aria-label={t("nav_toolbox")}
+              >
+                <RiToolsLine className="h-[1rem] w-[1rem]" />
+              </Link>
+            </motion.div>
+          )}
           <UserButton />
           <HistoryDrawer />
           <NavDrawer />

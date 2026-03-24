@@ -110,6 +110,7 @@ const TECH_STACK = [
 const SUB_PAGES = [
   {
     href: "/changelog",
+    settingKey: "enable_changelog",
     icon: RiHistoryLine,
     color: "bg-amber-100 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400",
     title: "更新记录",
@@ -119,6 +120,7 @@ const SUB_PAGES = [
   },
   {
     href: "/tlds",
+    settingKey: "",
     icon: RiGlobalLine,
     color: "bg-blue-100 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400",
     title: "支持后缀",
@@ -128,6 +130,7 @@ const SUB_PAGES = [
   },
   {
     href: "/links",
+    settingKey: "enable_links",
     icon: RiLinksLine,
     color: "bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400",
     title: "友情链接",
@@ -137,6 +140,7 @@ const SUB_PAGES = [
   },
   {
     href: "/docs",
+    settingKey: "enable_docs",
     icon: RiCodeSSlashLine,
     color: "bg-violet-100 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400",
     title: "API 文档",
@@ -297,7 +301,7 @@ export default function AboutPage() {
                 {isChinese ? "更多页面" : "More Pages"}
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                {SUB_PAGES.map((p, i) => (
+                {SUB_PAGES.filter(p => !p.settingKey || !!(settings as unknown as Record<string, string>)[p.settingKey]).map((p, i) => (
                   <motion.div key={p.href} custom={i + 6} initial="hidden" animate="visible" variants={card}>
                     <Link
                       href={p.href}
