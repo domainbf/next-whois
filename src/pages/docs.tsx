@@ -248,19 +248,16 @@ export default function DocsPage({ origin }: { origin: string }) {
           <p className="text-sm text-muted-foreground leading-relaxed mb-6">{t("docs.description")}</p>
 
           {/* Quick navigation */}
-          <ScrollArea className="w-full mb-8">
-            <div className="flex items-center gap-2 pb-2">
-              <NavPill href="#whois"><RiGlobalLine className="w-3 h-3" />WHOIS / 查询</NavPill>
-              <NavPill href="#dns-records"><RiSignalWifiLine className="w-3 h-3" />DNS 记录</NavPill>
-              <NavPill href="#dns-txt"><RiListCheck2 className="w-3 h-3" />DNS TXT</NavPill>
-              <NavPill href="#ssl"><RiShieldCheckLine className="w-3 h-3" />SSL 证书</NavPill>
-              <NavPill href="#ip"><RiMapPinLine className="w-3 h-3" />IP / ASN</NavPill>
-              <NavPill href="#og"><RiImageLine className="w-3 h-3" />OG 卡片</NavPill>
-              <NavPill href="#icp"><RiFileList2Line className="w-3 h-3" />ICP 备案</NavPill>
-              <NavPill href="#rate-limit">限流规则</NavPill>
-            </div>
-            <ScrollBar orientation="horizontal" />
-          </ScrollArea>
+          <div className="flex flex-wrap gap-2 mb-8">
+            <NavPill href="#whois"><RiGlobalLine className="w-3 h-3" />WHOIS / 查询</NavPill>
+            <NavPill href="#dns-records"><RiSignalWifiLine className="w-3 h-3" />DNS 记录</NavPill>
+            <NavPill href="#dns-txt"><RiListCheck2 className="w-3 h-3" />DNS TXT</NavPill>
+            <NavPill href="#ssl"><RiShieldCheckLine className="w-3 h-3" />SSL 证书</NavPill>
+            <NavPill href="#ip"><RiMapPinLine className="w-3 h-3" />IP / ASN</NavPill>
+            <NavPill href="#og"><RiImageLine className="w-3 h-3" />OG 卡片</NavPill>
+            <NavPill href="#icp"><RiFileList2Line className="w-3 h-3" />ICP 备案</NavPill>
+            <NavPill href="#rate-limit">限流规则</NavPill>
+          </div>
 
           <div className="space-y-8">
 
