@@ -2196,6 +2196,52 @@ function DomainReminderDialog({
   const [lcSubmitting, setLcSubmitting] = React.useState(false);
   const [lcDone, setLcDone] = React.useState(false);
 
+  function toggleThreshold(d: number) {
+    setSelectedThresholds(prev =>
+      prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d]
+    );
+  }
+
+  React.useEffect(() => {
+    if (open) { setEmail(userEmail || ""); setDone(false); setSelectedThresholds(DEFAULT_REMINDER_THRESHOLDS); }
+  }, [open, userEmail]);
+
+  async function handleSubmit() {
+    if (!email || !email.includes("@")) {
+      toast.error(isZh ? "请输入有效邮箱" : "Please enter a valid email");
+      return;
+    }
+    if (selectedThresholds.length === 0) {
+      toast.error(isZh ? "请至少选择一个到期前提醒时间" : "Please select at least one pre-expiry reminder");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/remind/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ domain, email, expirationDate, phaseAlerts, thresholds: selectedThresholds }),
+      });
+      if (res.ok) {
+        setDone(true);
+      } else {
+        toast.error(isZh ? "提交失败，请重试" : "Submission failed");
+      }
+    } catch {
+      toast.error(isZh ? "网络错误" : "Network error");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  const lc = React.useMemo(
+    () => computeLifecycle(domain, expirationDate ?? null, eppStatuses),
+    [domain, expirationDate, eppStatuses]
+  );
+  const tldUpper = domain.split(".").pop()?.toUpperCase() ?? "";
+  const hasPricing = !!(registerPriceFmt || renewPriceFmt);
+
+  // Lifecycle feedback – placed after `lc` to avoid TDZ
   React.useEffect(() => {
     if (lcFeedbackOpen && lc) {
       setLcForm({
@@ -2252,51 +2298,6 @@ function DomainReminderDialog({
       setLcSubmitting(false);
     }
   }
-
-  function toggleThreshold(d: number) {
-    setSelectedThresholds(prev =>
-      prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d]
-    );
-  }
-
-  React.useEffect(() => {
-    if (open) { setEmail(userEmail || ""); setDone(false); setSelectedThresholds(DEFAULT_REMINDER_THRESHOLDS); }
-  }, [open, userEmail]);
-
-  async function handleSubmit() {
-    if (!email || !email.includes("@")) {
-      toast.error(isZh ? "请输入有效邮箱" : "Please enter a valid email");
-      return;
-    }
-    if (selectedThresholds.length === 0) {
-      toast.error(isZh ? "请至少选择一个到期前提醒时间" : "Please select at least one pre-expiry reminder");
-      return;
-    }
-    setSubmitting(true);
-    try {
-      const res = await fetch("/api/remind/submit", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ domain, email, expirationDate, phaseAlerts, thresholds: selectedThresholds }),
-      });
-      if (res.ok) {
-        setDone(true);
-      } else {
-        toast.error(isZh ? "提交失败，请重试" : "Submission failed");
-      }
-    } catch {
-      toast.error(isZh ? "网络错误" : "Network error");
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  const lc = React.useMemo(
-    () => computeLifecycle(domain, expirationDate ?? null, eppStatuses),
-    [domain, expirationDate, eppStatuses]
-  );
-  const tldUpper = domain.split(".").pop()?.toUpperCase() ?? "";
-  const hasPricing = !!(registerPriceFmt || renewPriceFmt);
 
   const PHASE_UI = {
     active:        { label: isZh ? "正常有效" : "Active",        colorClass: "text-emerald-600 dark:text-emerald-400", bgClass: "bg-emerald-50/70 dark:bg-emerald-950/25", borderClass: "border-emerald-200/60 dark:border-emerald-800/40", dotClass: "bg-emerald-500" },
