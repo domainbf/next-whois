@@ -239,7 +239,7 @@ export default function DocsPage({ origin }: { origin: string }) {
         <meta key="twitter:title" name="twitter:title" content={docTitle} />
         <meta key="twitter:image" name="twitter:image" content={`${origin}/banner.png`} />
       </Head>
-      <div className="w-full h-[calc(100vh-4rem)] overflow-y-auto overflow-x-hidden">
+      <div className="w-full h-[calc(100vh-4rem)] overflow-y-auto overflow-x-clip">
         <main className="w-full max-w-4xl mx-auto px-4 sm:px-6 py-6 min-h-[calc(100vh-4rem)]">
 
           {/* Header */}
@@ -697,7 +697,7 @@ curl "${origin}/api/ip/lookup?q=AS15169"`}</CodeBlock>
                 <div>
                   <SubHead label="注意事项" />
                   <Notes items={[
-                    <>归属地数据源：<code className="font-mono text-xs">ip-api.com</code>（免费版每分钟限 45 次，建议自建或使用付费版）</>,
+                    <>归属地数据源：<code className="font-mono text-xs">ip-api.com</code>，实时查询</>,
                     "RDAP 数据来源于 ARIN / RIPE / APNIC 等官方注册局，实时查询",
                     <>主机名输入时先通过系统 DNS 解析为 IP，<code className="font-mono text-xs">resolvedFrom</code> 字段记录原始主机名</>,
                     <><code className="font-mono text-xs">mobile</code>、<code className="font-mono text-xs">proxy</code>、<code className="font-mono text-xs">hosting</code> 检测仅供参考，准确率因 IP 数据库而异</>,
@@ -901,7 +901,7 @@ curl "${origin}/api/og?query=example.com&w=1200&h=600" -o card.png`}</CodeBlock>
                   <Notes items={[
                     "数据来源：工业和信息化部 ICP/IP 地址/域名信息备案管理系统",
                     <>违规类型（bweb / bapp 等）返回的 <code className="font-mono text-xs">blackListLevel</code> 字段：值为 2 表示暂无违法违规信息</>,
-                    "接口无限流，但上游数据源响应时间约 1–5 秒，请勿频繁轮询",
+                    "接口响应时间约 1–5 秒，请勿频繁轮询",
                     "支持按域名、备案号（如 京ICP证030173号）或企业全称三种搜索方式",
                   ]} />
                 </div>
@@ -934,27 +934,27 @@ curl "${origin}/api/og?query=example.com&w=1200&h=600" -o card.png`}</CodeBlock>
                       </tr>
                       <tr>
                         <td className="py-2 px-3 font-mono">/api/dns/records</td>
-                        <td className="py-2 px-3">无限流</td>
+                        <td className="py-2 px-3">每 IP 每分钟 <strong>60 次</strong></td>
                         <td className="py-2 px-3"><code className="font-mono">no-store</code></td>
                       </tr>
                       <tr>
                         <td className="py-2 px-3 font-mono">/api/dns/txt</td>
-                        <td className="py-2 px-3">无限流</td>
+                        <td className="py-2 px-3">每 IP 每分钟 <strong>60 次</strong></td>
                         <td className="py-2 px-3"><code className="font-mono">no-store</code></td>
                       </tr>
                       <tr>
                         <td className="py-2 px-3 font-mono">/api/ssl/cert</td>
-                        <td className="py-2 px-3">无限流</td>
+                        <td className="py-2 px-3">每 IP 每分钟 <strong>20 次</strong></td>
                         <td className="py-2 px-3"><code className="font-mono">no-store</code></td>
                       </tr>
                       <tr>
                         <td className="py-2 px-3 font-mono">/api/ip/lookup</td>
-                        <td className="py-2 px-3">受上游 ip-api.com 限制（45 次/分钟）</td>
+                        <td className="py-2 px-3">每 IP 每分钟 <strong>30 次</strong></td>
                         <td className="py-2 px-3"><code className="font-mono">no-store</code></td>
                       </tr>
                       <tr>
                         <td className="py-2 px-3 font-mono">/api/icp/query</td>
-                        <td className="py-2 px-3">无限流（受上游 api.ong 限制）</td>
+                        <td className="py-2 px-3">无限流</td>
                         <td className="py-2 px-3"><code className="font-mono">no-store</code></td>
                       </tr>
                       <tr>
