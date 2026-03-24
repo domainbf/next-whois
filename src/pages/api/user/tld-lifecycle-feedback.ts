@@ -69,6 +69,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     );
     return res.status(201).json({ ok: true, id });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    console.error("[tld-lifecycle-feedback] error:", err.message);
+    return res.status(500).json({ error: "提交失败，请稍后重试" });
   }
 }

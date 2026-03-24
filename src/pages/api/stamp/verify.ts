@@ -1,4 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
+import { timingSafeEqual } from "crypto";
 import { one, run, isDbReady } from "@/lib/db-query";
 
 // ─── DoH Resolvers only (UDP port 53 is blocked in most server environments) ──
@@ -133,9 +134,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (!(await isDbReady())) return res.status(503).json({ error: "数据库未配置，品牌认领功能暂不可用" });
 
-  // Admin override
-  if (req.body.adminSecret && process.env.ADMIN_VERIFY_SECRET &&
-      req.body.adminSecret === process.env.ADMIN_VERIFY_SECRET) {
+  // Admin override — use constant-time comparison to prevent timing attacks
+  const adminSecretEnv = process.env.ADMIN_VERIFY_SECRET;
+  const adminSecretReq = String(req.body.adminSecret || "");
+  const adminMatch = adminSecretEnv && adminSecretReq &&
+    adminSecretReq.length === adminSecretEnv.length &&
+    timingSafeEqual(Buffer.from(adminSecretReq), Buffer.from(adminSecretEnv));
+  if (adminMatch) {
     await run(
       "UPDATE stamps SET verified = true, verified_at = $1 WHERE id = $2",
       [new Date().toISOString(), id],

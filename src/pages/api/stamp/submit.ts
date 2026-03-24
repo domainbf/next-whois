@@ -16,10 +16,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (!(await isDbReady())) return res.status(503).json({ error: "数据库未配置，品牌认领功能暂不可用" });
 
+  const ALLOWED_TAG_STYLES   = ["personal","official","brand","verified","partner","dev","warning","premium"];
+  const ALLOWED_CARD_THEMES  = ["app","gradient","celebrate","split","flash","neon"];
+
   const cleanDomain   = String(domain).toLowerCase().trim().replace(/^https?:\/\//, "").replace(/\/$/, "");
   const cleanTagName  = String(tagName).trim().slice(0, 30);
-  const cleanTagStyle  = String(tagStyle  || "personal");
-  const cleanCardTheme = String(cardTheme || "app");
+  const rawTagStyle   = String(tagStyle || "personal");
+  const rawCardTheme  = String(cardTheme || "app");
+  const cleanTagStyle  = ALLOWED_TAG_STYLES.includes(rawTagStyle)   ? rawTagStyle  : "personal";
+  const cleanCardTheme = ALLOWED_CARD_THEMES.includes(rawCardTheme) ? rawCardTheme : "app";
   const cleanLink     = String(link || "").trim() || null;
   const cleanDesc     = String(description || "").trim().slice(0, 300) || null;
   const cleanNickname = String(nickname).trim().slice(0, 30);

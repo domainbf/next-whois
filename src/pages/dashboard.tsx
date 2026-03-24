@@ -490,6 +490,7 @@ const DASH_CACHE_TTL = 60_000; // 60 s
 
 async function fetchDashData(): Promise<DashData> {
   const res = await fetch("/api/user/dashboard");
+  if (!res.ok) throw new Error(`${res.status}`);
   const data = await res.json();
   const result: DashData = {
     subscriptions: data.subscriptions ?? [],
@@ -520,6 +521,8 @@ export default function DashboardPage() {
   const [subscriptionAccessDB, setSubscriptionAccessDB] = React.useState<boolean | null>(null);
   const [searchHistory, setSearchHistory] = React.useState<ServerHistoryItem[]>([]);
   const [loadingData, setLoadingData] = React.useState(false);
+  const [dashError, setDashError] = React.useState(false);
+  const [historyError, setHistoryError] = React.useState(false);
   const [loadingHistory, setLoadingHistory] = React.useState(false);
   const [editingStamp, setEditingStamp] = React.useState<Stamp | null>(null);
   const [editingSubscription, setEditingSubscription] = React.useState<Subscription | null>(null);
@@ -586,22 +589,27 @@ export default function DashboardPage() {
       return;
     }
 
+    setDashError(false);
     setLoadingData(true);
-    fetchDashData().then(applyDashData).catch(() => {}).finally(() => setLoadingData(false));
+    fetchDashData()
+      .then(applyDashData)
+      .catch(() => setDashError(true))
+      .finally(() => setLoadingData(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status]);
 
   const fetchHistory = React.useCallback((page: number) => {
+    setHistoryError(false);
     setLoadingHistory(true);
     fetch(`/api/user/search-history?page=${page}`)
-      .then(r => r.json())
+      .then(r => { if (!r.ok) throw new Error(`${r.status}`); return r.json(); })
       .then(data => {
         if (data.history) setSearchHistory(data.history);
         if (typeof data.total === "number") setHistoryTotal(data.total);
         if (typeof data.pages === "number") setHistoryPages(data.pages);
         if (typeof data.page  === "number") setHistoryPage(data.page);
       })
-      .catch(() => {})
+      .catch(() => setHistoryError(true))
       .finally(() => setLoadingHistory(false));
   }, []);
 
@@ -1146,6 +1154,15 @@ export default function DashboardPage() {
 
               {loadingData ? (
                 <div className="flex justify-center py-8"><RiLoader4Line className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+              ) : dashError ? (
+                <div className="flex flex-col items-center py-10 gap-3 text-center">
+                  <RiAlertLine className="w-7 h-7 text-destructive/60" />
+                  <p className="text-sm text-muted-foreground">数据加载失败，请重试</p>
+                  <Button size="sm" variant="outline" className="rounded-xl text-xs gap-1.5" onClick={() => {
+                    setDashError(false); setLoadingData(true);
+                    fetchDashData().then(applyDashData).catch(() => setDashError(true)).finally(() => setLoadingData(false));
+                  }}>重新加载</Button>
+                </div>
               ) : subscriptions.length === 0 ? (
                 <div className="text-center py-12 space-y-4">
                   <div className="w-14 h-14 rounded-2xl bg-primary/8 border border-dashed border-border flex items-center justify-center mx-auto">
@@ -1418,6 +1435,15 @@ export default function DashboardPage() {
               </div>
               {loadingData ? (
                 <div className="flex justify-center py-8"><RiLoader4Line className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+              ) : dashError ? (
+                <div className="flex flex-col items-center py-10 gap-3 text-center">
+                  <RiAlertLine className="w-7 h-7 text-destructive/60" />
+                  <p className="text-sm text-muted-foreground">数据加载失败，请重试</p>
+                  <Button size="sm" variant="outline" className="rounded-xl text-xs gap-1.5" onClick={() => {
+                    setDashError(false); setLoadingData(true);
+                    fetchDashData().then(applyDashData).catch(() => setDashError(true)).finally(() => setLoadingData(false));
+                  }}>重新加载</Button>
+                </div>
               ) : stamps.length === 0 ? (
                 <div className="text-center py-12 space-y-4">
                   <div className="w-14 h-14 rounded-2xl bg-violet-500/8 border border-dashed border-border flex items-center justify-center mx-auto">
@@ -1522,7 +1548,7 @@ export default function DashboardPage() {
             }
 
             return (
-              <motion.div key="history" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }} className="space-y-3">
+              <motion.div key="history" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.18 }} className="space-y-3">
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 min-w-0">
                     <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground shrink-0">搜索历史</p>
@@ -1563,6 +1589,13 @@ export default function DashboardPage() {
 
                 {loadingHistory ? (
                   <div className="flex justify-center py-8"><RiLoader4Line className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+                ) : historyError ? (
+                  <div className="flex flex-col items-center py-10 gap-3 text-center">
+                    <RiAlertLine className="w-7 h-7 text-destructive/60" />
+                    <p className="text-sm text-muted-foreground">记录加载失败，请重试</p>
+                    <Button size="sm" variant="outline" className="rounded-xl text-xs gap-1.5"
+                      onClick={() => fetchHistory(historyPage)}>重新加载</Button>
+                  </div>
                 ) : searchHistory.length === 0 ? (
                   <div className="text-center py-12 space-y-3">
                     <RiHistoryLine className="w-10 h-10 text-muted-foreground/30 mx-auto" />
@@ -1652,7 +1685,7 @@ export default function DashboardPage() {
             const ac = AVATAR_COLORS.find(c => c.key === avatarColor) || AVATAR_COLORS[0];
             const initial = ((user as any).name || user.email || "U").charAt(0).toUpperCase();
             return (
-            <motion.div key="account" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }} className="space-y-4">
+            <motion.div key="account" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.18 }} className="space-y-4">
 
               {/* ── Avatar card ── */}
               <div className="glass-panel border border-border rounded-2xl p-5 flex items-center gap-4">

@@ -10,6 +10,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const plans = await getActivePlans();
     return res.json({ plans });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    console.error("[payment/plans] error:", err.message);
+    return res.status(500).json({ error: "获取套餐信息失败，请稍后重试" });
   }
 }

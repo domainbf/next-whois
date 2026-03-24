@@ -101,6 +101,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { id } = req.query;
     if (!id || typeof id !== "string") return res.status(400).json({ error: "Missing id" });
     const { verified, tag_name, tag_style, card_theme, link, description } = req.body;
+
+    const ALLOWED_TAG_STYLES  = ["personal","official","brand","verified","partner","dev","warning","premium"];
+    const ALLOWED_CARD_THEMES = ["app","gradient","celebrate","split","flash","neon"];
+
     try {
       if (verified === true) {
         await run(`UPDATE stamps SET verified = true, verified_at = NOW() WHERE id = $1`, [id]);
@@ -110,8 +114,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const sets: string[] = [];
       const params: any[] = [];
       if (tag_name !== undefined)   { params.push(tag_name || null);   sets.push(`tag_name = $${params.length}`); }
-      if (tag_style !== undefined)  { params.push(tag_style || null);  sets.push(`tag_style = $${params.length}`); }
-      if (card_theme !== undefined) { params.push(card_theme || null); sets.push(`card_theme = $${params.length}`); }
+      if (tag_style !== undefined)  {
+        const safe = ALLOWED_TAG_STYLES.includes(String(tag_style)) ? String(tag_style) : null;
+        params.push(safe);
+        sets.push(`tag_style = $${params.length}`);
+      }
+      if (card_theme !== undefined) {
+        const safe = ALLOWED_CARD_THEMES.includes(String(card_theme)) ? String(card_theme) : null;
+        params.push(safe);
+        sets.push(`card_theme = $${params.length}`);
+      }
       if (link !== undefined)       { params.push(link || null);       sets.push(`link = $${params.length}`); }
       if (description !== undefined){ params.push(description || null);sets.push(`description = $${params.length}`); }
       if (sets.length) {
@@ -121,7 +133,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const updated = await one("SELECT * FROM stamps WHERE id = $1", [id]);
       return res.json({ ok: true, stamp: updated });
     } catch (err: any) {
-      return res.status(500).json({ error: err.message });
+      console.error("[admin/stamps] PATCH error:", err.message);
+      return res.status(500).json({ error: "更新失败，请稍后重试" });
     }
   }
 

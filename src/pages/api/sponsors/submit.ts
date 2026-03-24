@@ -42,6 +42,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     );
     return res.json({ ok: true, id });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    console.error("[sponsors/submit] error:", err.message);
+    return res.status(500).json({ error: "提交失败，请稍后重试" });
   }
 }
