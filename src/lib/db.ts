@@ -191,6 +191,7 @@ const ALTER_COLUMNS = [
   `ALTER TABLE users         ADD COLUMN IF NOT EXISTS email_verify_expires TIMESTAMPTZ`,
   `ALTER TABLE users         ADD COLUMN IF NOT EXISTS subscription_access BOOLEAN NOT NULL DEFAULT false`,
   `ALTER TABLE users         ADD COLUMN IF NOT EXISTS invite_code_used    TEXT`,
+  `ALTER TABLE stamps        ADD COLUMN IF NOT EXISTS card_theme          TEXT NOT NULL DEFAULT 'app'`,
 ];
 
 function getConnectionString(): { url: string; source: string } | null {

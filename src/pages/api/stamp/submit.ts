@@ -10,7 +10,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const rl = await checkRateLimit(ip, 5);
   if (!rl.ok) return res.status(429).json({ error: "请求过于频繁，请稍后再试" });
 
-  const { domain, tagName, tagStyle, link, description, nickname, email } = req.body;
+  const { domain, tagName, tagStyle, cardTheme, link, description, nickname, email } = req.body;
   if (!domain || !tagName || !nickname || !email)
     return res.status(400).json({ error: "Missing required fields" });
 
@@ -18,7 +18,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const cleanDomain   = String(domain).toLowerCase().trim().replace(/^https?:\/\//, "").replace(/\/$/, "");
   const cleanTagName  = String(tagName).trim().slice(0, 30);
-  const cleanTagStyle = String(tagStyle || "personal");
+  const cleanTagStyle  = String(tagStyle  || "personal");
+  const cleanCardTheme = String(cardTheme || "app");
   const cleanLink     = String(link || "").trim() || null;
   const cleanDesc     = String(description || "").trim().slice(0, 300) || null;
   const cleanNickname = String(nickname).trim().slice(0, 30);
@@ -34,9 +35,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (existing) {
     await run(
       `UPDATE stamps
-       SET tag_name = $1, tag_style = $2, link = $3, description = $4, nickname = $5
-       WHERE id = $6`,
-      [cleanTagName, cleanTagStyle, cleanLink, cleanDesc, cleanNickname, existing.id],
+       SET tag_name = $1, tag_style = $2, link = $3, description = $4, nickname = $5, card_theme = $6
+       WHERE id = $7`,
+      [cleanTagName, cleanTagStyle, cleanLink, cleanDesc, cleanNickname, cleanCardTheme, existing.id],
     );
     return res.status(200).json({
       id: existing.id,
@@ -54,9 +55,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     await run(
       `INSERT INTO stamps
-         (id, domain, tag_name, tag_style, link, description, nickname, email, verify_token, verified)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, false)`,
-      [id, cleanDomain, cleanTagName, cleanTagStyle, cleanLink, cleanDesc, cleanNickname, cleanEmail, token],
+         (id, domain, tag_name, tag_style, card_theme, link, description, nickname, email, verify_token, verified)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, false)`,
+      [id, cleanDomain, cleanTagName, cleanTagStyle, cleanCardTheme, cleanLink, cleanDesc, cleanNickname, cleanEmail, token],
     );
   } catch (err: any) {
     console.error("[stamp/submit] Write error:", err.message);

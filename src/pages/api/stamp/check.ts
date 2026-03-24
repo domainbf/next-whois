@@ -11,7 +11,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     const rows = await many(
-      `SELECT id, tag_name, tag_style, link, nickname, description, verified_at
+      `SELECT id, tag_name, tag_style, card_theme, link, nickname, description, verified_at
        FROM stamps WHERE domain = $1 AND verified = true
        ORDER BY verified_at DESC`,
       [domain],
@@ -19,6 +19,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(200).json({
       stamps: rows.map((r) => ({
         id: r.id, tagName: r.tag_name, tagStyle: r.tag_style,
+        cardTheme: r.card_theme || "app",
         link: r.link, nickname: r.nickname, description: r.description,
         verifiedAt: r.verified_at,
       })),

@@ -264,6 +264,29 @@ button {
   display: inline-block;
 }
 
+@keyframes shimmer-white {
+  0%   { background-position: 100% center; }
+  100% { background-position: 0%   center; }
+}
+
+.text-shimmer-white {
+  background: linear-gradient(
+    90deg,
+    rgba(255,255,255,0.65) 0%,
+    rgba(255,255,255,0.65) 25%,
+    rgba(255,255,255,1)    50%,
+    rgba(255,255,255,0.65) 75%,
+    rgba(255,255,255,0.65) 100%
+  );
+  background-size: 300% auto;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: shimmer-white 3s ease-in-out infinite;
+  display: inline-block;
+}
+
 /* iOS safe area for bottom navigation */
 .safe-bottom {
   padding-bottom: env(safe-area-inset-bottom, 0px);

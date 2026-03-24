@@ -2806,8 +2806,58 @@ export default function LookupPage({
   const [stampDetailOpen, setStampDetailOpen] = React.useState(false);
 
   const [verifiedStamps, setVerifiedStamps] = React.useState<
-    { id: string; tagName: string; tagStyle: string; link: string; nickname: string; description?: string }[]
+    { id: string; tagName: string; tagStyle: string; cardTheme: string; link: string; nickname: string; description?: string }[]
   >([]);
+
+  type CardThemeDef = {
+    hero: string;       shimmer: string;
+    badge: string;      btn: string;
+    cardBg: string;     cardBorder: string; cardText: string;
+  };
+  const CARD_THEMES: Record<string, CardThemeDef> = {
+    app: {
+      hero:       "bg-gradient-to-br from-zinc-700 to-zinc-900",
+      shimmer:    "text-shimmer-white",
+      badge:      "bg-white/15 text-white border border-white/25",
+      btn:        "bg-white/15 text-white border border-white/25 hover:bg-white/25",
+      cardBg:     "bg-background",   cardBorder: "border-border/50",   cardText: "text-foreground",
+    },
+    glow: {
+      hero:       "bg-gradient-to-br from-teal-400 to-teal-600",
+      shimmer:    "text-shimmer-white",
+      badge:      "bg-teal-500 text-white border-0",
+      btn:        "bg-teal-500 text-white",
+      cardBg:     "bg-background",   cardBorder: "border-border/50",   cardText: "text-foreground",
+    },
+    midnight: {
+      hero:       "bg-gradient-to-br from-slate-700 via-blue-900 to-slate-900",
+      shimmer:    "text-shimmer-white",
+      badge:      "bg-blue-500 text-white border-0",
+      btn:        "bg-blue-600 text-white",
+      cardBg:     "bg-slate-900",    cardBorder: "border-slate-700",   cardText: "text-white",
+    },
+    aurora: {
+      hero:       "bg-gradient-to-br from-violet-500 via-fuchsia-500 to-pink-400",
+      shimmer:    "text-shimmer-white",
+      badge:      "bg-fuchsia-500 text-white border-0",
+      btn:        "bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white",
+      cardBg:     "bg-background",   cardBorder: "border-border/50",   cardText: "text-foreground",
+    },
+    solar: {
+      hero:       "bg-gradient-to-br from-amber-400 to-orange-600",
+      shimmer:    "text-shimmer-white",
+      badge:      "bg-orange-500 text-white border-0",
+      btn:        "bg-orange-500 text-white",
+      cardBg:     "bg-background",   cardBorder: "border-border/50",   cardText: "text-foreground",
+    },
+    ink: {
+      hero:       "bg-gradient-to-br from-zinc-800 via-zinc-900 to-black",
+      shimmer:    "text-shimmer-white",
+      badge:      "bg-zinc-600 text-white border-0",
+      btn:        "bg-zinc-700 text-white",
+      cardBg:     "bg-zinc-950",     cardBorder: "border-zinc-800",    cardText: "text-white",
+    },
+  };
 
   const STAMP_STYLE_MAP: Record<string, string> = {
     personal: "bg-teal-500 text-white border-0",
@@ -2831,18 +2881,6 @@ export default function LookupPage({
     warning:  RiAlertLine,
     premium:  RiVipCrownLine,
     default:  RiShieldCheckLine,
-  };
-
-  const STAMP_HERO_MAP: Record<string, string> = {
-    personal: "bg-gradient-to-br from-teal-400 to-teal-600",
-    official: "bg-gradient-to-br from-blue-400 to-blue-600",
-    brand:    "bg-gradient-to-br from-violet-400 to-violet-600",
-    verified: "bg-gradient-to-br from-emerald-400 to-emerald-600",
-    partner:  "bg-gradient-to-br from-orange-400 to-orange-600",
-    dev:      "bg-gradient-to-br from-sky-400 to-sky-600",
-    warning:  "bg-gradient-to-br from-amber-300 to-amber-500",
-    premium:  "bg-gradient-to-br from-violet-500 via-fuchsia-500 to-pink-500",
-    default:  "bg-gradient-to-br from-teal-400 to-teal-600",
   };
 
   const STAMP_CARD_MAP: Record<string, { border: string; bg: string; iconColor: string }> = {
@@ -3826,33 +3864,37 @@ export default function LookupPage({
                         </DialogHeader>
                         <div className="divide-y divide-border/40">
                           {verifiedStamps.map((stamp) => {
-                            const heroBg   = STAMP_HERO_MAP[stamp.tagStyle]  || STAMP_HERO_MAP.default;
-                            const badgeCls = STAMP_STYLE_MAP[stamp.tagStyle] || STAMP_STYLE_MAP.default;
+                            const theme     = CARD_THEMES[stamp.cardTheme] || CARD_THEMES.app;
                             const StampIcon = STAMP_ICON_MAP[stamp.tagStyle] || STAMP_ICON_MAP.default;
                             return (
                               <div key={stamp.id}>
                                 {/* ── Gradient hero strip ── */}
-                                <div className={cn("relative px-5 pt-7 pb-10 text-center select-none", heroBg)}>
-                                  {/* decorative dots */}
-                                  <div className="absolute inset-0 opacity-10"
+                                <div className={cn("relative px-5 pt-7 pb-10 text-center select-none", theme.hero)}>
+                                  <div className="absolute inset-0 opacity-[0.08]"
                                     style={{ backgroundImage: "radial-gradient(circle, white 1px, transparent 1px)", backgroundSize: "18px 18px" }} />
                                   <div className="relative">
-                                    <div className="w-16 h-16 rounded-3xl bg-white/20 backdrop-blur-sm border border-white/30 flex items-center justify-center mx-auto shadow-lg">
-                                      <StampIcon className="w-8 h-8 text-white drop-shadow" />
+                                    <div className="w-16 h-16 rounded-3xl bg-white/15 backdrop-blur-sm border border-white/25 flex items-center justify-center mx-auto shadow-xl">
+                                      <StampIcon className="w-8 h-8 text-white drop-shadow-sm" />
                                     </div>
-                                    <p className="mt-3 text-white/60 text-[10px] font-mono tracking-[0.2em] uppercase">
+                                    <p className="mt-3 text-white/50 text-[10px] font-mono tracking-[0.2em] uppercase">
                                       {result.domain || target}
                                     </p>
                                   </div>
                                 </div>
 
                                 {/* ── Floating name card ── */}
-                                <div className="relative -mt-6 mx-4 bg-background rounded-2xl border border-border/50 shadow-md px-4 pt-3.5 pb-3.5">
+                                <div className={cn(
+                                  "relative -mt-6 mx-4 rounded-2xl border shadow-md px-4 pt-3.5 pb-3.5",
+                                  theme.cardBg, theme.cardBorder,
+                                )}>
                                   <div className="flex items-start justify-between gap-3">
-                                    <p className="text-xl font-black leading-tight tracking-tight">{stamp.tagName}</p>
+                                    {/* Brand name with shimmer */}
+                                    <span className={cn("text-xl font-black leading-tight tracking-tight", theme.shimmer)}>
+                                      {stamp.tagName}
+                                    </span>
                                     <span className={cn(
                                       "inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full shrink-0 mt-0.5",
-                                      badgeCls,
+                                      theme.badge,
                                     )}>
                                       <RiShieldCheckLine className="w-2.5 h-2.5" />
                                       {isChinese ? "已认证" : "Verified"}
@@ -3863,7 +3905,7 @@ export default function LookupPage({
                                 {/* ── Body ── */}
                                 <div className="px-5 pt-4 pb-5 space-y-4">
                                   {stamp.description && (
-                                    <p className="text-[13px] text-foreground/70 leading-relaxed">
+                                    <p className="text-[13px] text-muted-foreground leading-relaxed">
                                       {stamp.description}
                                     </p>
                                   )}
@@ -3873,15 +3915,15 @@ export default function LookupPage({
                                       target="_blank"
                                       rel="noopener noreferrer"
                                       className={cn(
-                                        "flex items-center justify-center gap-2 w-full rounded-2xl py-3 text-sm font-bold text-white transition-all hover:opacity-90 active:scale-[0.97]",
-                                        heroBg,
+                                        "flex items-center justify-center gap-2 w-full rounded-2xl py-3 text-sm font-bold transition-all hover:opacity-90 active:scale-[0.97]",
+                                        theme.btn,
                                       )}
                                     >
                                       {isChinese ? "访问主页" : "Visit Profile"}
                                       <RiArrowRightSLine className="w-4 h-4" />
                                     </a>
                                   ) : (
-                                    <p className="text-[11px] text-muted-foreground/50 text-center font-mono">
+                                    <p className="text-[11px] text-muted-foreground/40 text-center font-mono">
                                       {isChinese ? "该认领未设置主页链接" : "No profile link set"}
                                     </p>
                                   )}

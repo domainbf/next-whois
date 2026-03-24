@@ -82,7 +82,7 @@ type Step = "form" | "verify" | "done";
 
 interface StampSession {
   step: Step;
-  form: { tagName: string; tagStyle: string; link: string; description: string; nickname: string; email: string };
+  form: { tagName: string; tagStyle: string; cardTheme: string; link: string; description: string; nickname: string; email: string };
   submitResult: { id: string; txtRecord: string; txtValue: string } | null;
 }
 
@@ -327,7 +327,16 @@ export default function StampPage() {
     }
   }, [authStatus, domain, router]);
 
-  const defaultForm = { tagName: "", tagStyle: "personal", link: "", description: "", nickname: "", email: "" };
+  const CARD_THEME_OPTIONS: { id: string; label: string; hero: string; dot: string }[] = [
+    { id: "app",      label: "极简",  hero: "bg-gradient-to-br from-zinc-700 to-zinc-900",                              dot: "bg-zinc-600" },
+    { id: "glow",     label: "流光",  hero: "bg-gradient-to-br from-teal-400 to-teal-600",                              dot: "bg-teal-500" },
+    { id: "midnight", label: "午夜",  hero: "bg-gradient-to-br from-slate-700 via-blue-900 to-slate-900",               dot: "bg-blue-700" },
+    { id: "aurora",   label: "极光",  hero: "bg-gradient-to-br from-violet-500 via-fuchsia-500 to-pink-400",            dot: "bg-fuchsia-500" },
+    { id: "solar",    label: "暖阳",  hero: "bg-gradient-to-br from-amber-400 to-orange-600",                           dot: "bg-orange-500" },
+    { id: "ink",      label: "墨染",  hero: "bg-gradient-to-br from-zinc-800 via-zinc-900 to-black",                   dot: "bg-zinc-800" },
+  ];
+
+  const defaultForm = { tagName: "", tagStyle: "personal", cardTheme: "app", link: "", description: "", nickname: "", email: "" };
 
   const [hydrated, setHydrated] = React.useState(false);
   const [existingStamps, setExistingStamps] = React.useState<{ id: string; tagName: string; tagStyle: string; nickname: string }[]>([]);
@@ -920,6 +929,34 @@ export default function StampPage() {
                                 )}
                               </div>
                             )}
+                          </div>
+
+                          {/* Card theme */}
+                          <div>
+                            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-2 block">
+                              卡片主题
+                            </Label>
+                            <div className="grid grid-cols-3 gap-2">
+                              {CARD_THEME_OPTIONS.map((t) => (
+                                <button
+                                  key={t.id}
+                                  type="button"
+                                  onClick={() => update("cardTheme", t.id)}
+                                  className={cn(
+                                    "relative overflow-hidden rounded-xl border-2 transition-all",
+                                    form.cardTheme === t.id
+                                      ? "border-violet-400 ring-2 ring-violet-300/50 dark:ring-violet-700/50"
+                                      : "border-border/60 hover:border-border",
+                                  )}
+                                >
+                                  <div className={cn("h-10 w-full", t.hero)} />
+                                  <div className="py-1.5 text-[11px] font-semibold text-center bg-background text-foreground/80">
+                                    {t.label}
+                                    {t.id === "app" && <span className="ml-1 text-[9px] text-muted-foreground/50">(默认)</span>}
+                                  </div>
+                                </button>
+                              ))}
+                            </div>
                           </div>
 
                           {/* Link (optional) */}
