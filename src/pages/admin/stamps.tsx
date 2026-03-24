@@ -53,10 +53,11 @@ const CARD_THEMES: { value: string; label: string; bg: string; special?: string 
   { value: "gold",      label: "金色",      bg: "from-yellow-300 via-amber-400 to-orange-400" },
   { value: "crimson",   label: "烈焰",      bg: "from-red-500 via-rose-600 to-red-800" },
   /* ── 特殊排版 ── */
-  { value: "celebrate", label: "庆典",      bg: "from-sky-400 to-blue-600",                  special: "🎊" },
-  { value: "neon",      label: "霓虹",      bg: "from-slate-800 to-slate-950",               special: "⚡" },
+  { value: "celebrate", label: "庆典",      bg: "from-sky-400 to-sky-500",                   special: "🎊" },
+  { value: "neon",      label: "霓虹",      bg: "from-gray-900 to-black",                    special: "⚡" },
   { value: "gradient",  label: "渐变流光",  bg: "from-sky-200 via-rose-200 to-amber-200",    special: "✨" },
-  { value: "split",     label: "分栏",      bg: "from-violet-600 to-violet-800",             special: "⊟" },
+  { value: "split",     label: "分栏",      bg: "from-gray-700 to-gray-900",                 special: "⊟" },
+  { value: "flash",     label: "特卖",      bg: "from-yellow-300 to-yellow-400",             special: "💥" },
 ];
 
 function styleColor(style: string) {

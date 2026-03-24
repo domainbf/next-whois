@@ -28,10 +28,11 @@ const CARD_THEMES: Record<string, CardThemeDef & { label: string; special?: stri
   ocean:     { label: "深海",     hero: "bg-gradient-to-br from-cyan-400 via-blue-500 to-indigo-700",           shimmer: "text-white font-black",       badge: "bg-cyan-400 text-slate-900 border-0",                   btn: "bg-cyan-500 text-white",       cardBg: "bg-slate-950",cardBorder: "border-slate-700",  cardText: "text-white"    },
   gold:      { label: "金色",     hero: "bg-gradient-to-br from-yellow-300 via-amber-400 to-orange-400",        shimmer: "text-gray-900 font-black",    badge: "bg-amber-900/70 text-amber-100 border-0",               btn: "bg-amber-500 text-white",      cardBg: "bg-white",   cardBorder: "border-amber-200",  cardText: "text-gray-900" },
   crimson:   { label: "烈焰",     hero: "bg-gradient-to-br from-red-500 via-rose-600 to-red-800",               shimmer: "text-white font-black",       badge: "bg-white/20 text-white border border-white/30",         btn: "bg-red-600 text-white",        cardBg: "bg-white",   cardBorder: "border-red-100",    cardText: "text-gray-900" },
-  celebrate: { label: "庆典",     hero: "bg-gradient-to-b from-sky-400 to-blue-600",   layout: "celebrate",    shimmer: "text-gray-900 font-black",    badge: "bg-white text-blue-700 border-0",                       btn: "bg-indigo-600 text-white",     cardBg: "bg-white",   cardBorder: "border-blue-100",   cardText: "text-gray-900", special: "🎊" },
-  neon:      { label: "霓虹",     hero: "bg-slate-950",                                layout: "neon",         shimmer: "text-white font-black",       badge: "bg-emerald-400 text-slate-900 border-0",                btn: "bg-emerald-400 text-slate-900",cardBg: "bg-slate-900",cardBorder: "border-slate-700",  cardText: "text-white",    special: "⚡" },
+  celebrate: { label: "庆典",     hero: "bg-sky-400",                                  layout: "celebrate",    shimmer: "text-gray-900 font-black",    badge: "bg-white text-blue-700 border-0",                       btn: "bg-indigo-600 text-white",     cardBg: "bg-white",   cardBorder: "border-blue-100",   cardText: "text-gray-900", special: "🎊" },
+  neon:      { label: "霓虹",     hero: "bg-[#1a1a1a]",                                layout: "neon",         shimmer: "text-white font-black",       badge: "bg-emerald-400 text-slate-900 border-0",                btn: "bg-emerald-400 text-slate-900",cardBg: "bg-[#1a1a1a]",cardBorder: "border-slate-700", cardText: "text-white",    special: "⚡" },
   gradient:  { label: "渐变流光", hero: "bg-gradient-to-br from-sky-200 via-rose-200 to-amber-200", layout: "gradient", shimmer: "text-gray-900 font-black", badge: "bg-black/10 text-gray-800 border border-black/15",   btn: "bg-gray-900 text-white",       cardBg: "bg-transparent",cardBorder:"border-0",           cardText: "text-gray-900", special: "✨" },
-  split:     { label: "分栏",     hero: "bg-gradient-to-b from-violet-600 to-violet-800", layout: "split",     shimmer: "text-gray-900 font-black",    badge: "bg-violet-500 text-white border-0",                     btn: "bg-violet-600 text-white",     cardBg: "bg-white",   cardBorder: "border-gray-100",   cardText: "text-gray-900", special: "⊟" },
+  split:     { label: "分栏",     hero: "bg-gradient-to-b from-slate-700 to-slate-900", layout: "split",      shimmer: "text-gray-900 font-black",    badge: "bg-white/20 text-white border-0",                       btn: "bg-gray-900 text-white",       cardBg: "bg-white",   cardBorder: "border-gray-100",   cardText: "text-gray-900", special: "⊟" },
+  flash:     { label: "特卖",     hero: "bg-yellow-300",                               layout: "flash" as any, shimmer: "text-gray-900 font-black",    badge: "bg-violet-600 text-white border-0",                     btn: "bg-violet-600 text-white",     cardBg: "bg-white",   cardBorder: "border-0",          cardText: "text-gray-900", special: "💥" },
 };
 
 /* Demo stamp data for preview */
@@ -89,26 +90,35 @@ function StampPreviewCard({ themeKey }: { themeKey: string }) {
     </div>
   );
 
-  /* ── neon (faithful to IMG_9085 CodePen style) ── */
+  /* ── neon (faithful to IMG_9091 Location Access style) ── */
   if (t.layout === "neon") return (
-    <div className="rounded-2xl overflow-hidden shadow-md" style={{background:"#1e2433"}}>
-      {/* Avatar circle at top-left */}
-      <div className="px-4 pt-4 pb-0">
-        <div className="w-12 h-12 rounded-full bg-black border-4 border-[#1e2433] flex items-center justify-center shadow-lg">
-          <div className="w-full h-full rounded-full flex items-center justify-center bg-slate-700">
-            <Icon className="w-6 h-6 text-white" />
+    <div className="rounded-2xl overflow-hidden shadow-md" style={{background:"#1a1a1a"}}>
+      {/* Top illustration: green map-pin */}
+      <div className="flex flex-col items-center pt-6 pb-3" style={{background:"#1a1a1a"}}>
+        <div className="flex flex-col items-center">
+          <div className="relative w-16 h-16 rounded-full flex items-center justify-center" style={{background:"#4ade80"}}>
+            <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{background:"#1a1a1a"}}>
+              <Icon className="w-5 h-5 text-white" />
+            </div>
           </div>
+          <div style={{width:0,height:0,borderLeft:"12px solid transparent",borderRight:"12px solid transparent",borderTop:"15px solid #4ade80",marginTop:"-1px"}} />
+        </div>
+        {/* Mini city skyline */}
+        <div className="mt-2 opacity-35">
+          <svg viewBox="0 0 140 20" className="w-28 h-4" fill="white">
+            <path d="M0 20L0 13 7 13 7 7 10 7 10 4 13 4 13 7 16 7 16 13 23 13 23 9 26 9 26 13 33 13 33 7 36 7 36 2 39 2 39 7 42 7 42 13 53 13 53 10 56 10 56 13 63 13 63 8 66 8 66 3 69 3 69 8 72 8 72 13 83 13 83 9 86 9 86 12 89 12 89 13 97 13 97 7 100 7 100 13 110 13 110 10 113 10 113 5 116 5 116 10 119 10 119 13 127 13 127 11 130 11 130 13 140 13 140 20Z"/>
+          </svg>
         </div>
       </div>
-      {/* Content */}
-      <div className="px-4 pt-3 pb-4">
-        <p className="text-white text-[20px] font-black leading-none mb-1">{DEMO.tagName}</p>
-        <p className="text-emerald-400 text-[11px] font-semibold mb-2">{DEMO.tagLabel}</p>
-        <p className="text-slate-400 text-[10px] leading-relaxed line-clamp-2">{DEMO.desc}</p>
-        <div className="mt-3 flex items-center justify-between w-full px-3.5 py-2 rounded-xl bg-emerald-400 text-slate-900 text-[9px] font-bold">
-          <span>访问主页</span>
-          <span>→</span>
-        </div>
+      {/* Text */}
+      <div className="px-4 pb-2 text-center">
+        <p className="text-white text-[14px] font-black leading-tight mb-1">{DEMO.tagName}</p>
+        <p className="text-[9px] leading-relaxed" style={{color:"#888"}}>{DEMO.desc}</p>
+      </div>
+      {/* Two buttons */}
+      <div className="px-4 pb-4 pt-2 space-y-2">
+        <div className="w-full py-2 rounded-xl text-[9px] font-bold text-center" style={{background:"#4ade80",color:"#111"}}>访问主页</div>
+        <div className="w-full py-2 rounded-xl text-[9px] font-bold text-white text-center border-2" style={{borderColor:"rgba(255,255,255,0.18)"}}>关闭</div>
       </div>
     </div>
   );
@@ -138,34 +148,63 @@ function StampPreviewCard({ themeKey }: { themeKey: string }) {
 
   /* ── split (faithful to IMG_9087 photo/text split) ── */
   if (t.layout === "split") return (
-    <div className="rounded-2xl overflow-hidden shadow-md flex min-h-[130px]">
-      {/* Left coloured panel with stacked text */}
-      <div className={cn("relative flex flex-col justify-between px-3 py-3 w-[43%] shrink-0 overflow-hidden", t.hero)}>
-        <div className="absolute inset-0 opacity-10"
-          style={{backgroundImage:"repeating-linear-gradient(-45deg,white,white 1px,transparent 1px,transparent 10px)"}} />
-        <div className="relative">
-          <p className="text-white/40 text-[7px] font-bold uppercase tracking-widest mb-0.5">{DEMO.tagLabel}</p>
-          <div className="space-y-[-3px]">
-            <p className="text-white font-black text-[13px] leading-none">{DEMO.tagName}</p>
-            <p className="text-white/25 font-black text-[13px] leading-none">{DEMO.tagName}</p>
-          </div>
+    <div className="rounded-2xl overflow-hidden shadow-md flex" style={{minHeight:140}}>
+      {/* Left dark photo-like panel */}
+      <div className="relative flex flex-col items-center justify-center w-[38%] shrink-0 overflow-hidden"
+        style={{background:"linear-gradient(160deg,#2d2d2d 0%,#1a1a1a 100%)"}}>
+        <div className="absolute inset-0 opacity-[0.07]"
+          style={{backgroundImage:"repeating-linear-gradient(-55deg,white 0,white 1px,transparent 1px,transparent 14px)"}} />
+        <div className="w-10 h-10 rounded-xl bg-white/10 border border-white/15 flex items-center justify-center">
+          <Icon className="w-5 h-5 text-white/80" />
         </div>
-        <div className="relative">
-          <div className="w-7 h-7 rounded-lg bg-white/15 border border-white/20 flex items-center justify-center mb-1">
-            <Icon className="w-3.5 h-3.5 text-white" />
-          </div>
-          <p className="text-white/50 text-[7px] font-mono tracking-wider uppercase">{DEMO.domain}</p>
-        </div>
+        <p className="text-white/25 text-[7px] font-mono mt-1.5 px-2 text-center truncate tracking-widest">{DEMO.domain}</p>
       </div>
       {/* Right white panel */}
-      <div className="flex-1 bg-white flex flex-col justify-between px-3 py-3">
+      <div className="flex-1 bg-white flex flex-col justify-between px-3 py-3 relative">
+        {/* Red X */}
+        <div className="absolute top-2 right-2 text-red-400 text-[9px] font-bold">✕</div>
         <div>
-          <p className="text-gray-400 text-[7px] uppercase tracking-widest font-semibold mb-1">域名认领</p>
-          <p className="text-[15px] font-black text-gray-900 leading-tight">{DEMO.tagName}</p>
+          <p className="text-gray-400 text-[7px] uppercase tracking-widest font-semibold mb-0.5">域名认领</p>
+          <p className="text-[17px] font-black text-gray-900 leading-none tracking-tight">{DEMO.tagName}</p>
           <p className="text-[8px] text-gray-400 mt-0.5">{DEMO.domain}</p>
         </div>
-        <div className="flex items-center justify-between w-full px-2 py-1.5 rounded-lg text-[8px] font-bold mt-2" style={{background:"rgb(124 58 237)",color:"white"}}>
-          <span>访问主页</span><span>→</span>
+        {/* Input+button row */}
+        <div className="flex items-center gap-1 mt-2">
+          <div className="flex-1 border border-gray-200 rounded-md px-2 py-1.5 text-[8px] text-gray-300 font-mono">{DEMO.domain}</div>
+          <div className="shrink-0 px-2 py-1.5 bg-gray-900 text-white text-[8px] font-bold rounded-md">访问</div>
+        </div>
+      </div>
+    </div>
+  );
+
+  /* ── flash (faithful to IMG_9090 Flash Sale style) ── */
+  if ((t as any).layout === "flash") return (
+    <div className="rounded-2xl overflow-hidden shadow-md bg-white">
+      {/* Purple header bar */}
+      <div className="px-3 py-1.5 flex items-center justify-between" style={{background:"#7c3aed"}}>
+        <p className="text-white/60 text-[8px] font-mono tracking-widest">{DEMO.domain}</p>
+        <span className="text-white/60 text-[8px] font-bold">✕</span>
+      </div>
+      {/* Two-column body */}
+      <div className="flex" style={{minHeight:110}}>
+        {/* Left yellow */}
+        <div className="w-[44%] shrink-0 flex flex-col justify-end px-3 pb-3 pt-2" style={{background:"#FFE300"}}>
+          <div className="space-y-[-5px]">
+            <p className="font-black text-[8px] leading-none uppercase" style={{color:"#7c3aed"}}>{DEMO.tagLabel}</p>
+            <p className="font-black text-[15px] leading-none" style={{color:"#111"}}>{DEMO.tagName}</p>
+            <p className="font-black text-[15px] leading-none" style={{color:"#FFE300", WebkitTextStroke:"1.5px #111"}}>{DEMO.tagName}</p>
+            <p className="font-black text-[15px] leading-none" style={{color:"#FFE300", WebkitTextStroke:"1.5px #111"}}>{DEMO.tagName}</p>
+          </div>
+        </div>
+        {/* Right white */}
+        <div className="flex-1 flex flex-col justify-between px-3 py-3 relative">
+          <span className="absolute top-2 right-8 text-yellow-400 text-[9px] font-black">✦</span>
+          <span className="absolute top-2 right-3 text-yellow-400 text-[7px] font-black">✦</span>
+          <div>
+            <p className="text-[16px] font-black text-gray-900 leading-none">{DEMO.tagName}</p>
+            <p className="text-[8px] font-bold uppercase tracking-widest mt-0.5" style={{color:"#7c3aed"}}>域名认领</p>
+          </div>
+          <div className="w-full py-1.5 rounded-lg text-[9px] font-bold text-white text-center mt-2" style={{background:"#7c3aed"}}>访问主页</div>
         </div>
       </div>
     </div>
