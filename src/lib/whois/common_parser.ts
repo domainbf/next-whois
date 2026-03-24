@@ -170,6 +170,9 @@ const DATE_FORMATS = [
   "DD/MM/YYYY HH:mm:ss",
   "DD/MM/YYYY",
   "D MMM YYYY",
+  "D MMMM YYYY HH:mm:ss",
+  "D MMMM YYYY HH:mm",
+  "D MMMM YYYY",
   "YYYY-MM-DD HH:mm:ss UTC",
   "YYYY-MM-DDZ",
   "MM-DD-YYYY",
@@ -266,7 +269,64 @@ export async function applyParams(result: WhoisAnalyzeResult) {
   return result;
 }
 
+/**
+ * Normalises Island Networks (.gg / .je) WHOIS output into standard key: value lines.
+ *
+ * Their format uses section headers (ending with ":") whose values appear on
+ * the next indented line(s), and ordinal dates ("10th June 2018 at 05:02:34").
+ */
+function preprocessIslandNetworks(data: string): string {
+  if (!data.includes("Island Networks") && !data.includes("channelisles.net")) return data;
+
+  const rawLines = data.split("\n");
+  const out: string[] = [];
+  let lastSectionKey: string | null = null;
+
+  for (let i = 0; i < rawLines.length; i++) {
+    const trimmed = rawLines[i].trim();
+
+    // Blank line resets section context
+    if (!trimmed) {
+      lastSectionKey = null;
+      out.push("");
+      continue;
+    }
+
+    // Section header: "Domain Status:" (ends with colon, nothing after)
+    const sectionMatch = trimmed.match(/^([A-Za-z][^:]*?):\s*$/);
+    if (sectionMatch) {
+      lastSectionKey = sectionMatch[1].trim();
+      continue; // don't emit yet — wait for value line
+    }
+
+    // Value line under a section header
+    if (lastSectionKey) {
+      // "Registered on DDth/st/nd/rd Month YYYY at HH:MM:SS"
+      const ordinalMatch = trimmed.match(
+        /^Registered on\s+(\d{1,2})(?:st|nd|rd|th)\s+(\w+)\s+(\d{4})(?:\s+at\s+(\d{2}:\d{2}:\d{2})(?:\.\d+)?)?/i,
+      );
+      if (ordinalMatch) {
+        const [, day, month, year, time] = ordinalMatch;
+        out.push(`Registered on: ${day} ${month} ${year}${time ? " " + time : ""}`);
+        // keep lastSectionKey for any further value lines in this section
+        continue;
+      }
+
+      // Generic value line → emit as "SectionKey: value"
+      out.push(`${lastSectionKey}: ${trimmed}`);
+      continue;
+    }
+
+    // Pass through any other line unchanged
+    out.push(rawLines[i]);
+  }
+
+  return out.join("\n");
+}
+
 export async function analyzeWhois(data: string): Promise<WhoisAnalyzeResult> {
+  data = preprocessIslandNetworks(data);
+
   const lines = data
     .split("\n")
     .map((line) => line.trim())
@@ -485,7 +545,8 @@ export async function analyzeWhois(data: string): Promise<WhoisAnalyzeResult> {
         result.nameServers.push(value.split(/\s+/)[0]);
         break;
       case "nameservers":
-        result.nameServers.push(value);
+      case "name servers":
+        result.nameServers.push(value.split(/\s+/)[0]);
         break;
       case "nserver":
         result.nameServers.push(value.split(/\s+/)[0]);
