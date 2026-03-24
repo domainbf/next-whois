@@ -9,7 +9,8 @@ import { cn } from "@/lib/utils";
 import {
   RiShieldUserLine, RiAddLine, RiDeleteBinLine, RiFileCopyLine,
   RiToggleLine, RiToggleFill, RiLoader4Line, RiCloseLine,
-  RiCheckLine, RiLockLine, RiLockUnlockLine,
+  RiCheckLine, RiLockLine, RiLockUnlockLine, RiFilterLine,
+  RiTimeLine,
 } from "@remixicon/react";
 
 type Scope = "api" | "subscription" | "all";
@@ -27,10 +28,32 @@ type AccessKey = {
 };
 
 const SCOPE_LABELS: Record<Scope, { label: string; color: string }> = {
-  api:          { label: "API",           color: "bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400" },
-  subscription: { label: "域名订阅",      color: "bg-violet-100 dark:bg-violet-950/40 text-violet-700 dark:text-violet-400" },
-  all:          { label: "全部权限",       color: "bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400" },
+  api:          { label: "API",       color: "bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400" },
+  subscription: { label: "域名订阅",  color: "bg-violet-100 dark:bg-violet-950/40 text-violet-700 dark:text-violet-400" },
+  all:          { label: "全部权限",   color: "bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400" },
 };
+
+type StatusFilter = "all" | "active" | "disabled" | "expired";
+type ScopeFilter  = "__any__" | Scope;
+
+function fmtRelative(d: string | null): string {
+  if (!d) return "—";
+  const date = new Date(d);
+  const now = new Date();
+  const diff = now.getTime() - date.getTime();
+  const mins  = Math.floor(diff / 60000);
+  const hours = Math.floor(diff / 3600000);
+  const days  = Math.floor(diff / 86400000);
+  if (mins < 1)  return "刚刚";
+  if (mins < 60) return `${mins} 分钟前`;
+  if (hours < 24)return `${hours} 小时前`;
+  if (days < 7)  return `${days} 天前`;
+  return date.toLocaleDateString("zh-CN", { month: "2-digit", day: "2-digit" });
+}
+
+function isExpired(k: AccessKey): boolean {
+  return !!k.expires_at && new Date(k.expires_at) < new Date();
+}
 
 export default function AccessKeysPage() {
   const [keys, setKeys] = React.useState<AccessKey[]>([]);
@@ -44,6 +67,9 @@ export default function AccessKeysPage() {
   const [creating, setCreating] = React.useState(false);
   const [copied, setCopied] = React.useState<string | null>(null);
   const [newKeyValue, setNewKeyValue] = React.useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = React.useState<StatusFilter>("all");
+  const [scopeFilter, setScopeFilter] = React.useState<ScopeFilter>("__any__");
+  const [purgingExpired, setPurgingExpired] = React.useState(false);
 
   async function load() {
     setLoading(true);
@@ -122,6 +148,27 @@ export default function AccessKeysPage() {
     toast.success("已删除");
   }
 
+  async function purgeExpired() {
+    const expiredList = keys.filter(isExpired);
+    if (expiredList.length === 0) return;
+    if (!confirm(`确认删除全部 ${expiredList.length} 个已过期的 Key？`)) return;
+    setPurgingExpired(true);
+    try {
+      await Promise.all(expiredList.map(k =>
+        fetch("/api/admin/access-keys", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: k.id }),
+        })
+      ));
+      setKeys(ks => ks.filter(k => !isExpired(k)));
+      toast.success(`已清除 ${expiredList.length} 个过期 Key`);
+      if (statusFilter === "expired") setStatusFilter("all");
+    } finally {
+      setPurgingExpired(false);
+    }
+  }
+
   function copy(text: string) {
     navigator.clipboard.writeText(text).then(() => {
       setCopied(text);
@@ -129,7 +176,35 @@ export default function AccessKeysPage() {
     });
   }
 
-  const active = keys.filter(k => k.is_active).length;
+  const activeCount   = keys.filter(k => k.is_active && !isExpired(k)).length;
+  const disabledCount = keys.filter(k => !k.is_active && !isExpired(k)).length;
+  const expiredCount  = keys.filter(isExpired).length;
+  const totalUses     = keys.reduce((s, k) => s + k.use_count, 0);
+
+  const STATUS_TABS: { key: StatusFilter; label: string; count: number }[] = [
+    { key: "all",      label: "全部",   count: keys.length },
+    { key: "active",   label: "启用",   count: activeCount },
+    { key: "disabled", label: "停用",   count: disabledCount },
+    { key: "expired",  label: "已过期", count: expiredCount },
+  ];
+
+  const SCOPE_FILTER_TABS: { key: ScopeFilter; label: string; count: number }[] = [
+    { key: "__any__",      label: "全部范围", count: keys.length },
+    { key: "api",          label: "API",      count: keys.filter(k => k.scope === "api").length },
+    { key: "subscription", label: "域名订阅", count: keys.filter(k => k.scope === "subscription").length },
+    { key: "all",          label: "全部权限", count: keys.filter(k => k.scope === "all").length },
+  ];
+
+  const filtered = keys.filter(k => {
+    const statusOk =
+      statusFilter === "all"      ? true :
+      statusFilter === "active"   ? k.is_active && !isExpired(k) :
+      statusFilter === "disabled" ? !k.is_active && !isExpired(k) :
+      isExpired(k);
+    const scopeOk =
+      scopeFilter === "__any__" ? true : k.scope === scopeFilter;
+    return statusOk && scopeOk;
+  });
 
   return (
     <AdminLayout title="API 密钥管理">
@@ -144,12 +219,27 @@ export default function AccessKeysPage() {
               <RiShieldUserLine className="w-5 h-5 text-primary" />API 密钥管理
             </h1>
             <p className="text-xs text-muted-foreground mt-0.5">
-              共 {keys.length} 个 · 启用 {active} 个
+              共 {keys.length} 个 · 累计调用 {totalUses.toLocaleString()} 次
             </p>
           </div>
-          <Button size="sm" className="gap-1.5 rounded-xl h-8 shrink-0" onClick={() => setShowCreate(true)}>
-            <RiAddLine className="w-3.5 h-3.5" />生成 Key
-          </Button>
+          <div className="flex items-center gap-2 shrink-0">
+            {expiredCount > 0 && (
+              <Button
+                variant="outline" size="sm"
+                className="gap-1.5 rounded-xl h-8 text-muted-foreground border-border/60"
+                onClick={purgeExpired}
+                disabled={purgingExpired}
+              >
+                {purgingExpired
+                  ? <RiLoader4Line className="w-3.5 h-3.5 animate-spin" />
+                  : <RiDeleteBinLine className="w-3.5 h-3.5" />}
+                清理过期 ({expiredCount})
+              </Button>
+            )}
+            <Button size="sm" className="gap-1.5 rounded-xl h-8" onClick={() => setShowCreate(true)}>
+              <RiAddLine className="w-3.5 h-3.5" />生成 Key
+            </Button>
+          </div>
         </div>
 
         {/* Global toggle */}
@@ -167,11 +257,7 @@ export default function AccessKeysPage() {
                 : "已关闭：API 无需 Key 即可访问"}
             </p>
           </div>
-          <button
-            onClick={toggleRequire}
-            disabled={togglingRequire}
-            className="shrink-0"
-          >
+          <button onClick={toggleRequire} disabled={togglingRequire} className="shrink-0">
             {togglingRequire
               ? <RiLoader4Line className="w-6 h-6 animate-spin text-muted-foreground" />
               : requireApiKey
@@ -179,6 +265,23 @@ export default function AccessKeysPage() {
                 : <RiToggleLine className="w-8 h-8 text-muted-foreground" />}
           </button>
         </div>
+
+        {/* Stats grid */}
+        {keys.length > 0 && (
+          <div className="grid grid-cols-4 gap-2.5">
+            {[
+              { label: "全部",   value: keys.length,  color: "text-foreground" },
+              { label: "启用中", value: activeCount,   color: "text-emerald-500" },
+              { label: "已停用", value: disabledCount, color: "text-muted-foreground" },
+              { label: "已过期", value: expiredCount,  color: "text-red-500" },
+            ].map(s => (
+              <div key={s.label} className="glass-panel border border-border rounded-xl p-3 text-center">
+                <p className={cn("text-2xl font-bold tabular-nums", s.color)}>{s.value}</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">{s.label}</p>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* New key reveal */}
         {newKeyValue && (
@@ -275,14 +378,60 @@ export default function AccessKeysPage() {
           </div>
         )}
 
+        {/* Filter rows */}
+        {keys.length > 0 && (
+          <div className="space-y-2">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <RiFilterLine className="w-3.5 h-3.5 text-muted-foreground/60 shrink-0" />
+              {STATUS_TABS.map(tab => (
+                <button
+                  key={tab.key}
+                  onClick={() => setStatusFilter(tab.key)}
+                  className={cn(
+                    "text-xs px-3 py-1.5 rounded-full font-medium transition-all",
+                    statusFilter === tab.key
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground"
+                  )}
+                >
+                  {tab.label}
+                  <span className={cn("ml-1.5 text-[10px]", statusFilter === tab.key ? "opacity-70" : "opacity-60")}>
+                    {tab.count}
+                  </span>
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <div className="w-3.5 shrink-0" />
+              {SCOPE_FILTER_TABS.map(tab => (
+                <button
+                  key={tab.key}
+                  onClick={() => setScopeFilter(tab.key)}
+                  className={cn(
+                    "text-xs px-3 py-1.5 rounded-full font-medium transition-all",
+                    scopeFilter === tab.key
+                      ? "bg-secondary text-secondary-foreground"
+                      : "bg-muted/40 text-muted-foreground hover:bg-muted hover:text-foreground"
+                  )}
+                >
+                  {tab.label}
+                  <span className={cn("ml-1.5 text-[10px]", scopeFilter === tab.key ? "opacity-70" : "opacity-60")}>
+                    {tab.count}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Table */}
         {loading ? (
           <div className="flex justify-center py-12">
             <RiLoader4Line className="w-6 h-6 animate-spin text-muted-foreground" />
           </div>
-        ) : keys.length === 0 ? (
+        ) : filtered.length === 0 ? (
           <div className="text-center py-12 text-sm text-muted-foreground">
-            暂无 API Key，点击右上角生成
+            {keys.length === 0 ? "暂无 API Key，点击右上角生成" : "该筛选条件下暂无 Key"}
           </div>
         ) : (
           <div className="rounded-2xl border border-border overflow-hidden">
@@ -291,18 +440,21 @@ export default function AccessKeysPage() {
                 <tr className="bg-muted/40 border-b border-border text-xs text-muted-foreground">
                   <th className="text-left px-4 py-2.5 font-semibold">Key / 备注</th>
                   <th className="text-left px-3 py-2.5 font-semibold hidden sm:table-cell">范围</th>
-                  <th className="text-center px-3 py-2.5 font-semibold hidden md:table-cell">使用次数</th>
+                  <th className="text-center px-3 py-2.5 font-semibold hidden md:table-cell">调用 / 最近使用</th>
                   <th className="text-center px-3 py-2.5 font-semibold">状态</th>
                   <th className="text-right px-4 py-2.5 font-semibold">操作</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {keys.map(k => {
+                {filtered.map(k => {
                   const masked = k.key.slice(0, 8) + "••••••••" + k.key.slice(-6);
-                  const expired = k.expires_at ? new Date(k.expires_at) < new Date() : false;
+                  const expired = isExpired(k);
                   const sc = SCOPE_LABELS[k.scope] ?? SCOPE_LABELS.api;
                   return (
-                    <tr key={k.id} className={cn("hover:bg-muted/20 transition-colors", !k.is_active && "opacity-50")}>
+                    <tr key={k.id} className={cn(
+                      "hover:bg-muted/20 transition-colors",
+                      (!k.is_active || expired) && "opacity-50"
+                    )}>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
                           <span className="font-mono text-xs font-semibold tracking-wider text-muted-foreground">
@@ -319,10 +471,16 @@ export default function AccessKeysPage() {
                           </button>
                         </div>
                         <p className="text-[10px] text-muted-foreground/70 mt-0.5">
-                          {k.label || <span className="italic">无备注</span>}
+                          {k.label
+                            ? <span className="font-medium">{k.label}</span>
+                            : <span className="italic">无备注</span>}
                           {" · "}
                           {new Date(k.created_at).toLocaleDateString("zh-CN")}
-                          {k.expires_at && ` · 到期：${new Date(k.expires_at).toLocaleDateString("zh-CN")}`}
+                          {k.expires_at && (
+                            <span className={cn("ml-1", expired ? "text-red-500" : "")}>
+                              · {expired ? "已过期：" : "到期："}{new Date(k.expires_at).toLocaleDateString("zh-CN")}
+                            </span>
+                          )}
                         </p>
                       </td>
                       <td className="px-3 py-3 hidden sm:table-cell">
@@ -331,23 +489,23 @@ export default function AccessKeysPage() {
                         </span>
                       </td>
                       <td className="px-3 py-3 text-center hidden md:table-cell">
-                        <span className="text-xs text-muted-foreground">
-                          {k.use_count.toLocaleString()}
-                          {k.last_used_at && (
-                            <span className="block text-[10px] opacity-60">
-                              {new Date(k.last_used_at).toLocaleDateString("zh-CN")}
-                            </span>
-                          )}
-                        </span>
+                        <p className="text-xs font-semibold tabular-nums">{k.use_count.toLocaleString()}</p>
+                        {k.last_used_at ? (
+                          <p className="text-[10px] text-muted-foreground/60 mt-0.5 flex items-center justify-center gap-0.5">
+                            <RiTimeLine className="w-3 h-3" />{fmtRelative(k.last_used_at)}
+                          </p>
+                        ) : (
+                          <p className="text-[10px] text-muted-foreground/40 mt-0.5">从未使用</p>
+                        )}
                       </td>
                       <td className="px-3 py-3 text-center">
                         <span className={cn(
                           "text-xs px-2 py-0.5 rounded-full font-medium",
                           expired
-                            ? "bg-muted text-muted-foreground"
+                            ? "bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400"
                             : k.is_active
                               ? "bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400"
-                              : "bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400"
+                              : "bg-muted text-muted-foreground"
                         )}>
                           {expired ? "已过期" : k.is_active ? "启用" : "停用"}
                         </span>

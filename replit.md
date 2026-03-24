@@ -1,10 +1,26 @@
-# Next Whois UI — v3.17
+# Next Whois UI — v3.18
 
 A fast, modern WHOIS and RDAP lookup tool supporting domains, IPv4/IPv6, ASN, and CIDR. Also includes built-in DNS, SSL certificate, and IP/ASN geolocation tools.
 
 ---
 
 ## Changelog
+
+### v3.18 — Admin Access Keys Enrichment (2026-03-24)
+
+**Scope:** Enriched the API 密钥 (access-keys) admin page with stats, dual filter rows, and bulk expired-key cleanup — matching the quality bar set for invite-codes in v3.17.
+
+**Changes:**
+
+| File | Change | Detail |
+|---|---|---|
+| `src/pages/admin/access-keys.tsx` | Stats grid | Added 4-stat grid: 全部 / 启用中 / 已停用 / 已过期 (red). |
+| `src/pages/admin/access-keys.tsx` | Dual filter rows | Row 1: status filter pills (全部/启用/停用/已过期); Row 2: scope filter pills (全部范围/API/域名订阅/全部权限). Both compose together. Fixed "all" naming ambiguity by using `__any__` as the scope-filter sentinel. |
+| `src/pages/admin/access-keys.tsx` | Relative last-used time | "最近使用" column now shows relative time (刚刚 / N分钟前 / N小时前 / N天前) with clock icon, and "从未使用" when `last_used_at` is null. |
+| `src/pages/admin/access-keys.tsx` | Bulk purge + header count | "清理过期 (N)" button in header batch-deletes all expired keys; cumulative call count shown in subtitle. |
+| `src/lib/env.ts` | VERSION bumped to "3.18" | |
+
+---
 
 ### v3.17 — Admin Page Enrichment: Feedback, Invite Codes & Links (2026-03-24)
 
