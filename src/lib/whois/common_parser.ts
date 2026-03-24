@@ -8,6 +8,14 @@ import moment from "moment";
 import { domainToUnicode } from "url";
 import { getDomainPricing, getDomainTransferNegotiable } from "@/lib/pricing/client";
 
+/** Returns true if the value looks like an actual domain name rather than a policy/legal text. */
+function isDomainLike(value: string): boolean {
+  if (!value || value.length > 255) return false;
+  if (/\s/.test(value)) return false; // domain names have no spaces
+  if (!value.includes(".")) return false; // must have a TLD
+  return true;
+}
+
 function convertIdnToUnicode(domain: string): {
   unicode: string;
   punycode?: string;
@@ -302,13 +310,13 @@ export async function analyzeWhois(data: string): Promise<WhoisAnalyzeResult> {
         break;
       case "domain name (ascii)":
         if (!explicitAsciiDomain) explicitAsciiDomain = value;
-        result.domain = result.domain || value;
+        if (isDomainLike(value)) result.domain = result.domain || value;
         break;
       case "domain name":
       case "domain":
       case "nom de domaine":
       case "domaine":
-        result.domain = result.domain || value;
+        if (isDomainLike(value)) result.domain = result.domain || value;
         break;
       case "registrar":
       case "authorized agency":
@@ -578,7 +586,7 @@ export async function analyzeWhois(data: string): Promise<WhoisAnalyzeResult> {
         break;
     }
 
-    if (includeArgs(key, "domain name") && !result.domain) {
+    if (includeArgs(key, "domain name") && !result.domain && isDomainLike(value)) {
       result.domain = value;
     } else if (
       includeArgs(key, "registrar") &&
