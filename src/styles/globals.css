@@ -287,6 +287,38 @@ button {
   display: inline-block;
 }
 
+/* ── 已认领 badge — 流光扫光效果 ─────────────────────────────────── */
+@keyframes badge-beam {
+  0%   { transform: translateX(-180%) skewX(-18deg); opacity: 0; }
+  4%   { opacity: 1; }
+  38%  { transform: translateX(360%) skewX(-18deg); opacity: 0.85; }
+  39%  { opacity: 0; }
+  100% { transform: translateX(360%) skewX(-18deg); opacity: 0; }
+}
+
+.stamp-claimed-badge {
+  position: relative;
+  overflow: hidden;
+}
+
+.stamp-claimed-badge::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 30%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255,255,255,0.55) 45%,
+    rgba(255,255,255,0.75) 50%,
+    rgba(255,255,255,0.55) 55%,
+    transparent 100%
+  );
+  animation: badge-beam 3.2s cubic-bezier(0.4,0,0.6,1) infinite;
+  pointer-events: none;
+  border-radius: 999px;
+}
+
 /* iOS safe area for bottom navigation */
 .safe-bottom {
   padding-bottom: env(safe-area-inset-bottom, 0px);

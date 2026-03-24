@@ -4019,7 +4019,7 @@ export default function LookupPage({
                         {verifiedStamps.length > 0 && (
                           <button
                             onClick={() => setStampDetailOpen(true)}
-                            className="sm:hidden flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border transition-all active:scale-[0.93] bg-teal-50 dark:bg-teal-900/20 border-teal-400/50 text-teal-600 dark:text-teal-400"
+                            className="stamp-claimed-badge sm:hidden flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border transition-all active:scale-[0.93] bg-teal-50 dark:bg-teal-900/20 border-teal-400/50 text-teal-600 dark:text-teal-400"
                           >
                             <RiShieldCheckLine className="w-3 h-3" />
                             {isChinese ? "已认领" : "Claimed"}
@@ -4161,7 +4161,7 @@ export default function LookupPage({
                         {verifiedStamps.length > 0 && (
                           <button
                             onClick={() => setStampDetailOpen(true)}
-                            className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border transition-all active:scale-[0.93] bg-teal-50 dark:bg-teal-900/20 border-teal-400/50 text-teal-600 dark:text-teal-400 hover:bg-teal-100 dark:hover:bg-teal-900/40"
+                            className="stamp-claimed-badge hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border transition-all active:scale-[0.93] bg-teal-50 dark:bg-teal-900/20 border-teal-400/50 text-teal-600 dark:text-teal-400 hover:bg-teal-100 dark:hover:bg-teal-900/40"
                           >
                             <RiShieldCheckLine className="w-3 h-3" />
                             {isChinese ? "已认领" : "Claimed"}
