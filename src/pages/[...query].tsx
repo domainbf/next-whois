@@ -1550,7 +1550,9 @@ function getDomainRegistrationStatus(
     .join("\n")
     .toLowerCase();
 
+  // ── RESERVED — mirrors common_parser.ts syntheticReserved exactly ───────────
   const rawHasReserved =
+    // English free-text phrases
     rawContent.includes("reserved name") ||
     rawContent.includes("this name is reserved") ||
     rawContent.includes("is a reserved name") ||
@@ -1573,23 +1575,74 @@ function getDomainRegistrationStatus(
     rawContent.includes("reserved for the registry") ||
     rawContent.includes("registry has reserved") ||
     rawContent.includes("registry hold") ||
+    rawContent.includes("held by the registry") ||
+    rawContent.includes("domain is held") ||
+    rawContent.includes("being held by") ||
+    rawContent.includes("reserved for future use") ||
+    rawContent.includes("reserved for official use") ||
+    rawContent.includes("reserved for this registry") ||
+    rawContent.includes("reserved at the registry") ||
+    rawContent.includes("sunrise reserved") ||
+    rawContent.includes("reserved for sunrise") ||
+    rawContent.includes("reserved for landrush") ||
+    rawContent.includes("landrush reserved") ||
+    // Structured field patterns (EURID .eu, IIS .se/.nu, Donuts, CentralNic, CIRA, etc.)
+    /\bstatus\s*:\s*reserved\b/.test(rawContent) ||
+    /\bstate\s*:\s*reserved\b/.test(rawContent) ||
+    /\bdomainstatus\s*:\s*reserved\b/.test(rawContent) ||
+    // German (DENIC .de): "% Status: reserviert"
+    rawContent.includes("reserviert") ||
+    // Czech/Slovak (CZ.NIC .cz .sk): "rezervovan: ano"
+    rawContent.includes("rezervovan") ||
+    // French ccTLD (AFNIC .fr .re .pm .tf .wf .yt)
+    rawContent.includes("réservé") ||
+    rawContent.includes("reserver") ||
+    // Spanish / Portuguese ccTLD
+    rawContent.includes("reservado") ||
+    // Chinese WHOIS (CNNIC, TELE-INFO, ZDNS)
+    rawContent.includes("保留域名") ||
+    rawContent.includes("已被保留") ||
+    rawContent.includes("注册局保留") ||
+    rawContent.includes("保留中") ||
+    rawContent.includes("该域名已保留") ||
+    // Standalone "reserved" on its own line (TWNIC / NZRS)
     /(?:^|\n)\s*reserved\s*(?:\n|$)/.test(rawContent);
 
-  // Premium reserved — registry is holding this name for sale at a premium,
-  // or the WHOIS instructs the user to contact the registry to purchase it.
+  // ── PREMIUM RESERVED — mirrors common_parser.ts syntheticPremiumReserved ────
   const rawHasPremiumReserved =
     rawContent.includes("premium domain") ||
     rawContent.includes("premium name") ||
     rawContent.includes("premium price") ||
+    rawContent.includes("premium pricing") ||
+    rawContent.includes("premium listing") ||
     rawContent.includes("registry premium") ||
     rawContent.includes("available at a premium") ||
     rawContent.includes("this is a premium") ||
+    rawContent.includes("premium registration") ||
+    rawContent.includes("early access program") ||
+    rawContent.includes("early access pricing") ||
+    rawContent.includes("early access period") ||
+    rawContent.includes("available for purchase") ||
+    rawContent.includes("available for sale") ||
+    rawContent.includes("this name is for sale") ||
+    rawContent.includes("domain is for sale") ||
+    rawContent.includes("make an offer") ||
+    rawContent.includes("aftermarket") ||
+    rawContent.includes("reserve price") ||
+    rawContent.includes("starting bid") ||
+    rawContent.includes("minimum bid") ||
     rawContent.includes("please contact the registry") ||
     rawContent.includes("contact the registry to") ||
+    rawContent.includes("contact the registry for") ||
+    rawContent.includes("contact your registrar to") ||
+    rawContent.includes("contact your registrar for") ||
     rawContent.includes("enquire about this domain") ||
     rawContent.includes("inquire about this domain") ||
-    rawContent.includes("may be available for purchase");
+    rawContent.includes("may be available for purchase") ||
+    rawContent.includes("can be acquired") ||
+    rawContent.includes("reach out to the registry");
 
+  // ── PROHIBITED — mirrors common_parser.ts syntheticProhibited ────────────
   const rawHasProhibited =
     rawContent.includes("registration is prohibited") ||
     rawContent.includes("registration prohibited") ||
@@ -1598,16 +1651,54 @@ function getDomainRegistrationStatus(
     rawContent.includes("registration not available") ||
     rawContent.includes("not available for registration") ||
     rawContent.includes("not eligible for registration") ||
+    rawContent.includes("not open for registration") ||
+    rawContent.includes("not open for general registration") ||
+    rawContent.includes("not open to general registrations") ||
+    rawContent.includes("not currently open for registration") ||
+    rawContent.includes("not available for public registration") ||
+    rawContent.includes("not permitted to register") ||
+    rawContent.includes("registration is not permitted") ||
+    rawContent.includes("registrations are not permitted") ||
+    rawContent.includes("registrations not permitted") ||
+    rawContent.includes("not accepting registrations") ||
+    rawContent.includes("registrations not accepted") ||
+    rawContent.includes("no registrations are accepted") ||
+    rawContent.includes("does not accept registrations") ||
+    rawContent.includes("cannot be publicly registered") ||
     rawContent.includes("prohibited string") ||
+    rawContent.includes("prohibited by policy") ||
+    rawContent.includes("policy prohibited") ||
+    rawContent.includes("not available for public use") ||
     rawContent.includes("registrar banned") ||
     rawContent.includes("registry banned") ||
-    /\bblocked\s+by\s+(?:registry|registrar)\b/.test(rawContent);
+    rawContent.includes("blacklisted") ||
+    rawContent.includes("禁止注册") ||
+    rawContent.includes("不开放注册") ||
+    /\bblocked\s+by\s+(?:registry|registrar)\b/.test(rawContent) ||
+    /\bregistration\s+blocked\b/.test(rawContent);
 
+  // ── SUSPENDED — mirrors common_parser.ts syntheticSuspended ─────────────
   const rawHasSuspended =
     rawContent.includes("suspended by registry") ||
     rawContent.includes("suspended by registrar") ||
     rawContent.includes("registry-suspended") ||
-    rawContent.includes("domain is suspended");
+    rawContent.includes("domain is suspended") ||
+    rawContent.includes("domain suspended") ||
+    rawContent.includes("domain has been suspended") ||
+    rawContent.includes("account suspended") ||
+    rawContent.includes("abuse suspension") ||
+    rawContent.includes("abuse hold") ||
+    rawContent.includes("fraud hold") ||
+    rawContent.includes("compliance hold") ||
+    rawContent.includes("billing suspension") ||
+    rawContent.includes("domain is on hold") ||
+    rawContent.includes("registrar hold") ||
+    rawContent.includes("gesperrt") ||
+    rawContent.includes("suspendido") ||
+    rawContent.includes("suspendu") ||
+    rawContent.includes("已暂停") ||
+    rawContent.includes("域名暂停") ||
+    /(?:^|\n)\s*suspended\s*(?:\n|$)/.test(rawContent);
 
   const isProhibited =
     prohibitCheckText.includes("prohibited") ||

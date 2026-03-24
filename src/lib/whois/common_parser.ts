@@ -654,16 +654,28 @@ export async function analyzeWhois(data: string): Promise<WhoisAnalyzeResult> {
     const hasStatusCode = (code: string) =>
       result.status.some((s) => s.status.toLowerCase().includes(code));
 
-    // Reserved patterns — standalone text that indicates the name is reserved.
-    // Covers a wide range of registry phrasing:
-    //   • "in the reserved list"      — TELE-INFO (.yun, .wang, etc.)
-    //   • "reserved domain"           — many gTLD / ccTLD free-text responses
-    //   • "this domain is reserved"   — Neustar / Donuts style
-    //   • "is reserved for"           — ICANN / registry-admin reserved labels
-    //   • standalone "reserved" line  — TWNIC / NZRS
+    // ── RESERVED ─────────────────────────────────────────────────────────────
+    // Domain is held by the registry and not available for public registration.
+    // Sources (non-exhaustive):
+    //   TELE-INFO (.yun/.wang/.中文) → "in the reserved list, please contact the registry"
+    //   TWNIC (.tw/.com.tw)          → standalone "Reserved" line
+    //   NZRS (.nz/.co.nz)            → standalone "reserved" line
+    //   DENIC (.de)                  → "% Status: reserviert" (German)
+    //   EURID (.eu)                  → "Status: RESERVED"
+    //   IIS (.se/.nu)                → "state: reserved"
+    //   CZ.NIC (.cz/.sk)             → "rezervovan: ano" (Czech/Slovak)
+    //   NIC.AT (.at)                 → "% Domain [x] is reserved."
+    //   Donuts / Identity Digital    → "Status: reserved" (EPP field in WHOIS text)
+    //   CentralNic / LogicBoxes      → "Status: reserved"
+    //   CIRA (.ca)                   → "Status: Reserved"
+    //   FICORA (.fi)                 → "Status: Reserved"
+    //   CNNIC / Chinese TLD WHOIS    → "保留域名" / "已被保留" / "注册局保留"
+    //   Generic ccTLD/new gTLD       → "Reserved for future use" / "reserved for official use"
+    //   New gTLD sunrise periods     → "sunrise reserved" / "reserved for sunrise"
     const syntheticReserved =
       !hasStatusCode("reserved") &&
-      (rawLow.includes("reserved name") ||
+      (// ── English free-text phrases ──────────────────────────────────────
+        rawLow.includes("reserved name") ||
         rawLow.includes("this name is reserved") ||
         rawLow.includes("is a reserved name") ||
         rawLow.includes("domain is reserved") ||
@@ -685,37 +697,100 @@ export async function analyzeWhois(data: string): Promise<WhoisAnalyzeResult> {
         rawLow.includes("reserved for the registry") ||
         rawLow.includes("registry has reserved") ||
         rawLow.includes("registry hold") ||
-        // standalone "reserved" on its own line (trimmed), e.g. TWNIC / NZRS
+        rawLow.includes("held by the registry") ||
+        rawLow.includes("domain is held") ||
+        rawLow.includes("being held by") ||
+        rawLow.includes("reserved for future use") ||
+        rawLow.includes("reserved for official use") ||
+        rawLow.includes("reserved for this registry") ||
+        rawLow.includes("reserved at the registry") ||
+        rawLow.includes("sunrise reserved") ||
+        rawLow.includes("reserved for sunrise") ||
+        rawLow.includes("reserved for landrush") ||
+        rawLow.includes("landrush reserved") ||
+        // ── Structured field: "status: reserved" / "state: reserved" ────
+        // Covers EURID (.eu), IIS (.se/.nu), CIRA (.ca), FICORA (.fi),
+        // DNS Polska (.pl), and many new gTLD operators.
+        /\bstatus\s*:\s*reserved\b/.test(rawLow) ||
+        /\bstate\s*:\s*reserved\b/.test(rawLow) ||
+        /\bdomainstatus\s*:\s*reserved\b/.test(rawLow) ||
+        // ── German (DENIC .de) ───────────────────────────────────────────
+        rawLow.includes("reserviert") ||
+        // ── Czech / Slovak (CZ.NIC .cz .sk) ─────────────────────────────
+        rawLow.includes("rezervovan") ||
+        // ── French ccTLD (AFNIC .fr .re .pm .tf .wf .yt) ────────────────
+        rawLow.includes("réservé") ||
+        rawLow.includes("reserver") ||
+        // ── Spanish / Portuguese ccTLD ────────────────────────────────────
+        rawLow.includes("reservado") ||
+        // ── Chinese WHOIS (CNNIC, TELE-INFO, ZDNS) ───────────────────────
+        rawLow.includes("保留域名") ||
+        rawLow.includes("已被保留") ||
+        rawLow.includes("注册局保留") ||
+        rawLow.includes("保留中") ||
+        rawLow.includes("该域名已保留") ||
+        // ── standalone "reserved" on its own line (TWNIC / NZRS) ─────────
         /(?:^|\n)\s*reserved\s*(?:\n|$)/.test(rawLow));
 
     if (syntheticReserved) {
       result.status.push({ status: "registry-reserved", url: "" });
     }
 
-    // Premium reserved — registry is holding the name for premium/auction sale.
-    // These get tagged as "registry-premium" in addition to (or instead of) reserved
-    // so the UI can show a different description ("contact the registry to purchase").
+    // ── PREMIUM RESERVED ─────────────────────────────────────────────────────
+    // Registry is holding this name for sale at a premium price or via special
+    // application / auction.  These get an additional "registry-premium" tag so
+    // the UI can show a different, purchase-oriented description.
+    // Sources:
+    //   Many new gTLD operators    → "Premium" tier during EAP / launch periods
+    //   TELE-INFO (.yun/.wang)     → "please contact the registry"
+    //   Aftermarket platforms      → "available for purchase" / "make an offer"
+    //   Sedo / GoDaddy Auctions    → "this name is available for purchase"
     const syntheticPremiumReserved =
       !hasStatusCode("registry-premium") &&
       (rawLow.includes("premium domain") ||
         rawLow.includes("premium name") ||
         rawLow.includes("premium price") ||
+        rawLow.includes("premium pricing") ||
+        rawLow.includes("premium listing") ||
         rawLow.includes("registry premium") ||
         rawLow.includes("available at a premium") ||
         rawLow.includes("this is a premium") ||
-        // "contact the registry" as a call-to-action implies negotiated/premium sale
+        rawLow.includes("premium registration") ||
+        rawLow.includes("early access program") ||
+        rawLow.includes("early access pricing") ||
+        rawLow.includes("early access period") ||
+        rawLow.includes("available for purchase") ||
+        rawLow.includes("available for sale") ||
+        rawLow.includes("this name is for sale") ||
+        rawLow.includes("domain is for sale") ||
+        rawLow.includes("make an offer") ||
+        rawLow.includes("aftermarket") ||
+        rawLow.includes("reserve price") ||
+        rawLow.includes("starting bid") ||
+        rawLow.includes("minimum bid") ||
+        // "contact the registry/registrar" as purchase call-to-action
         rawLow.includes("please contact the registry") ||
         rawLow.includes("contact the registry to") ||
+        rawLow.includes("contact the registry for") ||
         rawLow.includes("contact your registrar to") ||
+        rawLow.includes("contact your registrar for") ||
         rawLow.includes("enquire about this domain") ||
         rawLow.includes("inquire about this domain") ||
-        rawLow.includes("may be available for purchase"));
+        rawLow.includes("may be available for purchase") ||
+        rawLow.includes("can be acquired") ||
+        rawLow.includes("reach out to the registry"));
 
     if (syntheticPremiumReserved) {
       result.status.push({ status: "registry-premium", url: "" });
     }
 
-    // Prohibited / blocked patterns — name cannot be registered.
+    // ── PROHIBITED / BLOCKED ─────────────────────────────────────────────────
+    // Domain string is policy-blocked and cannot be registered by anyone.
+    // Sources:
+    //   ICANN policy       → prohibited strings, brand protection
+    //   Registry policy    → sensitive keywords, govt-reserved terms
+    //   ccTLD policy       → national policy blocks
+    //   DNS abuse lists    → malware / phishing holds
     const syntheticProhibited =
       !hasStatusCode("prohibited") &&
       !hasStatusCode("blocked") &&
@@ -727,11 +802,28 @@ export async function analyzeWhois(data: string): Promise<WhoisAnalyzeResult> {
         rawLow.includes("not available for registration") ||
         rawLow.includes("not eligible for registration") ||
         rawLow.includes("not open for registration") ||
+        rawLow.includes("not open for general registration") ||
+        rawLow.includes("not open to general registrations") ||
+        rawLow.includes("not currently open for registration") ||
+        rawLow.includes("not available for public registration") ||
+        rawLow.includes("not permitted to register") ||
+        rawLow.includes("registration is not permitted") ||
+        rawLow.includes("registrations are not permitted") ||
+        rawLow.includes("registrations not permitted") ||
+        rawLow.includes("not accepting registrations") ||
+        rawLow.includes("registrations not accepted") ||
         rawLow.includes("no registrations are accepted") ||
         rawLow.includes("does not accept registrations") ||
+        rawLow.includes("cannot be publicly registered") ||
         rawLow.includes("prohibited string") ||
+        rawLow.includes("prohibited by policy") ||
+        rawLow.includes("policy prohibited") ||
+        rawLow.includes("not available for public use") ||
         rawLow.includes("registrar banned") ||
         rawLow.includes("registry banned") ||
+        rawLow.includes("blacklisted") ||
+        rawLow.includes("禁止注册") ||         // Chinese: registration prohibited
+        rawLow.includes("不开放注册") ||       // Chinese: not open for registration
         /\bblocked\s+by\s+(?:registry|registrar)\b/.test(rawLow) ||
         /\bregistration\s+blocked\b/.test(rawLow));
 
@@ -739,7 +831,12 @@ export async function analyzeWhois(data: string): Promise<WhoisAnalyzeResult> {
       result.status.push({ status: "registrationProhibited", url: "" });
     }
 
-    // Suspended — domain suspended by registry for policy/abuse reasons.
+    // ── SUSPENDED / HOLD ─────────────────────────────────────────────────────
+    // Domain was registered but has been suspended by the registry or registrar.
+    // Sources:
+    //   Registrar action   → non-payment, policy violation, abuse report
+    //   Registry action    → ICANN compliance, court orders, fraud holds
+    //   ccTLD policies     → national law enforcement, consumer protection
     const syntheticSuspended =
       !hasStatusCode("suspended") &&
       !hasStatusCode("hold") &&
@@ -747,7 +844,23 @@ export async function analyzeWhois(data: string): Promise<WhoisAnalyzeResult> {
         rawLow.includes("suspended by registrar") ||
         rawLow.includes("registry-suspended") ||
         rawLow.includes("domain is suspended") ||
-        rawLow.includes("account suspended"));
+        rawLow.includes("domain suspended") ||
+        rawLow.includes("domain has been suspended") ||
+        rawLow.includes("account suspended") ||
+        rawLow.includes("abuse suspension") ||
+        rawLow.includes("abuse hold") ||
+        rawLow.includes("fraud hold") ||
+        rawLow.includes("compliance hold") ||
+        rawLow.includes("billing suspension") ||
+        rawLow.includes("domain is on hold") ||
+        rawLow.includes("registrar hold") ||
+        rawLow.includes("gesperrt") ||          // German: locked/blocked (DENIC .de)
+        rawLow.includes("suspendido") ||        // Spanish: suspended
+        rawLow.includes("suspendu") ||          // French: suspended
+        rawLow.includes("已暂停") ||            // Chinese: already suspended
+        rawLow.includes("域名暂停") ||          // Chinese: domain suspended
+        // standalone "suspended" on its own line
+        /(?:^|\n)\s*suspended\s*(?:\n|$)/.test(rawLow));
 
     if (syntheticSuspended) {
       result.status.push({ status: "suspended", url: "" });
