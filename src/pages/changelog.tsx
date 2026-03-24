@@ -3,8 +3,9 @@ import Head from "next/head";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import { useSiteSettings } from "@/lib/site-settings";
+
 import { useTranslation } from "@/lib/i18n";
 import {
   RiArrowLeftSLine,
@@ -381,46 +382,78 @@ export default function ChangelogPage() {
           )}
 
           {/* ── Static version history ── */}
-          <div className="space-y-4">
-            {VERSIONS.map((v, vi) => (
-              <motion.div
-                key={v.version}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.28, delay: vi * 0.05 }}
-                className={`glass-panel border rounded-xl overflow-hidden ${v.highlight ? "border-primary/40" : "border-border"}`}
-              >
-                <div className={`px-5 py-3 border-b flex items-center justify-between gap-3 ${v.highlight ? "border-primary/20 bg-primary/5" : "border-border/60 bg-muted/20"}`}>
-                  <div className="flex items-center gap-2.5">
-                    <div className={`p-1.5 rounded-lg ${v.highlight ? "bg-primary/10 text-primary" : "bg-muted/60 text-muted-foreground"}`}>
-                      <RiToolsLine className="w-3.5 h-3.5" />
+          <div className="relative">
+            {/* Timeline connector line */}
+            <div className="absolute left-[11px] top-4 bottom-4 w-px bg-border/50 hidden sm:block" />
+            <div className="space-y-5">
+              {VERSIONS.map((v, vi) => (
+                <motion.div
+                  key={v.version}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.25, delay: vi * 0.04 }}
+                  className="sm:pl-9 relative"
+                >
+                  {/* Timeline dot */}
+                  <div className={cn(
+                    "absolute left-[7px] top-5 w-2.5 h-2.5 rounded-full border-2 hidden sm:block",
+                    v.highlight ? "border-primary bg-primary/40" : "border-border/70 bg-background"
+                  )} />
+
+                  <div className={cn(
+                    "border rounded-2xl overflow-hidden",
+                    v.highlight ? "border-primary/25" : "border-border/60"
+                  )}>
+                    {/* Version header */}
+                    <div className={cn(
+                      "px-5 py-4 flex items-center justify-between gap-4",
+                      v.highlight ? "bg-primary/[0.03]" : ""
+                    )}>
+                      <div className="flex items-center gap-3">
+                        <span className={cn(
+                          "text-2xl font-black font-mono tracking-tight leading-none",
+                          v.highlight ? "text-primary" : "text-foreground"
+                        )}>
+                          v{v.version}
+                        </span>
+                        {v.highlight && (
+                          <span className="text-[9px] font-extrabold tracking-widest uppercase px-2 py-0.5 rounded-full bg-primary text-primary-foreground">
+                            {isChinese ? "最新" : "Latest"}
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-xs text-muted-foreground font-mono tabular-nums">{v.date}</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-bold font-mono">v{v.version}</span>
-                      {v.highlight && (
-                        <Badge className="text-[9px] px-1.5 py-0 h-4 bg-primary text-primary-foreground border-0">
-                          {isChinese ? "最新" : "Latest"}
-                        </Badge>
-                      )}
+
+                    {/* Divider */}
+                    <div className={cn("h-px", v.highlight ? "bg-primary/12" : "bg-border/40")} />
+
+                    {/* Change list */}
+                    <div className="px-5 py-4 space-y-3">
+                      {v.changes.map((c, ci) => {
+                        const cfg = TYPE_CONFIG[c.type];
+                        return (
+                          <div key={ci} className="flex items-start gap-3">
+                            <span className={cn(
+                              "text-[9px] font-extrabold tracking-wide px-1.5 py-0.5 rounded shrink-0 mt-0.5 uppercase whitespace-nowrap",
+                              c.type === "new"     ? "bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400" :
+                              c.type === "improve" ? "bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400" :
+                              c.type === "fix"     ? "bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-400" :
+                              "bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400"
+                            )}>
+                              {isChinese ? cfg.label : cfg.labelEn}
+                            </span>
+                            <span className="text-[13px] text-foreground/85 leading-snug">
+                              {isChinese ? c.zh : c.en}
+                            </span>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
-                  <span className="text-[11px] text-muted-foreground font-mono">{v.date}</span>
-                </div>
-                <div className="px-5 py-3 space-y-2">
-                  {v.changes.map((c, ci) => {
-                    const cfg = TYPE_CONFIG[c.type];
-                    return (
-                      <div key={ci} className="flex items-start gap-2.5">
-                        <cfg.icon className={`w-3.5 h-3.5 shrink-0 mt-0.5 ${cfg.color}`} />
-                        <span className="text-[12px] text-foreground/80 leading-snug">
-                          {isChinese ? c.zh : c.en}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </motion.div>
-            ))}
+                </motion.div>
+              ))}
+            </div>
           </div>
 
           <div className="mt-10 pt-6 border-t border-border/40 text-center">

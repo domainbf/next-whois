@@ -546,12 +546,13 @@ export function computeSmartTtl(result: WhoisResult): number {
 
   const remaining = r.remainingDays;
   if (remaining !== null && remaining !== undefined) {
-    if (remaining <= 0)  return 600;
-    if (remaining <= 7)  return 1_800;
-    if (remaining <= 60) return 3_600;
+    if (remaining <= 0)   return 600;
+    if (remaining <= 7)   return 1_800;
+    if (remaining <= 60)  return 3_600;
+    if (remaining <= 180) return 21_600;
   }
 
-  return 21_600;
+  return 43_200;
 }
 
 export async function lookupWhoisWithCache(

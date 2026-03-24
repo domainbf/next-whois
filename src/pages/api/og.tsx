@@ -2006,5 +2006,12 @@ export default async function handler(req: NextRequest) {
     );
   }
 
-  return new ImageResponse(content, { width: w, height: h });
+  const cacheSeconds = preview ? 300 : 3600;
+  return new ImageResponse(content, {
+    width: w,
+    height: h,
+    headers: {
+      "Cache-Control": `public, s-maxage=${cacheSeconds}, stale-while-revalidate=${cacheSeconds * 4}`,
+    },
+  });
 }

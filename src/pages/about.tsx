@@ -31,6 +31,24 @@ import {
   RiUserLine,
 } from "@remixicon/react";
 
+function FaviconImage({ url, name }: { url: string; name: string }) {
+  const [failed, setFailed] = React.useState(false);
+  const hostname = React.useMemo(() => {
+    try { return new URL(url).hostname; } catch { return name; }
+  }, [url, name]);
+  if (failed) return <RiHeartLine className="w-4 h-4 text-rose-400" />;
+  return (
+    <img
+      src={`https://www.google.com/s2/favicons?domain=${hostname}&sz=64`}
+      alt={name}
+      width={18}
+      height={18}
+      className="rounded-sm"
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
 const FEATURES = [
   {
     icon: RiSearchLine,
@@ -392,8 +410,8 @@ export default function AboutPage() {
                       rel="noopener noreferrer"
                       className="flex items-center gap-2.5 p-2.5 rounded-lg bg-muted/40 hover:bg-muted/70 border border-border/60 hover:border-border transition-all group"
                     >
-                      <div className="p-1.5 rounded-md bg-rose-500/10 shrink-0">
-                        <RiHeartLine className="w-3.5 h-3.5 text-rose-500" />
+                      <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-muted/60 overflow-hidden border border-border/40">
+                        <FaviconImage url={t.url} name={t.name} />
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="text-xs font-semibold leading-none truncate">{t.name}</p>
