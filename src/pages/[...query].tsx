@@ -2817,44 +2817,44 @@ export default function LookupPage({
   const CARD_THEMES: Record<string, CardThemeDef> = {
     app: {
       hero:       "bg-gradient-to-br from-zinc-700 to-zinc-900",
-      shimmer:    "text-shimmer-white",
+      shimmer:    "text-shimmer",           // dark text → visible on light card
       badge:      "bg-white/15 text-white border border-white/25",
-      btn:        "bg-white/15 text-white border border-white/25 hover:bg-white/25",
+      btn:        "bg-zinc-800 text-white hover:bg-zinc-700",
       cardBg:     "bg-background",   cardBorder: "border-border/50",   cardText: "text-foreground",
     },
     glow: {
       hero:       "bg-gradient-to-br from-teal-400 to-teal-600",
-      shimmer:    "text-shimmer-white",
+      shimmer:    "text-shimmer",           // dark text → visible on light card
       badge:      "bg-teal-500 text-white border-0",
-      btn:        "bg-teal-500 text-white",
-      cardBg:     "bg-background",   cardBorder: "border-border/50",   cardText: "text-foreground",
+      btn:        "bg-teal-500 text-white hover:bg-teal-600",
+      cardBg:     "bg-background",   cardBorder: "border-teal-200/60 dark:border-teal-800/40",  cardText: "text-foreground",
     },
     midnight: {
       hero:       "bg-gradient-to-br from-slate-700 via-blue-900 to-slate-900",
-      shimmer:    "text-shimmer-white",
+      shimmer:    "text-shimmer-white",     // white text → visible on dark card
       badge:      "bg-blue-500 text-white border-0",
-      btn:        "bg-blue-600 text-white",
+      btn:        "bg-blue-600 text-white hover:bg-blue-700",
       cardBg:     "bg-slate-900",    cardBorder: "border-slate-700",   cardText: "text-white",
     },
     aurora: {
       hero:       "bg-gradient-to-br from-violet-500 via-fuchsia-500 to-pink-400",
-      shimmer:    "text-shimmer-white",
+      shimmer:    "text-shimmer",           // dark text → visible on light card
       badge:      "bg-fuchsia-500 text-white border-0",
       btn:        "bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white",
-      cardBg:     "bg-background",   cardBorder: "border-border/50",   cardText: "text-foreground",
+      cardBg:     "bg-background",   cardBorder: "border-violet-200/60 dark:border-violet-800/40", cardText: "text-foreground",
     },
     solar: {
       hero:       "bg-gradient-to-br from-amber-400 to-orange-600",
-      shimmer:    "text-shimmer-white",
+      shimmer:    "text-shimmer",           // dark text → visible on light card
       badge:      "bg-orange-500 text-white border-0",
-      btn:        "bg-orange-500 text-white",
-      cardBg:     "bg-background",   cardBorder: "border-border/50",   cardText: "text-foreground",
+      btn:        "bg-orange-500 text-white hover:bg-orange-600",
+      cardBg:     "bg-background",   cardBorder: "border-amber-200/60 dark:border-amber-800/40",  cardText: "text-foreground",
     },
     ink: {
       hero:       "bg-gradient-to-br from-zinc-800 via-zinc-900 to-black",
-      shimmer:    "text-shimmer-white",
+      shimmer:    "text-shimmer-white",     // white text → visible on dark card
       badge:      "bg-zinc-600 text-white border-0",
-      btn:        "bg-zinc-700 text-white",
+      btn:        "bg-zinc-700 text-white hover:bg-zinc-600",
       cardBg:     "bg-zinc-950",     cardBorder: "border-zinc-800",    cardText: "text-white",
     },
   };
@@ -3869,14 +3869,14 @@ export default function LookupPage({
                             return (
                               <div key={stamp.id}>
                                 {/* ── Gradient hero strip ── */}
-                                <div className={cn("relative px-5 pt-7 pb-10 text-center select-none", theme.hero)}>
-                                  <div className="absolute inset-0 opacity-[0.08]"
-                                    style={{ backgroundImage: "radial-gradient(circle, white 1px, transparent 1px)", backgroundSize: "18px 18px" }} />
-                                  <div className="relative">
-                                    <div className="w-16 h-16 rounded-3xl bg-white/15 backdrop-blur-sm border border-white/25 flex items-center justify-center mx-auto shadow-xl">
-                                      <StampIcon className="w-8 h-8 text-white drop-shadow-sm" />
+                                <div className={cn("relative px-5 pt-6 pb-8 text-center select-none", theme.hero)}>
+                                  <div className="absolute inset-0 opacity-[0.07]"
+                                    style={{ backgroundImage: "radial-gradient(circle, white 1px, transparent 1px)", backgroundSize: "16px 16px" }} />
+                                  <div className="relative flex flex-col items-center gap-2">
+                                    <div className="w-14 h-14 rounded-2xl bg-white/15 backdrop-blur-sm border border-white/20 flex items-center justify-center shadow-lg">
+                                      <StampIcon className="w-7 h-7 text-white" />
                                     </div>
-                                    <p className="mt-3 text-white/50 text-[10px] font-mono tracking-[0.2em] uppercase">
+                                    <p className="text-white/45 text-[10px] font-mono tracking-[0.18em] uppercase">
                                       {result.domain || target}
                                     </p>
                                   </div>
@@ -3884,38 +3884,38 @@ export default function LookupPage({
 
                                 {/* ── Floating name card ── */}
                                 <div className={cn(
-                                  "relative -mt-6 mx-4 rounded-2xl border shadow-md px-4 pt-3.5 pb-3.5",
+                                  "relative -mt-5 mx-4 rounded-2xl border shadow-md px-4 py-3",
                                   theme.cardBg, theme.cardBorder,
                                 )}>
-                                  <div className="flex items-start justify-between gap-3">
+                                  <div className="flex items-center justify-between gap-2">
                                     {/* Brand name with shimmer */}
-                                    <span className={cn("text-xl font-black leading-tight tracking-tight", theme.shimmer)}>
+                                    <span className={cn("text-lg font-black leading-tight tracking-tight", theme.shimmer)}>
                                       {stamp.tagName}
                                     </span>
                                     <span className={cn(
-                                      "inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full shrink-0 mt-0.5",
+                                      "inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0",
                                       theme.badge,
                                     )}>
                                       <RiShieldCheckLine className="w-2.5 h-2.5" />
                                       {isChinese ? "已认证" : "Verified"}
                                     </span>
                                   </div>
-                                </div>
-
-                                {/* ── Body ── */}
-                                <div className="px-5 pt-4 pb-5 space-y-4">
                                   {stamp.description && (
-                                    <p className="text-[13px] text-muted-foreground leading-relaxed">
+                                    <p className="text-[12px] text-muted-foreground leading-relaxed mt-1.5">
                                       {stamp.description}
                                     </p>
                                   )}
+                                </div>
+
+                                {/* ── CTA / footer ── */}
+                                <div className="px-4 pt-3 pb-4">
                                   {stamp.link ? (
                                     <a
                                       href={stamp.link}
                                       target="_blank"
                                       rel="noopener noreferrer"
                                       className={cn(
-                                        "flex items-center justify-center gap-2 w-full rounded-2xl py-3 text-sm font-bold transition-all hover:opacity-90 active:scale-[0.97]",
+                                        "flex items-center justify-center gap-2 w-full rounded-2xl py-2.5 text-sm font-bold transition-all hover:opacity-90 active:scale-[0.97]",
                                         theme.btn,
                                       )}
                                     >
@@ -3923,7 +3923,7 @@ export default function LookupPage({
                                       <RiArrowRightSLine className="w-4 h-4" />
                                     </a>
                                   ) : (
-                                    <p className="text-[11px] text-muted-foreground/40 text-center font-mono">
+                                    <p className="text-[11px] text-muted-foreground/40 text-center font-mono py-1">
                                       {isChinese ? "该认领未设置主页链接" : "No profile link set"}
                                     </p>
                                   )}
