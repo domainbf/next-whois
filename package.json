@@ -53,6 +53,7 @@
     "react-hotkeys-hook": "^5.2.4",
     "react-i18next": "^15.7.4",
     "sonner": "^1.7.4",
+    "stripe": "^20.4.1",
     "tailwind-merge": "^2.6.1",
     "tailwindcss-animate": "^1.0.7",
     "tldts": "^7.0.27",

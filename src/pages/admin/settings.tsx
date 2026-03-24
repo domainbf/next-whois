@@ -13,7 +13,7 @@ import {
   RiHomeLine, RiInformationLine, RiHistoryLine, RiLinksLine,
   RiHeartLine, RiBarChartLine, RiSearchLine, RiCodeBoxLine,
   RiShieldLine, RiPaletteLine, RiEyeLine, RiUploadLine, RiCloseLine,
-  RiFingerprint2Line, RiUserLine,
+  RiFingerprint2Line, RiUserLine, RiBankCardLine,
 } from "@remixicon/react";
 
 // ── Client-side image compression helper ────────────────────────────────────
@@ -447,6 +447,7 @@ export default function AdminSettingsPage() {
     { id: "features", title: "功能开关", icon: RiToggleLine },
     { id: "email", title: "邮件系统", icon: RiMailSendLine },
     { id: "captcha", title: "人机验证", icon: RiFingerprint2Line },
+    { id: "payment", title: "支付网关", icon: RiBankCardLine },
   ];
 
   return (
@@ -717,6 +718,108 @@ export default function AdminSettingsPage() {
                         </p>
                       </div>
                     )}
+                  </div>
+                </div>
+              )}
+
+              {/* Payment Gateway section */}
+              {activeSection === "payment" && (
+                <div className="space-y-5">
+                  <div>
+                    <h3 className="text-sm font-bold flex items-center gap-2">
+                      <RiBankCardLine className="w-4 h-4 text-violet-500" />支付网关配置
+                    </h3>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      配置支付渠道。敏感 Key（私钥/Secret）务必通过环境变量设置，不要填入此处。
+                      <br />公开 Key（Publishable Key / App ID）可在此配置，保存即生效。
+                    </p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="p-4 rounded-xl border border-border space-y-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold">Stripe（国际支付）</span>
+                        <label className="flex items-center gap-1.5 cursor-pointer text-xs text-muted-foreground ml-auto">
+                          <input type="checkbox" checked={!!form.payment_stripe_enabled}
+                            onChange={e => setForm(f => ({ ...f, payment_stripe_enabled: e.target.checked ? "1" : "" }))} className="rounded" />
+                          启用
+                        </label>
+                      </div>
+                      <div>
+                        <Label className="text-xs mb-1 block">Publishable Key（前端公钥，以 pk_ 开头）</Label>
+                        <Input value={form.payment_stripe_pk} onChange={e => setForm(f => ({ ...f, payment_stripe_pk: e.target.value }))}
+                          placeholder="pk_live_..." className="h-8 text-sm font-mono" />
+                      </div>
+                      <div className="text-[11px] text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 rounded-lg px-3 py-2 border border-amber-200/50 dark:border-amber-700/30">
+                        私钥（Secret Key）请设置环境变量：<code className="font-mono">STRIPE_SECRET_KEY</code>
+                        <br />Webhook 签名密钥：<code className="font-mono">STRIPE_WEBHOOK_SECRET</code>
+                        <br />Webhook URL：<code className="font-mono">/api/payment/webhook/stripe</code>
+                      </div>
+                    </div>
+
+                    <div className="p-4 rounded-xl border border-border space-y-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold">虎皮椒（国内聚合）</span>
+                        <label className="flex items-center gap-1.5 cursor-pointer text-xs text-muted-foreground ml-auto">
+                          <input type="checkbox" checked={!!form.payment_xunhupay_enabled}
+                            onChange={e => setForm(f => ({ ...f, payment_xunhupay_enabled: e.target.checked ? "1" : "" }))} className="rounded" />
+                          启用
+                        </label>
+                      </div>
+                      <div>
+                        <Label className="text-xs mb-1 block">App ID</Label>
+                        <Input value={form.payment_xunhupay_appid} onChange={e => setForm(f => ({ ...f, payment_xunhupay_appid: e.target.value }))}
+                          placeholder="虎皮椒应用 ID" className="h-8 text-sm font-mono" />
+                      </div>
+                      <div className="text-[11px] text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 rounded-lg px-3 py-2 border border-amber-200/50 dark:border-amber-700/30">
+                        App Secret 请设置环境变量：<code className="font-mono">XUNHUPAY_APP_SECRET</code>
+                        <br />Webhook URL：<code className="font-mono">/api/payment/webhook/xunhupay</code>
+                      </div>
+                    </div>
+
+                    <div className="p-4 rounded-xl border border-border space-y-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold">支付宝官方（需企业资质）</span>
+                        <label className="flex items-center gap-1.5 cursor-pointer text-xs text-muted-foreground ml-auto">
+                          <input type="checkbox" checked={!!form.payment_alipay_enabled}
+                            onChange={e => setForm(f => ({ ...f, payment_alipay_enabled: e.target.checked ? "1" : "" }))} className="rounded" />
+                          启用
+                        </label>
+                      </div>
+                      <div>
+                        <Label className="text-xs mb-1 block">App ID</Label>
+                        <Input value={form.payment_alipay_appid} onChange={e => setForm(f => ({ ...f, payment_alipay_appid: e.target.value }))}
+                          placeholder="支付宝开放平台应用 App ID" className="h-8 text-sm font-mono" />
+                      </div>
+                      <div>
+                        <Label className="text-xs mb-1 block">异步通知 URL（留空自动生成）</Label>
+                        <Input value={form.payment_alipay_notify_url} onChange={e => setForm(f => ({ ...f, payment_alipay_notify_url: e.target.value }))}
+                          placeholder="https://yourdomain.com/api/payment/webhook/alipay" className="h-8 text-sm font-mono" />
+                      </div>
+                      <div className="text-[11px] text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 rounded-lg px-3 py-2 border border-amber-200/50 dark:border-amber-700/30">
+                        应用私钥（RSA2）：环境变量 <code className="font-mono">ALIPAY_PRIVATE_KEY</code>
+                        <br />支付宝公钥：<code className="font-mono">ALIPAY_PUBLIC_KEY</code>（用于回调验签）
+                      </div>
+                    </div>
+
+                    <div className="p-4 rounded-xl border border-border space-y-3">
+                      <h4 className="text-xs font-semibold text-muted-foreground">通用配置</h4>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <Label className="text-xs mb-1 block">默认货币</Label>
+                          <select value={form.payment_currency}
+                            onChange={e => setForm(f => ({ ...f, payment_currency: e.target.value }))}
+                            className="w-full h-8 text-sm rounded-md border border-input bg-background px-2 focus:outline-none">
+                            {["CNY","USD","EUR","HKD"].map(c => <option key={c} value={c}>{c}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <Label className="text-xs mb-1 block">付款成功跳转 URL（留空默认）</Label>
+                          <Input value={form.payment_success_url} onChange={e => setForm(f => ({ ...f, payment_success_url: e.target.value }))}
+                            placeholder="/dashboard" className="h-8 text-sm" />
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}

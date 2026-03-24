@@ -173,6 +173,36 @@ const CREATE_TABLES = [
     last_used_at TIMESTAMPTZ,
     use_count    INTEGER      NOT NULL DEFAULT 0
   )`,
+  `CREATE TABLE IF NOT EXISTS payment_plans (
+    id           VARCHAR(16)  PRIMARY KEY,
+    name         TEXT         NOT NULL,
+    description  TEXT,
+    price        NUMERIC(10,2) NOT NULL,
+    currency     TEXT         NOT NULL DEFAULT 'CNY',
+    duration_days INTEGER,
+    is_recurring BOOLEAN      NOT NULL DEFAULT false,
+    grants_subscription BOOLEAN NOT NULL DEFAULT true,
+    is_active    BOOLEAN      NOT NULL DEFAULT true,
+    sort_order   INTEGER      NOT NULL DEFAULT 0,
+    created_at   TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+  )`,
+  `CREATE TABLE IF NOT EXISTS payment_orders (
+    id              VARCHAR(32)  PRIMARY KEY,
+    user_id         VARCHAR(16)  REFERENCES users(id) ON DELETE SET NULL,
+    user_email      TEXT         NOT NULL,
+    plan_id         VARCHAR(16)  REFERENCES payment_plans(id) ON DELETE SET NULL,
+    plan_name       TEXT         NOT NULL,
+    amount          NUMERIC(10,2) NOT NULL,
+    currency        TEXT         NOT NULL DEFAULT 'CNY',
+    provider        TEXT         NOT NULL,
+    provider_order_id TEXT,
+    status          TEXT         NOT NULL DEFAULT 'pending',
+    paid_at         TIMESTAMPTZ,
+    expired_at      TIMESTAMPTZ,
+    webhook_raw     TEXT,
+    metadata        JSONB,
+    created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+  )`,
 ];
 
 const ALTER_COLUMNS = [

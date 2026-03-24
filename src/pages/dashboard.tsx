@@ -23,6 +23,8 @@ import {
 import { ADMIN_EMAIL } from "@/lib/admin-shared";
 import type { HistoryItem } from "@/lib/history";
 import { useTranslation } from "@/lib/i18n";
+import { useSiteSettings } from "@/lib/site-settings";
+import { RiBankCardLine } from "@remixicon/react";
 
 type Subscription = {
   id: string; domain: string; expiration_date: string | null;
@@ -492,6 +494,8 @@ export default function DashboardPage() {
   const router = useRouter();
   const { t } = useTranslation();
   const { data: session, status, update: updateSession } = useSession();
+  const siteSettings = useSiteSettings();
+  const paymentEnabled = !!(siteSettings.payment_stripe_enabled || siteSettings.payment_xunhupay_enabled || siteSettings.payment_alipay_enabled);
   const [tab, setTab] = React.useState<"subscriptions" | "stamps" | "account" | "history">("stamps");
   const [subscriptions, setSubscriptions] = React.useState<Subscription[]>([]);
   const [stamps, setStamps] = React.useState<Stamp[]>([]);
@@ -1008,6 +1012,16 @@ export default function DashboardPage() {
                         域名订阅功能需要邀请码才能解锁，输入邀请码立即生效，无需重新注册。
                       </p>
                     </div>
+                  </div>
+                  {paymentEnabled && (
+                    <Link href="/payment/checkout">
+                      <Button className="w-full h-9 rounded-xl gap-1.5 text-xs bg-violet-600 hover:bg-violet-700 text-white">
+                        <RiBankCardLine className="w-3.5 h-3.5" />购买套餐解锁
+                      </Button>
+                    </Link>
+                  )}
+                  <div className="flex items-center gap-2 text-[11px] text-muted-foreground/50 justify-center select-none">
+                    <span>—— 或使用邀请码 ——</span>
                   </div>
                   <form onSubmit={handleApplyInviteCode} className="space-y-2">
                     <div className="relative">

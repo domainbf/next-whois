@@ -80,6 +80,16 @@ export interface SiteSettings {
   captcha_secret_key: string;
   // OG image styles
   og_enabled_styles: string;
+  // Payment gateway config
+  payment_stripe_enabled: string;
+  payment_stripe_pk: string;
+  payment_xunhupay_enabled: string;
+  payment_xunhupay_appid: string;
+  payment_alipay_enabled: string;
+  payment_alipay_appid: string;
+  payment_alipay_notify_url: string;
+  payment_currency: string;
+  payment_success_url: string;
 }
 
 export const DEFAULT_SETTINGS: SiteSettings = {
@@ -149,6 +159,15 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   captcha_site_key: "",
   captcha_secret_key: "",
   og_enabled_styles: "0,1,2,3,4,5,6,7",
+  payment_stripe_enabled: "",
+  payment_stripe_pk: "",
+  payment_xunhupay_enabled: "",
+  payment_xunhupay_appid: "",
+  payment_alipay_enabled: "",
+  payment_alipay_appid: "",
+  payment_alipay_notify_url: "",
+  payment_currency: "CNY",
+  payment_success_url: "",
 };
 
 const STORAGE_KEY = "next_whois_settings_ts";

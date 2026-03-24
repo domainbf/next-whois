@@ -1,5 +1,44 @@
 # Next Whois UI — v3.22
 
+## Payment System (Added 2026-03-24)
+
+### Architecture
+- **DB tables**: `payment_plans` + `payment_orders` (in `src/lib/db.ts`)
+- **Core library**: `src/lib/payment.ts` — order lifecycle, provider signing/verification
+- **API routes**:
+  - `GET /api/payment/plans` — public plan listing
+  - `POST /api/payment/create` — create order + redirect URL
+  - `GET /api/payment/status?order=ID` — order status polling
+  - `POST /api/payment/webhook/stripe` — Stripe payment confirmation
+  - `POST /api/payment/webhook/xunhupay` — Xunhupay (虎皮椒) confirmation
+  - `POST /api/payment/webhook/alipay` — Alipay confirmation
+  - `GET/POST /api/admin/payment/plans` — admin CRUD
+  - `GET/POST /api/admin/payment/orders` — admin order management + mark-paid/refund
+- **User pages**:
+  - `/payment/checkout` — plan selection + provider selection + checkout
+  - `/payment/result?order=ID` — payment result with auto-polling
+- **Admin pages**:
+  - `/admin/payment/plans` — plan CRUD (price, duration, currency, active toggle)
+  - `/admin/payment/orders` — order listing with stats, filters, manual mark-paid/refund
+  - Settings → 支付网关 — enable/disable providers, set public keys
+
+### Providers
+| Provider | Enable Flag | Public Key Setting | Private Key ENV |
+|---|---|---|---|
+| Stripe | `payment_stripe_enabled` | `payment_stripe_pk` | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` |
+| Xunhupay (虎皮椒) | `payment_xunhupay_enabled` | `payment_xunhupay_appid` | `XUNHUPAY_APP_SECRET` |
+| Alipay (官方) | `payment_alipay_enabled` | `payment_alipay_appid`, `payment_alipay_notify_url` | `ALIPAY_PRIVATE_KEY`, `ALIPAY_PUBLIC_KEY` |
+
+### Flow
+1. Admin creates plans in `/admin/payment/plans`
+2. Admin enables providers in Settings → 支付网关
+3. User visits `/payment/checkout`, selects plan + provider
+4. Provider redirect → webhook fires → `markOrderPaid()` sets `subscription_access=TRUE` + creates sponsor record
+5. User lands on `/payment/result?order=ID` (auto-polls until paid)
+6. Dashboard shows "购买套餐解锁" button when any provider is enabled
+
+---
+
 A fast, modern WHOIS and RDAP lookup tool supporting domains, IPv4/IPv6, ASN, and CIDR. Also includes built-in DNS, SSL certificate, and IP/ASN geolocation tools.
 
 ---
