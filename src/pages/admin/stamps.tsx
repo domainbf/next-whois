@@ -104,6 +104,8 @@ function StampFormFields({
   verified?: boolean; setVerified?: (v: boolean) => void;
   showVerifiedToggle?: boolean;
 }) {
+  const [themePickerOpen, setThemePickerOpen] = React.useState(false);
+
   return (
     <div className="space-y-4">
       {showDomainOwner && setDomain && setNickname && setEmail && (
@@ -176,39 +178,102 @@ function StampFormFields({
         </div>
       </div>
 
-      <div className="space-y-2">
+      {/* ── Theme picker overlay ── */}
+      {themePickerOpen && (
+        <div className="fixed inset-0 z-[200] flex flex-col items-stretch" style={{background:"rgba(0,0,0,0.55)", backdropFilter:"blur(4px)"}}>
+          <div className="flex-1" onClick={() => setThemePickerOpen(false)} />
+          <div className="bg-background rounded-t-2xl shadow-2xl max-h-[82vh] flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
+              <div>
+                <p className="font-bold text-base">选择弹窗样式</p>
+                <p className="text-xs text-muted-foreground mt-0.5">点击样式即可选中并关闭</p>
+              </div>
+              <button type="button" onClick={() => setThemePickerOpen(false)}
+                className="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-muted transition-colors text-muted-foreground">
+                <RiCloseLine className="w-4 h-4" />
+              </button>
+            </div>
+            {/* Scrollable grid */}
+            <div className="overflow-y-auto px-5 py-4 space-y-5">
+              {/* Standard themes */}
+              <div>
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-3">标准配色</p>
+                <div className="grid grid-cols-3 gap-2.5">
+                  {CARD_THEMES.filter(c => !c.special).map(c => (
+                    <button key={c.value} type="button"
+                      onClick={() => { setCardTheme(c.value); setThemePickerOpen(false); }}
+                      className={cn(
+                        "flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all active:scale-[0.97]",
+                        cardTheme === c.value
+                          ? "border-primary bg-primary/5"
+                          : "border-transparent hover:border-border hover:bg-muted/40"
+                      )}>
+                      <span className={cn("w-full h-7 rounded-lg bg-gradient-to-br", c.bg)} />
+                      <span className="text-[11px] font-semibold leading-none">{c.label}</span>
+                      {cardTheme === c.value && (
+                        <span className="text-[9px] text-primary font-bold uppercase tracking-widest">已选</span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {/* Special layout themes */}
+              <div>
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-3">特殊排版</p>
+                <div className="grid grid-cols-2 gap-2.5">
+                  {CARD_THEMES.filter(c => !!c.special).map(c => (
+                    <button key={c.value} type="button"
+                      onClick={() => { setCardTheme(c.value); setThemePickerOpen(false); }}
+                      className={cn(
+                        "flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition-all active:scale-[0.97]",
+                        cardTheme === c.value
+                          ? "border-primary bg-primary/5"
+                          : "border-transparent hover:border-border hover:bg-muted/40"
+                      )}>
+                      <span className={cn("w-10 h-10 rounded-xl bg-gradient-to-br shrink-0 flex items-center justify-center text-lg", c.bg)}>
+                        {c.special}
+                      </span>
+                      <div className="text-left">
+                        <p className="text-[12px] font-semibold leading-tight">{c.label}</p>
+                        {cardTheme === c.value && (
+                          <p className="text-[9px] text-primary font-bold uppercase tracking-widest mt-0.5">已选</p>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="pb-safe pt-1">
+                <a href="/admin/stamp-styles" target="_blank"
+                  className="block text-center text-[11px] text-muted-foreground hover:text-foreground transition-colors py-2">
+                  查看完整效果预览 →
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="space-y-1.5">
         <Label className="text-sm font-medium">弹窗样式</Label>
-        {/* Current selection display */}
+        {/* Clickable display — opens theme picker */}
         {(() => {
           const cur = CARD_THEMES.find(c => c.value === cardTheme);
           return (
-            <div className="flex items-center gap-2.5 px-3 py-2 rounded-xl border border-border bg-muted/30">
-              <span className={cn("w-5 h-5 rounded-md shrink-0 bg-gradient-to-br", cur?.bg ?? "from-zinc-700 to-zinc-900")} />
-              <span className="text-sm font-medium flex-1">{cur?.label ?? cardTheme}</span>
-              {cur?.special && <span className="text-base leading-none">{cur.special}</span>}
-            </div>
+            <button type="button" onClick={() => setThemePickerOpen(true)}
+              className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl border border-border bg-muted/30 hover:bg-muted/60 transition-colors text-left">
+              <span className={cn("w-6 h-6 rounded-md shrink-0 bg-gradient-to-br flex items-center justify-center text-xs", cur?.bg ?? "from-zinc-700 to-zinc-900")}>
+                {cur?.special && <span className="leading-none">{cur.special}</span>}
+              </span>
+              <span className="text-sm font-medium flex-1">
+                {cur?.label ?? cardTheme}
+                {cur?.special && <span className="ml-1.5 text-muted-foreground text-xs font-normal">· 特殊排版</span>}
+              </span>
+              <span className="text-[11px] text-muted-foreground font-medium shrink-0">点击更换 ›</span>
+            </button>
           );
         })()}
-        {/* Compact swatch grid — color squares only, tooltip on hover */}
-        <div className="grid grid-cols-5 gap-1.5">
-          {CARD_THEMES.map(c => (
-            <button key={c.value} type="button" onClick={() => setCardTheme(c.value)}
-              title={c.label}
-              className={cn(
-                "relative h-8 rounded-lg bg-gradient-to-br transition-all overflow-hidden",
-                c.bg,
-                cardTheme === c.value
-                  ? "ring-2 ring-primary ring-offset-2 ring-offset-background"
-                  : "opacity-70 hover:opacity-100 hover:scale-105"
-              )}>
-              {c.special && (
-                <span className="absolute inset-0 flex items-center justify-center text-xs leading-none">
-                  {c.special}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
       </div>
 
       <div className="space-y-1.5">

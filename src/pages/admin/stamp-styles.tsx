@@ -35,14 +35,14 @@ const CARD_THEMES: Record<string, CardThemeDef & { label: string; special?: stri
   flash:     { label: "特卖",     hero: "bg-yellow-300",                               layout: "flash" as any, shimmer: "text-gray-900 font-black",    badge: "bg-violet-600 text-white border-0",                     btn: "bg-violet-600 text-white",     cardBg: "bg-white",   cardBorder: "border-0",          cardText: "text-gray-900", special: "💥" },
 };
 
-/* Demo stamp data for preview */
+/* Demo stamp data for preview — hello.sn real info */
 const DEMO = {
-  tagName: "品牌示例",
-  domain:  "example.com",
-  desc:    "这是一条品牌简介示例，展示认领弹窗样式。",
-  link:    "https://example.com",
-  tagLabel: "品牌认领",
-  icon:    RiAwardLine,
+  tagName:  "Hello.SN",
+  domain:   "hello.sn",
+  desc:     ".SN 域名注册服务平台，塞内加尔国家顶级域名认证机构。",
+  link:     "https://hello.sn",
+  tagLabel: "官方认证",
+  icon:     RiAwardLine,
 };
 
 /* ── Mini popup card preview ─────────────────────────────────────── */
