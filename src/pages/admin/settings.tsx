@@ -110,10 +110,11 @@ function ImageUploadField({
     <div className="space-y-2">
       <div className="flex gap-2">
         <Input
-          value={value}
+          value={isDataUrl ? "" : value}
           onChange={e => onChange(e.target.value)}
-          placeholder={placeholder}
+          placeholder={isDataUrl ? "📎 已上传图片（点击×清除，或拖拽替换）" : placeholder}
           className="h-9 rounded-xl text-sm flex-1 min-w-0"
+          readOnly={isDataUrl}
         />
         <input
           ref={inputRef}
@@ -231,7 +232,11 @@ const SECTIONS: Section[] = [
     fields: [
       { key: "og_site_name", label: "og:site_name", desc: "链接预览中显示的站点名称", placeholder: "X.RW · RDAP+WHOIS", icon: RiShareLine },
       { key: "og_url", label: "规范链接 (og:url)", desc: "网站主域名，用于 og:url 和 canonical 标签", placeholder: "https://whois.example.com", icon: RiGlobalLine },
-      { key: "og_image", label: "分享图片", desc: "社交分享时显示的图片（支持直接上传，留空使用 /banner.png）", placeholder: "https://example.com/og-image.png", icon: RiImageLine, isImage: true },
+      { key: "og_image", label: "通用分享图（微信 / Facebook / 默认）", desc: "社交分享默认图片，微信、Facebook、YouTube 均使用此图（建议 1200×630，支持直接上传）", placeholder: "https://example.com/og-image.png", icon: RiImageLine, isImage: true },
+      { key: "og_image_wechat", label: "微信专用图", desc: "微信分享时优先使用此图（建议 1:1 方形或 1200×630，支持直接上传）", placeholder: "https://example.com/wechat-share.png", icon: RiImageLine, isImage: true },
+      { key: "og_image_facebook", label: "Facebook 专用图", desc: "Facebook 分享时优先使用此图（建议 1200×630，支持直接上传）", placeholder: "https://example.com/fb-share.png", icon: RiImageLine, isImage: true },
+      { key: "og_image_twitter", label: "X（Twitter）专用图", desc: "X / Twitter 分享时使用此图（twitter:image meta 标签，支持直接上传）", placeholder: "https://example.com/twitter-card.png", icon: RiTwitterXLine, isImage: true },
+      { key: "og_image_youtube", label: "YouTube 专用图", desc: "YouTube 链接预览时优先使用此图（建议 1280×720，支持直接上传）", placeholder: "https://example.com/youtube-card.png", icon: RiImageLine, isImage: true },
       { key: "twitter_card", label: "Twitter Card 类型", desc: "summary 或 summary_large_image（推荐大图）", placeholder: "summary_large_image", icon: RiTwitterXLine },
     ],
   },

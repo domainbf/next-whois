@@ -14,6 +14,10 @@ export interface SiteSettings {
   og_site_name: string;
   og_url: string;
   og_image: string;
+  og_image_twitter: string;
+  og_image_wechat: string;
+  og_image_facebook: string;
+  og_image_youtube: string;
   twitter_card: string;
   // Auth & access control
   allow_registration: string;
@@ -106,6 +110,10 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   og_site_name: "X.RW",
   og_url: "",
   og_image: "",
+  og_image_twitter: "",
+  og_image_wechat: "",
+  og_image_facebook: "",
+  og_image_youtube: "",
   twitter_card: "summary_large_image",
   allow_registration: "1",
   require_login: "",

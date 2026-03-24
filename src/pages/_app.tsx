@@ -23,16 +23,26 @@ function AppHead({ origin }: { origin: string }) {
   const siteName = settings.og_site_name || settings.site_title || siteTitle;
   const canonicalUrl = settings.og_url || origin;
 
-  // Always resolve og:image to an absolute URL so social crawlers (WeChat, etc.)
-  // can fetch it. If the stored value is a relative path, prepend the canonical
-  // base URL or the request origin.
-  const rawOgImage = settings.og_image || `/og-banner.png`;
   const base = canonicalUrl || origin;
-  const ogImage = rawOgImage.startsWith("http")
-    ? rawOgImage
-    : base
-    ? `${base}${rawOgImage.startsWith("/") ? "" : "/"}${rawOgImage}`
-    : rawOgImage;
+
+  // Resolve a setting value to an absolute image URL.
+  // Data-URL values are served via /api/image?key=<key> so crawlers get a real HTTP URL.
+  function resolveImg(value: string, key: string): string {
+    if (!value) return `${base}/og-banner.png`;
+    if (value.startsWith("data:image/")) return `${base}/api/image?key=${key}`;
+    if (value.startsWith("http")) return value;
+    return `${base}${value.startsWith("/") ? "" : "/"}${value}`;
+  }
+
+  // og:image → bot-detection endpoint auto-selects WeChat / Facebook / YouTube / default
+  const ogImage = base ? `${base}/api/og-image` : resolveImg(settings.og_image, "og_image");
+
+  // twitter:image → explicit X/Twitter setting, falls back to general og_image
+  const rawTwitterImage = settings.og_image_twitter || settings.og_image || "";
+  const twitterKey = settings.og_image_twitter ? "og_image_twitter" : "og_image";
+  const twitterImage = rawTwitterImage
+    ? resolveImg(rawTwitterImage, twitterKey)
+    : `${base}/og-banner.png`;
 
   const twitterCard = settings.twitter_card || "summary_large_image";
 
@@ -60,7 +70,7 @@ function AppHead({ origin }: { origin: string }) {
       <meta key="twitter:card" name="twitter:card" content={twitterCard} />
       <meta key="twitter:title" name="twitter:title" content={title} />
       <meta key="twitter:description" name="twitter:description" content={description} />
-      <meta key="twitter:image" name="twitter:image" content={ogImage} />
+      <meta key="twitter:image" name="twitter:image" content={twitterImage} />
 
       {/* Canonical */}
       {canonicalUrl && <link key="canonical" rel="canonical" href={canonicalUrl} />}
