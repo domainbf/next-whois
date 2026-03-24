@@ -14,58 +14,6 @@ import { SiteSettingsProvider, useSiteSettings } from "@/lib/site-settings";
 import { RiMegaphoneLine, RiCloseLine, RiWrenchLine } from "@remixicon/react";
 import { ADMIN_EMAIL } from "@/lib/admin-shared";
 
-// ── Top route-loading bar (gives immediate tap feedback on mobile) ──────────
-function RouteLoadingBar() {
-  const router = useRouter();
-  const [visible, setVisible] = React.useState(false);
-  const [width, setWidth] = React.useState(0);
-  const timerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  React.useEffect(() => {
-    const clear = () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-
-    const start = () => {
-      clear();
-      setVisible(true);
-      setWidth(15);
-      timerRef.current = setTimeout(() => setWidth(50), 150);
-      timerRef.current = setTimeout(() => setWidth(75), 600);
-    };
-
-    const done = () => {
-      clear();
-      setWidth(100);
-      timerRef.current = setTimeout(() => {
-        setVisible(false);
-        setWidth(0);
-      }, 220);
-    };
-
-    router.events.on("routeChangeStart",    start);
-    router.events.on("routeChangeComplete", done);
-    router.events.on("routeChangeError",    done);
-    return () => {
-      clear();
-      router.events.off("routeChangeStart",    start);
-      router.events.off("routeChangeComplete", done);
-      router.events.off("routeChangeError",    done);
-    };
-  }, [router]);
-
-  if (!visible) return null;
-  return (
-    <div
-      aria-hidden
-      className="fixed top-0 left-0 z-[300] h-[2px] bg-primary"
-      style={{
-        width: `${width}%`,
-        transition: width === 100 ? "width 0.15s ease-out" : "width 0.4s ease-out",
-      }}
-    />
-  );
-}
 
 function AppHead({ origin }: { origin: string }) {
   const settings = useSiteSettings();
@@ -207,7 +155,7 @@ const pageVariants = {
   animate: { opacity: 1 },
   exit:    { opacity: 0 },
 };
-const pageTransition = { duration: 0.13, ease: "easeOut" };
+const pageTransition = { duration: 0.2, ease: [0.22, 1, 0.36, 1] };
 
 export default function App({ Component, pageProps: { session, ...pageProps } }: AppProps) {
   const origin: string = pageProps.origin || process.env.NEXT_PUBLIC_SITE_URL || "";
@@ -228,7 +176,6 @@ export default function App({ Component, pageProps: { session, ...pageProps } }:
     <SiteSettingsProvider>
       <AppHead origin={origin} />
       <Toaster />
-      <RouteLoadingBar />
       <ThemeProvider
         attribute="class"
         defaultTheme="system"

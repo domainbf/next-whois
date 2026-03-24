@@ -116,15 +116,16 @@ const CARD_CONTAINER_VARIANTS = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
-    transition: { staggerChildren: 0.025, delayChildren: 0 },
+    transition: { staggerChildren: 0.09, delayChildren: 0 },
   },
 };
 
 const CARD_ITEM_VARIANTS = {
-  hidden: { opacity: 0 },
+  hidden: { opacity: 0, y: 10 },
   visible: {
     opacity: 1,
-    transition: { duration: 0.2, ease: "easeOut" },
+    y: 0,
+    transition: { duration: 0.32, ease: [0.22, 1, 0.36, 1] },
   },
 };
 
@@ -1274,14 +1275,23 @@ function ResponsePanel({
         </div>
       </div>
       <ScrollArea className="flex-1">
-        <div className="p-4 font-mono text-[11px] leading-relaxed">
-          {activeTab === "whois" && whoisContent && (
-            <WhoisHighlight content={whoisContent} />
-          )}
-          {activeTab === "rdap" && rdapContent && (
-            <RdapJsonHighlight content={rdapContent} />
-          )}
-        </div>
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15, ease: "easeInOut" }}
+            className="p-4 font-mono text-[11px] leading-relaxed"
+          >
+            {activeTab === "whois" && whoisContent && (
+              <WhoisHighlight content={whoisContent} />
+            )}
+            {activeTab === "rdap" && rdapContent && (
+              <RdapJsonHighlight content={rdapContent} />
+            )}
+          </motion.div>
+        </AnimatePresence>
         <ScrollBar orientation="horizontal" />
       </ScrollArea>
     </div>
