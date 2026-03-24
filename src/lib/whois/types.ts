@@ -44,11 +44,6 @@ export type WhoisAnalyzeResult = {
   renewPrice: DomainPricing | null;
   negotiable: boolean | null;
 
-  // Moz statistics
-  mozDomainAuthority: number;
-  mozPageAuthority: number;
-  mozSpamScore: number;
-
   cidr: string;
   inetNum: string;
   inet6Num: string;
@@ -90,11 +85,6 @@ export const initialWhoisAnalyzeResult: WhoisAnalyzeResult = {
   registerPrice: null,
   renewPrice: null,
   negotiable: null,
-
-  // Moz statistics
-  mozDomainAuthority: 0,
-  mozPageAuthority: 0,
-  mozSpamScore: 0,
 
   cidr: "Unknown",
   inetNum: "Unknown",

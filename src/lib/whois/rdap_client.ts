@@ -396,9 +396,6 @@ export async function convertRdapToWhoisResult(
     registerPrice: null,
     renewPrice: null,
     negotiable: null,
-    mozDomainAuthority: 0,
-    mozPageAuthority: 0,
-    mozSpamScore: 0,
     cidr:
       rdapData.startAddress && rdapData.endAddress
         ? `${rdapData.startAddress}-${rdapData.endAddress}`

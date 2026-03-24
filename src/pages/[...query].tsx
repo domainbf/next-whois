@@ -20,7 +20,6 @@ import {
   RiFileCopyLine,
   RiExternalLinkLine,
   RiLinkM,
-  RiBarChartBoxAiFill,
   RiShareLine,
   RiTwitterXLine,
   RiFacebookFill,
@@ -4233,87 +4232,6 @@ export default function LookupPage({
                     )}
                   </div>
 
-                  {result.mozDomainAuthority !== -1 && (
-                    <div className="glass-panel border border-border rounded-xl p-5">
-                      <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
-                        <RiBarChartBoxAiFill className="w-4 h-4 text-muted-foreground" />
-                        <span>{t("whois_fields.moz_stats")}</span>
-                        <Link
-                          href="https://moz.com/learn/seo/domain-authority"
-                          target="_blank"
-                          className="ml-auto text-muted-foreground hover:text-primary transition-colors"
-                        >
-                          <RiExternalLinkLine className="w-3.5 h-3.5" />
-                        </Link>
-                      </h3>
-                      <div className="grid grid-cols-3 gap-3">
-                        <div
-                          className={cn(
-                            "flex flex-col items-center rounded-lg p-3 border",
-                            result.mozDomainAuthority > 50
-                              ? "bg-green-50/50 dark:bg-green-950/20 border-green-200 dark:border-green-800"
-                              : "bg-muted/30",
-                          )}
-                        >
-                          <span className="text-xs text-muted-foreground mb-1">
-                            DA
-                          </span>
-                          <span
-                            className={cn(
-                              "text-lg font-semibold",
-                              result.mozDomainAuthority > 50 &&
-                                "text-green-600 dark:text-green-400",
-                            )}
-                          >
-                            {result.mozDomainAuthority}
-                          </span>
-                        </div>
-                        <div
-                          className={cn(
-                            "flex flex-col items-center rounded-lg p-3 border",
-                            result.mozPageAuthority > 50
-                              ? "bg-green-50/50 dark:bg-green-950/20 border-green-200 dark:border-green-800"
-                              : "bg-muted/30",
-                          )}
-                        >
-                          <span className="text-xs text-muted-foreground mb-1">
-                            PA
-                          </span>
-                          <span
-                            className={cn(
-                              "text-lg font-semibold",
-                              result.mozPageAuthority > 50 &&
-                                "text-green-600 dark:text-green-400",
-                            )}
-                          >
-                            {result.mozPageAuthority}
-                          </span>
-                        </div>
-                        <div
-                          className={cn(
-                            "flex flex-col items-center rounded-lg p-3 border",
-                            result.mozSpamScore > 5
-                              ? "bg-red-50/50 dark:bg-red-950/20 border-red-200 dark:border-red-800"
-                              : "bg-muted/30",
-                          )}
-                        >
-                          <span className="text-xs text-muted-foreground mb-1">
-                            Spam
-                          </span>
-                          <span
-                            className={cn(
-                              "text-lg font-semibold",
-                              result.mozSpamScore > 5
-                                ? "text-red-600 dark:text-red-400"
-                                : "text-green-600 dark:text-green-400",
-                            )}
-                          >
-                            {result.mozSpamScore}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
                 </motion.div>
                 <motion.div variants={CARD_ITEM_VARIANTS} className="lg:col-span-4 relative overflow-hidden">
                   <div className="flex flex-col gap-6 lg:absolute lg:inset-0 lg:overflow-y-auto">

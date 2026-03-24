@@ -489,10 +489,6 @@ function mergeResults(
     registerPrice: rdap.registerPrice ?? whoisParsed.registerPrice,
     renewPrice: rdap.renewPrice ?? whoisParsed.renewPrice,
     negotiable: rdap.negotiable ?? whoisParsed.negotiable,
-    mozDomainAuthority:
-      rdap.mozDomainAuthority || whoisParsed.mozDomainAuthority,
-    mozPageAuthority: rdap.mozPageAuthority || whoisParsed.mozPageAuthority,
-    mozSpamScore: rdap.mozSpamScore || whoisParsed.mozSpamScore,
     cidr: pickStr(rdap.cidr, whoisParsed.cidr),
     inetNum: pickStr(rdap.inetNum, whoisParsed.inetNum),
     inet6Num: pickStr(rdap.inet6Num, whoisParsed.inet6Num),
