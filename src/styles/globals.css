@@ -366,25 +366,25 @@ select {
 /* TLD Lifecycle hint – 流光闪烁 shimmer (3 rapid flashes → long pause → gentle pulse) */
 @keyframes lc-hint-shimmer {
   /* Flash 1 */
-  0%   { opacity: 0.5; text-shadow: none; }
+  0%   { opacity: 0.75; text-shadow: none; }
   5%   { opacity: 1; color: #f59e0b; text-shadow: 0 0 8px rgba(245,158,11,.9), 0 0 18px rgba(245,158,11,.4); }
-  10%  { opacity: 0.5; text-shadow: none; }
+  10%  { opacity: 0.75; text-shadow: none; }
   /* Flash 2 */
   15%  { opacity: 1; color: #f59e0b; text-shadow: 0 0 8px rgba(245,158,11,.9), 0 0 18px rgba(245,158,11,.4); }
-  20%  { opacity: 0.5; text-shadow: none; }
+  20%  { opacity: 0.75; text-shadow: none; }
   /* Flash 3 */
   25%  { opacity: 1; color: #f59e0b; text-shadow: 0 0 8px rgba(245,158,11,.9), 0 0 18px rgba(245,158,11,.4); }
-  30%  { opacity: 0.5; text-shadow: none; }
+  30%  { opacity: 0.75; text-shadow: none; }
   /* Long pause */
-  78%  { opacity: 0.5; text-shadow: none; }
+  78%  { opacity: 0.75; text-shadow: none; }
   /* Periodic gentle pulse */
-  85%  { opacity: 0.85; color: #f59e0b; text-shadow: 0 0 6px rgba(245,158,11,.55); }
-  92%  { opacity: 0.5; text-shadow: none; }
-  100% { opacity: 0.5; text-shadow: none; }
+  85%  { opacity: 1; color: #f59e0b; text-shadow: 0 0 6px rgba(245,158,11,.55); }
+  92%  { opacity: 0.75; text-shadow: none; }
+  100% { opacity: 0.75; text-shadow: none; }
 }
 
 .lc-hint-shimmer {
-  color: hsl(240 3.8% 46.1% / 0.65);
+  color: hsl(240 3.8% 36% / 0.85);
   animation: lc-hint-shimmer 10s ease-in-out infinite;
   animation-fill-mode: both;
 }
