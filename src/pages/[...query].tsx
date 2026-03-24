@@ -2833,6 +2833,18 @@ export default function LookupPage({
     default:  RiShieldCheckLine,
   };
 
+  const STAMP_HERO_MAP: Record<string, string> = {
+    personal: "bg-gradient-to-br from-teal-400 to-teal-600",
+    official: "bg-gradient-to-br from-blue-400 to-blue-600",
+    brand:    "bg-gradient-to-br from-violet-400 to-violet-600",
+    verified: "bg-gradient-to-br from-emerald-400 to-emerald-600",
+    partner:  "bg-gradient-to-br from-orange-400 to-orange-600",
+    dev:      "bg-gradient-to-br from-sky-400 to-sky-600",
+    warning:  "bg-gradient-to-br from-amber-300 to-amber-500",
+    premium:  "bg-gradient-to-br from-violet-500 via-fuchsia-500 to-pink-500",
+    default:  "bg-gradient-to-br from-teal-400 to-teal-600",
+  };
+
   const STAMP_CARD_MAP: Record<string, { border: string; bg: string; iconColor: string }> = {
     personal: { border: "border-l-teal-500",    bg: "bg-teal-50   dark:bg-teal-900/20",     iconColor: "text-teal-500" },
     official: { border: "border-l-blue-500",    bg: "bg-blue-50   dark:bg-blue-900/20",     iconColor: "text-blue-500" },
@@ -3808,30 +3820,38 @@ export default function LookupPage({
 
                     {/* Stamp detail dialog — triggered by "已认领" badge */}
                     <Dialog open={stampDetailOpen} onOpenChange={setStampDetailOpen}>
-                      <DialogContent className="max-w-[360px] p-0 overflow-hidden gap-0">
-                        {/* Visually hidden title for accessibility */}
+                      <DialogContent className="max-w-[340px] p-0 overflow-hidden gap-0">
                         <DialogHeader className="sr-only">
                           <DialogTitle>{isChinese ? "品牌认领信息" : "Claimed Brand"}</DialogTitle>
                         </DialogHeader>
-                        <div className="divide-y divide-border/50">
+                        <div className="divide-y divide-border/40">
                           {verifiedStamps.map((stamp) => {
+                            const heroBg   = STAMP_HERO_MAP[stamp.tagStyle]  || STAMP_HERO_MAP.default;
                             const badgeCls = STAMP_STYLE_MAP[stamp.tagStyle] || STAMP_STYLE_MAP.default;
-                            const cardStyle = STAMP_CARD_MAP[stamp.tagStyle] || STAMP_CARD_MAP.default;
                             const StampIcon = STAMP_ICON_MAP[stamp.tagStyle] || STAMP_ICON_MAP.default;
                             return (
-                              <div key={stamp.id} className="p-5 space-y-4">
-                                {/* Icon circle + name row */}
-                                <div className="flex items-center gap-3">
-                                  <div className={cn(
-                                    "w-12 h-12 rounded-2xl flex items-center justify-center shrink-0",
-                                    cardStyle.bg,
-                                  )}>
-                                    <StampIcon className={cn("w-6 h-6", cardStyle.iconColor)} />
+                              <div key={stamp.id}>
+                                {/* ── Gradient hero strip ── */}
+                                <div className={cn("relative px-5 pt-7 pb-10 text-center select-none", heroBg)}>
+                                  {/* decorative dots */}
+                                  <div className="absolute inset-0 opacity-10"
+                                    style={{ backgroundImage: "radial-gradient(circle, white 1px, transparent 1px)", backgroundSize: "18px 18px" }} />
+                                  <div className="relative">
+                                    <div className="w-16 h-16 rounded-3xl bg-white/20 backdrop-blur-sm border border-white/30 flex items-center justify-center mx-auto shadow-lg">
+                                      <StampIcon className="w-8 h-8 text-white drop-shadow" />
+                                    </div>
+                                    <p className="mt-3 text-white/60 text-[10px] font-mono tracking-[0.2em] uppercase">
+                                      {result.domain || target}
+                                    </p>
                                   </div>
-                                  <div className="min-w-0">
-                                    <p className="font-bold text-base leading-snug truncate">{stamp.tagName}</p>
+                                </div>
+
+                                {/* ── Floating name card ── */}
+                                <div className="relative -mt-6 mx-4 bg-background rounded-2xl border border-border/50 shadow-md px-4 pt-3.5 pb-3.5">
+                                  <div className="flex items-start justify-between gap-3">
+                                    <p className="text-xl font-black leading-tight tracking-tight">{stamp.tagName}</p>
                                     <span className={cn(
-                                      "inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full tracking-wide mt-1",
+                                      "inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full shrink-0 mt-0.5",
                                       badgeCls,
                                     )}>
                                       <RiShieldCheckLine className="w-2.5 h-2.5" />
@@ -3839,34 +3859,33 @@ export default function LookupPage({
                                     </span>
                                   </div>
                                 </div>
-                                {/* Description */}
-                                {stamp.description && (
-                                  <p className="text-sm text-muted-foreground leading-relaxed break-words">
-                                    {stamp.description}
-                                  </p>
-                                )}
-                                {/* Domain being claimed */}
-                                <div className="flex items-center gap-1.5 text-xs text-muted-foreground/70">
-                                  <RiShieldCheckLine className="w-3 h-3 shrink-0" />
-                                  <span className="font-mono">{result.domain || target}</span>
-                                  <span>{isChinese ? "已被认领" : "is claimed"}</span>
+
+                                {/* ── Body ── */}
+                                <div className="px-5 pt-4 pb-5 space-y-4">
+                                  {stamp.description && (
+                                    <p className="text-[13px] text-foreground/70 leading-relaxed">
+                                      {stamp.description}
+                                    </p>
+                                  )}
+                                  {stamp.link ? (
+                                    <a
+                                      href={stamp.link}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className={cn(
+                                        "flex items-center justify-center gap-2 w-full rounded-2xl py-3 text-sm font-bold text-white transition-all hover:opacity-90 active:scale-[0.97]",
+                                        heroBg,
+                                      )}
+                                    >
+                                      {isChinese ? "访问主页" : "Visit Profile"}
+                                      <RiArrowRightSLine className="w-4 h-4" />
+                                    </a>
+                                  ) : (
+                                    <p className="text-[11px] text-muted-foreground/50 text-center font-mono">
+                                      {isChinese ? "该认领未设置主页链接" : "No profile link set"}
+                                    </p>
+                                  )}
                                 </div>
-                                {/* Visit link button */}
-                                {stamp.link && (
-                                  <a
-                                    href={stamp.link}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className={cn(
-                                      "flex items-center justify-center gap-2 w-full rounded-xl py-2.5 text-sm font-semibold transition-opacity hover:opacity-80",
-                                      cardStyle.bg,
-                                      cardStyle.iconColor,
-                                    )}
-                                  >
-                                    <RiArrowRightSLine className="w-4 h-4" />
-                                    {isChinese ? "访问主页" : "Visit Profile"}
-                                  </a>
-                                )}
                               </div>
                             );
                           })}
