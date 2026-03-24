@@ -459,7 +459,12 @@ function SubscribeGuideModal({ onClose }: { onClose: () => void }) {
 }
 
 // ── Module-level dashboard data cache (survives tab switches / soft-navs) ────
-interface DashData { subscriptions: Subscription[]; stamps: Stamp[] }
+interface DashData {
+  subscriptions: Subscription[];
+  stamps: Stamp[];
+  /** DB-authoritative — heals stale JWTs automatically */
+  subscriptionAccess: boolean;
+}
 let _dashCache: DashData | null = null;
 let _dashCacheTs = 0;
 const DASH_CACHE_TTL = 60_000; // 60 s
@@ -470,6 +475,7 @@ async function fetchDashData(): Promise<DashData> {
   const result: DashData = {
     subscriptions: data.subscriptions ?? [],
     stamps: data.stamps ?? [],
+    subscriptionAccess: data.subscriptionAccess ?? false,
   };
   _dashCache = result;
   _dashCacheTs = Date.now();
@@ -489,6 +495,8 @@ export default function DashboardPage() {
   const [tab, setTab] = React.useState<"subscriptions" | "stamps" | "account" | "history">("stamps");
   const [subscriptions, setSubscriptions] = React.useState<Subscription[]>([]);
   const [stamps, setStamps] = React.useState<Stamp[]>([]);
+  // DB-authoritative access flag; initialized from session (fast), then confirmed by API
+  const [subscriptionAccessDB, setSubscriptionAccessDB] = React.useState<boolean | null>(null);
   const [searchHistory, setSearchHistory] = React.useState<ServerHistoryItem[]>([]);
   const [loadingData, setLoadingData] = React.useState(false);
   const [loadingHistory, setLoadingHistory] = React.useState(false);
@@ -534,26 +542,32 @@ export default function DashboardPage() {
     }
   }, [status, session]);
 
+  // Apply fetched dashboard data and auto-heal session if subscriptionAccess is stale
+  const applyDashData = React.useCallback((d: DashData) => {
+    setSubscriptions(d.subscriptions);
+    setStamps(d.stamps);
+    setSubscriptionAccessDB(d.subscriptionAccess);
+    // Heal the JWT if DB says TRUE but session says FALSE — no re-login needed
+    if (d.subscriptionAccess && !(session?.user as any)?.subscriptionAccess) {
+      updateSession({ subscriptionAccess: true });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session, updateSession]);
+
   React.useEffect(() => {
     if (status !== "authenticated") return;
 
     // Serve cached data immediately so the UI is populated on re-visits
     if (_dashCache && Date.now() - _dashCacheTs < DASH_CACHE_TTL) {
-      setSubscriptions(_dashCache.subscriptions);
-      setStamps(_dashCache.stamps);
+      applyDashData(_dashCache);
       // Still refresh in background without a visible spinner
-      fetchDashData().then(d => {
-        setSubscriptions(d.subscriptions);
-        setStamps(d.stamps);
-      }).catch(() => {});
+      fetchDashData().then(applyDashData).catch(() => {});
       return;
     }
 
     setLoadingData(true);
-    fetchDashData().then(d => {
-      setSubscriptions(d.subscriptions);
-      setStamps(d.stamps);
-    }).catch(() => {}).finally(() => setLoadingData(false));
+    fetchDashData().then(applyDashData).catch(() => {}).finally(() => setLoadingData(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status]);
 
   const fetchHistory = React.useCallback((page: number) => {
@@ -579,10 +593,7 @@ export default function DashboardPage() {
 
   function refreshData() {
     invalidateDashCache();
-    fetchDashData().then(d => {
-      setSubscriptions(d.subscriptions);
-      setStamps(d.stamps);
-    }).catch(() => {});
+    fetchDashData().then(applyDashData).catch(() => {});
   }
 
   async function cancelSubscription(id: string) {
@@ -795,6 +806,7 @@ export default function DashboardPage() {
       if (!res.ok) {
         const errMsg = data.error || "邀请码验证失败";
         if (errMsg === "你已拥有订阅权限") {
+          setSubscriptionAccessDB(true);
           await updateSession({ subscriptionAccess: true });
           setInviteCodeInput("");
           setTab("subscriptions");
@@ -805,6 +817,7 @@ export default function DashboardPage() {
         return;
       }
       toast.success("邀请码验证成功，已解锁域名订阅功能！");
+      setSubscriptionAccessDB(true);
       await updateSession({ subscriptionAccess: true });
       setInviteCodeInput("");
       setTab("subscriptions");
@@ -983,7 +996,7 @@ export default function DashboardPage() {
           {/* ── Subscriptions ── */}
           {tab === "subscriptions" && (
             <motion.div key="subscriptions" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.18 }} className="space-y-3">
-              {!(user as any).subscriptionAccess && (
+              {!(subscriptionAccessDB ?? (user as any).subscriptionAccess) && (
                 <div className="space-y-5 py-4">
                   <div className="flex flex-col items-center text-center space-y-3">
                     <div className="w-14 h-14 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-700/40 flex items-center justify-center">
@@ -1024,7 +1037,7 @@ export default function DashboardPage() {
                   </form>
                 </div>
               )}
-              {(user as any).subscriptionAccess && <>
+              {(subscriptionAccessDB ?? (user as any).subscriptionAccess) && <>
               {/* Header */}
               <div className="flex items-center justify-between gap-2">
                 <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">域名到期提醒</p>

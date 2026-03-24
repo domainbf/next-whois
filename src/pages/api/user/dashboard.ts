@@ -12,7 +12,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
-import { many, isDbReady } from "@/lib/db-query";
+import { many, one, isDbReady } from "@/lib/db-query";
 import { computeLifecycle } from "@/lib/lifecycle";
 import { loadLifecycleOverrides } from "@/lib/server/lifecycle-overrides";
 
@@ -29,8 +29,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const email = session.user.email;
 
   try {
-    // ── Phase 1: three DB queries in parallel ────────────────────────────────
-    const [rows, stampsRows, overrides] = await Promise.all([
+    // ── Phase 1: four DB queries in parallel ─────────────────────────────────
+    const [rows, stampsRows, overrides, userRow] = await Promise.all([
       many<{
         id: string; domain: string; expiration_date: string | null;
         active: boolean; cancel_token: string | null; created_at: string;
@@ -51,6 +51,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         [email],
       ),
       loadLifecycleOverrides(),
+      // DB-authoritative access flag — heals stale JWTs without re-login
+      one<{ subscription_access: boolean }>(
+        "SELECT subscription_access FROM users WHERE email = $1",
+        [email],
+      ),
     ]);
 
     // ── Phase 2: fetch reminder_logs (depends on reminder IDs) ──────────────
@@ -113,9 +118,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       };
     });
 
+    // DB-authoritative access flag — always trust DB over stale JWT
+    const subscriptionAccess = userRow?.subscription_access ?? false;
+
     // User-specific; allow browser to serve stale while quietly revalidating
     res.setHeader("Cache-Control", "private, max-age=0, stale-while-revalidate=60");
-    return res.status(200).json({ subscriptions, stamps: stampsRows });
+    return res.status(200).json({ subscriptions, stamps: stampsRows, subscriptionAccess });
   } catch (err: any) {
     console.error("[dashboard] GET error:", err.message);
     return res.status(500).json({ error: "获取数据失败" });
