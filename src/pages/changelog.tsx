@@ -44,6 +44,206 @@ interface DynamicEntry {
 
 const VERSIONS: Version[] = [
   {
+    version: "3.22",
+    date: "2026-03-24",
+    highlight: true,
+    changes: [
+      { type: "fix", zh: "订阅权限跨设备/跨会话失效修复：后台从数据库实时读取权限，JWT 过期时自动修复，无需重新登录", en: "Fix cross-device/session subscription access: DB-authoritative check with auto-heal, no re-login needed" },
+    ],
+  },
+  {
+    version: "3.21",
+    date: "2026-03-24",
+    changes: [
+      { type: "improve", zh: "用户中心合并为单一 API 端点：订阅列表、品牌认领、TLD 配置四个数据库查询完全并行，首屏数据大幅加速", en: "Dashboard merged to single API endpoint: subscriptions, stamps and TLD config fetched in parallel" },
+      { type: "improve", zh: "用户中心 60 秒客户端缓存：页面内导航切换立即显示缓存数据，后台静默刷新，彻底消除重复加载转圈", en: "60-second client cache for Dashboard: instant data on re-visit, silent background refresh" },
+    ],
+  },
+  {
+    version: "3.20",
+    date: "2026-03-24",
+    changes: [
+      { type: "improve", zh: "致谢页各项目展示真实 favicon（Google Favicon 服务），无法加载时自动回退默认图标", en: "About page: real favicons via Google Favicon service with graceful fallback icon" },
+      { type: "improve", zh: "更新记录页全面重设计：竖向时间线布局、超大版本号、彩色 NEW / IMPROVE / FIX 标签", en: "Changelog page redesigned: vertical timeline, large version numbers, colored type badges" },
+    ],
+  },
+  {
+    version: "3.19",
+    date: "2026-03-24",
+    changes: [
+      { type: "improve", zh: "域名查询缓存分级精细化：到期 > 180 天 → 12 小时；> 60 天 → 6 小时；≤ 7 天 → 30 分钟，减少稳定域名重复查询", en: "Tiered query cache: >180 d expiry → 12 h; >60 d → 6 h; ≤7 d → 30 min — cuts redundant lookups" },
+    ],
+  },
+  {
+    version: "3.18",
+    date: "2026-03-24",
+    changes: [
+      { type: "improve", zh: "OG 图片响应加入 Cache-Control 头（s-maxage=3600），相同 URL 首次生成后由 CDN 直接命中，无需再走 Edge Function", en: "OG images: Cache-Control s-maxage=3600 so CDN serves repeat requests without hitting Edge Function" },
+    ],
+  },
+  {
+    version: "3.17",
+    date: "2026-03-24",
+    changes: [
+      { type: "improve", zh: "匿名查询记录上限取消：原 50 条硬上限移除，所有匿名查询永久保存，同 IP 同查询自动去重", en: "Anonymous query cap removed: all queries stored permanently with same-IP deduplication" },
+      { type: "new", zh: "管理后台查询记录新增「已登录用户」筛选标签，与「全部」/「匿名查询」并列，数量角标实时准确", en: "Admin search records: new Logged-in filter tab alongside All / Anonymous with live badge counts" },
+    ],
+  },
+  {
+    version: "3.16",
+    date: "2026-03-24",
+    changes: [
+      { type: "improve", zh: "订阅卡片全面升级：生命周期进度条 + 阶段提示文字 + 下次提醒日期 + 可调节提醒间隔（7/14/30/60/90 天，即点即存）", en: "Subscription cards redesigned: lifecycle progress bar, phase label, next reminder date, editable interval (7–90 d)" },
+      { type: "improve", zh: "订阅标签页新增统计概览芯片（有效/即将到期/紧急/已过期）及高亮提醒横幅，列出受影响域名", en: "Subscriptions tab: summary chips (active/due soon/urgent/expired) and reminder banner listing affected domains" },
+    ],
+  },
+  {
+    version: "3.15",
+    date: "2026-03-24",
+    changes: [
+      { type: "improve", zh: "API lookup 精准识别域名/IPv4/IPv6/ASN/CIDR 查询类型，全用户高价值域名检测与告警", en: "API lookup: precise type detection for domain/IPv4/IPv6/ASN/CIDR with high-value domain flagging" },
+    ],
+  },
+  {
+    version: "3.14",
+    date: "2026-03-24",
+    changes: [
+      { type: "new", zh: "TLD 生命周期管理页新增主流 TLD 内置参考数据表，一键对照修改覆盖规则", en: "TLD lifecycle page: built-in reference table for popular TLDs, one-click to apply as override" },
+    ],
+  },
+  {
+    version: "3.13",
+    date: "2026-03-24",
+    changes: [
+      { type: "fix", zh: "修复公告横幅与导航栏重叠遮挡问题", en: "Fix announcement banner overlapping the navbar" },
+      { type: "new", zh: "管理后台提醒支持内联编辑到期日 + 直接触发测试邮件发送", en: "Admin reminders: inline expiry date editing and direct test-email trigger" },
+    ],
+  },
+  {
+    version: "3.12",
+    date: "2026-03-24",
+    changes: [
+      { type: "fix", zh: "修复已登录用户查询历史未正确记录的问题（lookup API 鉴权判断错位）", en: "Fix logged-in users' search history not being recorded correctly (auth check misplacement in lookup API)" },
+    ],
+  },
+  {
+    version: "3.11",
+    date: "2026-03-24",
+    changes: [
+      { type: "improve", zh: "WHOIS 解析新增多语言域名状态字符串支持（保留/禁用/暂停等多语言变体）", en: "WHOIS parser: multi-language domain status string support (reserved/prohibited/suspended variants)" },
+    ],
+  },
+  {
+    version: "3.10",
+    date: "2026-03-24",
+    changes: [
+      { type: "new", zh: "OG 图片文字可编辑：品牌名称、标语在后台实时修改，即时生效", en: "OG images: brand name and tagline editable in admin, takes effect immediately" },
+      { type: "improve", zh: "OG 图片所有 8 种样式的品牌名 / 标语统一读取配置，不再硬编码", en: "OG: all 8 styles read brand name/tagline from config — no more hardcoded values" },
+      { type: "new", zh: "更新记录后台新增「同步版本历史」按钮，自动导入缺失条目", en: "Admin changelog: Sync Version History button to auto-import missing entries to DB" },
+      { type: "improve", zh: "用户搜索历史隐藏高价值 / 有价值域名标签（数据仍后台记录）", en: "Search history: high-value domain labels hidden from users (still recorded in admin)" },
+    ],
+  },
+  {
+    version: "3.9",
+    date: "2026-03-24",
+    changes: [
+      { type: "new", zh: "API Key 管理系统：支持生成、吊销、范围管理（api / subscription / all）", en: "API Key system: generate, revoke and manage keys by scope (api / subscription / all)" },
+      { type: "new", zh: "管理后台新增「密钥」页面，提供 Key 生成 / 启停 / 删除 / 使用统计", en: "Admin: new Access Keys page with generation, enable/disable, delete and usage stats" },
+      { type: "feature", zh: "所有公开 API（WHOIS / DNS / SSL / IP）支持 X-API-Key 鉴权，全局可开关", en: "All public APIs (WHOIS/DNS/SSL/IP) support X-API-Key auth with global toggle" },
+      { type: "improve", zh: "文档页新增「API Key 鉴权」章节，说明传参方式、权限范围及错误码", en: "Docs: new API Key Auth section covering header format, scopes and error codes" },
+    ],
+  },
+  {
+    version: "3.8",
+    date: "2026-03-23",
+    changes: [
+      { type: "fix", zh: "修复页面切换动画失效问题（animationKey 逻辑错误）", en: "Fix page transition animation broken by animationKey logic error" },
+      { type: "fix", zh: "修复 DNS / SSL / IP 工具页 URL 参数在首次渲染时被忽略的问题", en: "Fix DNS/SSL/IP tool pages ignoring URL params on initial render" },
+      { type: "new", zh: "DNS / IP / SSL API 新增限流保护（60 / 30 / 20 次/分钟）", en: "DNS/IP/SSL APIs: rate limiting added (60/30/20 req/min respectively)" },
+      { type: "fix", zh: "修复站点名称水合不一致导致首屏闪烁的问题", en: "Fix site name hydration mismatch causing first-render flash" },
+    ],
+  },
+  {
+    version: "3.7",
+    date: "2026-03-23",
+    changes: [
+      { type: "improve", zh: "Redis 缓存升级为智能 TTL 策略：按域名类型自适应缓存时长", en: "Redis cache: smart adaptive TTL based on domain type" },
+      { type: "improve", zh: "新增 L1（内存 30s）+ L2（Redis 自适应）双层缓存架构", en: "New two-tier cache: L1 in-memory 30 s + L2 Redis adaptive TTL" },
+    ],
+  },
+  {
+    version: "3.6",
+    date: "2026-03-22",
+    changes: [
+      { type: "new", zh: "新增 WHOIS 限流（60 次/分钟）并引入 429 响应", en: "WHOIS rate limiting: 60 req/min with proper 429 response" },
+      { type: "improve", zh: "文档页「限流规则」表格更新为实际阈值", en: "Docs: rate-limit table updated with accurate per-endpoint values" },
+    ],
+  },
+  {
+    version: "3.5",
+    date: "2026-03-22",
+    changes: [
+      { type: "new", zh: "提醒管理后台：批量操作、状态筛选、到期日范围查询", en: "Admin reminders: bulk actions, status filters, expiry date range search" },
+      { type: "improve", zh: "提醒列表新增「上次发送时间」列，支持重新触发测试邮件", en: "Reminder list: Last Sent column added with re-trigger test email button" },
+    ],
+  },
+  {
+    version: "3.4",
+    date: "2026-03-22",
+    changes: [
+      { type: "new", zh: "用户管理后台：用户列表、禁用/解禁、权限查看与分配", en: "Admin user management: list, disable/enable, view and assign permissions" },
+      { type: "new", zh: "品牌认领管理后台：审核、强制验证、批量清除失效认领", en: "Admin brand stamps: review, force-verify and bulk-clear expired claims" },
+    ],
+  },
+  {
+    version: "3.3",
+    date: "2026-03-22",
+    changes: [
+      { type: "new", zh: "用户反馈系统：前台在线提交反馈，管理后台按类别分类处理与状态流转", en: "User feedback system: in-app submission with admin category management and status workflow" },
+      { type: "new", zh: "TLD 兜底 WHOIS 服务器：管理后台可自定义任意 TLD 的解析入口，解决小众 TLD 查询失败", en: "TLD fallback WHOIS servers: admin can set custom resolver for any TLD to fix niche TLD failures" },
+    ],
+  },
+  {
+    version: "3.2",
+    date: "2026-03-21",
+    changes: [
+      { type: "new", zh: "系统状态监控页：数据库 / 邮件 / Redis 连通性实时检查，管理员一览全局健康", en: "System status page: real-time DB / email / Redis connectivity check for admins" },
+      { type: "new", zh: "站点公告功能：管理后台发布通知，用户首页顶部横幅实时展示", en: "Site announcements: publish notices in admin, displayed as a top banner on the homepage" },
+    ],
+  },
+  {
+    version: "3.1",
+    date: "2026-03-21",
+    changes: [
+      { type: "new", zh: "Vercel 平台集成：域名 DNS 配置一键检测，自动比对 Vercel 所需记录与当前解析", en: "Vercel integration: one-click DNS check comparing required vs actual records" },
+      { type: "improve", zh: "Vercel 域名绑定助手：检测缺失记录并提供精确补全指引", en: "Vercel domain helper: detects missing records and provides step-by-step fix guide" },
+    ],
+  },
+  {
+    version: "3.0",
+    date: "2026-03-21",
+    changes: [
+      { type: "new", zh: "价格页面：多套餐定价方案对比，区分月付/年付与功能权限", en: "Pricing page: multi-plan comparison with monthly/annual billing and feature breakdown" },
+      { type: "new", zh: "赞助商展示系统：首页赞助商位，管理后台增删改查、排序、显示控制", en: "Sponsor showcase: homepage sponsor slots with full admin CRUD, sort and visibility control" },
+    ],
+  },
+  {
+    version: "2.4",
+    date: "2026-03-20",
+    changes: [
+      { type: "new", zh: "天虎平台集成：域名评估报告接入，查询结果页展示估值与市场参考", en: "Tianhu integration: domain appraisal report on lookup result pages" },
+      { type: "improve", zh: "查询结果页新增「域名估值」模块，联动天虎 API 实时拉取数据", en: "Lookup results: Domain Valuation module with live Tianhu API data" },
+    ],
+  },
+  {
+    version: "2.3",
+    date: "2026-03-20",
+    changes: [
+      { type: "new", zh: "查询历史系统：已登录用户自动记录每次查询，管理后台可查看所有用户历史", en: "Search history: auto-recorded for logged-in users; admin can view all users' history" },
+      { type: "new", zh: "管理后台「查询记录」页面：全量历史、域名/用户筛选、匿名标注", en: "Admin Search Records: full history with domain/user filters and anonymous flagging" },
+    ],
+  },
+  {
     version: "2.2",
     date: "2026-03-20",
     highlight: false,
