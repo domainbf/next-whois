@@ -3808,47 +3808,67 @@ export default function LookupPage({
 
                     {/* Stamp detail dialog — triggered by "已认领" badge */}
                     <Dialog open={stampDetailOpen} onOpenChange={setStampDetailOpen}>
-                      <DialogContent className="max-w-[400px] p-0 overflow-hidden gap-0">
-                        <DialogHeader className="px-5 pt-5 pb-4 border-b border-border/50">
-                          <DialogTitle className="flex items-center gap-2 text-base">
-                            <RiShieldCheckLine className="w-4 h-4 text-teal-500" />
-                            {isChinese ? "品牌认领信息" : "Claimed Brand"}
-                          </DialogTitle>
+                      <DialogContent className="max-w-[360px] p-0 overflow-hidden gap-0">
+                        {/* Visually hidden title for accessibility */}
+                        <DialogHeader className="sr-only">
+                          <DialogTitle>{isChinese ? "品牌认领信息" : "Claimed Brand"}</DialogTitle>
                         </DialogHeader>
-                        <div className="px-5 py-4 space-y-3">
+                        <div className="divide-y divide-border/50">
                           {verifiedStamps.map((stamp) => {
-                            const cardStyle = STAMP_CARD_MAP[stamp.tagStyle] || STAMP_CARD_MAP.default;
                             const badgeCls = STAMP_STYLE_MAP[stamp.tagStyle] || STAMP_STYLE_MAP.default;
-                            const card = (
-                              <div key={stamp.id} className={cn(
-                                "rounded-xl px-4 py-3.5 transition-opacity",
-                                cardStyle.bg,
-                                stamp.link && "hover:opacity-80 cursor-pointer",
-                              )}>
-                                <div className="flex items-start justify-between gap-2">
-                                  <div className="min-w-0 flex-1">
-                                    <div className="flex items-center gap-2 mb-1.5">
-                                      <span className={cn("inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full tracking-wide", badgeCls)}>
-                                        <RiShieldCheckLine className="w-2.5 h-2.5" />
-                                        {isChinese ? "已认证" : "Verified"}
-                                      </span>
-                                    </div>
-                                    <p className="text-base font-bold text-foreground leading-snug mb-1">{stamp.tagName}</p>
-                                    {stamp.description && (
-                                      <p className="text-xs text-muted-foreground leading-relaxed break-words">{stamp.description}</p>
-                                    )}
+                            const cardStyle = STAMP_CARD_MAP[stamp.tagStyle] || STAMP_CARD_MAP.default;
+                            const StampIcon = STAMP_ICON_MAP[stamp.tagStyle] || STAMP_ICON_MAP.default;
+                            return (
+                              <div key={stamp.id} className="p-5 space-y-4">
+                                {/* Icon circle + name row */}
+                                <div className="flex items-center gap-3">
+                                  <div className={cn(
+                                    "w-12 h-12 rounded-2xl flex items-center justify-center shrink-0",
+                                    cardStyle.bg,
+                                  )}>
+                                    <StampIcon className={cn("w-6 h-6", cardStyle.iconColor)} />
                                   </div>
-                                  {stamp.link && (
-                                    <RiArrowRightSLine className="w-5 h-5 shrink-0 text-muted-foreground/40 mt-1" />
-                                  )}
+                                  <div className="min-w-0">
+                                    <p className="font-bold text-base leading-snug truncate">{stamp.tagName}</p>
+                                    <span className={cn(
+                                      "inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full tracking-wide mt-1",
+                                      badgeCls,
+                                    )}>
+                                      <RiShieldCheckLine className="w-2.5 h-2.5" />
+                                      {isChinese ? "已认证" : "Verified"}
+                                    </span>
+                                  </div>
                                 </div>
+                                {/* Description */}
+                                {stamp.description && (
+                                  <p className="text-sm text-muted-foreground leading-relaxed break-words">
+                                    {stamp.description}
+                                  </p>
+                                )}
+                                {/* Domain being claimed */}
+                                <div className="flex items-center gap-1.5 text-xs text-muted-foreground/70">
+                                  <RiShieldCheckLine className="w-3 h-3 shrink-0" />
+                                  <span className="font-mono">{result.domain || target}</span>
+                                  <span>{isChinese ? "已被认领" : "is claimed"}</span>
+                                </div>
+                                {/* Visit link button */}
+                                {stamp.link && (
+                                  <a
+                                    href={stamp.link}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className={cn(
+                                      "flex items-center justify-center gap-2 w-full rounded-xl py-2.5 text-sm font-semibold transition-opacity hover:opacity-80",
+                                      cardStyle.bg,
+                                      cardStyle.iconColor,
+                                    )}
+                                  >
+                                    <RiArrowRightSLine className="w-4 h-4" />
+                                    {isChinese ? "访问主页" : "Visit Profile"}
+                                  </a>
+                                )}
                               </div>
                             );
-                            return stamp.link ? (
-                              <a key={stamp.id} href={stamp.link} target="_blank" rel="noopener noreferrer" className="block">
-                                {card}
-                              </a>
-                            ) : card;
                           })}
                         </div>
                       </DialogContent>
