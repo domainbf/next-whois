@@ -2551,13 +2551,19 @@ function DomainReminderDialog({
                           <button
                             onClick={() => setLcFeedbackOpen(true)}
                             title={isZh ? "纠正宽限期数据" : "Correct lifecycle data"}
-                            className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[8.5px] font-semibold border border-border/40 bg-muted/30 text-muted-foreground/60 hover:text-foreground hover:bg-muted/60 hover:border-border/60 transition-colors cursor-pointer"
+                            className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[8.5px] font-semibold border border-border/50 bg-muted/30 text-foreground hover:bg-amber-50 dark:hover:bg-amber-950/30 hover:border-amber-400/40 hover:text-amber-600 dark:hover:text-amber-400 transition-colors cursor-pointer"
                           >
                             <RiFlagLine className="w-2.5 h-2.5" />
                             {isZh ? "纠错" : "Correct"}
                           </button>
                         </div>
                       </div>
+                      {/* Shimmer hint text */}
+                      <p className="lc-hint-shimmer text-[9px] leading-relaxed mb-2 select-none">
+                        {isZh
+                          ? "若实际注册局政策与显示数据不符，请填写正确天数并提交，管理员审核后将更新数据。"
+                          : "If the registry policy differs from what's shown, enter correct days and submit for admin review."}
+                      </p>
                       <div className="space-y-2">
                         {([
                           lc.cfg.grace > 0 &&
