@@ -203,69 +203,53 @@ export default function StampStylesPage() {
   const specialThemes  = Object.entries(CARD_THEMES).filter(([, t]) => !!t.special);
 
   return (
-    <AdminLayout title="弹窗样式预览">
-      <div className="space-y-8">
+    <AdminLayout title="弹窗样式">
+      <div className="space-y-10 max-w-3xl">
+
         <div>
-          <h1 className="text-2xl font-bold">弹窗样式预览</h1>
+          <h1 className="text-xl font-bold">弹窗样式一览</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            以下是所有已认领弹窗（Stamp Detail Dialog）的可选样式，管理员可在品牌管理中为认领记录设置样式。
+            在「品牌管理」编辑认领时可选择以下样式，下方为实际弹窗的缩略预览。
           </p>
         </div>
 
-        {/* Standard colour themes */}
-        <section>
-          <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-4 flex items-center gap-2">
-            <span className="w-4 h-0.5 bg-muted-foreground/30 rounded-full" />
-            标准配色（11 种）— 经典排版
-            <span className="w-4 h-0.5 bg-muted-foreground/30 rounded-full" />
+        {/* ── Standard themes ── */}
+        <section className="space-y-3">
+          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">
+            标准配色 · {standardThemes.length} 种
           </h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             {standardThemes.map(([key, t]) => (
-              <div key={key} className="space-y-2">
+              <div key={key} className="space-y-1.5">
                 <StampPreviewCard themeKey={key} />
-                <div className="flex items-center gap-2 px-1">
-                  <span className={cn("w-4 h-4 rounded-md bg-gradient-to-br shrink-0 border border-white/10", CARD_THEMES[key].hero.replace("bg-gradient-to-br","").replace("bg-gradient-to-b",""))} />
+                <div className="flex items-center gap-1.5 px-0.5">
                   <p className="text-xs font-semibold">{t.label}</p>
-                  <code className="text-[9px] text-muted-foreground/60 font-mono ml-auto">{key}</code>
+                  <code className="text-[10px] text-muted-foreground/50 font-mono ml-auto">{key}</code>
                 </div>
               </div>
             ))}
           </div>
         </section>
 
-        {/* Special layout themes */}
-        <section>
-          <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-4 flex items-center gap-2">
-            <span className="w-4 h-0.5 bg-muted-foreground/30 rounded-full" />
-            特殊排版（4 种）— 全新布局
-            <span className="w-4 h-0.5 bg-muted-foreground/30 rounded-full" />
+        {/* ── Special layout themes ── */}
+        <section className="space-y-3">
+          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">
+            特殊排版 · {specialThemes.length} 种
           </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             {specialThemes.map(([key, t]) => (
-              <div key={key} className="space-y-2">
+              <div key={key} className="space-y-1.5">
                 <StampPreviewCard themeKey={key} />
-                <div className="flex items-center gap-2 px-1">
-                  <span className="text-base">{t.special}</span>
-                  <p className="text-sm font-semibold">{t.label}</p>
-                  <code className="text-[9px] text-muted-foreground/60 font-mono ml-auto">{key}</code>
-                  <span className="text-[9px] text-muted-foreground/50 border border-border/40 px-1.5 py-0.5 rounded font-mono">特殊布局</span>
+                <div className="flex items-center gap-1.5 px-0.5">
+                  <span className="text-sm leading-none">{t.special}</span>
+                  <p className="text-xs font-semibold">{t.label}</p>
+                  <code className="text-[10px] text-muted-foreground/50 font-mono ml-auto">{key}</code>
                 </div>
-                <p className="text-[11px] text-muted-foreground/60 px-1 leading-relaxed">
-                  {{
-                    celebrate: "庆典样式：天空蓝渐变英雄区 + 彩纸粒子 + 圆形图标 + 白色卡片正文",
-                    neon:      "霓虹样式：全黑暗背景 + 绿色高亮 + 头像方块 + 极简分割线",
-                    gradient:  "流光样式：全屏苹果式渐变背景贯穿全卡，无分割区块",
-                    split:     "分栏样式：左侧彩色图标区 / 右侧文字与按钮区，横向双栏",
-                  }[key] ?? ""}
-                </p>
               </div>
             ))}
           </div>
         </section>
 
-        <p className="text-[11px] text-muted-foreground/40 text-center pb-4">
-          样式值可在「品牌管理 → 编辑认领」的「弹窗样式」选择器中设置。
-        </p>
       </div>
     </AdminLayout>
   );

@@ -175,38 +175,36 @@ function StampFormFields({
         </div>
       </div>
 
-      <div className="space-y-1.5">
-        <Label className="text-sm font-medium flex items-center justify-between">
-          <span>弹窗样式</span>
-          <span className="text-[10px] font-normal text-muted-foreground/60">✨= 特殊排版</span>
-        </Label>
-        {/* Standard themes */}
-        <p className="text-[10px] text-muted-foreground/50 uppercase tracking-widest font-semibold">标准配色</p>
-        <div className="grid grid-cols-4 gap-1.5 mb-2">
-          {CARD_THEMES.filter(c => !c.special).map(c => (
+      <div className="space-y-2">
+        <Label className="text-sm font-medium">弹窗样式</Label>
+        {/* Current selection display */}
+        {(() => {
+          const cur = CARD_THEMES.find(c => c.value === cardTheme);
+          return (
+            <div className="flex items-center gap-2.5 px-3 py-2 rounded-xl border border-border bg-muted/30">
+              <span className={cn("w-5 h-5 rounded-md shrink-0 bg-gradient-to-br", cur?.bg ?? "from-zinc-700 to-zinc-900")} />
+              <span className="text-sm font-medium flex-1">{cur?.label ?? cardTheme}</span>
+              {cur?.special && <span className="text-base leading-none">{cur.special}</span>}
+            </div>
+          );
+        })()}
+        {/* Compact swatch grid — color squares only, tooltip on hover */}
+        <div className="grid grid-cols-5 gap-1.5">
+          {CARD_THEMES.map(c => (
             <button key={c.value} type="button" onClick={() => setCardTheme(c.value)}
+              title={c.label}
               className={cn(
-                "flex flex-col items-center gap-1 px-1.5 py-2 rounded-xl border-2 transition-all text-center",
-                cardTheme === c.value ? "border-primary bg-primary/5" : "border-border hover:border-border/80"
+                "relative h-8 rounded-lg bg-gradient-to-br transition-all overflow-hidden",
+                c.bg,
+                cardTheme === c.value
+                  ? "ring-2 ring-primary ring-offset-2 ring-offset-background"
+                  : "opacity-70 hover:opacity-100 hover:scale-105"
               )}>
-              <span className={cn("w-8 h-8 rounded-lg bg-gradient-to-br shadow-sm", c.bg)} />
-              <span className="text-[9px] font-medium leading-tight text-muted-foreground">{c.label}</span>
-            </button>
-          ))}
-        </div>
-        {/* Special layout themes */}
-        <p className="text-[10px] text-muted-foreground/50 uppercase tracking-widest font-semibold">特殊排版</p>
-        <div className="grid grid-cols-4 gap-1.5">
-          {CARD_THEMES.filter(c => !!c.special).map(c => (
-            <button key={c.value} type="button" onClick={() => setCardTheme(c.value)}
-              className={cn(
-                "flex flex-col items-center gap-1 px-1.5 py-2.5 rounded-xl border-2 transition-all text-center",
-                cardTheme === c.value ? "border-primary bg-primary/5" : "border-border hover:border-border/80"
-              )}>
-              <span className={cn("w-8 h-8 rounded-lg bg-gradient-to-br shadow-sm flex items-center justify-center text-sm", c.bg)}>
-                {c.special}
-              </span>
-              <span className="text-[9px] font-medium leading-tight text-muted-foreground">{c.label}</span>
+              {c.special && (
+                <span className="absolute inset-0 flex items-center justify-center text-xs leading-none">
+                  {c.special}
+                </span>
+              )}
             </button>
           ))}
         </div>
