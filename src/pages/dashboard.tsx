@@ -56,14 +56,14 @@ type Stamp = {
 };
 
 const TAG_COLORS: Record<string, string> = {
-  personal: "bg-violet-50 border border-violet-200 text-violet-700 dark:bg-violet-950/40 dark:border-violet-700/60 dark:text-violet-300",
+  personal: "bg-teal-500 text-white",
   official: "bg-blue-500 text-white",
-  brand: "bg-violet-500 text-white",
+  brand:    "bg-violet-500 text-white",
   verified: "bg-emerald-500 text-white",
-  partner: "bg-orange-500 text-white",
-  dev: "bg-sky-500 text-white",
-  warning: "bg-amber-400 text-white",
-  premium: "bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white",
+  partner:  "bg-orange-500 text-white",
+  dev:      "bg-sky-500 text-white",
+  warning:  "bg-amber-400 text-white",
+  premium:  "bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white",
 };
 
 function TagBadge({ style, name }: { style: string; name: string }) {
@@ -86,6 +86,18 @@ function fmt(d: Date) {
   return d.toLocaleDateString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit" });
 }
 
+/* ── Tag style definitions — mirrored from admin stamps.tsx ──────────────── */
+const EDIT_TAG_STYLES: { value: string; zhLabel: string; enLabel: string; color: string }[] = [
+  { value: "personal", zhLabel: "个人持有", enLabel: "Personal",  color: "bg-teal-500 text-white" },
+  { value: "official", zhLabel: "官方",     enLabel: "Official",  color: "bg-blue-500 text-white" },
+  { value: "brand",    zhLabel: "品牌",     enLabel: "Brand",     color: "bg-violet-500 text-white" },
+  { value: "verified", zhLabel: "认证",     enLabel: "Verified",  color: "bg-emerald-500 text-white" },
+  { value: "partner",  zhLabel: "合作",     enLabel: "Partner",   color: "bg-orange-500 text-white" },
+  { value: "dev",      zhLabel: "开发者",   enLabel: "Developer", color: "bg-sky-500 text-white" },
+  { value: "warning",  zhLabel: "提醒",     enLabel: "Warning",   color: "bg-amber-400 text-white" },
+  { value: "premium",  zhLabel: "高级",     enLabel: "Premium",   color: "bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white" },
+];
+
 // ── Edit Stamp Modal ──────────────────────────────────────────────────────────
 function EditStampModal({ stamp, onClose, onSaved }: { stamp: Stamp; onClose: () => void; onSaved: () => void }) {
   const [tagName, setTagName] = React.useState(stamp.tag_name);
@@ -94,7 +106,8 @@ function EditStampModal({ stamp, onClose, onSaved }: { stamp: Stamp; onClose: ()
   const [description, setDescription] = React.useState(stamp.description || "");
   const [nickname, setNickname] = React.useState(stamp.nickname);
   const [saving, setSaving] = React.useState(false);
-  const TAG_STYLES = ["personal", "official", "brand", "verified", "partner", "dev", "warning", "premium"];
+  const { locale } = useTranslation();
+  const isZh = locale.startsWith("zh");
 
   async function handleSave() {
     setSaving(true);
@@ -136,12 +149,16 @@ function EditStampModal({ stamp, onClose, onSaved }: { stamp: Stamp; onClose: ()
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold">标签样式</Label>
             <div className="flex flex-wrap gap-1.5">
-              {TAG_STYLES.map(s => (
-                <button key={s} type="button" onClick={() => setTagStyle(s)}
-                  className={cn("px-2.5 py-1 rounded-lg text-xs font-semibold border-2 transition-all",
-                    tagStyle === s ? "border-primary scale-105" : "border-transparent opacity-70 hover:opacity-100",
-                    TAG_COLORS[s])}>
-                  {s}
+              {EDIT_TAG_STYLES.map(ts => (
+                <button key={ts.value} type="button" onClick={() => setTagStyle(ts.value)}
+                  className={cn(
+                    "px-2.5 py-1 rounded-lg text-xs font-semibold border-2 transition-all active:scale-[0.96]",
+                    tagStyle === ts.value
+                      ? "border-white/60 ring-2 ring-offset-1 ring-primary scale-105 shadow-md"
+                      : "border-transparent opacity-75 hover:opacity-100",
+                    ts.color
+                  )}>
+                  {isZh ? ts.zhLabel : ts.enLabel}
                 </button>
               ))}
             </div>
