@@ -120,6 +120,16 @@ export default function AdminTldLifecyclePage() {
     (r.registry ?? "").toLowerCase().includes(search.toLowerCase()),
   );
 
+  const customTlds = new Set(rows.map(r => r.tld));
+  const builtinFiltered = Object.entries(LIFECYCLE_TABLE)
+    .filter(([tld]) =>
+      !search ||
+      tld.includes(search.toLowerCase())
+    )
+    .sort(([a], [b]) => a.localeCompare(b));
+
+  const [showBuiltin, setShowBuiltin] = React.useState(false);
+
   function getBuiltIn(tld: string) {
     const entry = LIFECYCLE_TABLE[tld];
     if (!entry) return null;
@@ -219,11 +229,85 @@ export default function AdminTldLifecyclePage() {
           </table>
         </div>
 
-        {rows.length > 0 && (
-          <p className="text-xs text-muted-foreground">
-            共 {rows.length} 条自定义规则；系统内置 {Object.keys(LIFECYCLE_TABLE).length} 个 TLD 的标准值
-          </p>
-        )}
+        <p className="text-xs text-muted-foreground">
+          {rows.length > 0 ? `共 ${rows.length} 条自定义规则；` : "暂无自定义规则 — "}系统内置 {Object.keys(LIFECYCLE_TABLE).length} 个 TLD 的标准值
+        </p>
+
+        {/* Built-in reference table */}
+        <div className="border rounded-xl overflow-hidden">
+          <button
+            className="w-full flex items-center justify-between px-4 py-3 bg-muted/30 hover:bg-muted/50 transition-colors text-left"
+            onClick={() => setShowBuiltin(v => !v)}
+          >
+            <div>
+              <span className="text-sm font-semibold">内置生命周期参考表</span>
+              <span className="text-xs text-muted-foreground ml-2">
+                {search ? `${builtinFiltered.length} 个匹配 "${search}"` : `共 ${Object.keys(LIFECYCLE_TABLE).length} 个 TLD`}
+              </span>
+            </div>
+            <span className="text-xs text-muted-foreground font-medium">
+              {showBuiltin ? "收起 ▲" : "展开 ▼"}
+            </span>
+          </button>
+
+          {showBuiltin && (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-muted/20 border-b border-t">
+                  <tr>
+                    <th className={thClass}>TLD</th>
+                    <th className={cn(thClass, "text-center")}>宽限期</th>
+                    <th className={cn(thClass, "text-center")}>赎回期</th>
+                    <th className={cn(thClass, "text-center")}>待删除</th>
+                    <th className={cn(thClass, "text-right")}>操作</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/30">
+                  {builtinFiltered.map(([tld, entry]) => (
+                    <tr
+                      key={tld}
+                      className={cn(
+                        "hover:bg-muted/20 transition-colors",
+                        customTlds.has(tld) && "opacity-40"
+                      )}
+                    >
+                      <td className={cn(tdClass, "font-mono font-semibold")}>
+                        .{tld}
+                        {customTlds.has(tld) && (
+                          <span className="ml-1.5 text-[9px] px-1 py-0.5 rounded bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 font-semibold">已覆盖</span>
+                        )}
+                      </td>
+                      <td className={cn(tdClass, "text-center tabular-nums text-muted-foreground")}>{entry.grace}d</td>
+                      <td className={cn(tdClass, "text-center tabular-nums text-muted-foreground")}>{entry.redemption}d</td>
+                      <td className={cn(tdClass, "text-center tabular-nums text-muted-foreground")}>{entry.pendingDelete}d</td>
+                      <td className={cn(tdClass, "text-right")}>
+                        {!customTlds.has(tld) && (
+                          <button
+                            onClick={() => {
+                              setEditing(null);
+                              setForm({
+                                tld,
+                                grace: String(entry.grace),
+                                redemption: String(entry.redemption),
+                                pending_delete: String(entry.pendingDelete),
+                                registry: "",
+                                notes: "",
+                              });
+                              setDialogOpen(true);
+                            }}
+                            className="text-[11px] px-2 py-1 rounded-lg bg-muted hover:bg-primary/10 hover:text-primary text-muted-foreground transition-colors font-medium"
+                          >
+                            添加覆盖
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Add / Edit Dialog */}

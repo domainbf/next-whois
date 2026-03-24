@@ -6,6 +6,25 @@ A fast, modern WHOIS and RDAP lookup tool supporting domains, IPv4/IPv6, ASN, an
 
 ## Changelog
 
+### v3.22.1 — Bug Fix Batch (2026-03-24)
+
+**Scope:** Six targeted bug fixes across lookup recording, subscription session sync, query-only mode, admin pages, and announcement bar positioning.
+
+**Changes:**
+
+| File | Fix | Detail |
+|---|---|---|
+| `src/pages/api/lookup.ts` | Search history for logged-in users | Added `getServerSession` call; `saveSearchRecord` now accepts optional `userId` — logged-in users get their own `user_id`-linked records (upsert via delete+insert), anonymous users retain existing trim-to-50 logic. |
+| `src/pages/dashboard.tsx` | Subscription session sync | When `apply-invite-code` returns "你已拥有订阅权限" (DB has access, JWT doesn't), client now calls `updateSession({ subscriptionAccess: true })` and switches to subscriptions tab instead of showing an error. |
+| `src/components/navbar.tsx` | query_only_mode hides HistoryDrawer | `HistoryDrawer` reads `query_only_mode` from site settings via `useSiteSettings()` and returns `null` for non-admin users when the mode is enabled. Early return placed after all hooks to comply with React rules. |
+| `src/pages/_app.tsx` | Announcement bar overlap fix | `AnnouncementBanner` sets CSS custom property `--ann-h` (36px when visible, 0px when dismissed) on the document root. Main element padding updated to `calc(4rem + var(--ann-h, 0px))`. |
+| `src/components/navbar.tsx` | Navbar clears announcement overlap | Outer div uses `style={{ top: 'var(--ann-h, 0px)', transition: 'top 0.2s ease' }}` instead of hard-coded `top-0`, smoothly sliding below the announcement bar. |
+| `src/pages/admin/tld-lifecycle.tsx` | Built-in lifecycle reference table | Added collapsible section showing all LIFECYCLE_TABLE entries. Each row has "添加覆盖" that pre-fills the form; already-overridden TLDs show a "已覆盖" badge. |
+| `src/pages/admin/reminders.tsx` | Edit + Send Email for reminders | Added inline edit panel per record (domain, email, expiration_date, days_before); added send-email button (plane icon). |
+| `src/pages/api/admin/reminders.ts` | Extended PATCH + POST send-email | PATCH now updates any combination of domain/email/expiration_date/days_before/active. New POST `?action=send-email` fetches reminder, computes daysLeft, sends `reminderHtml` via Resend. |
+
+---
+
 ### v3.22 — Comprehensive Multilingual WHOIS Status Detection (2026-03-24)
 
 **Scope:** Full multilingual expansion of domain status detection (reserved / prohibited / suspended). Both `common_parser.ts` (server-side) and `[...query].tsx` (client-side safety net) are now synced with identical pattern coverage for 25+ languages/registries.

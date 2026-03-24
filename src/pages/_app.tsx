@@ -93,6 +93,14 @@ function AnnouncementBanner() {
   const settings = useSiteSettings();
   const [dismissed, setDismissed] = React.useState(false);
   const msg = settings.site_announcement;
+  const visible = !!msg && !dismissed;
+
+  React.useEffect(() => {
+    const root = document.documentElement;
+    root.style.setProperty("--ann-h", visible ? "36px" : "0px");
+    return () => { root.style.setProperty("--ann-h", "0px"); };
+  }, [visible]);
+
   if (!msg || dismissed) return null;
   return (
     <div className="fixed top-0 left-0 right-0 z-[60] flex items-center justify-center px-4 py-2 bg-gradient-to-r from-primary to-violet-600 text-white text-xs font-medium gap-2 shadow-md">
@@ -190,7 +198,7 @@ export default function App({ Component, pageProps: { session, ...pageProps } }:
         <div className="relative w-full min-h-screen font-sans">
           {!isAdminPage && <AnnouncementBanner />}
           {!isAdminPage && <Navbar />}
-          <main className={isAdminPage ? undefined : "pt-16"}>
+          <main className={isAdminPage ? undefined : undefined} style={!isAdminPage ? { paddingTop: "calc(4rem + var(--ann-h, 0px))" } : undefined}>
             {isAdminPage ? (
               <Component {...pageProps} />
             ) : (

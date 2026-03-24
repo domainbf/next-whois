@@ -729,7 +729,18 @@ export default function DashboardPage() {
         body: JSON.stringify({ inviteCode: inviteCodeInput.trim() }),
       });
       const data = await res.json();
-      if (!res.ok) { toast.error(data.error || "邀请码验证失败"); return; }
+      if (!res.ok) {
+        const errMsg = data.error || "邀请码验证失败";
+        if (errMsg === "你已拥有订阅权限") {
+          await updateSession({ subscriptionAccess: true });
+          setInviteCodeInput("");
+          setTab("subscriptions");
+          toast.success("订阅权限已就绪，已切换到订阅管理");
+          return;
+        }
+        toast.error(errMsg);
+        return;
+      }
       toast.success("邀请码验证成功，已解锁域名订阅功能！");
       await updateSession({ subscriptionAccess: true });
       setInviteCodeInput("");

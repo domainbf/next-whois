@@ -68,6 +68,10 @@ function HistoryDrawer() {
   const [refreshTick, setRefreshTick] = React.useState(0);
   const { t, locale } = useTranslation();
   const isChinese = locale === "zh" || locale === "zh-tw";
+  const { data: sessionData } = useSession();
+  const histSettings = useSiteSettings();
+  const queryOnlyMode = histSettings.query_only_mode === "1";
+  const isHistAdmin = (sessionData?.user as any)?.email?.toLowerCase?.()?.trim?.() === ADMIN_EMAIL;
 
   React.useEffect(() => {
     setMounted(true);
@@ -124,6 +128,8 @@ function HistoryDrawer() {
     },
     [],
   );
+
+  if (queryOnlyMode && !isHistAdmin) return null;
 
   return (
     <Drawer open={open} onOpenChange={setOpen}>
@@ -510,7 +516,7 @@ export function Navbar() {
   const { t } = useTranslation();
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-50 flex justify-center">
+    <div className="fixed left-0 right-0 z-50 flex justify-center" style={{ top: "var(--ann-h, 0px)", transition: "top 0.2s ease" }}>
       <nav
         className={cn(
           "mt-4 px-2 h-10 rounded-full",

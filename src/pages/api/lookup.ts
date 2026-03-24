@@ -7,6 +7,8 @@ import { randomBytes } from "crypto";
 import { rateLimit, getClientIp } from "@/lib/server/rate-limit";
 import { getCnReservedSldInfo } from "@/lib/whois/cn-reserved-sld";
 import { enforceApiKey } from "@/lib/access-key";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/pages/api/auth/[...nextauth]";
 
 export const config = {
   maxDuration: 30,
@@ -45,10 +47,11 @@ function deriveRegStatus(
 
 const MAX_ANON_HISTORY = 50;
 
-async function saveAnonymousSearchRecord(
+async function saveSearchRecord(
   query: string,
   result: WhoisAnalyzeResult,
   dnsProbe?: DnsProbeResult,
+  userId?: string | null,
 ): Promise<void> {
   if (!(await isDbReady())) return;
   try {
@@ -58,32 +61,43 @@ async function saveAnonymousSearchRecord(
     const expDate = result.expirationDate && result.expirationDate !== "Unknown" ? result.expirationDate : null;
     const remDays = result.remainingDays ?? null;
 
-    // Delete existing anonymous record for same query (new replaces old)
-    await run(
-      `DELETE FROM search_history WHERE user_id IS NULL AND LOWER(query) = $1`,
-      [cleanQuery],
-    );
-
-    // Insert new record
-    await run(
-      `INSERT INTO search_history
-         (id, user_id, query, query_type, reg_status, expiration_date, remaining_days)
-       VALUES ($1, NULL, $2, $3, $4, $5, $6)`,
-      [randomBytes(8).toString("hex"), cleanQuery, queryType, regStatus, expDate, remDays],
-    );
-
-    // Trim anonymous records to MAX_ANON_HISTORY (keep newest, delete oldest)
-    await run(
-      `DELETE FROM search_history
-       WHERE user_id IS NULL
-         AND id NOT IN (
-           SELECT id FROM search_history
-           WHERE user_id IS NULL
-           ORDER BY created_at DESC
-           LIMIT $1
-         )`,
-      [MAX_ANON_HISTORY],
-    );
+    if (userId) {
+      // For logged-in users: replace existing record for same user+query (upsert via delete+insert)
+      await run(
+        `DELETE FROM search_history WHERE user_id = $1 AND LOWER(query) = $2`,
+        [userId, cleanQuery],
+      );
+      await run(
+        `INSERT INTO search_history
+           (id, user_id, query, query_type, reg_status, expiration_date, remaining_days)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [randomBytes(8).toString("hex"), userId, cleanQuery, queryType, regStatus, expDate, remDays],
+      );
+    } else {
+      // For anonymous users: replace existing record for same query, trim to limit
+      await run(
+        `DELETE FROM search_history WHERE user_id IS NULL AND LOWER(query) = $1`,
+        [cleanQuery],
+      );
+      await run(
+        `INSERT INTO search_history
+           (id, user_id, query, query_type, reg_status, expiration_date, remaining_days)
+         VALUES ($1, NULL, $2, $3, $4, $5, $6)`,
+        [randomBytes(8).toString("hex"), cleanQuery, queryType, regStatus, expDate, remDays],
+      );
+      // Trim anonymous records to MAX_ANON_HISTORY (keep newest, delete oldest)
+      await run(
+        `DELETE FROM search_history
+         WHERE user_id IS NULL
+           AND id NOT IN (
+             SELECT id FROM search_history
+             WHERE user_id IS NULL
+             ORDER BY created_at DESC
+             LIMIT $1
+           )`,
+        [MAX_ANON_HISTORY],
+      );
+    }
   } catch {}
 }
 
@@ -127,6 +141,13 @@ export default async function handler(
     return res.status(400).json({ time: -1, status: false, error: "Invalid characters in query" });
   }
 
+  // Get current user session (non-blocking — we still serve the result even if session fails)
+  let userId: string | null = null;
+  try {
+    const session = await getServerSession(req, res, authOptions);
+    userId = (session?.user as any)?.id ?? null;
+  } catch {}
+
   // ── CN Reserved SLD short-circuit ─────────────────────────────────────────
   // Province, functional, and system-reserved .cn second-level domains are
   // managed by CNNIC and are never directly registerable. Skip the WHOIS/RDAP
@@ -139,7 +160,7 @@ export default async function handler(
       status: [{ status: "registry-reserved", url: "" }],
       rawWhoisContent: `[CN Reserved] ${cnReserved.descZh}`,
     };
-    saveAnonymousSearchRecord(trimmed, syntheticResult).catch(() => {});
+    saveSearchRecord(trimmed, syntheticResult, undefined, userId).catch(() => {});
     res.setHeader("Cache-Control", "s-maxage=43200, stale-while-revalidate=86400");
     return res.status(200).json({
       time: 0,
@@ -158,7 +179,7 @@ export default async function handler(
   }
 
   if (result && !cached) {
-    saveAnonymousSearchRecord(trimmed, result, dnsProbe).catch(() => {});
+    saveSearchRecord(trimmed, result, dnsProbe, userId).catch(() => {});
   }
 
   // Set Cache-Control header to match the actual smart TTL so Vercel's
