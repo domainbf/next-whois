@@ -734,6 +734,99 @@ export function stampVerifyTimeoutHtml({
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
+// 11. Payment confirmation
+// ──────────────────────────────────────────────────────────────────────────────
+export function paymentConfirmHtml({
+  name, email, planName, amount, currency, orderId, siteName = "X.RW",
+}: {
+  name?: string | null;
+  email: string;
+  planName: string;
+  amount: number;
+  currency: string;
+  orderId: string;
+  siteName?: string;
+}): string {
+  const greeting = name ? `你好，${name}` : "你好";
+  const fmtAmount = currency.toUpperCase() === "CNY"
+    ? `¥${amount.toFixed(2)}`
+    : currency.toUpperCase() === "USD"
+      ? `$${amount.toFixed(2)}`
+      : `${amount.toFixed(2)} ${currency.toUpperCase()}`;
+  return emailLayout(`
+    ${darkHeader("支付成功", "订阅已开通", "感谢您的支持，您的会员权益已立即生效")}
+    ${section(`
+      <p style="margin:0 0 20px;font-size:14px;color:#475569;line-height:1.7">${greeting}，您的支付已成功，会员订阅权限已开通，即刻起可使用所有付费功能。</p>
+      <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:20px 24px;margin-bottom:20px">
+        <p style="margin:0 0 14px;font-size:11px;font-weight:700;letter-spacing:1.5px;color:#166534;text-transform:uppercase">订单详情</p>
+        <table cellpadding="0" cellspacing="0" style="width:100%">
+          ${kvRow("订单号", `<span style="font-family:monospace;font-size:12px">${orderId}</span>`)}
+          ${kvRow("套餐", planName)}
+          ${kvRow("金额", `<strong style="color:#059669">${fmtAmount}</strong>`)}
+          ${kvRow("账号", email)}
+          ${kvRow("生效时间", new Date().toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" }) + "（北京时间）")}
+        </table>
+      </div>
+      <p style="margin:0;font-size:12px;color:#94a3b8;line-height:1.6">如有任何疑问，请联系我们的客服支持。</p>
+    `)}
+    ${divider()}
+    ${actionRow(`${BASE_URL()}/dashboard`, "前往用户中心")}
+  `, siteName);
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// 12. Password changed security notification
+// ──────────────────────────────────────────────────────────────────────────────
+export function passwordChangedHtml({
+  name, email, siteName = "X.RW",
+}: {
+  name?: string | null;
+  email: string;
+  siteName?: string;
+}): string {
+  const greeting = name ? `你好，${name}` : "你好";
+  const time = new Date().toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" }) + "（北京时间）";
+  return emailLayout(`
+    ${colorHeader("#f59e0b", "安全提醒", "账号密码已修改", "如非本人操作，请立即联系客服")}
+    ${section(`
+      <p style="margin:0 0 20px;font-size:14px;color:#475569;line-height:1.7">
+        ${greeting}，您的 <strong style="color:#1e293b">${siteName}</strong> 账号密码已于 <strong>${time}</strong> 修改成功。
+      </p>
+      <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:12px;padding:16px 20px;margin-bottom:20px">
+        <p style="margin:0;font-size:13px;color:#92400e;line-height:1.7">
+          ⚠️ 如果这不是您本人操作，请立即通过"忘记密码"功能重置密码，或联系客服处理。
+        </p>
+      </div>
+      <p style="margin:0;font-size:12px;color:#94a3b8;line-height:1.6">账号：${email}</p>
+    `)}
+    ${divider()}
+    ${actionRow(`${BASE_URL()}/forgot-password`, "前往重置密码", undefined, "#f59e0b")}
+  `, siteName);
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// 13. Admin broadcast / notification email
+// ──────────────────────────────────────────────────────────────────────────────
+export function adminBroadcastHtml({
+  subject, bodyHtml, siteName = "X.RW",
+}: {
+  subject: string;
+  bodyHtml: string;
+  siteName?: string;
+}): string {
+  return emailLayout(`
+    ${darkHeader("站点通知", subject)}
+    ${section(`
+      <div style="font-size:14px;color:#475569;line-height:1.8">
+        ${bodyHtml}
+      </div>
+    `)}
+    ${divider()}
+    ${actionRow(`${BASE_URL()}`, "前往站点")}
+  `, siteName);
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
 // 10. Email verification code
 // ──────────────────────────────────────────────────────────────────────────────
 export function verifyCodeHtml({ code, email, siteName = "X.RW" }: { code: string; email: string; siteName?: string }): string {

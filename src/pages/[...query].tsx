@@ -3675,8 +3675,8 @@ export default function LookupPage({
                               return;
                             }
                             if (!(session?.user as any)?.subscriptionAccess) {
-                              toast.info(isChinese ? "需要品牌认领权限才能使用域名订阅，前往申请" : "Brand claim access required to subscribe.", {
-                                action: { label: isChinese ? "前往申请" : "Apply", onClick: () => router.push("/stamp") },
+                              toast.info(isChinese ? "需要开通会员才能使用域名订阅提醒" : "Subscription required to use domain reminders.", {
+                                action: { label: isChinese ? "去开通" : "Upgrade", onClick: () => router.push("/payment/checkout") },
                               });
                               return;
                             }
@@ -3817,8 +3817,8 @@ export default function LookupPage({
                               return;
                             }
                             if (!(session?.user as any)?.subscriptionAccess) {
-                              toast.info(isChinese ? "需要品牌认领权限才能使用域名订阅，前往申请" : "Brand claim access required to subscribe.", {
-                                action: { label: isChinese ? "前往申请" : "Apply", onClick: () => router.push("/stamp") },
+                              toast.info(isChinese ? "需要开通会员才能使用域名订阅提醒" : "Subscription required to use domain reminders.", {
+                                action: { label: isChinese ? "去开通" : "Upgrade", onClick: () => router.push("/payment/checkout") },
                               });
                               return;
                             }

@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
 import { compare, hash } from "bcryptjs";
 import { one, run, isDbReady } from "@/lib/db-query";
+import { sendEmail, passwordChangedHtml, getSiteLabel } from "@/lib/email";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).end();
@@ -29,6 +30,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const newHash = await hash(String(newPassword), 12);
   await run("UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2", [newHash, user.id]);
+
+  const nameRow = await one<{ name: string | null }>("SELECT name FROM users WHERE id = $1", [user.id]);
+  getSiteLabel().then(siteName =>
+    sendEmail({
+      to: session.user!.email!,
+      subject: `账号密码已修改 — 安全提醒 | ${siteName}`,
+      html: passwordChangedHtml({ name: nameRow?.name ?? null, email: session.user!.email!, siteName }),
+    }).catch(e => console.error("[change-password] email error:", e))
+  );
 
   return res.status(200).json({ ok: true });
 }

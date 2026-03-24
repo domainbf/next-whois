@@ -1,5 +1,6 @@
 import { randomBytes, createHash, createHmac } from "crypto";
 import { run, one, many } from "@/lib/db-query";
+import { sendEmail, paymentConfirmHtml, getSiteLabel } from "@/lib/email";
 
 export type PaymentProvider = "stripe" | "xunhupay" | "alipay" | "paypal";
 export type OrderStatus = "pending" | "paid" | "failed" | "expired" | "refunded";
@@ -137,6 +138,29 @@ export async function markOrderPaid(params: {
       order.plan_id ?? "payment",
     ]
   );
+
+  const paidOrder = await one<{ plan_name: string; amount: number; currency: string }>(
+    `SELECT plan_name, amount::float AS amount, currency FROM payment_orders WHERE id=$1`,
+    [params.orderId]
+  );
+  const userRow = await one<{ name: string | null }>(
+    `SELECT name FROM users WHERE id=$1 OR email=$2 LIMIT 1`,
+    [order.user_id ?? "", order.user_email]
+  );
+  const siteName = await getSiteLabel();
+  sendEmail({
+    to: order.user_email,
+    subject: `支付成功 — 您的会员订阅已开通 | ${siteName}`,
+    html: paymentConfirmHtml({
+      name: userRow?.name ?? null,
+      email: order.user_email,
+      planName: paidOrder?.plan_name ?? "订阅套餐",
+      amount: paidOrder?.amount ?? 0,
+      currency: paidOrder?.currency ?? "CNY",
+      orderId: params.orderId,
+      siteName,
+    }),
+  }).catch(e => console.error("[markOrderPaid] email error:", e));
 
   return { alreadyPaid: false, userEmail: order.user_email, grantsSubscription };
 }

@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { hash } from "bcryptjs";
 import { one, run, isDbReady } from "@/lib/db-query";
+import { sendEmail, passwordChangedHtml, getSiteLabel } from "@/lib/email";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).end();
@@ -33,6 +34,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   await run("UPDATE password_reset_tokens SET used = true WHERE id = $1", [record.id]);
+
+  const userRow = await one<{ email: string; name: string | null }>(
+    "SELECT email, name FROM users WHERE id = $1",
+    [record.user_id]
+  );
+  if (userRow) {
+    getSiteLabel().then(siteName =>
+      sendEmail({
+        to: userRow.email,
+        subject: `账号密码已重置 — 安全提醒 | ${siteName}`,
+        html: passwordChangedHtml({ name: userRow.name ?? null, email: userRow.email, siteName }),
+      }).catch(e => console.error("[reset-password] email error:", e))
+    );
+  }
 
   return res.status(200).json({ ok: true });
 }
