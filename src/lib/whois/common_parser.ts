@@ -655,20 +655,64 @@ export async function analyzeWhois(data: string): Promise<WhoisAnalyzeResult> {
       result.status.some((s) => s.status.toLowerCase().includes(code));
 
     // Reserved patterns — standalone text that indicates the name is reserved.
+    // Covers a wide range of registry phrasing:
+    //   • "in the reserved list"      — TELE-INFO (.yun, .wang, etc.)
+    //   • "reserved domain"           — many gTLD / ccTLD free-text responses
+    //   • "this domain is reserved"   — Neustar / Donuts style
+    //   • "is reserved for"           — ICANN / registry-admin reserved labels
+    //   • standalone "reserved" line  — TWNIC / NZRS
     const syntheticReserved =
       !hasStatusCode("reserved") &&
       (rawLow.includes("reserved name") ||
         rawLow.includes("this name is reserved") ||
         rawLow.includes("is a reserved name") ||
         rawLow.includes("domain is reserved") ||
+        rawLow.includes("this domain is reserved") ||
+        rawLow.includes("domain name is reserved") ||
         rawLow.includes("reserved by the registry") ||
         rawLow.includes("registry reserved") ||
         rawLow.includes("reserved-name") ||
+        rawLow.includes("reserved domain") ||
+        rawLow.includes("in the reserved list") ||
+        rawLow.includes("on the reserved list") ||
+        rawLow.includes("is in the reserved list") ||
+        rawLow.includes("is on the reserved list") ||
+        rawLow.includes("has been reserved") ||
+        rawLow.includes("name is reserved") ||
+        rawLow.includes("is reserved for") ||
+        rawLow.includes("is reserved by") ||
+        rawLow.includes("reserved for registry") ||
+        rawLow.includes("reserved for the registry") ||
+        rawLow.includes("registry has reserved") ||
+        rawLow.includes("registry hold") ||
         // standalone "reserved" on its own line (trimmed), e.g. TWNIC / NZRS
         /(?:^|\n)\s*reserved\s*(?:\n|$)/.test(rawLow));
 
     if (syntheticReserved) {
       result.status.push({ status: "registry-reserved", url: "" });
+    }
+
+    // Premium reserved — registry is holding the name for premium/auction sale.
+    // These get tagged as "registry-premium" in addition to (or instead of) reserved
+    // so the UI can show a different description ("contact the registry to purchase").
+    const syntheticPremiumReserved =
+      !hasStatusCode("registry-premium") &&
+      (rawLow.includes("premium domain") ||
+        rawLow.includes("premium name") ||
+        rawLow.includes("premium price") ||
+        rawLow.includes("registry premium") ||
+        rawLow.includes("available at a premium") ||
+        rawLow.includes("this is a premium") ||
+        // "contact the registry" as a call-to-action implies negotiated/premium sale
+        rawLow.includes("please contact the registry") ||
+        rawLow.includes("contact the registry to") ||
+        rawLow.includes("contact your registrar to") ||
+        rawLow.includes("enquire about this domain") ||
+        rawLow.includes("inquire about this domain") ||
+        rawLow.includes("may be available for purchase"));
+
+    if (syntheticPremiumReserved) {
+      result.status.push({ status: "registry-premium", url: "" });
     }
 
     // Prohibited / blocked patterns — name cannot be registered.
@@ -682,6 +726,9 @@ export async function analyzeWhois(data: string): Promise<WhoisAnalyzeResult> {
         rawLow.includes("registration not available") ||
         rawLow.includes("not available for registration") ||
         rawLow.includes("not eligible for registration") ||
+        rawLow.includes("not open for registration") ||
+        rawLow.includes("no registrations are accepted") ||
+        rawLow.includes("does not accept registrations") ||
         rawLow.includes("prohibited string") ||
         rawLow.includes("registrar banned") ||
         rawLow.includes("registry banned") ||

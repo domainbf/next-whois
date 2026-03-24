@@ -1490,6 +1490,7 @@ function getDomainRegistrationStatus(
   label: string;
   color: string;
   dotColor: string;
+  isPremiumReserved: boolean;
 } {
   const isZh = locale.startsWith("zh");
 
@@ -1554,10 +1555,40 @@ function getDomainRegistrationStatus(
     rawContent.includes("this name is reserved") ||
     rawContent.includes("is a reserved name") ||
     rawContent.includes("domain is reserved") ||
+    rawContent.includes("this domain is reserved") ||
+    rawContent.includes("domain name is reserved") ||
     rawContent.includes("reserved by the registry") ||
     rawContent.includes("registry reserved") ||
     rawContent.includes("reserved-name") ||
+    rawContent.includes("reserved domain") ||
+    rawContent.includes("in the reserved list") ||
+    rawContent.includes("on the reserved list") ||
+    rawContent.includes("is in the reserved list") ||
+    rawContent.includes("is on the reserved list") ||
+    rawContent.includes("has been reserved") ||
+    rawContent.includes("name is reserved") ||
+    rawContent.includes("is reserved for") ||
+    rawContent.includes("is reserved by") ||
+    rawContent.includes("reserved for registry") ||
+    rawContent.includes("reserved for the registry") ||
+    rawContent.includes("registry has reserved") ||
+    rawContent.includes("registry hold") ||
     /(?:^|\n)\s*reserved\s*(?:\n|$)/.test(rawContent);
+
+  // Premium reserved — registry is holding this name for sale at a premium,
+  // or the WHOIS instructs the user to contact the registry to purchase it.
+  const rawHasPremiumReserved =
+    rawContent.includes("premium domain") ||
+    rawContent.includes("premium name") ||
+    rawContent.includes("premium price") ||
+    rawContent.includes("registry premium") ||
+    rawContent.includes("available at a premium") ||
+    rawContent.includes("this is a premium") ||
+    rawContent.includes("please contact the registry") ||
+    rawContent.includes("contact the registry to") ||
+    rawContent.includes("enquire about this domain") ||
+    rawContent.includes("inquire about this domain") ||
+    rawContent.includes("may be available for purchase");
 
   const rawHasProhibited =
     rawContent.includes("registration is prohibited") ||
@@ -1594,8 +1625,9 @@ function getDomainRegistrationStatus(
     type: RegistrationStatusType,
     color: string,
     dotColor: string,
+    isPremiumReserved = false,
   ) {
-    return { type, label: isZh ? STATUS_LABELS[type].zh : STATUS_LABELS[type].en, color, dotColor };
+    return { type, label: isZh ? STATUS_LABELS[type].zh : STATUS_LABELS[type].en, color, dotColor, isPremiumReserved };
   }
 
   if (isProhibited)
@@ -1607,10 +1639,18 @@ function getDomainRegistrationStatus(
     allStatusText.includes("reserved-delegated") ||
     allStatusText.includes("registryreserved") ||
     allStatusText.includes("registry-reserved") ||
+    allStatusText.includes("registry-premium") ||
     rawHasReserved;
 
+  // A "premium reserved" domain is held by the registry for sale — different
+  // from an "official use" reserved domain.  Both display as "reserved" but
+  // carry different descriptions in the info card.
+  const isPremiumReserved =
+    allStatusText.includes("registry-premium") ||
+    rawHasPremiumReserved;
+
   if (isReserved)
-    return makeStatus("reserved", "text-amber-600 border-amber-400/50 bg-amber-50 dark:bg-amber-950/20", "bg-amber-500");
+    return makeStatus("reserved", "text-amber-600 border-amber-400/50 bg-amber-50 dark:bg-amber-950/20", "bg-amber-500", isPremiumReserved);
 
   const isRedemption =
     allStatusText.includes("redemptionperiod") ||
@@ -1668,6 +1708,7 @@ function getDomainRegistrationStatus(
     label: isZh ? STATUS_LABELS.registered.zh : STATUS_LABELS.registered.en,
     color: "text-emerald-600 border-emerald-400/50 bg-emerald-50 dark:bg-emerald-950/20",
     dotColor: "bg-emerald-500",
+    isPremiumReserved: false,
   };
 }
 
@@ -3782,6 +3823,13 @@ export default function LookupPage({
                         const regStatus = getDomainRegistrationStatus(result, locale);
                         if (regStatus.type === "registered") return null;
                         const cnInfo = getCnReservedSldInfo(result.domain);
+                        const premiumCustomDesc =
+                          regStatus.type === "reserved" && regStatus.isPremiumReserved
+                            ? {
+                                zh: "该域名已被注册局列入高价值保留名单，目前正等待有缘人上门购买。如有意向，请直接联系该 TLD 注册局咨询报价与购买流程。",
+                                en: "This domain is held in the registry's reserved list as a high-value premium name. It may be available for purchase at a premium price — contact the registry directly to inquire about pricing and the acquisition process.",
+                              }
+                            : undefined;
                         return (
                           <DomainStatusInfoCard
                             type={regStatus.type}
@@ -3789,7 +3837,7 @@ export default function LookupPage({
                             customDesc={
                               cnInfo && regStatus.type === "reserved"
                                 ? { zh: cnInfo.descZh, en: cnInfo.descEn }
-                                : undefined
+                                : premiumCustomDesc
                             }
                           />
                         );
