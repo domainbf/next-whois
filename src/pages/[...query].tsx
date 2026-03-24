@@ -61,6 +61,7 @@ import {
   RiVipCrownLine,
   RiAlertLine,
   RiArrowRightSLine,
+  RiFlagLine,
 } from "@remixicon/react";
 import { getTopRegistrars, DomainPricing } from "@/lib/pricing/client";
 import { FeedbackDrawer } from "@/components/feedback-drawer";
@@ -102,6 +103,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import {
   Select,
@@ -2189,6 +2191,68 @@ function DomainReminderDialog({
   const [done, setDone] = React.useState(false);
   const [selectedThresholds, setSelectedThresholds] = React.useState<number[]>(DEFAULT_REMINDER_THRESHOLDS);
 
+  const [lcFeedbackOpen, setLcFeedbackOpen] = React.useState(false);
+  const [lcForm, setLcForm] = React.useState({ grace: "0", redemption: "0", pendingDelete: "0", sourceUrl: "", notes: "", email: "" });
+  const [lcSubmitting, setLcSubmitting] = React.useState(false);
+  const [lcDone, setLcDone] = React.useState(false);
+
+  React.useEffect(() => {
+    if (lcFeedbackOpen && lc) {
+      setLcForm({
+        grace: String(lc.cfg.grace),
+        redemption: String(lc.cfg.redemption),
+        pendingDelete: String(lc.cfg.pendingDelete),
+        sourceUrl: "",
+        notes: "",
+        email: userEmail || "",
+      });
+      setLcDone(false);
+    }
+  }, [lcFeedbackOpen, lc, userEmail]);
+
+  async function handleLcFeedbackSubmit() {
+    const sg = parseInt(lcForm.grace, 10);
+    const sr = parseInt(lcForm.redemption, 10);
+    const sp = parseInt(lcForm.pendingDelete, 10);
+    if (isNaN(sg) || isNaN(sr) || isNaN(sp) || sg < 0 || sr < 0 || sp < 0) {
+      toast.error(isZh ? "天数必须为非负整数" : "Days must be a non-negative integer");
+      return;
+    }
+    if (lcForm.email && !lcForm.email.includes("@")) {
+      toast.error(isZh ? "请输入有效邮箱" : "Please enter a valid email");
+      return;
+    }
+    setLcSubmitting(true);
+    try {
+      const tld = domain.split(".").pop()?.toLowerCase() ?? "";
+      const res = await fetch("/api/user/tld-lifecycle-feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tld,
+          current_grace: lc?.cfg.grace ?? null,
+          current_redemption: lc?.cfg.redemption ?? null,
+          current_pending_delete: lc?.cfg.pendingDelete ?? null,
+          suggested_grace: sg,
+          suggested_redemption: sr,
+          suggested_pending_delete: sp,
+          source_url: lcForm.sourceUrl || null,
+          notes: lcForm.notes || null,
+          submitter_email: lcForm.email || null,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "提交失败");
+      }
+      setLcDone(true);
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : (isZh ? "提交失败" : "Submission failed"));
+    } finally {
+      setLcSubmitting(false);
+    }
+  }
+
   function toggleThreshold(d: number) {
     setSelectedThresholds(prev =>
       prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d]
@@ -2283,7 +2347,7 @@ function DomainReminderDialog({
     (lc.cfg.pendingDelete > 0 || lc.cfg.redemption > 0 || lc.cfg.grace > 0) && { key: "dropped"  as const, always: true, label: isZh ? "域名可注册"  : "Available",    icon: <RiShoppingCartLine className="w-2.5 h-2.5" />,    activeCls: "bg-emerald-500/15 border-emerald-400/40 text-emerald-600 dark:text-emerald-400", inactiveCls: "bg-muted/20 border-border/30 text-muted-foreground/40 line-through" },
   ].filter(Boolean) as PhaseChip[] : [];
 
-  return (
+  return (<>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[420px] p-0 overflow-hidden gap-0">
 
@@ -2470,17 +2534,28 @@ function DomainReminderDialog({
                         <p className="text-[9px] font-bold text-muted-foreground/70 uppercase tracking-widest">
                           {isZh ? "生命周期时间表" : "Lifecycle timeline"}
                         </p>
-                        {/* Confidence badge */}
-                        <span className={cn(
-                          "inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[8.5px] font-bold uppercase tracking-wide border",
-                          lc.cfg.confidence === "high"
-                            ? "bg-emerald-500/10 border-emerald-400/20 text-emerald-600 dark:text-emerald-400"
-                            : "bg-yellow-500/10 border-yellow-400/20 text-yellow-600 dark:text-yellow-400"
-                        )}>
-                          {lc.cfg.confidence === "high"
-                            ? (isZh ? "✓ 高可信度" : "✓ Verified")
-                            : (isZh ? "~ 预估数据" : "~ Estimated")}
-                        </span>
+                        <div className="flex items-center gap-1.5">
+                          {/* Confidence badge */}
+                          <span className={cn(
+                            "inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[8.5px] font-bold uppercase tracking-wide border",
+                            lc.cfg.confidence === "high"
+                              ? "bg-emerald-500/10 border-emerald-400/20 text-emerald-600 dark:text-emerald-400"
+                              : "bg-yellow-500/10 border-yellow-400/20 text-yellow-600 dark:text-yellow-400"
+                          )}>
+                            {lc.cfg.confidence === "high"
+                              ? (isZh ? "✓ 高可信度" : "✓ Verified")
+                              : (isZh ? "~ 预估数据" : "~ Estimated")}
+                          </span>
+                          {/* Correction feedback button */}
+                          <button
+                            onClick={() => setLcFeedbackOpen(true)}
+                            title={isZh ? "纠正宽限期数据" : "Correct lifecycle data"}
+                            className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[8.5px] font-semibold border border-border/40 bg-muted/30 text-muted-foreground/60 hover:text-foreground hover:bg-muted/60 hover:border-border/60 transition-colors cursor-pointer"
+                          >
+                            <RiFlagLine className="w-2.5 h-2.5" />
+                            {isZh ? "纠错" : "Correct"}
+                          </button>
+                        </div>
                       </div>
                       <div className="space-y-2">
                         {([
@@ -2693,7 +2768,128 @@ function DomainReminderDialog({
         </div>
       </DialogContent>
     </Dialog>
-  );
+
+    {/* TLD Lifecycle Correction feedback dialog */}
+    <Dialog open={lcFeedbackOpen} onOpenChange={setLcFeedbackOpen}>
+      <DialogContent className="max-w-sm rounded-2xl gap-0 p-0 overflow-hidden">
+        <DialogHeader className="px-5 pt-5 pb-3 border-b border-border/40">
+          <DialogTitle className="text-base flex items-center gap-2">
+            <RiFlagLine className="w-4 h-4 text-amber-500" />
+            {isZh ? `纠正 .${tldUpper} 生命周期数据` : `Correct .${tldUpper} Lifecycle Data`}
+          </DialogTitle>
+          <p className="text-xs text-muted-foreground mt-1">
+            {isZh
+              ? "若实际注册局政策与显示数据不符，请填写正确天数并提交，管理员审核后将更新数据。"
+              : "If the registry policy differs from what's shown, enter the correct days and submit. Admin will review and update."}
+          </p>
+        </DialogHeader>
+
+        {lcDone ? (
+          <div className="px-5 py-8 text-center space-y-2">
+            <p className="text-2xl">✅</p>
+            <p className="text-sm font-semibold">
+              {isZh ? "感谢您的反馈！" : "Thanks for your feedback!"}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {isZh ? "管理员审核后将更新数据，届时页面会自动反映最新信息。" : "Admin will review and update the data accordingly."}
+            </p>
+            <Button variant="outline" size="sm" className="mt-3" onClick={() => setLcFeedbackOpen(false)}>
+              {isZh ? "关闭" : "Close"}
+            </Button>
+          </div>
+        ) : (
+          <div className="px-5 py-4 space-y-4">
+            <p className="text-[10px] text-muted-foreground/60 uppercase tracking-widest font-bold">
+              {isZh ? "建议天数（填 0 表示无该阶段）" : "Suggested Days (0 = phase does not exist)"}
+            </p>
+
+            <div className="grid grid-cols-3 gap-3">
+              {([
+                { key: "grace",        label: isZh ? "宽限期" : "Grace",      placeholder: "30" },
+                { key: "redemption",   label: isZh ? "赎回期" : "Redemption", placeholder: "30" },
+                { key: "pendingDelete",label: isZh ? "待删除" : "Pending Del", placeholder: "5"  },
+              ] as const).map(f => (
+                <div key={f.key} className="space-y-1">
+                  <label className="text-[10px] font-semibold text-muted-foreground/80">{f.label}</label>
+                  <Input
+                    type="number"
+                    min="0"
+                    max="365"
+                    value={lcForm[f.key]}
+                    onChange={e => setLcForm(prev => ({ ...prev, [f.key]: e.target.value }))}
+                    placeholder={f.placeholder}
+                    className="h-9 text-sm font-mono text-center"
+                  />
+                  {lc && (
+                    <p className="text-[9px] text-muted-foreground/50 text-center font-mono">
+                      {isZh ? "当前" : "now"}: {f.key === "grace" ? lc.cfg.grace : f.key === "redemption" ? lc.cfg.redemption : lc.cfg.pendingDelete}d
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[10px] font-semibold text-muted-foreground/80">
+                {isZh ? "来源链接（可选）" : "Source URL (optional)"}
+              </label>
+              <Input
+                type="url"
+                value={lcForm.sourceUrl}
+                onChange={e => setLcForm(prev => ({ ...prev, sourceUrl: e.target.value }))}
+                placeholder="https://registry.example/policy"
+                className="h-9 text-xs font-mono"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[10px] font-semibold text-muted-foreground/80">
+                {isZh ? "备注（可选）" : "Notes (optional)"}
+              </label>
+              <Input
+                type="text"
+                value={lcForm.notes}
+                onChange={e => setLcForm(prev => ({ ...prev, notes: e.target.value }))}
+                placeholder={isZh ? "如：官网政策更新日期 2025-01-01" : "e.g. Registry policy updated 2025-01-01"}
+                className="h-9 text-xs"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[10px] font-semibold text-muted-foreground/80">
+                {isZh ? "联系邮箱（可选，用于告知审核结果）" : "Contact email (optional)"}
+              </label>
+              <Input
+                type="email"
+                value={lcForm.email}
+                onChange={e => setLcForm(prev => ({ ...prev, email: e.target.value }))}
+                placeholder="your@email.com"
+                className="h-9 text-xs font-mono"
+              />
+            </div>
+          </div>
+        )}
+
+        {!lcDone && (
+          <DialogFooter className="px-5 pb-5 pt-0">
+            <Button variant="ghost" size="sm" onClick={() => setLcFeedbackOpen(false)} className="flex-1">
+              {isZh ? "取消" : "Cancel"}
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleLcFeedbackSubmit}
+              disabled={lcSubmitting}
+              className="flex-1 bg-amber-500 hover:bg-amber-600 text-white"
+            >
+              {lcSubmitting
+                ? <><RiLoader4Line className="w-3.5 h-3.5 animate-spin mr-1" />{isZh ? "提交中…" : "Submitting…"}</>
+                : <><RiFlagLine className="w-3.5 h-3.5 mr-1" />{isZh ? "提交纠错" : "Submit Correction"}</>}
+            </Button>
+          </DialogFooter>
+        )}
+      </DialogContent>
+    </Dialog>
+  </>);
 }
 
 function RegistrarIcon({ faviconDomain, name }: { faviconDomain: string | null; name: string }) {
