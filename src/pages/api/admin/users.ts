@@ -32,8 +32,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           u.id, u.email, u.name, u.created_at, u.updated_at,
           u.disabled, u.admin_notes, u.subscription_access, u.email_verified,
           (SELECT COUNT(*) FROM search_history sh WHERE sh.user_id = u.id)::int AS search_count,
-          (SELECT COUNT(*) FROM stamps s WHERE s.user_id = u.id)::int AS stamp_count,
-          (SELECT COUNT(*) FROM reminders r WHERE r.user_id = u.id AND r.active = true)::int AS reminder_count
+          (SELECT COUNT(*) FROM stamps s WHERE s.email = u.email)::int AS stamp_count,
+          (SELECT COUNT(*) FROM reminders r WHERE r.email = u.email AND r.active = true)::int AS reminder_count
         FROM users u${where}
         ORDER BY u.created_at DESC
         LIMIT $${params.length + 1} OFFSET $${params.length + 2}
@@ -107,8 +107,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         `SELECT id, email, name, created_at, updated_at, disabled, admin_notes,
                 subscription_access, email_verified,
                 (SELECT COUNT(*) FROM search_history sh WHERE sh.user_id = u.id)::int AS search_count,
-                (SELECT COUNT(*) FROM stamps s WHERE s.user_id = u.id)::int AS stamp_count,
-                (SELECT COUNT(*) FROM reminders r WHERE r.user_id = u.id AND r.active = true)::int AS reminder_count
+                (SELECT COUNT(*) FROM stamps s WHERE s.email = u.email)::int AS stamp_count,
+                (SELECT COUNT(*) FROM reminders r WHERE r.email = u.email AND r.active = true)::int AS reminder_count
          FROM users u WHERE id = $1`,
         [id]
       );
