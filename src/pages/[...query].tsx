@@ -3311,49 +3311,110 @@ export default function LookupPage({
     hero: string;       shimmer: string;
     badge: string;      btn: string;
     cardBg: string;     cardBorder: string; cardText: string;
+    layout?: "default" | "celebrate" | "neon" | "gradient" | "split";
+    accent?: string;    accentText?: string;
   };
   const CARD_THEMES: Record<string, CardThemeDef> = {
+    /* ── Existing 6 ── */
     app: {
-      hero:       "bg-gradient-to-br from-zinc-700 to-zinc-900",
-      shimmer:    "text-shimmer",           // dark text → visible on light card
-      badge:      "bg-white/15 text-white border border-white/25",
-      btn:        "bg-zinc-800 text-white hover:bg-zinc-700",
-      cardBg:     "bg-background",   cardBorder: "border-border/50",   cardText: "text-foreground",
+      hero: "bg-gradient-to-br from-zinc-700 to-zinc-900",
+      shimmer: "text-shimmer", badge: "bg-white/15 text-white border border-white/25",
+      btn: "bg-zinc-800 text-white hover:bg-zinc-700",
+      cardBg: "bg-background", cardBorder: "border-border/50", cardText: "text-foreground",
     },
     glow: {
-      hero:       "bg-gradient-to-br from-teal-400 to-teal-600",
-      shimmer:    "text-shimmer",           // dark text → visible on light card
-      badge:      "bg-teal-500 text-white border-0",
-      btn:        "bg-teal-500 text-white hover:bg-teal-600",
-      cardBg:     "bg-background",   cardBorder: "border-teal-200/60 dark:border-teal-800/40",  cardText: "text-foreground",
+      hero: "bg-gradient-to-br from-teal-400 to-teal-600",
+      shimmer: "text-shimmer", badge: "bg-teal-500 text-white border-0",
+      btn: "bg-teal-500 text-white hover:bg-teal-600",
+      cardBg: "bg-background", cardBorder: "border-teal-200/60 dark:border-teal-800/40", cardText: "text-foreground",
     },
     midnight: {
-      hero:       "bg-gradient-to-br from-slate-700 via-blue-900 to-slate-900",
-      shimmer:    "text-shimmer-white",     // white text → visible on dark card
-      badge:      "bg-blue-500 text-white border-0",
-      btn:        "bg-blue-600 text-white hover:bg-blue-700",
-      cardBg:     "bg-slate-900",    cardBorder: "border-slate-700",   cardText: "text-white",
+      hero: "bg-gradient-to-br from-slate-700 via-blue-900 to-slate-900",
+      shimmer: "text-shimmer-white", badge: "bg-blue-500 text-white border-0",
+      btn: "bg-blue-600 text-white hover:bg-blue-700",
+      cardBg: "bg-slate-900", cardBorder: "border-slate-700", cardText: "text-white",
     },
     aurora: {
-      hero:       "bg-gradient-to-br from-violet-500 via-fuchsia-500 to-pink-400",
-      shimmer:    "text-shimmer",           // dark text → visible on light card
-      badge:      "bg-fuchsia-500 text-white border-0",
-      btn:        "bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white",
-      cardBg:     "bg-background",   cardBorder: "border-violet-200/60 dark:border-violet-800/40", cardText: "text-foreground",
+      hero: "bg-gradient-to-br from-violet-500 via-fuchsia-500 to-pink-400",
+      shimmer: "text-shimmer", badge: "bg-fuchsia-500 text-white border-0",
+      btn: "bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white",
+      cardBg: "bg-background", cardBorder: "border-violet-200/60 dark:border-violet-800/40", cardText: "text-foreground",
     },
     solar: {
-      hero:       "bg-gradient-to-br from-amber-400 to-orange-600",
-      shimmer:    "text-shimmer",           // dark text → visible on light card
-      badge:      "bg-orange-500 text-white border-0",
-      btn:        "bg-orange-500 text-white hover:bg-orange-600",
-      cardBg:     "bg-background",   cardBorder: "border-amber-200/60 dark:border-amber-800/40",  cardText: "text-foreground",
+      hero: "bg-gradient-to-br from-amber-400 to-orange-600",
+      shimmer: "text-shimmer", badge: "bg-orange-500 text-white border-0",
+      btn: "bg-orange-500 text-white hover:bg-orange-600",
+      cardBg: "bg-background", cardBorder: "border-amber-200/60 dark:border-amber-800/40", cardText: "text-foreground",
     },
     ink: {
-      hero:       "bg-gradient-to-br from-zinc-800 via-zinc-900 to-black",
-      shimmer:    "text-shimmer-white",     // white text → visible on dark card
-      badge:      "bg-zinc-600 text-white border-0",
-      btn:        "bg-zinc-700 text-white hover:bg-zinc-600",
-      cardBg:     "bg-zinc-950",     cardBorder: "border-zinc-800",    cardText: "text-white",
+      hero: "bg-gradient-to-br from-zinc-800 via-zinc-900 to-black",
+      shimmer: "text-shimmer-white", badge: "bg-zinc-600 text-white border-0",
+      btn: "bg-zinc-700 text-white hover:bg-zinc-600",
+      cardBg: "bg-zinc-950", cardBorder: "border-zinc-800", cardText: "text-white",
+    },
+    /* ── New colour themes (same default layout) ── */
+    rose: {
+      hero: "bg-gradient-to-br from-pink-400 via-rose-500 to-red-400",
+      shimmer: "text-shimmer", badge: "bg-white/20 text-white border border-white/30",
+      btn: "bg-rose-500 text-white hover:bg-rose-600",
+      cardBg: "bg-background", cardBorder: "border-rose-200/60 dark:border-rose-800/40", cardText: "text-foreground",
+    },
+    forest: {
+      hero: "bg-gradient-to-br from-emerald-400 via-green-500 to-teal-600",
+      shimmer: "text-shimmer", badge: "bg-white/20 text-white border border-white/30",
+      btn: "bg-emerald-600 text-white hover:bg-emerald-700",
+      cardBg: "bg-background", cardBorder: "border-emerald-200/60 dark:border-emerald-800/40", cardText: "text-foreground",
+    },
+    ocean: {
+      hero: "bg-gradient-to-br from-cyan-400 via-blue-500 to-indigo-700",
+      shimmer: "text-shimmer-white", badge: "bg-cyan-400 text-slate-900 border-0",
+      btn: "bg-cyan-500 text-white hover:bg-cyan-600",
+      cardBg: "bg-slate-950", cardBorder: "border-slate-700", cardText: "text-white",
+    },
+    gold: {
+      hero: "bg-gradient-to-br from-yellow-300 via-amber-400 to-orange-400",
+      shimmer: "text-shimmer", badge: "bg-amber-900/70 text-amber-100 border-0",
+      btn: "bg-amber-500 text-white hover:bg-amber-600",
+      cardBg: "bg-background", cardBorder: "border-amber-300/60 dark:border-amber-700/40", cardText: "text-foreground",
+    },
+    crimson: {
+      hero: "bg-gradient-to-br from-red-500 via-rose-600 to-red-800",
+      shimmer: "text-shimmer-white", badge: "bg-white/20 text-white border border-white/30",
+      btn: "bg-red-600 text-white hover:bg-red-700",
+      cardBg: "bg-background", cardBorder: "border-red-200/60 dark:border-red-800/40", cardText: "text-foreground",
+    },
+    /* ── Special layouts ── */
+    celebrate: {
+      layout: "celebrate",
+      hero: "bg-gradient-to-b from-sky-400 to-blue-600",
+      shimmer: "text-shimmer-white", badge: "bg-white text-blue-700 border-0",
+      btn: "bg-indigo-600 text-white hover:bg-indigo-700",
+      cardBg: "bg-white", cardBorder: "border-blue-100", cardText: "text-gray-900",
+      accent: "bg-indigo-600", accentText: "text-white",
+    },
+    neon: {
+      layout: "neon",
+      hero: "bg-slate-950",
+      shimmer: "text-shimmer-white", badge: "bg-emerald-400 text-slate-900 border-0",
+      btn: "bg-emerald-400 text-slate-900 hover:bg-emerald-300 font-bold",
+      cardBg: "bg-slate-900", cardBorder: "border-slate-700", cardText: "text-white",
+      accent: "text-emerald-400", accentText: "text-emerald-400",
+    },
+    gradient: {
+      layout: "gradient",
+      hero: "bg-gradient-to-br from-sky-200 via-rose-200 to-amber-200",
+      shimmer: "text-shimmer", badge: "bg-black/10 text-gray-800 border border-black/15",
+      btn: "bg-gray-900 text-white hover:bg-gray-800",
+      cardBg: "bg-transparent", cardBorder: "border-0", cardText: "text-gray-900",
+      accent: "bg-gray-900", accentText: "text-white",
+    },
+    split: {
+      layout: "split",
+      hero: "bg-gradient-to-b from-violet-600 to-violet-800",
+      shimmer: "text-shimmer", badge: "bg-violet-500 text-white border-0",
+      btn: "bg-violet-600 text-white hover:bg-violet-700",
+      cardBg: "bg-background", cardBorder: "border-border/50", cardText: "text-foreground",
+      accent: "bg-violet-600", accentText: "text-white",
     },
   };
 
@@ -4386,29 +4447,213 @@ export default function LookupPage({
                             if (stamp.link) {
                               try { linkHostname = new URL(stamp.link).hostname; } catch { linkHostname = stamp.link; }
                             }
+
+                            const CloseBtn = ({ cls }: { cls?: string }) => (
+                              <button onClick={() => setStampDetailOpen(false)}
+                                className={cn("absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-xl backdrop-blur-sm border transition-all active:scale-95 z-10", cls ?? "bg-black/25 hover:bg-black/40 border-white/20 text-white")}
+                                aria-label="Close">
+                                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                                  <path d="M1 1l10 10M11 1L1 11" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+                                </svg>
+                              </button>
+                            );
+
+                            const CtaLink = ({ btnCls }: { btnCls?: string }) => stamp.link ? (
+                              <a href={stamp.link} target="_blank" rel="noopener noreferrer"
+                                className={cn("flex items-center justify-between w-full px-4 py-3 rounded-2xl shadow-md transition-all hover:opacity-90 active:scale-[0.98]", btnCls ?? theme.btn)}>
+                                <div className="flex flex-col items-start gap-0.5">
+                                  <span className="text-[14px] font-bold leading-none">{isChinese ? "访问主页" : "Visit Profile"}</span>
+                                  {linkHostname && <span className="text-[10px] font-normal opacity-55 leading-none">{linkHostname}</span>}
+                                </div>
+                                <RiArrowRightSLine className="w-5 h-5 opacity-70 shrink-0" />
+                              </a>
+                            ) : (
+                              <p className="text-[11px] text-muted-foreground/40 text-center font-mono py-1">
+                                {isChinese ? "该认领未设置主页链接" : "No profile link set"}
+                              </p>
+                            );
+
+                            /* ════════════════════════════════════════
+                               Layout: celebrate (IMG_9083 inspired)
+                               Sky-blue confetti hero → circle badge →
+                               white card → big CTA button
+                            ════════════════════════════════════════ */
+                            if (theme.layout === "celebrate") return (
+                              <div key={stamp.id} className="relative overflow-hidden">
+                                {/* Hero with confetti dots */}
+                                <div className={cn("relative px-6 pt-10 pb-16 text-center overflow-hidden", theme.hero)}>
+                                  {/* Confetti particles */}
+                                  {[
+                                    { top:"12%",left:"8%",  w:8,  h:3,  r:2,  col:"bg-yellow-300",  rot:"-30deg" },
+                                    { top:"18%",left:"20%", w:5,  h:5,  r:99, col:"bg-pink-400",     rot:"0" },
+                                    { top:"8%", left:"35%", w:10, h:3,  r:2,  col:"bg-white/70",     rot:"15deg" },
+                                    { top:"20%",left:"55%", w:6,  h:6,  r:99, col:"bg-yellow-400",   rot:"0" },
+                                    { top:"10%",left:"72%", w:9,  h:3,  r:2,  col:"bg-pink-300",     rot:"-20deg" },
+                                    { top:"25%",left:"85%", w:5,  h:5,  r:99, col:"bg-white/60",     rot:"0" },
+                                    { top:"35%",left:"5%",  w:7,  h:3,  r:2,  col:"bg-orange-300",   rot:"25deg" },
+                                    { top:"40%",left:"90%", w:8,  h:3,  r:2,  col:"bg-lime-300",     rot:"-10deg" },
+                                    { top:"5%", left:"92%", w:6,  h:6,  r:99, col:"bg-red-300",      rot:"0" },
+                                    { top:"30%",left:"45%", w:4,  h:4,  r:99, col:"bg-white/50",     rot:"0" },
+                                  ].map((p, i) => (
+                                    <div key={i} className={cn("absolute pointer-events-none", p.col)}
+                                      style={{ top: p.top, left: p.left, width: p.w, height: p.h, borderRadius: p.r, transform: `rotate(${p.rot})` }} />
+                                  ))}
+                                  <CloseBtn />
+                                  {/* Circle icon badge */}
+                                  <div className="relative inline-flex items-center justify-center">
+                                    <div className="absolute w-24 h-24 rounded-full bg-white/20 blur-xl" />
+                                    <div className="relative w-20 h-20 rounded-full bg-indigo-600 border-4 border-white shadow-2xl flex items-center justify-center">
+                                      <StampIcon className="w-9 h-9 text-white drop-shadow" />
+                                    </div>
+                                  </div>
+                                </div>
+                                {/* White card body */}
+                                <div className="bg-white px-6 pt-6 pb-5 text-center space-y-1.5">
+                                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold bg-sky-100 text-sky-700 mb-1">
+                                    <RiShieldCheckLine className="w-3 h-3" />
+                                    {isChinese ? lbl.zh : lbl.en}
+                                  </div>
+                                  <h2 className="text-2xl font-black tracking-tight text-gray-900">{stamp.tagName}</h2>
+                                  <p className="text-[11px] text-gray-400 font-mono tracking-widest uppercase">{result.domain || target}</p>
+                                  {stamp.description && <p className="text-[13px] text-gray-600 leading-relaxed pt-1">{stamp.description}</p>}
+                                </div>
+                                <div className="bg-white px-5 pb-6 pt-2 space-y-2.5">
+                                  <CtaLink btnCls={cn("rounded-[14px] py-3.5 text-[15px] font-bold shadow-lg shadow-indigo-500/30 justify-center gap-2", theme.btn)} />
+                                  <button onClick={() => setStampDetailOpen(false)} className="w-full text-[13px] text-gray-400 hover:text-gray-600 font-medium py-1 transition-colors">
+                                    {isChinese ? "关闭" : "Cancel"}
+                                  </button>
+                                </div>
+                              </div>
+                            );
+
+                            /* ════════════════════════════════════════
+                               Layout: neon (IMG_9085/9091 inspired)
+                               Full dark card, avatar square, large
+                               brand name, neon accent, minimal CTA
+                            ════════════════════════════════════════ */
+                            if (theme.layout === "neon") return (
+                              <div key={stamp.id} className="bg-slate-950 relative">
+                                <CloseBtn cls="bg-slate-800/80 hover:bg-slate-700 border-slate-700 text-slate-300" />
+                                {/* Avatar block */}
+                                <div className="px-5 pt-12 pb-4 flex gap-4 items-start">
+                                  <div className="w-16 h-16 rounded-2xl bg-slate-800 border border-slate-700 flex items-center justify-center shrink-0 shadow-lg">
+                                    <StampIcon className="w-8 h-8 text-emerald-400" />
+                                  </div>
+                                  <div className="flex-1 min-w-0 pt-1">
+                                    <span className={cn("inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full mb-2", theme.badge)}>
+                                      <RiShieldCheckLine className="w-2.5 h-2.5" />
+                                      {isChinese ? lbl.zh : lbl.en}
+                                    </span>
+                                    <h2 className="text-2xl font-black text-white leading-tight tracking-tight truncate">{stamp.tagName}</h2>
+                                    <p className="text-[10px] text-emerald-400/70 font-mono tracking-widest mt-0.5">{result.domain || target}</p>
+                                  </div>
+                                </div>
+                                {/* Divider + description */}
+                                <div className="mx-5 border-t border-slate-800 pt-4 pb-4">
+                                  {stamp.description
+                                    ? <p className="text-[13px] text-slate-400 leading-relaxed">{stamp.description}</p>
+                                    : <p className="text-[12px] text-slate-600 font-mono">{isChinese ? "暂无简介" : "No description provided"}</p>
+                                  }
+                                </div>
+                                {/* CTA */}
+                                <div className="px-5 pb-6">
+                                  <CtaLink btnCls={cn("rounded-2xl shadow-lg shadow-emerald-400/20", theme.btn)} />
+                                </div>
+                              </div>
+                            );
+
+                            /* ════════════════════════════════════════
+                               Layout: gradient (IMG_9093 inspired)
+                               Full-bleed gradient bg, pill badge,
+                               large title, bottom CTA — Apple-style
+                            ════════════════════════════════════════ */
+                            if (theme.layout === "gradient") return (
+                              <div key={stamp.id} className={cn("relative px-6 pt-5 pb-8 min-h-[340px] flex flex-col", theme.hero)}>
+                                <button onClick={() => setStampDetailOpen(false)}
+                                  className="absolute top-4 left-4 w-8 h-8 flex items-center justify-center rounded-full bg-black/10 hover:bg-black/20 text-gray-700 transition-all active:scale-95 z-10"
+                                  aria-label="Close">
+                                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                                    <path d="M1 1l10 10M11 1L1 11" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+                                  </svg>
+                                </button>
+                                {/* Content */}
+                                <div className="flex-1 flex flex-col items-center justify-center text-center pt-6">
+                                  {/* Badge pill */}
+                                  <span className={cn("inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[11px] font-bold border mb-5 shadow-sm", theme.badge)}>
+                                    <RiShieldCheckLine className="w-3 h-3" />
+                                    {isChinese ? lbl.zh : lbl.en}
+                                  </span>
+                                  {/* Icon */}
+                                  <div className="w-16 h-16 rounded-3xl bg-black/10 backdrop-blur-sm border border-black/10 flex items-center justify-center mb-4 shadow-lg">
+                                    <StampIcon className="w-8 h-8 text-gray-800" />
+                                  </div>
+                                  {/* Title */}
+                                  <h2 className="text-[26px] font-black text-gray-900 leading-tight tracking-tight mb-1">{stamp.tagName}</h2>
+                                  <p className="text-[11px] text-gray-500 font-mono tracking-[0.18em] uppercase mb-3">{result.domain || target}</p>
+                                  {stamp.description && <p className="text-[13px] text-gray-700 leading-relaxed max-w-[260px]">{stamp.description}</p>}
+                                </div>
+                                {/* Bottom CTA */}
+                                <div className="mt-5 space-y-2">
+                                  <CtaLink btnCls="bg-gray-900 text-white rounded-2xl hover:bg-gray-800 shadow-lg" />
+                                  <p className="text-[10.5px] text-gray-500 text-center font-mono">{result.domain || target}</p>
+                                </div>
+                              </div>
+                            );
+
+                            /* ════════════════════════════════════════
+                               Layout: split (IMG_9087 inspired)
+                               Left coloured panel (icon + domain) /
+                               Right white panel (name + desc + CTA)
+                            ════════════════════════════════════════ */
+                            if (theme.layout === "split") return (
+                              <div key={stamp.id} className="relative flex min-h-[300px]">
+                                {/* Left panel */}
+                                <div className={cn("relative flex flex-col items-center justify-center gap-3 px-4 py-8 w-[42%] shrink-0", theme.hero)}>
+                                  <CloseBtn cls="bg-black/20 hover:bg-black/35 border-white/20 text-white" />
+                                  <div className="w-16 h-16 rounded-[20px] bg-white/20 backdrop-blur-sm border border-white/30 flex items-center justify-center shadow-xl mt-4">
+                                    <StampIcon className="w-8 h-8 text-white" />
+                                  </div>
+                                  <div className="text-center">
+                                    <p className="text-white/90 text-[9px] font-mono tracking-[0.22em] uppercase">{result.domain || target}</p>
+                                  </div>
+                                  {/* Decorative circles */}
+                                  <div className="absolute bottom-[-30px] left-[-30px] w-24 h-24 rounded-full bg-white/10 pointer-events-none" />
+                                  <div className="absolute top-[-20px] right-[-20px] w-16 h-16 rounded-full bg-white/8 pointer-events-none" />
+                                </div>
+                                {/* Right panel */}
+                                <div className={cn("flex-1 flex flex-col justify-between px-4 py-5", theme.cardBg)}>
+                                  <div className="space-y-2">
+                                    <span className={cn("inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full", theme.badge)}>
+                                      <RiShieldCheckLine className="w-2.5 h-2.5" />
+                                      {isChinese ? lbl.zh : lbl.en}
+                                    </span>
+                                    <h2 className={cn("text-xl font-black leading-tight tracking-tight", theme.cardText)}>{stamp.tagName}</h2>
+                                    {stamp.description && (
+                                      <p className="text-[12px] text-muted-foreground leading-relaxed">{stamp.description}</p>
+                                    )}
+                                  </div>
+                                  <div className="pt-3">
+                                    <CtaLink />
+                                    <button onClick={() => setStampDetailOpen(false)} className="w-full text-center text-[11px] text-muted-foreground/50 hover:text-muted-foreground py-2 mt-1 transition-colors">
+                                      {isChinese ? "关闭" : "Close"}
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+
+                            /* ════════════════════════════════════════
+                               Layout: default (existing style)
+                            ════════════════════════════════════════ */
                             return (
                               <div key={stamp.id}>
                                 {/* ── Gradient hero strip ── */}
                                 <div className={cn("relative px-5 pt-7 pb-9 text-center select-none overflow-hidden", theme.hero)}>
-                                  {/* dot grid */}
                                   <div className="absolute inset-0 opacity-[0.06]"
                                     style={{ backgroundImage: "radial-gradient(circle, white 1px, transparent 1px)", backgroundSize: "18px 18px" }} />
-                                  {/* bottom fade */}
                                   <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-black/30 to-transparent" />
-
-                                  {/* custom glass close button — always white on gradient, always visible */}
-                                  <button
-                                    onClick={() => setStampDetailOpen(false)}
-                                    className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-xl bg-black/25 hover:bg-black/40 backdrop-blur-sm border border-white/20 text-white transition-all active:scale-95 z-10"
-                                    aria-label="Close"
-                                  >
-                                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                                      <path d="M1 1l10 10M11 1L1 11" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
-                                    </svg>
-                                  </button>
-
+                                  <CloseBtn />
                                   <div className="relative flex flex-col items-center gap-2.5">
-                                    {/* icon with glow ring */}
                                     <div className="relative flex items-center justify-center">
                                       <div className="absolute w-[72px] h-[72px] rounded-3xl bg-white/10 blur-md" />
                                       <div className="relative w-[58px] h-[58px] rounded-[18px] bg-white/20 backdrop-blur-sm border border-white/30 flex items-center justify-center shadow-xl">
@@ -4420,60 +4665,20 @@ export default function LookupPage({
                                     </p>
                                   </div>
                                 </div>
-
-                                {/* ── Floating name card (info only) ── */}
-                                <div className={cn(
-                                  "relative -mt-6 mx-3.5 rounded-[18px] border shadow-xl px-4 pt-3.5 pb-3.5",
-                                  theme.cardBg, theme.cardBorder,
-                                )}>
+                                {/* ── Floating name card ── */}
+                                <div className={cn("relative -mt-6 mx-3.5 rounded-[18px] border shadow-xl px-4 pt-3.5 pb-3.5", theme.cardBg, theme.cardBorder)}>
                                   <div className="flex items-start justify-between gap-2">
-                                    <span className={cn("text-xl font-black leading-tight tracking-tight", theme.shimmer)}>
-                                      {stamp.tagName}
-                                    </span>
-                                    <span className={cn(
-                                      "inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-full shrink-0 whitespace-nowrap mt-0.5",
-                                      theme.badge,
-                                    )}>
+                                    <span className={cn("text-xl font-black leading-tight tracking-tight", theme.shimmer)}>{stamp.tagName}</span>
+                                    <span className={cn("inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-full shrink-0 whitespace-nowrap mt-0.5", theme.badge)}>
                                       <RiShieldCheckLine className="w-2.5 h-2.5" />
                                       {isChinese ? lbl.zh : lbl.en}
                                     </span>
                                   </div>
-                                  {stamp.description && (
-                                    <p className="text-[12.5px] text-muted-foreground leading-relaxed mt-2">
-                                      {stamp.description}
-                                    </p>
-                                  )}
+                                  {stamp.description && <p className="text-[12.5px] text-muted-foreground leading-relaxed mt-2">{stamp.description}</p>}
                                 </div>
-
-                                {/* ── Primary CTA — outside the card, clear hierarchy ── */}
+                                {/* ── CTA ── */}
                                 <div className="px-3.5 pt-3 pb-5">
-                                  {stamp.link ? (
-                                    <a
-                                      href={stamp.link}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className={cn(
-                                        "flex items-center justify-between w-full px-4 py-3 rounded-2xl shadow-md transition-all hover:opacity-90 active:scale-[0.98]",
-                                        theme.btn,
-                                      )}
-                                    >
-                                      <div className="flex flex-col items-start gap-0.5">
-                                        <span className="text-[14px] font-bold leading-none">
-                                          {isChinese ? "访问主页" : "Visit Profile"}
-                                        </span>
-                                        {linkHostname && (
-                                          <span className="text-[10px] font-normal opacity-55 leading-none">
-                                            {linkHostname}
-                                          </span>
-                                        )}
-                                      </div>
-                                      <RiArrowRightSLine className="w-5 h-5 opacity-70 shrink-0" />
-                                    </a>
-                                  ) : (
-                                    <p className="text-[11px] text-muted-foreground/40 text-center font-mono py-1">
-                                      {isChinese ? "该认领未设置主页链接" : "No profile link set"}
-                                    </p>
-                                  )}
+                                  <CtaLink />
                                 </div>
                               </div>
                             );

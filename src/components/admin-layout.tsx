@@ -20,7 +20,7 @@ import {
   RiLinksLine, RiTimeLine, RiHistoryLine, RiImageLine, RiFlagLine,
   RiMenuLine, RiCloseLine,
   RiBankCardLine, RiBankCardFill, RiPriceTag3Line,
-  RiMailSendLine,
+  RiMailSendLine, RiLayoutGridLine,
 } from "@remixicon/react";
 
 type NavItem = {
@@ -37,7 +37,8 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
     items: [
       { href: "/admin",       label: "概览", icon: RiDashboardLine,   activeIcon: RiDashboardFill,   exact: true },
       { href: "/admin/users", label: "用户", icon: RiUserLine,        activeIcon: RiUserFill },
-      { href: "/admin/stamps",label: "品牌", icon: RiShieldCheckLine, activeIcon: RiShieldCheckFill },
+      { href: "/admin/stamps",       label: "品牌", icon: RiShieldCheckLine,  activeIcon: RiShieldCheckFill },
+      { href: "/admin/stamp-styles", label: "样式", icon: RiLayoutGridLine,    activeIcon: RiLayoutGridLine },
     ],
   },
   {

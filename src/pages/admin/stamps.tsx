@@ -39,13 +39,24 @@ const TAG_STYLES: { value: string; label: string; color: string }[] = [
   { value: "premium",  label: "高级",    color: "bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white" },
 ];
 
-const CARD_THEMES: { value: string; label: string; bg: string }[] = [
-  { value: "app",      label: "经典 (App)",      bg: "from-zinc-700 to-zinc-900" },
-  { value: "glow",     label: "光晕 (Glow)",     bg: "from-teal-400 to-teal-600" },
-  { value: "midnight", label: "深夜 (Midnight)", bg: "from-slate-700 via-blue-900 to-slate-900" },
-  { value: "aurora",   label: "极光 (Aurora)",   bg: "from-violet-500 via-fuchsia-500 to-pink-400" },
-  { value: "solar",    label: "阳光 (Solar)",    bg: "from-amber-400 to-orange-600" },
-  { value: "ink",      label: "墨水 (Ink)",      bg: "from-zinc-800 via-zinc-900 to-black" },
+const CARD_THEMES: { value: string; label: string; bg: string; special?: string }[] = [
+  /* ── 标准配色 ── */
+  { value: "app",       label: "经典",      bg: "from-zinc-700 to-zinc-900" },
+  { value: "glow",      label: "光晕",      bg: "from-teal-400 to-teal-600" },
+  { value: "midnight",  label: "深夜",      bg: "from-slate-700 via-blue-900 to-slate-900" },
+  { value: "aurora",    label: "极光",      bg: "from-violet-500 via-fuchsia-500 to-pink-400" },
+  { value: "solar",     label: "阳光",      bg: "from-amber-400 to-orange-600" },
+  { value: "ink",       label: "墨水",      bg: "from-zinc-800 via-zinc-900 to-black" },
+  { value: "rose",      label: "玫瑰",      bg: "from-pink-400 via-rose-500 to-red-400" },
+  { value: "forest",    label: "森林",      bg: "from-emerald-400 via-green-500 to-teal-600" },
+  { value: "ocean",     label: "深海",      bg: "from-cyan-400 via-blue-500 to-indigo-700" },
+  { value: "gold",      label: "金色",      bg: "from-yellow-300 via-amber-400 to-orange-400" },
+  { value: "crimson",   label: "烈焰",      bg: "from-red-500 via-rose-600 to-red-800" },
+  /* ── 特殊排版 ── */
+  { value: "celebrate", label: "庆典",      bg: "from-sky-400 to-blue-600",                  special: "🎊" },
+  { value: "neon",      label: "霓虹",      bg: "from-slate-800 to-slate-950",               special: "⚡" },
+  { value: "gradient",  label: "渐变流光",  bg: "from-sky-200 via-rose-200 to-amber-200",    special: "✨" },
+  { value: "split",     label: "分栏",      bg: "from-violet-600 to-violet-800",             special: "⊟" },
 ];
 
 function styleColor(style: string) {
@@ -64,7 +75,10 @@ function ThemePreview({ theme }: { theme: string }) {
   const t = CARD_THEMES.find(c => c.value === theme);
   if (!t) return null;
   return (
-    <span className={cn("inline-block w-5 h-5 rounded-md bg-gradient-to-br shrink-0 border border-white/10", t.bg)} />
+    <span className="inline-flex items-center gap-1">
+      <span className={cn("inline-block w-5 h-5 rounded-md bg-gradient-to-br shrink-0 border border-white/10", t.bg)} />
+      {t.special && <span className="text-[10px]">{t.special}</span>}
+    </span>
   );
 }
 
@@ -162,22 +176,37 @@ function StampFormFields({
       </div>
 
       <div className="space-y-1.5">
-        <Label className="text-sm font-medium">卡片主题</Label>
-        <div className="grid grid-cols-3 gap-2">
-          {CARD_THEMES.map(c => (
-            <button
-              key={c.value}
-              type="button"
-              onClick={() => setCardTheme(c.value)}
+        <Label className="text-sm font-medium flex items-center justify-between">
+          <span>弹窗样式</span>
+          <span className="text-[10px] font-normal text-muted-foreground/60">✨= 特殊排版</span>
+        </Label>
+        {/* Standard themes */}
+        <p className="text-[10px] text-muted-foreground/50 uppercase tracking-widest font-semibold">标准配色</p>
+        <div className="grid grid-cols-4 gap-1.5 mb-2">
+          {CARD_THEMES.filter(c => !c.special).map(c => (
+            <button key={c.value} type="button" onClick={() => setCardTheme(c.value)}
               className={cn(
-                "flex items-center gap-2 px-2.5 py-2 rounded-xl border-2 transition-all text-left",
-                cardTheme === c.value
-                  ? "border-primary bg-primary/5"
-                  : "border-border hover:border-border/80"
-              )}
-            >
-              <span className={cn("w-4 h-4 rounded shrink-0 bg-gradient-to-br", c.bg)} />
-              <span className="text-xs font-medium leading-tight">{c.label.split(" ")[0]}</span>
+                "flex flex-col items-center gap-1 px-1.5 py-2 rounded-xl border-2 transition-all text-center",
+                cardTheme === c.value ? "border-primary bg-primary/5" : "border-border hover:border-border/80"
+              )}>
+              <span className={cn("w-8 h-8 rounded-lg bg-gradient-to-br shadow-sm", c.bg)} />
+              <span className="text-[9px] font-medium leading-tight text-muted-foreground">{c.label}</span>
+            </button>
+          ))}
+        </div>
+        {/* Special layout themes */}
+        <p className="text-[10px] text-muted-foreground/50 uppercase tracking-widest font-semibold">特殊排版</p>
+        <div className="grid grid-cols-4 gap-1.5">
+          {CARD_THEMES.filter(c => !!c.special).map(c => (
+            <button key={c.value} type="button" onClick={() => setCardTheme(c.value)}
+              className={cn(
+                "flex flex-col items-center gap-1 px-1.5 py-2.5 rounded-xl border-2 transition-all text-center",
+                cardTheme === c.value ? "border-primary bg-primary/5" : "border-border hover:border-border/80"
+              )}>
+              <span className={cn("w-8 h-8 rounded-lg bg-gradient-to-br shadow-sm flex items-center justify-center text-sm", c.bg)}>
+                {c.special}
+              </span>
+              <span className="text-[9px] font-medium leading-tight text-muted-foreground">{c.label}</span>
             </button>
           ))}
         </div>
