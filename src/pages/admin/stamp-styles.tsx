@@ -57,87 +57,116 @@ function StampPreviewCard({ themeKey }: { themeKey: string }) {
     </div>
   );
 
-  /* ── celebrate ── */
+  /* ── celebrate (faithful to IMG_9083) ── */
   if (t.layout === "celebrate") return (
-    <div className="rounded-2xl overflow-hidden border border-border/40 shadow-md bg-white">
-      <div className={cn("relative px-4 py-5 text-center overflow-hidden", t.hero)}>
-        {[{t:"10%",l:"8%",w:6,h:2,col:"bg-yellow-300"},{t:"20%",l:"75%",w:5,h:5,col:"bg-pink-400 rounded-full"},{t:"8%",l:"40%",w:8,h:2,col:"bg-white/60"},{t:"25%",l:"55%",w:4,h:4,col:"bg-lime-300 rounded-full"},{t:"35%",l:"12%",w:5,h:2,col:"bg-orange-300"},{t:"5%",l:"82%",w:4,h:4,col:"bg-red-300 rounded-full"}].map((p,i)=>(
-          <div key={i} className={cn("absolute pointer-events-none",p.col)} style={{top:p.t,left:p.l,width:p.w,height:p.h}} />
+    <div className="rounded-2xl overflow-hidden shadow-md bg-white">
+      {/* Sky-blue hero with confetti */}
+      <div className="relative bg-sky-400 px-4 pt-4 pb-10 overflow-hidden">
+        {[
+          {x:"7%", y:"12%",w:10,h:4,bg:"#f43f5e",r:"-45deg"},{x:"22%",y:"6%", w:6, h:6, bg:"#facc15",r:"0"},
+          {x:"38%",y:"18%",w:14,h:3,bg:"#a78bfa",r:"20deg"}, {x:"55%",y:"5%", w:7, h:7, bg:"#34d399",r:"0"},
+          {x:"68%",y:"14%",w:12,h:3,bg:"#60a5fa",r:"30deg"}, {x:"82%",y:"8%", w:5, h:5, bg:"#f472b6",r:"0"},
+          {x:"12%",y:"40%",w:9, h:3, bg:"#4ade80",r:"15deg"},{x:"50%",y:"35%",w:5, h:5, bg:"#f87171",r:"0"},
+          {x:"75%",y:"38%",w:11,h:3,bg:"#38bdf8",r:"-20deg"},{x:"90%",y:"42%",w:8, h:3, bg:"#fbbf24",r:"10deg"},
+        ].map((p,i)=>(
+          <span key={i} className="absolute pointer-events-none rounded-sm"
+            style={{left:p.x,top:p.y,width:p.w,height:p.h,backgroundColor:p.bg,transform:`rotate(${p.r})`}} />
         ))}
-        <div className="relative w-10 h-10 rounded-full bg-indigo-600 border-2 border-white shadow-lg flex items-center justify-center mx-auto">
-          <Icon className="w-5 h-5 text-white" />
+      </div>
+      {/* Floating circle badge */}
+      <div className="flex justify-center -mt-8 relative z-10 mb-3">
+        <div className="w-16 h-16 rounded-full bg-indigo-600 border-4 border-white shadow-xl flex items-center justify-center">
+          <Icon className="w-7 h-7 text-white" />
         </div>
       </div>
-      <div className="px-3 py-3 bg-white text-center">
-        <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[8px] font-bold bg-sky-100 text-sky-700 mb-1">
-          <RiShieldCheckLine className="w-2 h-2" />{DEMO.tagLabel}
-        </div>
-        <p className="text-[13px] font-black text-gray-900">{DEMO.tagName}</p>
-        <p className="text-[9px] text-gray-400 font-mono mb-2">{DEMO.domain}</p>
-        <CtaBtn extra="rounded-lg text-[9px] py-1.5" />
+      {/* White body */}
+      <div className="px-5 pb-2 text-center">
+        <p className="text-[15px] font-black text-gray-900 leading-tight">{DEMO.tagName}</p>
+        <p className="text-[9px] text-gray-400 mt-0.5 mb-3">{DEMO.desc}</p>
+        <div className="w-full py-2.5 rounded-full bg-indigo-600 text-white text-[10px] font-bold text-center mb-2">访问主页</div>
+        <p className="text-[9px] text-gray-400 pb-2">关闭</p>
       </div>
     </div>
   );
 
-  /* ── neon ── */
+  /* ── neon (faithful to IMG_9085 CodePen style) ── */
   if (t.layout === "neon") return (
-    <div className="rounded-2xl overflow-hidden border border-slate-700 shadow-md bg-slate-950">
-      <div className="px-3 pt-4 pb-3 flex gap-2.5 items-start">
-        <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center shrink-0">
-          <Icon className="w-5 h-5 text-emerald-400" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[8px] font-bold bg-emerald-400 text-slate-900 mb-1">
-            <RiShieldCheckLine className="w-2 h-2" />{DEMO.tagLabel}
+    <div className="rounded-2xl overflow-hidden shadow-md" style={{background:"#1e2433"}}>
+      {/* Avatar circle at top-left */}
+      <div className="px-4 pt-4 pb-0">
+        <div className="w-12 h-12 rounded-full bg-black border-4 border-[#1e2433] flex items-center justify-center shadow-lg">
+          <div className="w-full h-full rounded-full flex items-center justify-center bg-slate-700">
+            <Icon className="w-6 h-6 text-white" />
           </div>
-          <p className="text-[13px] font-black text-white leading-tight">{DEMO.tagName}</p>
-          <p className="text-[8px] text-emerald-400/70 font-mono">{DEMO.domain}</p>
         </div>
       </div>
-      <div className="mx-3 border-t border-slate-800 pt-2 pb-3">
-        <p className="text-[10px] text-slate-400 leading-relaxed line-clamp-2">{DEMO.desc}</p>
-      </div>
-      <div className="px-3 pb-3">
-        <CtaBtn extra="rounded-xl shadow-sm shadow-emerald-400/20 text-[9px] py-1.5" />
+      {/* Content */}
+      <div className="px-4 pt-3 pb-4">
+        <p className="text-white text-[20px] font-black leading-none mb-1">{DEMO.tagName}</p>
+        <p className="text-emerald-400 text-[11px] font-semibold mb-2">{DEMO.tagLabel}</p>
+        <p className="text-slate-400 text-[10px] leading-relaxed line-clamp-2">{DEMO.desc}</p>
+        <div className="mt-3 flex items-center justify-between w-full px-3.5 py-2 rounded-xl bg-emerald-400 text-slate-900 text-[9px] font-bold">
+          <span>访问主页</span>
+          <span>→</span>
+        </div>
       </div>
     </div>
   );
 
-  /* ── gradient ── */
+  /* ── gradient (faithful to IMG_9093 Apple Card) ── */
   if (t.layout === "gradient") return (
-    <div className={cn("rounded-2xl overflow-hidden border border-black/10 shadow-md", t.hero)}>
-      <div className="px-4 pt-5 pb-4 flex flex-col items-center text-center">
-        <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[8px] font-bold border bg-black/10 text-gray-800 border-black/15 mb-3">
-          <RiShieldCheckLine className="w-2 h-2" />{DEMO.tagLabel}
+    <div className="rounded-2xl overflow-hidden shadow-md flex flex-col"
+      style={{background:"linear-gradient(135deg,#b8e0f7 0%,#e8d5f0 30%,#f7c8d4 55%,#f9d89e 80%,#fde8a0 100%)"}}>
+      <div className="px-4 pt-4 pb-5 flex flex-col items-center text-center flex-1">
+        {/* Outlined pill badge */}
+        <span className="inline-flex items-center px-4 py-1.5 rounded-full border-2 border-gray-800/50 text-gray-800 text-[9px] font-bold mb-3 tracking-tight">
+          {DEMO.tagLabel}
+        </span>
+        {/* Very large title */}
+        <p className="text-[20px] font-black text-gray-900 leading-tight tracking-tight mb-2">{DEMO.tagName}</p>
+        <p className="text-[9.5px] text-gray-600 leading-relaxed">{DEMO.desc}</p>
+      </div>
+      {/* Bottom CTA */}
+      <div className="px-4 pb-4">
+        <div className="flex items-center justify-between w-full px-3.5 py-2.5 rounded-xl bg-gray-900 text-white text-[9px] font-bold">
+          <span>访问主页</span><span>→</span>
         </div>
-        <div className="w-10 h-10 rounded-2xl bg-black/10 border border-black/10 flex items-center justify-center mb-2">
-          <Icon className="w-5 h-5 text-gray-800" />
-        </div>
-        <p className="text-[14px] font-black text-gray-900 leading-tight">{DEMO.tagName}</p>
-        <p className="text-[8px] text-gray-500 font-mono mb-3">{DEMO.domain}</p>
-        <CtaBtn extra="bg-gray-900 text-white rounded-xl text-[9px] py-1.5" />
+        <p className="text-[8px] text-gray-500/70 text-center font-mono mt-1.5">{DEMO.domain}</p>
       </div>
     </div>
   );
 
-  /* ── split ── */
+  /* ── split (faithful to IMG_9087 photo/text split) ── */
   if (t.layout === "split") return (
-    <div className="rounded-2xl overflow-hidden border border-border/40 shadow-md flex">
-      <div className={cn("relative flex flex-col items-center justify-center px-3 py-4 w-[42%] shrink-0", t.hero)}>
-        <div className="w-10 h-10 rounded-[14px] bg-white/20 border border-white/30 flex items-center justify-center">
-          <Icon className="w-5 h-5 text-white" />
-        </div>
-        <p className="text-[8px] text-white/70 font-mono mt-1.5 tracking-wider">{DEMO.domain}</p>
-      </div>
-      <div className="flex-1 bg-white px-3 py-3 flex flex-col justify-between">
-        <div>
-          <div className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[7px] font-bold bg-violet-100 text-violet-700 mb-1">
-            <RiShieldCheckLine className="w-1.5 h-1.5" />{DEMO.tagLabel}
+    <div className="rounded-2xl overflow-hidden shadow-md flex min-h-[130px]">
+      {/* Left coloured panel with stacked text */}
+      <div className={cn("relative flex flex-col justify-between px-3 py-3 w-[43%] shrink-0 overflow-hidden", t.hero)}>
+        <div className="absolute inset-0 opacity-10"
+          style={{backgroundImage:"repeating-linear-gradient(-45deg,white,white 1px,transparent 1px,transparent 10px)"}} />
+        <div className="relative">
+          <p className="text-white/40 text-[7px] font-bold uppercase tracking-widest mb-0.5">{DEMO.tagLabel}</p>
+          <div className="space-y-[-3px]">
+            <p className="text-white font-black text-[13px] leading-none">{DEMO.tagName}</p>
+            <p className="text-white/25 font-black text-[13px] leading-none">{DEMO.tagName}</p>
           </div>
-          <p className="text-[12px] font-black text-gray-900">{DEMO.tagName}</p>
-          <p className="text-[9px] text-gray-500 leading-tight mt-0.5 line-clamp-2">{DEMO.desc}</p>
         </div>
-        <CtaBtn extra="mt-2 rounded-lg text-[8px] py-1" />
+        <div className="relative">
+          <div className="w-7 h-7 rounded-lg bg-white/15 border border-white/20 flex items-center justify-center mb-1">
+            <Icon className="w-3.5 h-3.5 text-white" />
+          </div>
+          <p className="text-white/50 text-[7px] font-mono tracking-wider uppercase">{DEMO.domain}</p>
+        </div>
+      </div>
+      {/* Right white panel */}
+      <div className="flex-1 bg-white flex flex-col justify-between px-3 py-3">
+        <div>
+          <p className="text-gray-400 text-[7px] uppercase tracking-widest font-semibold mb-1">域名认领</p>
+          <p className="text-[15px] font-black text-gray-900 leading-tight">{DEMO.tagName}</p>
+          <p className="text-[8px] text-gray-400 mt-0.5">{DEMO.domain}</p>
+        </div>
+        <div className="flex items-center justify-between w-full px-2 py-1.5 rounded-lg text-[8px] font-bold mt-2" style={{background:"rgb(124 58 237)",color:"white"}}>
+          <span>访问主页</span><span>→</span>
+        </div>
       </div>
     </div>
   );

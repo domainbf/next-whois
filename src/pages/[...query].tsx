@@ -4474,52 +4474,71 @@ export default function LookupPage({
                             );
 
                             /* ════════════════════════════════════════
-                               Layout: celebrate (IMG_9083 inspired)
-                               Sky-blue confetti hero → circle badge →
-                               white card → big CTA button
+                               Layout: celebrate — IMG_9083
+                               天蓝色英雄区 + 彩色纸屑 + 大圆形徽章
+                               悬浮在分界处 + 白底正文 + 大药丸按钮
                             ════════════════════════════════════════ */
                             if (theme.layout === "celebrate") return (
-                              <div key={stamp.id} className="relative overflow-hidden">
-                                {/* Hero with confetti dots */}
-                                <div className={cn("relative px-6 pt-10 pb-16 text-center overflow-hidden", theme.hero)}>
-                                  {/* Confetti particles */}
+                              <div key={stamp.id} className="relative overflow-hidden bg-white">
+                                {/* ── Sky-blue hero (flat, no gradient) ── */}
+                                <div className="relative bg-sky-400 px-6 pt-5 pb-14 overflow-hidden">
+                                  {/* Close: top-right, bare X */}
+                                  <button onClick={() => setStampDetailOpen(false)}
+                                    className="absolute top-3.5 right-3.5 w-7 h-7 flex items-center justify-center text-white/80 hover:text-white z-10 transition-colors"
+                                    aria-label="Close">
+                                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                                      <path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                                    </svg>
+                                  </button>
+                                  {/* Confetti ribbons — many, colorful, various sizes & angles */}
                                   {[
-                                    { top:"12%",left:"8%",  w:8,  h:3,  r:2,  col:"bg-yellow-300",  rot:"-30deg" },
-                                    { top:"18%",left:"20%", w:5,  h:5,  r:99, col:"bg-pink-400",     rot:"0" },
-                                    { top:"8%", left:"35%", w:10, h:3,  r:2,  col:"bg-white/70",     rot:"15deg" },
-                                    { top:"20%",left:"55%", w:6,  h:6,  r:99, col:"bg-yellow-400",   rot:"0" },
-                                    { top:"10%",left:"72%", w:9,  h:3,  r:2,  col:"bg-pink-300",     rot:"-20deg" },
-                                    { top:"25%",left:"85%", w:5,  h:5,  r:99, col:"bg-white/60",     rot:"0" },
-                                    { top:"35%",left:"5%",  w:7,  h:3,  r:2,  col:"bg-orange-300",   rot:"25deg" },
-                                    { top:"40%",left:"90%", w:8,  h:3,  r:2,  col:"bg-lime-300",     rot:"-10deg" },
-                                    { top:"5%", left:"92%", w:6,  h:6,  r:99, col:"bg-red-300",      rot:"0" },
-                                    { top:"30%",left:"45%", w:4,  h:4,  r:99, col:"bg-white/50",     rot:"0" },
-                                  ].map((p, i) => (
-                                    <div key={i} className={cn("absolute pointer-events-none", p.col)}
-                                      style={{ top: p.top, left: p.left, width: p.w, height: p.h, borderRadius: p.r, transform: `rotate(${p.rot})` }} />
+                                    {x:"6%",  y:"15%", w:14, h:5,  bg:"#f43f5e", r:"-45deg"},
+                                    {x:"18%", y:"8%",  w:8,  h:8,  bg:"#facc15", r:"0deg"},
+                                    {x:"28%", y:"22%", w:18, h:4,  bg:"#a78bfa", r:"20deg"},
+                                    {x:"40%", y:"5%",  w:10, h:4,  bg:"#34d399", r:"-15deg"},
+                                    {x:"55%", y:"18%", w:7,  h:7,  bg:"#fb923c", r:"0deg"},
+                                    {x:"66%", y:"6%",  w:16, h:4,  bg:"#60a5fa", r:"30deg"},
+                                    {x:"77%", y:"20%", w:6,  h:6,  bg:"#f472b6", r:"0deg"},
+                                    {x:"87%", y:"10%", w:12, h:4,  bg:"#fde047", r:"-25deg"},
+                                    {x:"12%", y:"42%", w:10, h:3,  bg:"#4ade80", r:"15deg"},
+                                    {x:"32%", y:"48%", w:6,  h:6,  bg:"#f87171", r:"0deg"},
+                                    {x:"50%", y:"38%", w:14, h:4,  bg:"#c084fc", r:"-10deg"},
+                                    {x:"70%", y:"44%", w:8,  h:3,  bg:"#38bdf8", r:"35deg"},
+                                    {x:"82%", y:"35%", w:7,  h:7,  bg:"#fbbf24", r:"0deg"},
+                                    {x:"92%", y:"50%", w:11, h:4,  bg:"#f43f5e", r:"-30deg"},
+                                    {x:"3%",  y:"55%", w:8,  h:3,  bg:"#a3e635", r:"20deg"},
+                                  ].map((p,i) => (
+                                    <span key={i} className="absolute pointer-events-none rounded-sm"
+                                      style={{left:p.x, top:p.y, width:p.w, height:p.h, backgroundColor:p.bg, transform:`rotate(${p.r})`}} />
                                   ))}
-                                  <CloseBtn />
-                                  {/* Circle icon badge */}
-                                  <div className="relative inline-flex items-center justify-center">
-                                    <div className="absolute w-24 h-24 rounded-full bg-white/20 blur-xl" />
-                                    <div className="relative w-20 h-20 rounded-full bg-indigo-600 border-4 border-white shadow-2xl flex items-center justify-center">
-                                      <StampIcon className="w-9 h-9 text-white drop-shadow" />
-                                    </div>
+                                </div>
+
+                                {/* ── Large circle badge — overlapping boundary ── */}
+                                <div className="flex justify-center -mt-11 relative z-10 mb-5">
+                                  <div className="w-[84px] h-[84px] rounded-full bg-indigo-600 border-[5px] border-white shadow-2xl flex items-center justify-center">
+                                    <StampIcon className="w-9 h-9 text-white" />
                                   </div>
                                 </div>
-                                {/* White card body */}
-                                <div className="bg-white px-6 pt-6 pb-5 text-center space-y-1.5">
-                                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold bg-sky-100 text-sky-700 mb-1">
-                                    <RiShieldCheckLine className="w-3 h-3" />
-                                    {isChinese ? lbl.zh : lbl.en}
-                                  </div>
-                                  <h2 className="text-2xl font-black tracking-tight text-gray-900">{stamp.tagName}</h2>
-                                  <p className="text-[11px] text-gray-400 font-mono tracking-widest uppercase">{result.domain || target}</p>
-                                  {stamp.description && <p className="text-[13px] text-gray-600 leading-relaxed pt-1">{stamp.description}</p>}
+
+                                {/* ── White body: title + description ── */}
+                                <div className="px-7 pb-3 text-center space-y-2">
+                                  <h2 className="text-[26px] font-black text-gray-900 leading-tight tracking-tight">{stamp.tagName}</h2>
+                                  <p className="text-[13px] text-gray-400 leading-relaxed">
+                                    {stamp.description || (isChinese ? `恭喜！${result.domain || target} 已认领。` : `Congratulations! ${result.domain || target} has been claimed.`)}
+                                  </p>
                                 </div>
-                                <div className="bg-white px-5 pb-6 pt-2 space-y-2.5">
-                                  <CtaLink btnCls={cn("rounded-[14px] py-3.5 text-[15px] font-bold shadow-lg shadow-indigo-500/30 justify-center gap-2", theme.btn)} />
-                                  <button onClick={() => setStampDetailOpen(false)} className="w-full text-[13px] text-gray-400 hover:text-gray-600 font-medium py-1 transition-colors">
+
+                                {/* ── CTA: big pill button + cancel text ── */}
+                                <div className="px-6 pt-4 pb-7 space-y-3">
+                                  {stamp.link
+                                    ? <a href={stamp.link} target="_blank" rel="noopener noreferrer"
+                                        className="flex items-center justify-center w-full py-4 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white text-[15px] font-bold shadow-lg shadow-indigo-500/25 transition-all active:scale-[0.98]">
+                                        {isChinese ? "访问主页" : "Visit Profile"}
+                                      </a>
+                                    : null
+                                  }
+                                  <button onClick={() => setStampDetailOpen(false)}
+                                    className="w-full text-center text-[13px] text-gray-400 hover:text-gray-600 font-medium transition-colors py-0.5">
                                     {isChinese ? "关闭" : "Cancel"}
                                   </button>
                                 </div>
@@ -4527,116 +4546,182 @@ export default function LookupPage({
                             );
 
                             /* ════════════════════════════════════════
-                               Layout: neon (IMG_9085/9091 inspired)
-                               Full dark card, avatar square, large
-                               brand name, neon accent, minimal CTA
+                               Layout: neon — IMG_9085 (CodePen card)
+                               深色圆角卡 + 左上角圆形头像悬挂在卡边
+                               超大粗体名称 + 绿色 accent 标签 + 正文
                             ════════════════════════════════════════ */
                             if (theme.layout === "neon") return (
-                              <div key={stamp.id} className="bg-slate-950 relative">
-                                <CloseBtn cls="bg-slate-800/80 hover:bg-slate-700 border-slate-700 text-slate-300" />
-                                {/* Avatar block */}
-                                <div className="px-5 pt-12 pb-4 flex gap-4 items-start">
-                                  <div className="w-16 h-16 rounded-2xl bg-slate-800 border border-slate-700 flex items-center justify-center shrink-0 shadow-lg">
-                                    <StampIcon className="w-8 h-8 text-emerald-400" />
-                                  </div>
-                                  <div className="flex-1 min-w-0 pt-1">
-                                    <span className={cn("inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full mb-2", theme.badge)}>
-                                      <RiShieldCheckLine className="w-2.5 h-2.5" />
-                                      {isChinese ? lbl.zh : lbl.en}
-                                    </span>
-                                    <h2 className="text-2xl font-black text-white leading-tight tracking-tight truncate">{stamp.tagName}</h2>
-                                    <p className="text-[10px] text-emerald-400/70 font-mono tracking-widest mt-0.5">{result.domain || target}</p>
-                                  </div>
-                                </div>
-                                {/* Divider + description */}
-                                <div className="mx-5 border-t border-slate-800 pt-4 pb-4">
-                                  {stamp.description
-                                    ? <p className="text-[13px] text-slate-400 leading-relaxed">{stamp.description}</p>
-                                    : <p className="text-[12px] text-slate-600 font-mono">{isChinese ? "暂无简介" : "No description provided"}</p>
-                                  }
-                                </div>
-                                {/* CTA */}
-                                <div className="px-5 pb-6">
-                                  <CtaLink btnCls={cn("rounded-2xl shadow-lg shadow-emerald-400/20", theme.btn)} />
-                                </div>
-                              </div>
-                            );
-
-                            /* ════════════════════════════════════════
-                               Layout: gradient (IMG_9093 inspired)
-                               Full-bleed gradient bg, pill badge,
-                               large title, bottom CTA — Apple-style
-                            ════════════════════════════════════════ */
-                            if (theme.layout === "gradient") return (
-                              <div key={stamp.id} className={cn("relative px-6 pt-5 pb-8 min-h-[340px] flex flex-col", theme.hero)}>
+                              <div key={stamp.id} className="bg-[#1e2433] relative pb-6" style={{borderRadius:"inherit"}}>
+                                {/* Close: top-right */}
                                 <button onClick={() => setStampDetailOpen(false)}
-                                  className="absolute top-4 left-4 w-8 h-8 flex items-center justify-center rounded-full bg-black/10 hover:bg-black/20 text-gray-700 transition-all active:scale-95 z-10"
+                                  className="absolute top-4 right-4 text-slate-500 hover:text-slate-300 transition-colors z-10"
                                   aria-label="Close">
-                                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                                    <path d="M1 1l10 10M11 1L1 11" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+                                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                                    <path d="M2 2l12 12M14 2L2 14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
                                   </svg>
                                 </button>
-                                {/* Content */}
-                                <div className="flex-1 flex flex-col items-center justify-center text-center pt-6">
-                                  {/* Badge pill */}
-                                  <span className={cn("inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[11px] font-bold border mb-5 shadow-sm", theme.badge)}>
-                                    <RiShieldCheckLine className="w-3 h-3" />
+
+                                {/* ── Avatar circle: top-left, overflows card top ── */}
+                                <div className="px-5 pt-5 pb-0">
+                                  <div className="w-[68px] h-[68px] rounded-full bg-black border-4 border-[#1e2433] flex items-center justify-center shadow-xl overflow-hidden shrink-0">
+                                    <div className="w-full h-full flex items-center justify-center bg-slate-700">
+                                      <StampIcon className="w-8 h-8 text-white" />
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* ── Content ── */}
+                                <div className="px-5 pt-4">
+                                  <h2 className="text-[28px] font-black text-white leading-none tracking-tight mb-1">{stamp.tagName}</h2>
+                                  <p className="text-emerald-400 text-[14px] font-semibold mb-4">
+                                    {isChinese ? lbl.zh : lbl.en}
+                                  </p>
+                                  <p className="text-slate-400 text-[13.5px] leading-relaxed">
+                                    {stamp.description || (isChinese ? `该域名 ${result.domain || target} 已通过认领验证。` : `${result.domain || target} has been verified and claimed.`)}
+                                  </p>
+                                </div>
+
+                                {/* ── CTA ── */}
+                                {stamp.link && (
+                                  <div className="px-5 pt-6">
+                                    <a href={stamp.link} target="_blank" rel="noopener noreferrer"
+                                      className="flex items-center justify-between w-full px-5 py-3.5 rounded-2xl bg-emerald-400 hover:bg-emerald-300 text-slate-900 text-[14px] font-bold transition-all active:scale-[0.98] shadow-lg shadow-emerald-400/20">
+                                      <span>{isChinese ? "访问主页" : "Visit Profile"}</span>
+                                      <RiArrowRightSLine className="w-5 h-5" />
+                                    </a>
+                                  </div>
+                                )}
+                              </div>
+                            );
+
+                            /* ════════════════════════════════════════
+                               Layout: gradient — IMG_9093 (Apple Card)
+                               全卡渐变背景贯穿 + 左上角裸X关闭
+                               轮廓药丸徽章 + 超大粗体标题居中
+                               + 底部CTA按钮
+                            ════════════════════════════════════════ */
+                            if (theme.layout === "gradient") return (
+                              <div key={stamp.id}
+                                className="relative flex flex-col min-h-[400px] px-7 pt-5 pb-8"
+                                style={{background:"linear-gradient(135deg, #b8e0f7 0%, #e8d5f0 30%, #f7c8d4 55%, #f9d89e 80%, #fde8a0 100%)"}}>
+
+                                {/* Close: top-LEFT, bare X, dark gray */}
+                                <button onClick={() => setStampDetailOpen(false)}
+                                  className="absolute top-5 left-5 text-gray-600 hover:text-gray-900 transition-colors z-10 w-8 h-8 flex items-center justify-center"
+                                  aria-label="Close">
+                                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                                    <path d="M2 2l12 12M14 2L2 14" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"/>
+                                  </svg>
+                                </button>
+
+                                {/* ── Center content ── */}
+                                <div className="flex-1 flex flex-col items-center justify-center text-center pt-8">
+                                  {/* Outlined pill badge — no fill, just border */}
+                                  <span className="inline-flex items-center gap-1.5 px-5 py-2 rounded-full border-2 border-gray-800/60 text-gray-800 text-[13px] font-bold mb-7 tracking-tight">
                                     {isChinese ? lbl.zh : lbl.en}
                                   </span>
-                                  {/* Icon */}
-                                  <div className="w-16 h-16 rounded-3xl bg-black/10 backdrop-blur-sm border border-black/10 flex items-center justify-center mb-4 shadow-lg">
-                                    <StampIcon className="w-8 h-8 text-gray-800" />
-                                  </div>
-                                  {/* Title */}
-                                  <h2 className="text-[26px] font-black text-gray-900 leading-tight tracking-tight mb-1">{stamp.tagName}</h2>
-                                  <p className="text-[11px] text-gray-500 font-mono tracking-[0.18em] uppercase mb-3">{result.domain || target}</p>
-                                  {stamp.description && <p className="text-[13px] text-gray-700 leading-relaxed max-w-[260px]">{stamp.description}</p>}
+
+                                  {/* Very large bold title — 2 line friendly */}
+                                  <h2 className="text-[32px] font-black text-gray-900 leading-[1.1] tracking-tight mb-4 max-w-[280px]">
+                                    {stamp.tagName}
+                                  </h2>
+
+                                  {/* Body description */}
+                                  <p className="text-[14px] text-gray-600 leading-relaxed max-w-[260px]">
+                                    {stamp.description || (isChinese
+                                      ? `该域名 ${result.domain || target} 已由持有人认领，点击访问主页了解更多。`
+                                      : `${result.domain || target} has been claimed. Visit the profile to learn more.`
+                                    )}
+                                  </p>
                                 </div>
-                                {/* Bottom CTA */}
-                                <div className="mt-5 space-y-2">
-                                  <CtaLink btnCls="bg-gray-900 text-white rounded-2xl hover:bg-gray-800 shadow-lg" />
-                                  <p className="text-[10.5px] text-gray-500 text-center font-mono">{result.domain || target}</p>
+
+                                {/* ── Bottom CTA block ── */}
+                                <div className="mt-6 space-y-3">
+                                  {stamp.link
+                                    ? <a href={stamp.link} target="_blank" rel="noopener noreferrer"
+                                        className="flex items-center gap-3 w-full px-5 py-3.5 rounded-2xl bg-gray-900 hover:bg-gray-800 text-white text-[14px] font-bold transition-all active:scale-[0.98] shadow-lg">
+                                        <div className="flex-1 text-left">
+                                          <span className="block leading-none">{isChinese ? "访问主页" : "Visit Profile"}</span>
+                                          {linkHostname && <span className="block text-[10px] opacity-50 mt-0.5 font-normal">{linkHostname}</span>}
+                                        </div>
+                                        <RiArrowRightSLine className="w-5 h-5 opacity-60 shrink-0" />
+                                      </a>
+                                    : null
+                                  }
+                                  <p className="text-[11px] text-gray-500/70 text-center font-mono tracking-wider">
+                                    {result.domain || target}
+                                  </p>
                                 </div>
                               </div>
                             );
 
                             /* ════════════════════════════════════════
-                               Layout: split (IMG_9087 inspired)
-                               Left coloured panel (icon + domain) /
-                               Right white panel (name + desc + CTA)
+                               Layout: split — IMG_9087
+                               左侧彩色图像面板 / 右侧白色内容区
+                               左侧: 大号标签文字层叠 + 域名
+                               右侧: 小标签 + 超大品牌名 + 说明 + CTA
                             ════════════════════════════════════════ */
                             if (theme.layout === "split") return (
-                              <div key={stamp.id} className="relative flex min-h-[300px]">
-                                {/* Left panel */}
-                                <div className={cn("relative flex flex-col items-center justify-center gap-3 px-4 py-8 w-[42%] shrink-0", theme.hero)}>
-                                  <CloseBtn cls="bg-black/20 hover:bg-black/35 border-white/20 text-white" />
-                                  <div className="w-16 h-16 rounded-[20px] bg-white/20 backdrop-blur-sm border border-white/30 flex items-center justify-center shadow-xl mt-4">
-                                    <StampIcon className="w-8 h-8 text-white" />
-                                  </div>
-                                  <div className="text-center">
-                                    <p className="text-white/90 text-[9px] font-mono tracking-[0.22em] uppercase">{result.domain || target}</p>
-                                  </div>
-                                  {/* Decorative circles */}
-                                  <div className="absolute bottom-[-30px] left-[-30px] w-24 h-24 rounded-full bg-white/10 pointer-events-none" />
-                                  <div className="absolute top-[-20px] right-[-20px] w-16 h-16 rounded-full bg-white/8 pointer-events-none" />
-                                </div>
-                                {/* Right panel */}
-                                <div className={cn("flex-1 flex flex-col justify-between px-4 py-5", theme.cardBg)}>
-                                  <div className="space-y-2">
-                                    <span className={cn("inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full", theme.badge)}>
-                                      <RiShieldCheckLine className="w-2.5 h-2.5" />
+                              <div key={stamp.id} className="relative flex min-h-[320px]">
+                                {/* ── Left panel: coloured, editorial text ── */}
+                                <div className={cn("relative flex flex-col justify-between px-4 py-5 w-[44%] shrink-0 overflow-hidden", theme.hero)}>
+                                  {/* Background diagonal stripe for depth */}
+                                  <div className="absolute inset-0 opacity-10"
+                                    style={{backgroundImage:"repeating-linear-gradient(-45deg, white, white 1px, transparent 1px, transparent 12px)"}} />
+                                  {/* Close top-right of left panel */}
+                                  <button onClick={() => setStampDetailOpen(false)}
+                                    className="absolute top-2.5 right-2.5 text-white/60 hover:text-white transition-colors z-10"
+                                    aria-label="Close">
+                                    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+                                      <path d="M1 1l11 11M12 1L1 12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+                                    </svg>
+                                  </button>
+                                  {/* Stacked label text — like "FLASH SALE SALE" */}
+                                  <div className="relative mt-4">
+                                    <p className="text-white/40 text-[9px] font-bold uppercase tracking-[0.2em] mb-1">
                                       {isChinese ? lbl.zh : lbl.en}
-                                    </span>
-                                    <h2 className={cn("text-xl font-black leading-tight tracking-tight", theme.cardText)}>{stamp.tagName}</h2>
-                                    {stamp.description && (
-                                      <p className="text-[12px] text-muted-foreground leading-relaxed">{stamp.description}</p>
+                                    </p>
+                                    {stamp.tagName.split("").length > 0 && (
+                                      <div className="space-y-[-4px]">
+                                        <p className="text-white font-black text-[22px] leading-none tracking-tight">{stamp.tagName}</p>
+                                        <p className="text-white/30 font-black text-[22px] leading-none tracking-tight">{stamp.tagName}</p>
+                                        <p className="text-white/10 font-black text-[22px] leading-none tracking-tight">{stamp.tagName}</p>
+                                      </div>
                                     )}
                                   </div>
+                                  {/* Domain at bottom */}
+                                  <div className="relative">
+                                    <div className="w-10 h-10 rounded-xl bg-white/15 border border-white/20 flex items-center justify-center mb-2">
+                                      <StampIcon className="w-5 h-5 text-white" />
+                                    </div>
+                                    <p className="text-white/60 text-[9px] font-mono tracking-widest uppercase">{result.domain || target}</p>
+                                  </div>
+                                </div>
+
+                                {/* ── Right panel: white, editorial layout ── */}
+                                <div className="flex-1 bg-white flex flex-col justify-between px-4 py-4">
+                                  <div>
+                                    {/* Small top label */}
+                                    <p className="text-gray-400 text-[10px] tracking-widest uppercase font-semibold mb-2">
+                                      {isChinese ? "域名认领" : "Domain Claimed"}
+                                    </p>
+                                    {/* Very large bold brand name */}
+                                    <h2 className="text-[26px] font-black text-gray-900 leading-tight tracking-tight mb-0.5">{stamp.tagName}</h2>
+                                    <p className="text-gray-500 text-[11px] mb-3">{isChinese ? `已认领 ${result.domain || target}` : `Claimed ${result.domain || target}`}</p>
+                                    {stamp.description && (
+                                      <p className="text-gray-500 text-[12px] leading-relaxed">{stamp.description}</p>
+                                    )}
+                                  </div>
+                                  {/* Bottom CTA — mimics input+button row */}
                                   <div className="pt-3">
-                                    <CtaLink />
-                                    <button onClick={() => setStampDetailOpen(false)} className="w-full text-center text-[11px] text-muted-foreground/50 hover:text-muted-foreground py-2 mt-1 transition-colors">
-                                      {isChinese ? "关闭" : "Close"}
-                                    </button>
+                                    {stamp.link
+                                      ? <a href={stamp.link} target="_blank" rel="noopener noreferrer"
+                                          className={cn("flex items-center justify-between w-full px-3.5 py-3 rounded-xl text-[13px] font-bold transition-all active:scale-[0.98]", theme.btn)}>
+                                          <span>{isChinese ? "访问主页" : "Visit Profile"}</span>
+                                          <RiArrowRightSLine className="w-4 h-4 opacity-70" />
+                                        </a>
+                                      : <p className="text-[10px] text-gray-300 font-mono text-center py-2">{isChinese ? "未设置主页" : "No profile link"}</p>
+                                    }
                                   </div>
                                 </div>
                               </div>
