@@ -991,44 +991,51 @@ export default function StampPage() {
                                   <span className="text-[10px] font-bold uppercase tracking-widest text-violet-400/70">{s("live_preview")}</span>
                                   <div className="flex-1 h-px bg-violet-200/40 dark:bg-violet-800/30" />
                                 </div>
-                                <div className="rounded-xl overflow-hidden border border-border/40 shadow-md">
-                                  <div className={cn("relative px-3 pt-4 pb-6 text-center select-none", curTheme.hero)}>
-                                    <div className="absolute inset-0 opacity-[0.07]"
+                                <div className="rounded-[18px] overflow-hidden border border-border/40 shadow-md">
+                                  {/* Hero */}
+                                  <div className={cn("relative px-3 pt-4 pb-7 text-center select-none overflow-hidden", curTheme.hero)}>
+                                    <div className="absolute inset-0 opacity-[0.06]"
                                       style={{ backgroundImage: "radial-gradient(circle, white 1px, transparent 1px)", backgroundSize: "14px 14px" }} />
+                                    <div className="absolute inset-x-0 bottom-0 h-9 bg-gradient-to-t from-black/30 to-transparent" />
                                     <div className="relative flex flex-col items-center gap-1.5">
-                                      <div className="w-10 h-10 rounded-xl bg-white/15 border border-white/20 flex items-center justify-center shadow-md">
-                                        <CurIcon className="w-5 h-5 text-white" />
+                                      <div className="relative flex items-center justify-center">
+                                        <div className="absolute w-12 h-12 rounded-2xl bg-white/10 blur-md" />
+                                        <div className="relative w-10 h-10 rounded-[13px] bg-white/20 border border-white/30 flex items-center justify-center shadow-lg">
+                                          <CurIcon className="w-5 h-5 text-white drop-shadow" />
+                                        </div>
                                       </div>
-                                      <p className="text-shimmer-white text-[9px] font-mono tracking-[0.18em] uppercase">
+                                      <p className="text-shimmer-white text-[9px] font-mono tracking-[0.2em] uppercase">
                                         {domain || "your-domain.com"}
                                       </p>
                                     </div>
                                   </div>
-                                  <div className={cn("relative -mt-4 mx-3 rounded-xl border shadow-sm px-3 py-2", curTheme.cardBg, curTheme.cardBorder)}>
-                                    <div className="flex items-center justify-between gap-2">
-                                      <span className={cn("text-sm font-black leading-tight tracking-tight", curTheme.shimmer)}>
+                                  {/* Floating card */}
+                                  <div className={cn("relative -mt-4 mx-2.5 rounded-[14px] border shadow-lg px-3 pt-2.5 pb-2.5", curTheme.cardBg, curTheme.cardBorder)}>
+                                    <div className="flex items-start justify-between gap-2">
+                                      <span className={cn("text-[13px] font-black leading-tight tracking-tight", curTheme.shimmer)}>
                                         {form.tagName}
                                       </span>
-                                      <span className={cn("inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0 whitespace-nowrap", styleObj.className)}>
+                                      <span className={cn("inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0 whitespace-nowrap mt-0.5", styleObj.className)}>
                                         <RiShieldCheckLine className="w-2 h-2" />
                                         {badgeLabel}
                                       </span>
                                     </div>
                                     {form.description && (
-                                      <p className={cn("text-[10px] leading-relaxed mt-1", curTheme.cardText === "text-white" ? "text-white/60" : "text-muted-foreground")}>
+                                      <p className={cn("text-[10px] leading-relaxed mt-1.5", curTheme.cardText === "text-white" ? "text-white/60" : "text-muted-foreground")}>
                                         {form.description}
                                       </p>
                                     )}
-                                  </div>
-                                  <div className="px-3 pt-2 pb-3 flex justify-center">
-                                    {form.link ? (
-                                      <span className={cn("inline-flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-semibold", curTheme.btn)}>
-                                        访问主页 <RiArrowRightSLine className="w-3 h-3" />
-                                      </span>
-                                    ) : (
-                                      <p className="text-[9px] text-muted-foreground/40 font-mono">未设置主页链接</p>
+                                    {form.link && (
+                                      <div className={cn("mt-2 flex items-center justify-between px-2 py-1.5 rounded-lg text-[10px] font-semibold", curTheme.btn)}>
+                                        <span>访问主页</span>
+                                        <RiArrowRightSLine className="w-3 h-3 opacity-80" />
+                                      </div>
+                                    )}
+                                    {!form.link && (
+                                      <p className="text-[9px] text-muted-foreground/40 font-mono mt-2 text-center">未设置主页链接</p>
                                     )}
                                   </div>
+                                  <div className="h-3" />
                                 </div>
                               </div>
                             );

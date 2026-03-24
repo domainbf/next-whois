@@ -3858,25 +3858,43 @@ export default function LookupPage({
 
                     {/* Stamp detail dialog — triggered by "已认领" badge */}
                     <Dialog open={stampDetailOpen} onOpenChange={setStampDetailOpen}>
-                      <DialogContent className="max-w-[340px] p-0 overflow-hidden gap-0">
+                      <DialogContent className="max-w-[360px] p-0 overflow-hidden gap-0 rounded-[22px]">
                         <DialogHeader className="sr-only">
                           <DialogTitle>{isChinese ? "品牌认领信息" : "Claimed Brand"}</DialogTitle>
                         </DialogHeader>
-                        <div className="divide-y divide-border/40">
+                        <div className="divide-y divide-border/30">
                           {verifiedStamps.map((stamp) => {
                             const theme     = CARD_THEMES[stamp.cardTheme] || CARD_THEMES.app;
                             const StampIcon = STAMP_ICON_MAP[stamp.tagStyle] || STAMP_ICON_MAP.default;
+                            const labelMap: Record<string, { zh: string; en: string }> = {
+                              personal: { zh: "个人认领", en: "Personal"  },
+                              official: { zh: "官方认证", en: "Official"  },
+                              brand:    { zh: "品牌认领", en: "Brand"     },
+                              verified: { zh: "已认证",   en: "Verified"  },
+                              partner:  { zh: "合作伙伴", en: "Partner"   },
+                              dev:      { zh: "开发者",   en: "Developer" },
+                              warning:  { zh: "注意",     en: "Warning"   },
+                              premium:  { zh: "高级认证", en: "Premium"   },
+                            };
+                            const lbl = labelMap[stamp.tagStyle] ?? { zh: "已认领", en: "Claimed" };
                             return (
                               <div key={stamp.id}>
                                 {/* ── Gradient hero strip ── */}
-                                <div className={cn("relative px-5 pt-6 pb-8 text-center select-none", theme.hero)}>
-                                  <div className="absolute inset-0 opacity-[0.07]"
-                                    style={{ backgroundImage: "radial-gradient(circle, white 1px, transparent 1px)", backgroundSize: "16px 16px" }} />
-                                  <div className="relative flex flex-col items-center gap-2">
-                                    <div className="w-14 h-14 rounded-2xl bg-white/15 backdrop-blur-sm border border-white/20 flex items-center justify-center shadow-lg">
-                                      <StampIcon className="w-7 h-7 text-white" />
+                                <div className={cn("relative px-5 pt-7 pb-9 text-center select-none overflow-hidden", theme.hero)}>
+                                  {/* dot grid */}
+                                  <div className="absolute inset-0 opacity-[0.06]"
+                                    style={{ backgroundImage: "radial-gradient(circle, white 1px, transparent 1px)", backgroundSize: "18px 18px" }} />
+                                  {/* bottom fade into card */}
+                                  <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-black/30 to-transparent" />
+                                  <div className="relative flex flex-col items-center gap-2.5">
+                                    {/* icon with glow ring */}
+                                    <div className="relative flex items-center justify-center">
+                                      <div className="absolute w-[72px] h-[72px] rounded-3xl bg-white/10 blur-md" />
+                                      <div className="relative w-[58px] h-[58px] rounded-[18px] bg-white/20 backdrop-blur-sm border border-white/30 flex items-center justify-center shadow-xl">
+                                        <StampIcon className="w-7 h-7 text-white drop-shadow" />
+                                      </div>
                                     </div>
-                                    <p className="text-shimmer-white text-[10px] font-mono tracking-[0.18em] uppercase">
+                                    <p className="text-shimmer-white text-[10px] font-mono tracking-[0.2em] uppercase">
                                       {result.domain || target}
                                     </p>
                                   </div>
@@ -3884,65 +3902,46 @@ export default function LookupPage({
 
                                 {/* ── Floating name card ── */}
                                 <div className={cn(
-                                  "relative -mt-5 mx-4 rounded-2xl border shadow-md px-4 py-3",
+                                  "relative -mt-6 mx-3.5 rounded-[18px] border shadow-xl px-4 pt-3.5 pb-3",
                                   theme.cardBg, theme.cardBorder,
                                 )}>
-                                  <div className="flex items-center justify-between gap-2">
+                                  <div className="flex items-start justify-between gap-2">
                                     {/* Brand name with shimmer */}
-                                    <span className={cn("text-lg font-black leading-tight tracking-tight", theme.shimmer)}>
+                                    <span className={cn("text-xl font-black leading-tight tracking-tight", theme.shimmer)}>
                                       {stamp.tagName}
                                     </span>
-                                    {(() => {
-                                      const labelMap: Record<string, { zh: string; en: string }> = {
-                                        personal: { zh: "个人认领", en: "Personal"  },
-                                        official: { zh: "官方认证", en: "Official"  },
-                                        brand:    { zh: "品牌认领", en: "Brand"     },
-                                        verified: { zh: "已认证",   en: "Verified"  },
-                                        partner:  { zh: "合作伙伴", en: "Partner"   },
-                                        dev:      { zh: "开发者",   en: "Developer" },
-                                        warning:  { zh: "注意",     en: "Warning"   },
-                                        premium:  { zh: "高级认证", en: "Premium"   },
-                                      };
-                                      const lbl = labelMap[stamp.tagStyle] ?? { zh: "已认领", en: "Claimed" };
-                                      return (
-                                        <span className={cn(
-                                          "inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap",
-                                          theme.badge,
-                                        )}>
-                                          <RiShieldCheckLine className="w-2.5 h-2.5" />
-                                          {isChinese ? lbl.zh : lbl.en}
-                                        </span>
-                                      );
-                                    })()}
+                                    <span className={cn(
+                                      "inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-full shrink-0 whitespace-nowrap mt-0.5",
+                                      theme.badge,
+                                    )}>
+                                      <RiShieldCheckLine className="w-2.5 h-2.5" />
+                                      {isChinese ? lbl.zh : lbl.en}
+                                    </span>
                                   </div>
                                   {stamp.description && (
-                                    <p className="text-[12px] text-muted-foreground leading-relaxed mt-1.5">
+                                    <p className="text-[12.5px] text-muted-foreground leading-relaxed mt-2">
                                       {stamp.description}
                                     </p>
                                   )}
-                                </div>
-
-                                {/* ── CTA / footer ── */}
-                                <div className="px-4 pt-2.5 pb-4 flex justify-center">
-                                  {stamp.link ? (
+                                  {/* ── Inline link row ── */}
+                                  {stamp.link && (
                                     <a
                                       href={stamp.link}
                                       target="_blank"
                                       rel="noopener noreferrer"
                                       className={cn(
-                                        "inline-flex items-center gap-1.5 px-5 py-2 rounded-full text-[13px] font-semibold transition-all hover:opacity-90 active:scale-[0.97] shadow-sm",
+                                        "mt-3 flex items-center justify-between w-full px-3 py-2 rounded-xl text-[12.5px] font-semibold transition-all hover:opacity-90 active:scale-[0.98]",
                                         theme.btn,
                                       )}
                                     >
-                                      {isChinese ? "访问主页" : "Visit Profile"}
-                                      <RiArrowRightSLine className="w-3.5 h-3.5" />
+                                      <span>{isChinese ? "访问主页" : "Visit Profile"}</span>
+                                      <RiArrowRightSLine className="w-4 h-4 opacity-80" />
                                     </a>
-                                  ) : (
-                                    <p className="text-[11px] text-muted-foreground/40 text-center font-mono py-1">
-                                      {isChinese ? "该认领未设置主页链接" : "No profile link set"}
-                                    </p>
                                   )}
                                 </div>
+
+                                {/* bottom spacer */}
+                                <div className="h-4" />
                               </div>
                             );
                           })}
