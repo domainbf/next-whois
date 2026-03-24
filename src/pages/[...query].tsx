@@ -4,6 +4,7 @@ import {
   cn,
   getWindowHref,
   isValidDomainTld,
+  isSearchRoute,
   toSearchURI,
   useClipboard,
   useSaver,
@@ -2771,11 +2772,6 @@ export default function LookupPage({
   const suppressNextLoad = React.useRef(false);
 
   useEffect(() => {
-    const STATIC_PATHS = ["/", "/docs", "/tools", "/tlds", "/whois-servers", "/stamp", "/remind", "/api", "/login", "/register", "/dashboard"];
-    const isSearchRoute = (url: string) => {
-      const clean = url.split("?")[0].replace(/^\/(en|zh|zh-tw|de|ru|ja|fr|ko)(\/|$)/, "/");
-      return !STATIC_PATHS.some((p) => clean === p || clean.startsWith(p + "/"));
-    };
     const handleStart = (url: string) => {
       if (suppressNextLoad.current) {
         suppressNextLoad.current = false;

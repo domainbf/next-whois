@@ -1,10 +1,27 @@
-# Next Whois UI — v3.18
+# Next Whois UI — v3.19
 
 A fast, modern WHOIS and RDAP lookup tool supporting domains, IPv4/IPv6, ASN, and CIDR. Also includes built-in DNS, SSL certificate, and IP/ASN geolocation tools.
 
 ---
 
 ## Changelog
+
+### v3.19 — Fix Search Spinner on Nav Link Clicks (2026-03-24)
+
+**Scope:** Bug fix — the search button spinner was incorrectly showing when clicking ordinary nav links (e.g. About, Links, Admin pages) from the home page or a results page.
+
+**Root cause:** Both `index.tsx` and `[...query].tsx` defined their own inline `isSearchRoute()` helper with a `STATIC_PATHS` allow-list. The list in `[...query].tsx` was incomplete (missing `/dns`, `/ssl`, `/ip`, `/icp`, `/about`, `/sponsor`, `/links`, `/changelog`, `/admin`, `/feedback`, etc.), so navigating to those paths from a results page would call `setLoading(true)` and spin the button indefinitely until the route completed.
+
+**Changes:**
+
+| File | Change | Detail |
+|---|---|---|
+| `src/lib/utils.ts` | `isSearchRoute()` shared export | Single canonical implementation with a complete `STATIC_PAGE_PREFIXES` allow-list; strips locale prefix before matching. |
+| `src/pages/index.tsx` | Use shared `isSearchRoute` | Removed inline copy; imports from `@/lib/utils`. |
+| `src/pages/[...query].tsx` | Use shared `isSearchRoute` | Removed inline copy (which had the incomplete prefix list); imports from `@/lib/utils`. |
+| `src/lib/env.ts` | VERSION bumped to "3.19" | |
+
+---
 
 ### v3.18 — Admin Access Keys Enrichment (2026-03-24)
 

@@ -378,3 +378,24 @@ export function getWindowHref(): string {
 
   return window.location.href;
 }
+
+const STATIC_PAGE_PREFIXES = [
+  "/", "/docs", "/tools", "/tlds", "/whois-servers",
+  "/stamp", "/remind", "/api",
+  "/login", "/register", "/dashboard",
+  "/dns", "/ssl", "/ip", "/icp",
+  "/about", "/sponsor", "/links", "/changelog",
+  "/admin", "/feedback",
+  "/og-card", "/404", "/500",
+];
+
+/**
+ * Returns true only when `url` is a WHOIS/RDAP search result route,
+ * i.e. it does NOT match any known static page prefix.
+ * Used by both the home page and the [...query] results page to decide
+ * whether a routeChangeStart should show a loading spinner on the search button.
+ */
+export function isSearchRoute(url: string): boolean {
+  const clean = url.split("?")[0].replace(/^\/(en|zh|zh-tw|de|ru|ja|fr|ko)(\/|$)/, "/");
+  return !STATIC_PAGE_PREFIXES.some((p) => clean === p || clean.startsWith(p + "/"));
+}
