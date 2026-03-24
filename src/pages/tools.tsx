@@ -44,11 +44,17 @@ export default function ToolsPage() {
   const { data: session } = useSession();
   const settings = useSiteSettings();
   const siteLabel = settings.site_logo_text || "NEXT WHOIS";
-  const [clicks, setClicks] = React.useState<Record<string, number>>({});
 
+  // Initialise from localStorage immediately so the sort order is stable from
+  // the very first render — avoids any reorder flash when the component mounts.
+  const [clicks, setClicks] = React.useState<Record<string, number>>(loadLocalClicks);
+
+  // Guard: fetch remote click counts only once per page load, regardless of
+  // how many times the session object reference changes (e.g. on tab refocus).
+  const fetchedRef = React.useRef(false);
   React.useEffect(() => {
-    const local = loadLocalClicks();
-    setClicks(local);
+    if (fetchedRef.current) return;
+    fetchedRef.current = true;
 
     fetch("/api/tools/clicks")
       .then((r) => r.json())
@@ -58,7 +64,7 @@ export default function ToolsPage() {
         }
       })
       .catch(() => {});
-  }, [session]);
+  }, []);
 
   const isChinese = locale === "zh" || locale === "zh-tw";
   const getDesc = (tool: Tool) => (isChinese ? tool.desc : tool.descEn);
