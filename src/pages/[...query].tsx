@@ -3858,7 +3858,7 @@ export default function LookupPage({
 
                     {/* Stamp detail dialog — triggered by "已认领" badge */}
                     <Dialog open={stampDetailOpen} onOpenChange={setStampDetailOpen}>
-                      <DialogContent className="max-w-[360px] p-0 overflow-hidden gap-0 rounded-[22px]">
+                      <DialogContent hideClose className="max-w-[360px] p-0 overflow-hidden gap-0 rounded-[22px]">
                         <DialogHeader className="sr-only">
                           <DialogTitle>{isChinese ? "品牌认领信息" : "Claimed Brand"}</DialogTitle>
                         </DialogHeader>
@@ -3877,6 +3877,10 @@ export default function LookupPage({
                               premium:  { zh: "高级认证", en: "Premium"   },
                             };
                             const lbl = labelMap[stamp.tagStyle] ?? { zh: "已认领", en: "Claimed" };
+                            let linkHostname = "";
+                            if (stamp.link) {
+                              try { linkHostname = new URL(stamp.link).hostname; } catch { linkHostname = stamp.link; }
+                            }
                             return (
                               <div key={stamp.id}>
                                 {/* ── Gradient hero strip ── */}
@@ -3884,8 +3888,20 @@ export default function LookupPage({
                                   {/* dot grid */}
                                   <div className="absolute inset-0 opacity-[0.06]"
                                     style={{ backgroundImage: "radial-gradient(circle, white 1px, transparent 1px)", backgroundSize: "18px 18px" }} />
-                                  {/* bottom fade into card */}
+                                  {/* bottom fade */}
                                   <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-black/30 to-transparent" />
+
+                                  {/* custom glass close button — always white on gradient, always visible */}
+                                  <button
+                                    onClick={() => setStampDetailOpen(false)}
+                                    className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-xl bg-black/25 hover:bg-black/40 backdrop-blur-sm border border-white/20 text-white transition-all active:scale-95 z-10"
+                                    aria-label="Close"
+                                  >
+                                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                                      <path d="M1 1l10 10M11 1L1 11" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+                                    </svg>
+                                  </button>
+
                                   <div className="relative flex flex-col items-center gap-2.5">
                                     {/* icon with glow ring */}
                                     <div className="relative flex items-center justify-center">
@@ -3900,13 +3916,12 @@ export default function LookupPage({
                                   </div>
                                 </div>
 
-                                {/* ── Floating name card ── */}
+                                {/* ── Floating name card (info only) ── */}
                                 <div className={cn(
-                                  "relative -mt-6 mx-3.5 rounded-[18px] border shadow-xl px-4 pt-3.5 pb-3",
+                                  "relative -mt-6 mx-3.5 rounded-[18px] border shadow-xl px-4 pt-3.5 pb-3.5",
                                   theme.cardBg, theme.cardBorder,
                                 )}>
                                   <div className="flex items-start justify-between gap-2">
-                                    {/* Brand name with shimmer */}
                                     <span className={cn("text-xl font-black leading-tight tracking-tight", theme.shimmer)}>
                                       {stamp.tagName}
                                     </span>
@@ -3923,25 +3938,38 @@ export default function LookupPage({
                                       {stamp.description}
                                     </p>
                                   )}
-                                  {/* ── Inline link row ── */}
-                                  {stamp.link && (
+                                </div>
+
+                                {/* ── Primary CTA — outside the card, clear hierarchy ── */}
+                                <div className="px-3.5 pt-3 pb-5">
+                                  {stamp.link ? (
                                     <a
                                       href={stamp.link}
                                       target="_blank"
                                       rel="noopener noreferrer"
                                       className={cn(
-                                        "mt-3 flex items-center justify-between w-full px-3 py-2 rounded-xl text-[12.5px] font-semibold transition-all hover:opacity-90 active:scale-[0.98]",
+                                        "flex items-center justify-between w-full px-4 py-3 rounded-2xl shadow-md transition-all hover:opacity-90 active:scale-[0.98]",
                                         theme.btn,
                                       )}
                                     >
-                                      <span>{isChinese ? "访问主页" : "Visit Profile"}</span>
-                                      <RiArrowRightSLine className="w-4 h-4 opacity-80" />
+                                      <div className="flex flex-col items-start gap-0.5">
+                                        <span className="text-[14px] font-bold leading-none">
+                                          {isChinese ? "访问主页" : "Visit Profile"}
+                                        </span>
+                                        {linkHostname && (
+                                          <span className="text-[10px] font-normal opacity-55 leading-none">
+                                            {linkHostname}
+                                          </span>
+                                        )}
+                                      </div>
+                                      <RiArrowRightSLine className="w-5 h-5 opacity-70 shrink-0" />
                                     </a>
+                                  ) : (
+                                    <p className="text-[11px] text-muted-foreground/40 text-center font-mono py-1">
+                                      {isChinese ? "该认领未设置主页链接" : "No profile link set"}
+                                    </p>
                                   )}
                                 </div>
-
-                                {/* bottom spacer */}
-                                <div className="h-4" />
                               </div>
                             );
                           })}

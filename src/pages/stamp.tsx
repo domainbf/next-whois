@@ -1009,7 +1009,7 @@ export default function StampPage() {
                                       </p>
                                     </div>
                                   </div>
-                                  {/* Floating card */}
+                                  {/* Floating card — info only */}
                                   <div className={cn("relative -mt-4 mx-2.5 rounded-[14px] border shadow-lg px-3 pt-2.5 pb-2.5", curTheme.cardBg, curTheme.cardBorder)}>
                                     <div className="flex items-start justify-between gap-2">
                                       <span className={cn("text-[13px] font-black leading-tight tracking-tight", curTheme.shimmer)}>
@@ -1025,17 +1025,25 @@ export default function StampPage() {
                                         {form.description}
                                       </p>
                                     )}
-                                    {form.link && (
-                                      <div className={cn("mt-2 flex items-center justify-between px-2 py-1.5 rounded-lg text-[10px] font-semibold", curTheme.btn)}>
-                                        <span>访问主页</span>
-                                        <RiArrowRightSLine className="w-3 h-3 opacity-80" />
-                                      </div>
-                                    )}
-                                    {!form.link && (
-                                      <p className="text-[9px] text-muted-foreground/40 font-mono mt-2 text-center">未设置主页链接</p>
+                                  </div>
+                                  {/* CTA — primary action, outside card */}
+                                  <div className="px-2.5 pt-2 pb-3">
+                                    {form.link ? (() => {
+                                      let h = form.link;
+                                      try { h = new URL(form.link).hostname; } catch {}
+                                      return (
+                                        <div className={cn("flex items-center justify-between w-full px-3 py-2 rounded-xl", curTheme.btn)}>
+                                          <div className="flex flex-col gap-0.5">
+                                            <span className="text-[10px] font-bold leading-none">访问主页</span>
+                                            <span className="text-[8px] font-normal opacity-55 leading-none">{h}</span>
+                                          </div>
+                                          <RiArrowRightSLine className="w-3 h-3 opacity-70 shrink-0" />
+                                        </div>
+                                      );
+                                    })() : (
+                                      <p className="text-[9px] text-muted-foreground/40 font-mono text-center py-0.5">未设置主页链接</p>
                                     )}
                                   </div>
-                                  <div className="h-3" />
                                 </div>
                               </div>
                             );
