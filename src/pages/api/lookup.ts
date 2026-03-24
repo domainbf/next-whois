@@ -110,7 +110,6 @@ async function maybeSendHighValueAlert(
   }).catch(err => console.error("[high-value-alert]", err.message));
 }
 
-const MAX_ANON_HISTORY = 50;
 
 async function saveSearchRecord(
   query: string,
@@ -156,18 +155,6 @@ async function saveSearchRecord(
            (id, user_id, query, query_type, reg_status, expiration_date, remaining_days, value_tier)
          VALUES ($1, NULL, $2, $3, $4, $5, $6, $7)`,
         [randomBytes(8).toString("hex"), cleanQuery, queryType, regStatus, expDate, remDays, valueTier],
-      );
-      // Keep only the newest MAX_ANON_HISTORY anonymous records
-      await run(
-        `DELETE FROM search_history
-         WHERE user_id IS NULL
-           AND id NOT IN (
-             SELECT id FROM search_history
-             WHERE user_id IS NULL
-             ORDER BY created_at DESC
-             LIMIT $1
-           )`,
-        [MAX_ANON_HISTORY],
       );
     }
   } catch {}

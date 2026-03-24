@@ -98,6 +98,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       whereClause = HIGH_VALUE_SQL;
     } else if (filter === "anonymous") {
       whereClause = "sh.user_id IS NULL";
+    } else if (filter === "logged") {
+      whereClause = "sh.user_id IS NOT NULL";
     }
 
     const [totalRow, todayRow, statsCounts] = await Promise.all([

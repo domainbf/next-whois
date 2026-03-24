@@ -36,14 +36,15 @@ type PageData = {
   topQueries: { query: string; type: string; count: number }[];
 };
 
-type FilterType = "all" | "available" | "expiring" | "high_value" | "anonymous";
+type FilterType = "all" | "available" | "expiring" | "high_value" | "anonymous" | "logged";
 
 const FILTERS: { key: FilterType; label: string; icon: React.ElementType; color: string }[] = [
   { key: "all",        label: "所有记录",   icon: RiSearchLine,          color: "text-blue-500" },
+  { key: "logged",     label: "已登录用户", icon: RiUserLine,            color: "text-primary" },
+  { key: "anonymous",  label: "匿名查询",   icon: RiGhostLine,           color: "text-muted-foreground" },
   { key: "available",  label: "可用域名",   icon: RiCheckboxCircleLine,  color: "text-emerald-500" },
   { key: "expiring",   label: "即将到期",   icon: RiAlertLine,           color: "text-orange-500" },
   { key: "high_value", label: "高价值域名", icon: RiFireLine,            color: "text-violet-500" },
-  { key: "anonymous",  label: "匿名查询",   icon: RiGhostLine,           color: "text-muted-foreground" },
 ];
 
 const DELETE_PERIODS: { key: string; label: string }[] = [
@@ -386,10 +387,11 @@ export default function AdminSearchRecordsPage() {
                     filter === key ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"
                   )}>
                     {key === "all" ? data.stats.all :
+                     key === "logged" ? data.stats.logged :
+                     key === "anonymous" ? data.stats.anonymous :
                      key === "available" ? data.stats.available :
                      key === "expiring" ? data.stats.expiring :
-                     key === "high_value" ? data.stats.highValue :
-                     data.stats.anonymous}
+                     data.stats.highValue}
                   </span>
                 )}
               </button>
