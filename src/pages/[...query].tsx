@@ -13,6 +13,7 @@ import { GetServerSidePropsContext } from "next";
 import { useRouter } from "next/router";
 import { getOrigin } from "@/lib/seo";
 import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import Link from "next/link";
 import Head from "next/head";
 import { Button } from "@/components/ui/button";
@@ -4190,16 +4191,31 @@ export default function LookupPage({
                           <RiTimerLine className="w-3 h-3" />
                         </button>
                         {isOfficialDomain ? (
-                          <button
-                            onClick={() => toast.success(
-                              isChinese ? "该域名已通过全球主流网站自动认证" : "This domain is auto-certified as a globally mainstream website.",
-                              { description: isChinese ? "系统已确认为全球知名官方网站" : "Recognized as a well-known official website worldwide." }
-                            )}
-                            className="stamp-claimed-badge sm:hidden flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border transition-all active:scale-[0.93] bg-blue-50 dark:bg-blue-900/20 border-blue-400/60 text-blue-600 dark:text-blue-400"
-                          >
-                            <RiGlobalLine className="w-3 h-3" />
-                            {isChinese ? "官网认证" : "Official"}
-                          </button>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <button className="stamp-claimed-badge sm:hidden flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border transition-all active:scale-[0.93] bg-blue-50 dark:bg-blue-900/20 border-blue-400/60 text-blue-600 dark:text-blue-400">
+                                <RiGlobalLine className="w-3 h-3" />
+                                {isChinese ? "官网认证" : "Official"}
+                              </button>
+                            </PopoverTrigger>
+                            <PopoverContent side="top" align="start" className="w-64 p-3 rounded-xl shadow-lg">
+                              <div className="flex items-start gap-2.5">
+                                <div className="mt-0.5 flex-shrink-0 w-7 h-7 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center">
+                                  <RiGlobalLine className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                                </div>
+                                <div>
+                                  <p className="text-xs font-bold text-foreground mb-0.5">
+                                    {isChinese ? "全球主流网站认证" : "Globally Mainstream Certified"}
+                                  </p>
+                                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                                    {isChinese
+                                      ? "该域名已通过系统自动认证，为全球知名官方网站。"
+                                      : "Auto-certified as a well-known official website worldwide."}
+                                  </p>
+                                </div>
+                              </div>
+                            </PopoverContent>
+                          </Popover>
                         ) : verifiedStamps.length > 0 ? (
                           <button
                             onClick={() => setStampDetailOpen(true)}
@@ -4343,16 +4359,31 @@ export default function LookupPage({
                           {isChinese ? "域名订阅" : "Subscribe"}
                         </button>
                         {isOfficialDomain ? (
-                          <button
-                            onClick={() => toast.success(
-                              isChinese ? "该域名已通过全球主流网站自动认证" : "This domain is auto-certified as a globally mainstream website.",
-                              { description: isChinese ? "系统已确认为全球知名官方网站" : "Recognized as a well-known official website worldwide." }
-                            )}
-                            className="stamp-claimed-badge hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border transition-all active:scale-[0.93] bg-blue-50 dark:bg-blue-900/20 border-blue-400/60 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40"
-                          >
-                            <RiGlobalLine className="w-3 h-3" />
-                            {isChinese ? "官网认证" : "Official"}
-                          </button>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <button className="stamp-claimed-badge hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border transition-all active:scale-[0.93] bg-blue-50 dark:bg-blue-900/20 border-blue-400/60 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40">
+                                <RiGlobalLine className="w-3 h-3" />
+                                {isChinese ? "官网认证" : "Official"}
+                              </button>
+                            </PopoverTrigger>
+                            <PopoverContent side="top" align="start" className="w-64 p-3 rounded-xl shadow-lg">
+                              <div className="flex items-start gap-2.5">
+                                <div className="mt-0.5 flex-shrink-0 w-7 h-7 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center">
+                                  <RiGlobalLine className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                                </div>
+                                <div>
+                                  <p className="text-xs font-bold text-foreground mb-0.5">
+                                    {isChinese ? "全球主流网站认证" : "Globally Mainstream Certified"}
+                                  </p>
+                                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                                    {isChinese
+                                      ? "该域名已通过系统自动认证，为全球知名官方网站。"
+                                      : "Auto-certified as a well-known official website worldwide."}
+                                  </p>
+                                </div>
+                              </div>
+                            </PopoverContent>
+                          </Popover>
                         ) : verifiedStamps.length > 0 ? (
                           <button
                             onClick={() => setStampDetailOpen(true)}
