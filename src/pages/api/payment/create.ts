@@ -31,7 +31,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const { planId, provider } = req.body as { planId: string; provider: PaymentProvider };
   if (!planId || !provider) return res.status(400).json({ error: "缺少参数" });
 
-  const validProviders = ["stripe", "xunhupay", "alipay"];
+  const validProviders = ["stripe", "xunhupay", "alipay", "paypal"];
   if (!validProviders.includes(provider)) return res.status(400).json({ error: "不支持的支付方式" });
 
   const providerEnabled = await getSetting(`payment_${provider}_enabled`);
@@ -153,6 +153,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         new URLSearchParams(commonParams).toString()}`;
 
       return res.json({ ok: true, provider: "alipay", url: alipayUrl, orderId: order.id });
+    }
+
+    if (provider === "paypal") {
+      const { paypalCreateOrder } = await import("@/lib/payment");
+      const paypalOrder = await paypalCreateOrder({
+        orderId: order.id,
+        amount: plan.price,
+        currency: plan.currency === "CNY" ? "USD" : plan.currency,
+        description: plan.name,
+        returnUrl: `${baseUrl}/api/payment/capture/paypal?order=${order.id}`,
+        cancelUrl: `${baseUrl}/payment/result?order=${order.id}&status=cancel`,
+      });
+
+      await one(
+        `UPDATE payment_orders SET provider_order_id=$2, metadata=$3 WHERE id=$1`,
+        [order.id, paypalOrder.id, JSON.stringify({ paypal_order_id: paypalOrder.id })]
+      );
+
+      return res.json({ ok: true, provider: "paypal", url: paypalOrder.approveUrl, orderId: order.id });
     }
 
     return res.status(400).json({ error: "不支持的支付方式" });

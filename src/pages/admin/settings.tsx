@@ -779,7 +779,7 @@ export default function AdminSettingsPage() {
 
                     <div className="p-4 rounded-xl border border-border space-y-3">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold">支付宝官方（需企业资质）</span>
+                        <span className="text-sm font-semibold">支付宝官方（个人/个体户/企业均可）</span>
                         <label className="flex items-center gap-1.5 cursor-pointer text-xs text-muted-foreground ml-auto">
                           <input type="checkbox" checked={!!form.payment_alipay_enabled}
                             onChange={e => setForm(f => ({ ...f, payment_alipay_enabled: e.target.checked ? "1" : "" }))} className="rounded" />
@@ -799,6 +799,29 @@ export default function AdminSettingsPage() {
                       <div className="text-[11px] text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 rounded-lg px-3 py-2 border border-amber-200/50 dark:border-amber-700/30">
                         应用私钥（RSA2）：环境变量 <code className="font-mono">ALIPAY_PRIVATE_KEY</code>
                         <br />支付宝公钥：<code className="font-mono">ALIPAY_PUBLIC_KEY</code>（用于回调验签）
+                      </div>
+                    </div>
+
+                    <div className="p-4 rounded-xl border border-border space-y-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold">PayPal（国际支付）</span>
+                        <label className="flex items-center gap-1.5 cursor-pointer text-xs text-muted-foreground ml-auto">
+                          <input type="checkbox" checked={!!form.payment_paypal_enabled}
+                            onChange={e => setForm(f => ({ ...f, payment_paypal_enabled: e.target.checked ? "1" : "" }))} className="rounded" />
+                          启用
+                        </label>
+                      </div>
+                      <div>
+                        <Label className="text-xs mb-1 block">Client ID（前端公钥）</Label>
+                        <Input value={form.payment_paypal_client_id} onChange={e => setForm(f => ({ ...f, payment_paypal_client_id: e.target.value }))}
+                          placeholder="PayPal Client ID（以 A 开头）" className="h-8 text-sm font-mono" />
+                      </div>
+                      <div className="text-[11px] text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 rounded-lg px-3 py-2 border border-amber-200/50 dark:border-amber-700/30">
+                        Client Secret：环境变量 <code className="font-mono">PAYPAL_CLIENT_SECRET</code>
+                        <br />沙盒测试：设置 <code className="font-mono">PAYPAL_ENV=sandbox</code>
+                        <br />Webhook URL：<code className="font-mono">/api/payment/webhook/paypal</code>（可选，用于加强可靠性）
+                        <br />Webhook ID（可选）：<code className="font-mono">PAYPAL_WEBHOOK_ID</code>
+                        <br />注意：CNY 不支持 PayPal，会自动转换为 USD 收款
                       </div>
                     </div>
 

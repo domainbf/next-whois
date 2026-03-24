@@ -88,6 +88,8 @@ export interface SiteSettings {
   payment_alipay_enabled: string;
   payment_alipay_appid: string;
   payment_alipay_notify_url: string;
+  payment_paypal_enabled: string;
+  payment_paypal_client_id: string;
   payment_currency: string;
   payment_success_url: string;
 }
@@ -166,6 +168,8 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   payment_alipay_enabled: "",
   payment_alipay_appid: "",
   payment_alipay_notify_url: "",
+  payment_paypal_enabled: "",
+  payment_paypal_client_id: "",
   payment_currency: "CNY",
   payment_success_url: "",
 };

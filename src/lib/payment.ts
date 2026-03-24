@@ -1,7 +1,7 @@
 import { randomBytes, createHash, createHmac } from "crypto";
 import { run, one, many } from "@/lib/db-query";
 
-export type PaymentProvider = "stripe" | "xunhupay" | "alipay";
+export type PaymentProvider = "stripe" | "xunhupay" | "alipay" | "paypal";
 export type OrderStatus = "pending" | "paid" | "failed" | "expired" | "refunded";
 
 export interface PaymentPlan {
@@ -188,6 +188,72 @@ export function verifyStripeWebhookSignature(
   } catch {
     return false;
   }
+}
+
+// ── PayPal REST API helpers ────────────────────────────────────────────────
+
+const PAYPAL_BASE = process.env.PAYPAL_ENV === "sandbox"
+  ? "https://api-m.sandbox.paypal.com"
+  : "https://api-m.paypal.com";
+
+export async function paypalGetToken(): Promise<string> {
+  const clientId = process.env.PAYPAL_CLIENT_ID ?? "";
+  const secret = process.env.PAYPAL_CLIENT_SECRET ?? "";
+  if (!clientId || !secret) throw new Error("PayPal 未配置 Client ID / Secret");
+  const basic = Buffer.from(`${clientId}:${secret}`).toString("base64");
+  const res = await fetch(`${PAYPAL_BASE}/v1/oauth2/token`, {
+    method: "POST",
+    headers: { Authorization: `Basic ${basic}`, "Content-Type": "application/x-www-form-urlencoded" },
+    body: "grant_type=client_credentials",
+  });
+  const data = await res.json() as any;
+  if (!data.access_token) throw new Error("PayPal access token 获取失败");
+  return data.access_token;
+}
+
+export async function paypalCreateOrder(params: {
+  orderId: string; amount: number; currency: string;
+  description: string; returnUrl: string; cancelUrl: string;
+}): Promise<{ id: string; approveUrl: string }> {
+  const token = await paypalGetToken();
+  const res = await fetch(`${PAYPAL_BASE}/v2/checkout/orders`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      intent: "CAPTURE",
+      purchase_units: [{
+        reference_id: params.orderId,
+        description: params.description,
+        amount: { currency_code: params.currency.toUpperCase(), value: params.amount.toFixed(2) },
+      }],
+      payment_source: {
+        paypal: {
+          experience_context: {
+            return_url: params.returnUrl,
+            cancel_url: params.cancelUrl,
+            user_action: "PAY_NOW",
+          },
+        },
+      },
+    }),
+  });
+  const data = await res.json() as any;
+  if (data.status !== "CREATED") throw new Error(`PayPal 创建订单失败: ${data.message ?? JSON.stringify(data)}`);
+  const approveLink = data.links?.find((l: any) => l.rel === "payer-action" || l.rel === "approve");
+  if (!approveLink) throw new Error("PayPal 未返回支付链接");
+  return { id: data.id, approveUrl: approveLink.href };
+}
+
+export async function paypalCaptureOrder(paypalOrderId: string): Promise<{ status: string; captureId: string }> {
+  const token = await paypalGetToken();
+  const res = await fetch(`${PAYPAL_BASE}/v2/checkout/orders/${paypalOrderId}/capture`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+  });
+  const data = await res.json() as any;
+  const captureStatus = data.status;
+  const captureId = data.purchase_units?.[0]?.payments?.captures?.[0]?.id ?? data.id;
+  return { status: captureStatus, captureId };
 }
 
 export function verifyAlipaySign(

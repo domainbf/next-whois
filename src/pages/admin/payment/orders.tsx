@@ -37,7 +37,7 @@ const STATUS_TABS = [
 ];
 
 const PROVIDER_LABELS: Record<string, string> = {
-  stripe: "Stripe", xunhupay: "虎皮椒", alipay: "支付宝",
+  stripe: "Stripe", xunhupay: "虎皮椒", alipay: "支付宝", paypal: "PayPal",
 };
 
 const STATUS_STYLE: Record<string, string> = {

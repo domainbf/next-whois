@@ -12,7 +12,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   RiLoader4Line, RiBankCardLine, RiAlipayLine, RiArrowLeftSLine,
   RiCheckLine, RiShieldCheckLine, RiPriceTag3Line, RiCalendarLine,
-  RiStarLine, RiLockLine, RiExternalLinkLine,
+  RiStarLine, RiLockLine, RiExternalLinkLine, RiPaypalLine,
 } from "@remixicon/react";
 
 type Plan = {
@@ -26,9 +26,10 @@ const CURRENCY_SYMBOL: Record<string, string> = {
 };
 
 const PROVIDER_INFO = {
-  stripe:    { label: "信用卡 / 借记卡",  icon: RiBankCardLine,  color: "text-indigo-600 dark:text-indigo-400", hint: "Stripe 安全支付，支持 Visa / Mastercard 等国际卡" },
-  xunhupay:  { label: "扫码支付（支付宝/微信）", icon: RiAlipayLine, color: "text-blue-600 dark:text-blue-400", hint: "虎皮椒聚合支付，支持国内主流扫码方式" },
-  alipay:    { label: "支付宝",           icon: RiAlipayLine,    color: "text-sky-600 dark:text-sky-400",    hint: "支付宝官方直连支付" },
+  stripe:    { label: "信用卡 / 借记卡",        icon: RiBankCardLine,  color: "text-indigo-600 dark:text-indigo-400", hint: "Stripe 安全支付，支持 Visa / Mastercard 等国际卡" },
+  xunhupay:  { label: "扫码支付（支付宝/微信）", icon: RiAlipayLine,    color: "text-blue-600 dark:text-blue-400",   hint: "虎皮椒聚合支付，支持国内主流扫码方式" },
+  alipay:    { label: "支付宝",                icon: RiAlipayLine,    color: "text-sky-600 dark:text-sky-400",     hint: "支付宝官方直连支付（个人/个体户/企业均可）" },
+  paypal:    { label: "PayPal",               icon: RiPaypalLine,    color: "text-[#003087] dark:text-blue-400",  hint: "PayPal 国际支付，支持信用卡和 PayPal 余额（CNY 自动换算为 USD）" },
 };
 
 export default function PaymentCheckout() {
@@ -38,8 +39,10 @@ export default function PaymentCheckout() {
   const { t } = useTranslation();
   const isChinese = router.locale !== "en";
 
+  const planFromUrl = typeof router.query.plan === "string" ? router.query.plan : null;
+
   const [plans, setPlans] = React.useState<Plan[]>([]);
-  const [selectedPlan, setSelectedPlan] = React.useState<string | null>(null);
+  const [selectedPlan, setSelectedPlan] = React.useState<string | null>(planFromUrl);
   const [selectedProvider, setSelectedProvider] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [paying, setPaying] = React.useState(false);
@@ -51,6 +54,7 @@ export default function PaymentCheckout() {
     if (settings.payment_stripe_enabled) p.push("stripe");
     if (settings.payment_xunhupay_enabled) p.push("xunhupay");
     if (settings.payment_alipay_enabled) p.push("alipay");
+    if (settings.payment_paypal_enabled) p.push("paypal");
     return p;
   }, [settings]);
 

@@ -16,8 +16,11 @@ import {
   RiPaypalLine, RiBitCoinLine, RiSparkling2Line,
   RiCheckLine, RiLoader4Line, RiFileCopyLine, RiUser3Line,
   RiQuillPenLine, RiArrowRightLine, RiShieldLine,
+  RiBankCardLine, RiPriceTag3Line, RiLockLine, RiGiftLine,
+  RiShieldCheckLine,
 } from "@remixicon/react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useSession } from "next-auth/react";
 
 type Sponsor = {
   id: string;
@@ -31,8 +34,19 @@ type Sponsor = {
   platform: string | null;
 };
 
+type Plan = {
+  id: string;
+  name: string;
+  description: string | null;
+  price: number;
+  currency: string;
+  duration_days: number | null;
+  is_recurring: boolean;
+  grants_subscription: boolean;
+};
+
 const CURRENCY_SYMBOL: Record<string, string> = {
-  CNY: "¥", USD: "$", EUR: "€", JPY: "¥", GBP: "£",
+  CNY: "¥", USD: "$", EUR: "€", JPY: "¥", GBP: "£", HKD: "HK$",
 };
 
 function CopyButton({ text, label }: { text: string; label?: string }) {
@@ -111,9 +125,6 @@ function QrCard({ title, url, icon, accentClass, subtitle }: {
   accentClass: string; subtitle?: string;
 }) {
   const { t } = useTranslation();
-  const qrMissing = t("sponsor.qr_missing");
-  const qrUploadHint = t("sponsor.qr_upload_hint");
-
   return (
     <div className={cn("flex flex-col items-center gap-3 p-5 rounded-2xl border bg-card shadow-sm transition-all", accentClass)}>
       <div className="w-11 h-11 rounded-xl flex items-center justify-center bg-muted shadow-sm">
@@ -132,7 +143,7 @@ function QrCard({ title, url, icon, accentClass, subtitle }: {
             const target = e.target as HTMLImageElement;
             target.style.display = "none";
             if (target.parentElement) {
-              target.parentElement.innerHTML = `<div class="text-center text-muted-foreground/40 text-xs px-4"><p class="mb-1">${qrMissing}</p><p>${qrUploadHint}</p></div>`;
+              target.parentElement.innerHTML = `<div class="text-center text-muted-foreground/40 text-xs px-4"><p class="mb-1">${t("sponsor.qr_missing")}</p><p>${t("sponsor.qr_upload_hint")}</p></div>`;
             }
           }}
         />
@@ -327,14 +338,50 @@ function PostPaymentForm({ defaultPlatform, onDone }: { defaultPlatform?: string
   );
 }
 
+// Plan card for the checkout section
+function PlanCard({ plan, onClick }: { plan: Plan; onClick: () => void }) {
+  const sym = CURRENCY_SYMBOL[plan.currency] ?? plan.currency;
+  return (
+    <motion.button
+      onClick={onClick}
+      whileTap={{ scale: 0.98 }}
+      className="w-full text-left p-4 rounded-2xl border-2 border-border hover:border-primary/50 bg-card hover:bg-primary/5 transition-all group"
+    >
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-semibold text-sm group-hover:text-primary transition-colors">{plan.name}</span>
+            {plan.grants_subscription && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-violet-100 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-800 font-medium">含订阅权限</span>
+            )}
+          </div>
+          {plan.description && (
+            <p className="text-xs text-muted-foreground mt-0.5">{plan.description}</p>
+          )}
+          <div className="flex items-center gap-2 mt-1.5 text-[11px] text-muted-foreground">
+            <RiCalendarLine className="w-3 h-3" />
+            <span>{plan.duration_days ? `有效期 ${plan.duration_days} 天` : "永久有效"}</span>
+          </div>
+        </div>
+        <div className="text-right shrink-0">
+          <div className="text-xl font-black">{sym}{plan.price.toFixed(0)}</div>
+          <div className="text-[10px] text-muted-foreground">{plan.currency}</div>
+        </div>
+      </div>
+    </motion.button>
+  );
+}
+
 export default function SponsorPage() {
   const settings = useSiteSettings();
   const { t } = useTranslation();
   const router = useRouter();
+  const { data: session } = useSession();
   const siteName = settings.site_title || "X.RW · RDAP+WHOIS";
 
   const [sponsors, setSponsors] = React.useState<Sponsor[]>([]);
   const [sponsorLoading, setSponsorLoading] = React.useState(true);
+  const [plans, setPlans] = React.useState<Plan[]>([]);
   const [showAll, setShowAll] = React.useState(false);
   const [showPostPayment, setShowPostPayment] = React.useState(false);
   const [postPaymentPlatform, setPostPaymentPlatform] = React.useState<string>("");
@@ -346,6 +393,10 @@ export default function SponsorPage() {
       .then(d => { if (d.sponsors) setSponsors(d.sponsors); })
       .catch(() => {})
       .finally(() => setSponsorLoading(false));
+    fetch("/api/payment/plans")
+      .then(r => r.json())
+      .then(d => { if (d.plans) setPlans(d.plans); })
+      .catch(() => {});
   }, []);
 
   function spawnHearts() {
@@ -366,13 +417,29 @@ export default function SponsorPage() {
   const usdtAddr = settings.sponsor_crypto_usdt;
   const okxAddr = settings.sponsor_crypto_okx;
 
+  const paymentEnabled = !!(
+    settings.payment_stripe_enabled ||
+    settings.payment_xunhupay_enabled ||
+    settings.payment_alipay_enabled ||
+    settings.payment_paypal_enabled
+  );
+
   const hasQrPayment = alipayQr || wechatQr;
   const hasLinkPayment = githubUrl || paypalUrl;
   const hasCrypto = btcAddr || ethAddr || usdtAddr || okxAddr;
-  const hasAnyPayment = hasQrPayment || hasLinkPayment || hasCrypto;
+  const hasManualPayment = hasQrPayment || hasLinkPayment || hasCrypto;
+  const hasAnyPayment = hasManualPayment || (plans.length > 0 && paymentEnabled);
 
   const visibleSponsors = showAll ? sponsors : sponsors.slice(0, 12);
   const totalAmount = sponsors.reduce((s, sp) => s + (sp.amount ? parseFloat(sp.amount) : 0), 0);
+
+  function handlePlanClick(plan: Plan) {
+    if (!session) {
+      router.push(`/login?redirect=/payment/checkout`);
+      return;
+    }
+    router.push(`/payment/checkout?plan=${plan.id}`);
+  }
 
   return (
     <>
@@ -427,12 +494,65 @@ export default function SponsorPage() {
             )}
           </motion.div>
 
-          {/* Payment methods */}
-          {hasAnyPayment && (
-            <motion.section initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, duration: 0.3 }} className="mb-8 space-y-5">
+          {/* ── Online Payment Plans (checkout system) ── */}
+          {plans.length > 0 && paymentEnabled && (
+            <motion.section
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.08, duration: 0.3 }}
+              className="mb-8 space-y-4"
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <div className="h-px flex-1 bg-border/60" />
+                <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground px-2 flex items-center gap-1.5">
+                  <RiBankCardLine className="w-3.5 h-3.5" />在线支付
+                </p>
+                <div className="h-px flex-1 bg-border/60" />
+              </div>
+
+              <div className="rounded-2xl border border-border bg-gradient-to-br from-violet-50 to-background dark:from-violet-950/10 dark:to-background p-4 space-y-3">
+                <div className="flex items-center gap-2 mb-1">
+                  <RiGiftLine className="w-4 h-4 text-violet-500" />
+                  <span className="text-sm font-semibold">选择支持方案</span>
+                  <span className="text-[10px] text-muted-foreground ml-auto">支持 Stripe · PayPal · 支付宝 · 扫码</span>
+                </div>
+
+                <div className="space-y-2">
+                  {plans.map(plan => (
+                    <PlanCard key={plan.id} plan={plan} onClick={() => handlePlanClick(plan)} />
+                  ))}
+                </div>
+
+                {!session && (
+                  <p className="text-[11px] text-muted-foreground flex items-center gap-1 pt-1">
+                    <RiLockLine className="w-3.5 h-3.5" />
+                    需要<Link href="/login?redirect=/payment/checkout" className="text-primary hover:underline">登录</Link>才能在线支付
+                  </p>
+                )}
+
+                <div className="flex items-center gap-1 text-[10px] text-muted-foreground/50 pt-1">
+                  <RiShieldCheckLine className="w-3 h-3" />
+                  <span>安全加密支付，付款后权限自动开通</span>
+                </div>
+
+                <Link href="/payment/checkout" className="block">
+                  <Button className="w-full h-10 rounded-xl gap-2 font-semibold text-sm">
+                    <RiBankCardLine className="w-4 h-4" />前往选择套餐并支付
+                    <RiArrowRightLine className="w-4 h-4" />
+                  </Button>
+                </Link>
+              </div>
+            </motion.section>
+          )}
+
+          {/* ── Manual / Donation methods ── */}
+          {hasManualPayment && (
+            <motion.section initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12, duration: 0.3 }} className="mb-8 space-y-5">
               <div className="flex items-center gap-2 mb-4">
                 <div className="h-px flex-1 bg-border/60" />
-                <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground px-2">{t("sponsor.methods_section")}</p>
+                <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground px-2">
+                  {plans.length > 0 && paymentEnabled ? "其他打赏方式" : t("sponsor.methods_section")}
+                </p>
                 <div className="h-px flex-1 bg-border/60" />
               </div>
 
@@ -454,14 +574,24 @@ export default function SponsorPage() {
               {hasLinkPayment && (
                 <div className="flex flex-col sm:flex-row gap-3 justify-center">
                   {paypalUrl && (
-                    <a href={paypalUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-2xl bg-[#003087] text-white font-semibold hover:bg-[#002070] transition-colors shadow-sm flex-1 max-w-xs mx-auto sm:mx-0">
+                    <a
+                      href={paypalUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-2xl bg-[#003087] text-white font-semibold hover:bg-[#002070] transition-colors shadow-sm flex-1 max-w-xs mx-auto sm:mx-0"
+                    >
                       <RiPaypalLine className="w-5 h-5" />
                       {t("sponsor.paypal_btn")}
                       <RiExternalLinkLine className="w-3.5 h-3.5 opacity-70" />
                     </a>
                   )}
                   {githubUrl && (
-                    <a href={githubUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-2xl border border-border bg-card font-semibold hover:bg-muted/50 transition-colors shadow-sm flex-1 max-w-xs mx-auto sm:mx-0">
+                    <a
+                      href={githubUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-2xl border border-border bg-card font-semibold hover:bg-muted/50 transition-colors shadow-sm flex-1 max-w-xs mx-auto sm:mx-0"
+                    >
                       <RiGithubLine className="w-5 h-5" />
                       GitHub Sponsors
                       <RiExternalLinkLine className="w-3.5 h-3.5 opacity-70" />
@@ -485,134 +615,82 @@ export default function SponsorPage() {
                 </div>
               )}
 
-              {/* Post-payment CTA */}
-              {hasAnyPayment && (
-                <div className="mt-2">
-                  <AnimatePresence mode="wait">
-                    {!showPostPayment ? (
-                      <motion.div key="cta" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
-                        <button
-                          onClick={() => setShowPostPayment(true)}
-                          className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl border-2 border-dashed border-rose-200 dark:border-rose-800/50 text-rose-500 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-colors font-medium text-sm touch-manipulation"
-                        >
-                          <RiHeart3Line className="w-4 h-4" />
-                          {t("sponsor.cta_done")}
-                          <RiArrowRightLine className="w-4 h-4" />
-                        </button>
-                      </motion.div>
-                    ) : (
-                      <motion.div
-                        key="form"
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: "auto" }}
-                        exit={{ opacity: 0, height: 0 }}
-                        transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-                        style={{ overflow: "hidden" }}
-                      >
-                        <div className="rounded-2xl border border-rose-200 dark:border-rose-800/50 bg-rose-50/50 dark:bg-rose-950/10 p-5">
-                          <div className="flex items-center gap-2 mb-5">
-                            <RiHeart3Fill className="w-4 h-4 text-rose-500" />
-                            <h3 className="text-sm font-bold">{t("sponsor.form_title")}</h3>
-                          </div>
-                          <PostPaymentForm
-                            defaultPlatform={postPaymentPlatform}
-                            onDone={() => setShowPostPayment(false)}
-                          />
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-              )}
+              {/* Post-payment form trigger */}
+              <AnimatePresence mode="wait">
+                {!showPostPayment ? (
+                  <motion.div key="cta" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
+                    <button
+                      onClick={() => setShowPostPayment(true)}
+                      className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl border-2 border-dashed border-rose-200 dark:border-rose-800/50 text-rose-500 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-colors font-medium text-sm touch-manipulation"
+                    >
+                      <RiHeart3Line className="w-4 h-4" />
+                      {t("sponsor.cta_done")}
+                      <RiArrowRightLine className="w-4 h-4" />
+                    </button>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="form"
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+                    style={{ overflow: "hidden" }}
+                  >
+                    <div className="rounded-2xl border border-rose-200 dark:border-rose-800/50 bg-rose-50/50 dark:bg-rose-950/10 p-5">
+                      <div className="flex items-center gap-2 mb-5">
+                        <RiHeart3Fill className="w-4 h-4 text-rose-500" />
+                        <h3 className="text-sm font-bold">{t("sponsor.form_title")}</h3>
+                      </div>
+                      <PostPaymentForm
+                        defaultPlatform={postPaymentPlatform}
+                        onDone={() => setShowPostPayment(false)}
+                      />
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </motion.section>
           )}
 
-          {/* Sponsor list */}
+          {/* If no payment methods configured at all */}
+          {!hasAnyPayment && (
+            <div className="text-center py-12 text-muted-foreground text-sm space-y-2">
+              <RiHeart3Line className="w-8 h-8 mx-auto opacity-30" />
+              <p>暂未配置支付方式，请联系管理员</p>
+            </div>
+          )}
+
+          {/* ── Sponsor Wall ── */}
           {(sponsorLoading || sponsors.length > 0) && (
-            <motion.section initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18, duration: 0.3 }}>
+            <motion.section initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}>
               <div className="flex items-center gap-2 mb-4">
                 <div className="h-px flex-1 bg-border/60" />
-                <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground px-2 flex items-center gap-1">
-                  <RiStarFill className="w-3 h-3 text-amber-400" />{t("sponsor.list_section")}<RiStarFill className="w-3 h-3 text-amber-400" />
-                </p>
+                <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground px-2">{t("sponsor.wall_section")}</p>
                 <div className="h-px flex-1 bg-border/60" />
               </div>
 
               {sponsorLoading ? (
-                <div className="grid grid-cols-1 gap-3">
-                  {[...Array(3)].map((_, i) => (
-                    <div key={i} className="h-16 rounded-2xl bg-muted/40 animate-pulse" />
-                  ))}
-                </div>
-              ) : sponsors.length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground text-sm">
-                  <RiHeart3Line className="w-10 h-10 mx-auto mb-3 opacity-20" />
-                  <p className="font-medium">{t("sponsor.no_sponsors")}</p>
-                  <p className="text-xs mt-1 opacity-60">{t("sponsor.no_sponsors_cta")}</p>
+                <div className="flex justify-center py-8">
+                  <RiLoader4Line className="w-5 h-5 animate-spin text-muted-foreground" />
                 </div>
               ) : (
                 <>
-                  <div className="grid grid-cols-1 gap-3">
-                    <AnimatePresence>
-                      {visibleSponsors.map((s, i) => (
-                        <SponsorCard key={s.id} s={s} index={i} />
-                      ))}
-                    </AnimatePresence>
+                  <div className="grid gap-3">
+                    {visibleSponsors.map((s, i) => <SponsorCard key={s.id} s={s} index={i} />)}
                   </div>
                   {sponsors.length > 12 && (
-                    <div className="text-center mt-4">
-                      <Button variant="outline" size="sm" onClick={() => setShowAll(!showAll)} className="rounded-xl">
-                        {showAll ? t("sponsor.collapse") : t("sponsor.show_all").replace("{{count}}", String(sponsors.length))}
-                      </Button>
-                    </div>
+                    <button
+                      onClick={() => setShowAll(v => !v)}
+                      className="w-full mt-4 py-2.5 rounded-xl border border-dashed border-border text-xs text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
+                    >
+                      {showAll ? t("sponsor.show_less") : t("sponsor.show_more").replace("{{n}}", String(sponsors.length - 12))}
+                    </button>
                   )}
                 </>
               )}
             </motion.section>
           )}
-
-          {/* Thank you note */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.35 }}
-            className="mt-10 relative overflow-hidden rounded-3xl p-6 text-center"
-            style={{
-              background: "linear-gradient(135deg, var(--rose-50, #fff1f2) 0%, var(--pink-50, #fdf2f8) 50%, var(--purple-50, #faf5ff) 100%)",
-            }}
-          >
-            <div className="dark:hidden absolute inset-0 rounded-3xl bg-gradient-to-br from-rose-50 to-purple-50" />
-            <div className="hidden dark:block absolute inset-0 rounded-3xl bg-gradient-to-br from-rose-950/20 to-purple-950/20 border border-rose-800/20" />
-            <div className="relative z-10 space-y-3">
-              <div className="text-3xl">🌟</div>
-              <p className="font-bold text-base">{t("sponsor.thank_you_title")}</p>
-              <p className="text-sm text-muted-foreground leading-relaxed max-w-sm mx-auto">
-                {t("sponsor.thank_you_body")}
-              </p>
-              <div className="flex items-center justify-center gap-1 mt-3">
-                {(["❤️", "🧡", "💛", "💚", "💙", "💜"] as const).map((e, i) => (
-                  <motion.span
-                    key={i}
-                    animate={{ y: [0, -4, 0] }}
-                    transition={{ repeat: Infinity, delay: i * 0.15, duration: 1.2 }}
-                    className="text-lg"
-                  >
-                    {e}
-                  </motion.span>
-                ))}
-              </div>
-            </div>
-          </motion.div>
-
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }} className="mt-6 text-center">
-            <p className="text-xs text-muted-foreground/60">
-              {t("sponsor.not_showing")}<Link href="/feedback?type=general&source=sponsor" className="text-rose-500 hover:underline mx-0.5">{t("sponsor.contact_us")}</Link>{t("sponsor.not_showing_suffix")}
-            </p>
-            <div className="flex items-center justify-center gap-1 mt-2 text-[10px] text-muted-foreground/40">
-              <RiShieldLine className="w-3 h-3" />
-              <span>{t("sponsor.admin_note")}</span>
-            </div>
-          </motion.div>
 
         </main>
       </ScrollArea>
