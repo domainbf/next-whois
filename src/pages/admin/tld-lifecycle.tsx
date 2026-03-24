@@ -9,30 +9,38 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import {
-  RiAddLine, RiEditLine, RiDeleteBinLine, RiLoader4Line, RiSearchLine, RiRefreshLine,
+  RiEditLine, RiDeleteBinLine, RiLoader4Line, RiSearchLine, RiRefreshLine,
 } from "@remixicon/react";
 import { toast } from "sonner";
 import { LIFECYCLE_TABLE } from "@/lib/lifecycle";
 import { cn } from "@/lib/utils";
 
-type Override = {
+type DbOverride = {
   id: string; tld: string;
   grace: number; redemption: number; pending_delete: number;
   registry: string | null; notes: string | null;
-  created_at: string; updated_at: string;
 };
 
-const EMPTY_FORM = { tld: "", grace: "0", redemption: "0", pending_delete: "0", registry: "", notes: "" };
+type TldRow = {
+  tld: string;
+  grace: number;
+  redemption: number;
+  pendingDelete: number;
+  registry: string | null;
+  notes: string | null;
+  modified: boolean;
+  dbId: string | null;
+};
 
 export default function AdminTldLifecyclePage() {
-  const [rows, setRows] = React.useState<Override[]>([]);
+  const [overrides, setOverrides] = React.useState<DbOverride[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [search, setSearch] = React.useState("");
   const [dialogOpen, setDialogOpen] = React.useState(false);
-  const [editing, setEditing] = React.useState<Override | null>(null);
-  const [form, setForm] = React.useState(EMPTY_FORM);
+  const [editingRow, setEditingRow] = React.useState<TldRow | null>(null);
+  const [form, setForm] = React.useState({ grace: "0", redemption: "0", pending_delete: "0", registry: "", notes: "" });
   const [saving, setSaving] = React.useState(false);
-  const [deleting, setDeleting] = React.useState<string | null>(null);
+  const [resetting, setResetting] = React.useState<string | null>(null);
 
   async function load() {
     setLoading(true);
@@ -40,7 +48,7 @@ export default function AdminTldLifecyclePage() {
       const res = await fetch("/api/admin/tld-lifecycle");
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "加载失败");
-      setRows(data.overrides);
+      setOverrides(data.overrides ?? []);
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "加载失败");
     } finally {
@@ -50,289 +58,244 @@ export default function AdminTldLifecyclePage() {
 
   React.useEffect(() => { load(); }, []);
 
-  function openAdd() {
-    setEditing(null);
-    setForm(EMPTY_FORM);
-    setDialogOpen(true);
-  }
+  const allTlds: TldRow[] = React.useMemo(() => {
+    const map: Record<string, DbOverride> = {};
+    for (const ov of overrides) map[ov.tld] = ov;
 
-  function openEdit(row: Override) {
-    setEditing(row);
+    const result: TldRow[] = Object.entries(LIFECYCLE_TABLE).map(([tld, entry]) => {
+      const ov = map[tld];
+      return {
+        tld,
+        grace:       ov ? ov.grace         : entry.grace,
+        redemption:  ov ? ov.redemption     : entry.redemption,
+        pendingDelete: ov ? ov.pending_delete : entry.pendingDelete,
+        registry:    ov ? (ov.registry ?? entry.registry ?? null) : (entry.registry ?? null),
+        notes:       ov?.notes ?? null,
+        modified:    !!ov,
+        dbId:        ov?.id ?? null,
+      };
+    });
+
+    for (const ov of overrides) {
+      if (!LIFECYCLE_TABLE[ov.tld]) {
+        result.push({
+          tld: ov.tld,
+          grace: ov.grace,
+          redemption: ov.redemption,
+          pendingDelete: ov.pending_delete,
+          registry: ov.registry,
+          notes: ov.notes,
+          modified: true,
+          dbId: ov.id,
+        });
+      }
+    }
+
+    return result.sort((a, b) => a.tld.localeCompare(b.tld));
+  }, [overrides]);
+
+  const filtered = React.useMemo(() => {
+    const q = search.toLowerCase().trim();
+    if (!q) return allTlds;
+    return allTlds.filter(r =>
+      r.tld.startsWith(q) ||
+      r.tld.includes(q) ||
+      (r.registry ?? "").toLowerCase().includes(q)
+    );
+  }, [allTlds, search]);
+
+  function openEdit(row: TldRow) {
+    setEditingRow(row);
     setForm({
-      tld: row.tld,
-      grace: String(row.grace),
-      redemption: String(row.redemption),
-      pending_delete: String(row.pending_delete),
-      registry: row.registry ?? "",
-      notes: row.notes ?? "",
+      grace:        String(row.grace),
+      redemption:   String(row.redemption),
+      pending_delete: String(row.pendingDelete),
+      registry:     row.registry ?? "",
+      notes:        row.notes ?? "",
     });
     setDialogOpen(true);
   }
 
   async function handleSave() {
-    if (!form.tld.trim()) return toast.error("TLD 不能为空");
+    if (!editingRow) return;
     setSaving(true);
     try {
-      const url = editing ? `/api/admin/tld-lifecycle?id=${editing.id}` : "/api/admin/tld-lifecycle";
-      const method = editing ? "PATCH" : "POST";
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          tld: form.tld.trim().toLowerCase(),
-          grace: Number(form.grace) || 0,
-          redemption: Number(form.redemption) || 0,
-          pending_delete: Number(form.pending_delete) || 0,
-          registry: form.registry.trim() || null,
-          notes: form.notes.trim() || null,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "操作失败");
-      toast.success(editing ? "规则已更新" : "规则已添加");
+      const body = {
+        tld:          editingRow.tld,
+        grace:        Number(form.grace) || 0,
+        redemption:   Number(form.redemption) || 0,
+        pending_delete: Number(form.pending_delete) || 0,
+        registry:     form.registry || null,
+        notes:        form.notes || null,
+      };
+      const res = editingRow.dbId
+        ? await fetch(`/api/admin/tld-lifecycle?id=${editingRow.dbId}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          })
+        : await fetch("/api/admin/tld-lifecycle", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          });
+      if (!res.ok) {
+        const d = await res.json();
+        throw new Error(d.error || "保存失败");
+      }
+      toast.success(`.${editingRow.tld} 已保存`);
       setDialogOpen(false);
       await load();
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : "操作失败");
+      toast.error(e instanceof Error ? e.message : "保存失败");
     } finally {
       setSaving(false);
     }
   }
 
-  async function handleDelete(row: Override) {
-    if (!confirm(`确认删除 .${row.tld} 的修正记录？将恢复为系统内置默认值。`)) return;
-    setDeleting(row.id);
+  async function handleReset(row: TldRow) {
+    if (!row.dbId) return;
+    if (!confirm(`确认将 .${row.tld} 重置为系统内置默认值？`)) return;
+    setResetting(row.tld);
     try {
-      const res = await fetch(`/api/admin/tld-lifecycle?id=${row.id}`, { method: "DELETE" });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "删除失败");
-      toast.success(`已删除 .${row.tld} 规则，已恢复默认值`);
+      const res = await fetch(`/api/admin/tld-lifecycle?id=${row.dbId}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("重置失败");
+      toast.success(`.${row.tld} 已重置为内置默认值`);
       await load();
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : "删除失败");
+      toast.error(e instanceof Error ? e.message : "重置失败");
     } finally {
-      setDeleting(null);
+      setResetting(null);
     }
   }
 
-  const filtered = rows.filter(r =>
-    !search || r.tld.includes(search.toLowerCase()) ||
-    (r.registry ?? "").toLowerCase().includes(search.toLowerCase()),
-  );
-
-  const customTlds = new Set(rows.map(r => r.tld));
-  const builtinFiltered = Object.entries(LIFECYCLE_TABLE)
-    .filter(([tld]) =>
-      !search ||
-      tld.includes(search.toLowerCase())
-    )
-    .sort(([a], [b]) => a.localeCompare(b));
-
-  const [showBuiltinManual, setShowBuiltinManual] = React.useState(false);
-  const showBuiltin = showBuiltinManual || !!search;
-
-  function getBuiltIn(tld: string) {
-    const entry = LIFECYCLE_TABLE[tld];
-    if (!entry) return null;
-    return `宽${entry.grace}d 赎${entry.redemption}d 删${entry.pendingDelete}d`;
-  }
-
-  const thClass = "py-2.5 px-3 text-left text-[11px] font-semibold text-muted-foreground uppercase tracking-wide";
-  const tdClass = "py-2.5 px-3 text-sm";
+  const th = "py-2.5 px-3 text-left text-[11px] font-semibold text-muted-foreground uppercase tracking-wide";
+  const td = "py-2.5 px-3 text-sm";
 
   return (
     <AdminLayout>
       <Head><title>TLD 生命周期规则 · 管理</title></Head>
       <div className="space-y-4 p-4 md:p-6">
+
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
             <h1 className="text-xl font-bold">TLD 生命周期规则</h1>
             <p className="text-sm text-muted-foreground mt-0.5">
-              修正各 TLD 的宽限期、赎回期、待删除天数，修正后优先于系统内置值生效
+              点击编辑任意 TLD，保存后立即同步到数据库生效
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <Button size="sm" variant="outline" onClick={load} disabled={loading}>
-              <RiRefreshLine className={cn("w-3.5 h-3.5 mr-1.5", loading && "animate-spin")} />
-              刷新
-            </Button>
-            <Button size="sm" onClick={openAdd}>
-              <RiAddLine className="w-3.5 h-3.5 mr-1.5" /> 新增修正
-            </Button>
+          <Button size="sm" variant="outline" onClick={load} disabled={loading}>
+            <RiRefreshLine className={cn("w-3.5 h-3.5 mr-1.5", loading && "animate-spin")} />
+            刷新
+          </Button>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <div className="relative flex-1 max-w-xs">
+            <RiSearchLine className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+            <Input
+              className="pl-9 h-8 text-sm"
+              placeholder="搜索 TLD 或注册局..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
           </div>
-        </div>
-
-        <div className="relative max-w-xs">
-          <RiSearchLine className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-          <Input
-            className="pl-9 h-8 text-sm"
-            placeholder="搜索 TLD（同时搜索内置表）..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-          />
-        </div>
-
-        <div className="border rounded-xl overflow-hidden">
-          <table className="w-full">
-            <thead className="bg-muted/30 border-b">
-              <tr>
-                <th className={thClass}>TLD</th>
-                <th className={cn(thClass, "text-center")}>宽限期</th>
-                <th className={cn(thClass, "text-center")}>赎回期</th>
-                <th className={cn(thClass, "text-center")}>待删除</th>
-                <th className={thClass}>注册局</th>
-                <th className={thClass}>内置值</th>
-                <th className={cn(thClass, "text-right")}>操作</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border/40">
-              {loading ? (
-                <tr>
-                  <td colSpan={7} className="text-center py-8 text-muted-foreground">
-                    <RiLoader4Line className="w-5 h-5 animate-spin mx-auto mb-2" />
-                    <span className="text-sm">加载中...</span>
-                  </td>
-                </tr>
-              ) : filtered.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="text-center py-8 text-muted-foreground text-sm">
-                    {search ? `未找到匹配 "${search}" 的修正记录` : "暂无修正记录 — 所有 TLD 当前使用内置默认值"}
-                  </td>
-                </tr>
-              ) : filtered.map(row => (
-                <tr key={row.id} className="hover:bg-muted/20 transition-colors">
-                  <td className={cn(tdClass, "font-mono font-semibold")}>.{row.tld}</td>
-                  <td className={cn(tdClass, "text-center tabular-nums")}>{row.grace}d</td>
-                  <td className={cn(tdClass, "text-center tabular-nums")}>{row.redemption}d</td>
-                  <td className={cn(tdClass, "text-center tabular-nums")}>{row.pending_delete}d</td>
-                  <td className={cn(tdClass, "text-muted-foreground")}>{row.registry ?? "—"}</td>
-                  <td className={cn(tdClass, "text-xs text-muted-foreground font-mono")}>{getBuiltIn(row.tld) ?? "无内置"}</td>
-                  <td className={cn(tdClass, "text-right")}>
-                    <div className="flex items-center justify-end gap-1">
-                      <button
-                        onClick={() => openEdit(row)}
-                        className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">
-                        <RiEditLine className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(row)}
-                        disabled={deleting === row.id}
-                        className="p-1.5 rounded hover:bg-red-50 dark:hover:bg-red-950/30 text-muted-foreground hover:text-red-500 transition-colors">
-                        {deleting === row.id
-                          ? <RiLoader4Line className="w-3.5 h-3.5 animate-spin" />
-                          : <RiDeleteBinLine className="w-3.5 h-3.5" />}
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        <p className="text-xs text-muted-foreground">
-          {rows.length > 0 ? `已修正 ${rows.length} 个 TLD；` : "暂无修正记录 — "}系统内置 {Object.keys(LIFECYCLE_TABLE).length} 个 TLD 的默认值
-        </p>
-
-        {/* Built-in reference table */}
-        <div className="border rounded-xl overflow-hidden">
-          <button
-            className="w-full flex items-center justify-between px-4 py-3 bg-muted/30 hover:bg-muted/50 transition-colors text-left"
-            onClick={() => setShowBuiltinManual(v => !v)}
-          >
-            <div>
-              <span className="text-sm font-semibold">内置生命周期参考表</span>
-              <span className="text-xs text-muted-foreground ml-2">
-                {search ? `${builtinFiltered.length} 个匹配 "${search}"` : `共 ${Object.keys(LIFECYCLE_TABLE).length} 个 TLD`}
+          <p className="text-xs text-muted-foreground shrink-0">
+            {search
+              ? `${filtered.length} / ${allTlds.length} 个`
+              : `共 ${allTlds.length} 个`}
+            {overrides.length > 0 && (
+              <span className="ml-1.5 text-emerald-600 dark:text-emerald-400 font-medium">
+                · 已修正 {overrides.length} 个
               </span>
-            </div>
-            <span className="text-xs text-muted-foreground font-medium">
-              {showBuiltin ? "收起 ▲" : "展开 ▼"}
-            </span>
-          </button>
+            )}
+          </p>
+        </div>
 
-          {showBuiltin && (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-muted/20 border-b border-t">
+        <div className="border rounded-xl overflow-hidden">
+          <div className="overflow-x-auto" style={{ maxHeight: "65vh", overflowY: "auto" }}>
+            <table className="w-full">
+              <thead className="bg-muted/30 border-b sticky top-0 z-10 backdrop-blur-sm">
+                <tr>
+                  <th className={th}>TLD</th>
+                  <th className={cn(th, "text-center")}>宽限期</th>
+                  <th className={cn(th, "text-center")}>赎回期</th>
+                  <th className={cn(th, "text-center")}>待删除</th>
+                  <th className={th}>注册局</th>
+                  <th className={cn(th, "text-right")}>操作</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/40">
+                {loading ? (
                   <tr>
-                    <th className={thClass}>TLD</th>
-                    <th className={cn(thClass, "text-center")}>宽限期</th>
-                    <th className={cn(thClass, "text-center")}>赎回期</th>
-                    <th className={cn(thClass, "text-center")}>待删除</th>
-                    <th className={cn(thClass, "text-right")}>操作</th>
+                    <td colSpan={6} className="text-center py-10 text-muted-foreground">
+                      <RiLoader4Line className="w-5 h-5 animate-spin mx-auto mb-2" />
+                      <span className="text-sm">加载中...</span>
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-border/30">
-                  {builtinFiltered.map(([tld, entry]) => (
-                    <tr
-                      key={tld}
-                      className={cn(
-                        "hover:bg-muted/20 transition-colors",
-                        customTlds.has(tld) && "opacity-40"
+                ) : filtered.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="text-center py-10 text-muted-foreground text-sm">
+                      未找到匹配「{search}」的 TLD
+                    </td>
+                  </tr>
+                ) : filtered.map(row => (
+                  <tr
+                    key={row.tld}
+                    className={cn(
+                      "hover:bg-muted/20 transition-colors",
+                      row.modified && "bg-emerald-50/40 dark:bg-emerald-950/10"
+                    )}
+                  >
+                    <td className={cn(td, "font-mono font-semibold")}>
+                      .{row.tld}
+                      {row.modified && (
+                        <span className="ml-1.5 text-[9px] px-1 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 font-semibold align-middle">
+                          已修正
+                        </span>
                       )}
-                    >
-                      <td className={cn(tdClass, "font-mono font-semibold")}>
-                        .{tld}
-                        {customTlds.has(tld) && (
-                          <span className="ml-1.5 text-[9px] px-1 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 font-semibold">已修正</span>
-                        )}
-                      </td>
-                      <td className={cn(tdClass, "text-center tabular-nums text-muted-foreground")}>{entry.grace}d</td>
-                      <td className={cn(tdClass, "text-center tabular-nums text-muted-foreground")}>{entry.redemption}d</td>
-                      <td className={cn(tdClass, "text-center tabular-nums text-muted-foreground")}>{entry.pendingDelete}d</td>
-                      <td className={cn(tdClass, "text-right")}>
-                        {!customTlds.has(tld) && (
+                    </td>
+                    <td className={cn(td, "text-center tabular-nums text-muted-foreground")}>{row.grace}d</td>
+                    <td className={cn(td, "text-center tabular-nums text-muted-foreground")}>{row.redemption}d</td>
+                    <td className={cn(td, "text-center tabular-nums text-muted-foreground")}>{row.pendingDelete}d</td>
+                    <td className={cn(td, "text-xs text-muted-foreground")}>{row.registry ?? "—"}</td>
+                    <td className={cn(td, "text-right")}>
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          onClick={() => openEdit(row)}
+                          title="编辑"
+                          className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          <RiEditLine className="w-3.5 h-3.5" />
+                        </button>
+                        {row.modified && (
                           <button
-                            onClick={() => {
-                              setEditing(null);
-                              setForm({
-                                tld,
-                                grace: String(entry.grace),
-                                redemption: String(entry.redemption),
-                                pending_delete: String(entry.pendingDelete),
-                                registry: "",
-                                notes: "",
-                              });
-                              setDialogOpen(true);
-                            }}
-                            className="text-[11px] px-2 py-1 rounded-lg bg-muted hover:bg-primary/10 hover:text-primary text-muted-foreground transition-colors font-medium"
+                            onClick={() => handleReset(row)}
+                            disabled={resetting === row.tld}
+                            title="重置为内置默认值"
+                            className="p-1.5 rounded hover:bg-amber-50 dark:hover:bg-amber-950/30 text-muted-foreground hover:text-amber-500 transition-colors"
                           >
-                            修正
+                            {resetting === row.tld
+                              ? <RiLoader4Line className="w-3.5 h-3.5 animate-spin" />
+                              : <RiDeleteBinLine className="w-3.5 h-3.5" />}
                           </button>
                         )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
-      {/* Add / Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>{editing ? `修正 .${editing.tld}` : "新增 TLD 修正"}</DialogTitle>
+            <DialogTitle>修正 .{editingRow?.tld}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
-            <div>
-              <Label className="text-xs font-semibold">TLD（不含点）</Label>
-              <Input
-                className="mt-1.5"
-                placeholder="com / io / cn / co.uk"
-                value={form.tld}
-                onChange={e => setForm(f => ({ ...f, tld: e.target.value }))}
-                disabled={!!editing}
-              />
-              {!editing && form.tld && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  内置值：{getBuiltIn(form.tld) ?? "无内置（将新增）"}
-                </p>
-              )}
-            </div>
             <div className="grid grid-cols-3 gap-3">
               <div>
                 <Label className="text-xs font-semibold">宽限期（天）</Label>
@@ -376,17 +339,19 @@ export default function AdminTldLifecyclePage() {
               <TextArea
                 className="mt-1.5 text-sm"
                 rows={2}
-                placeholder="自定义原因、数据来源等"
+                placeholder="数据来源、修正原因等"
                 value={form.notes}
                 onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
               />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={saving}>取消</Button>
+            <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={saving}>
+              取消
+            </Button>
             <Button onClick={handleSave} disabled={saving}>
               {saving ? <RiLoader4Line className="w-4 h-4 animate-spin mr-1.5" /> : null}
-              {editing ? "保存修改" : "添加规则"}
+              保存
             </Button>
           </DialogFooter>
         </DialogContent>
