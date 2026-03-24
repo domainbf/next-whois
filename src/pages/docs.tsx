@@ -227,7 +227,7 @@ export async function getServerSideProps(context: GetServerSidePropsContext) {
 export default function DocsPage({ origin }: { origin: string }) {
   const { t } = useTranslation();
   const settings = useSiteSettings();
-  const siteLabel = settings.site_logo_text || "NEXT WHOIS";
+  const siteLabel = settings.site_logo_text || "X.RW";
   const docTitle = `${t("docs.title")} — ${siteLabel}`;
 
   return (
@@ -1063,7 +1063,7 @@ curl "${origin}/api/og?query=example.com&w=1200&h=600" -o card.png`}</CodeBlock>
 
           <div className="mt-12 mb-8 text-center">
             <p className="text-xs text-muted-foreground">
-              Next Whois v{VERSION} ·{" "}
+              X.RW v{VERSION} ·{" "}
               <a href="https://github.com/zmh-program/next-whois-ui" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors">
                 GitHub
               </a>

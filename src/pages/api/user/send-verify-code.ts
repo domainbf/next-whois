@@ -26,7 +26,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   await setRedisValue(storeKey, code, 600);
   await setRedisValue(rateLimitKey, "1", 60);
 
-  const siteName = await getSiteLabel().catch(() => "NEXT WHOIS");
+  const siteName = await getSiteLabel().catch(() => "X.RW");
   await sendEmail({
     to: cleanEmail,
     subject: `${code} 是你的 ${siteName} 注册验证码`,

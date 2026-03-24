@@ -90,7 +90,7 @@ export function AdminLayout({ children, title }: { children: React.ReactNode; ti
   return (
     <>
       <Head>
-        <title key="site-title">{title ? `${title} · 管理后台` : "管理后台 · Next Whois"}</title>
+        <title key="site-title">{title ? `${title} · 管理后台` : "管理后台 · X.RW"}</title>
       </Head>
 
       {/* ── Desktop layout ──────────────────────────────── */}

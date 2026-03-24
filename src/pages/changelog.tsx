@@ -252,7 +252,7 @@ export default function ChangelogPage() {
   const { locale } = useTranslation();
   const settings = useSiteSettings();
   const isChinese = locale === "zh" || locale === "zh-tw";
-  const siteName = settings.site_logo_text || "NEXT WHOIS";
+  const siteName = settings.site_logo_text || "X.RW";
   const [dynamicEntries, setDynamicEntries] = React.useState<DynamicEntry[]>([]);
   const [dynamicLoaded, setDynamicLoaded] = React.useState(false);
 

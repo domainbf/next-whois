@@ -331,7 +331,7 @@ export default function SponsorPage() {
   const settings = useSiteSettings();
   const { t } = useTranslation();
   const router = useRouter();
-  const siteName = settings.site_title || "Next Whois";
+  const siteName = settings.site_title || "X.RW · RDAP+WHOIS";
 
   const [sponsors, setSponsors] = React.useState<Sponsor[]>([]);
   const [sponsorLoading, setSponsorLoading] = React.useState(true);

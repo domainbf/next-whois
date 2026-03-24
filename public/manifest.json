@@ -1,19 +1,29 @@
 {
-  "name": "RDAP•WHOiS",
+  "name": "X.RW · RDAP+WHOIS",
   "short_name": "X.RW",
-  "description": "神秘的域名在X.RW搜索下无所遁形",
+  "description": "快速查询域名、IP、ASN、CIDR 的 WHOIS / RDAP 信息，支持多节点并行查询。",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
+  "background_color": "#0a0a0a",
   "theme_color": "#000000",
   "icons": [
     {
-      "src": "og-image.png",
+      "src": "/apple-icon-180.png",
+      "type": "image/png",
+      "sizes": "180x180"
+    },
+    {
+      "src": "/icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    },
+    {
+      "src": "/icons/icon-192x192.png",
       "type": "image/png",
       "sizes": "192x192"
     },
     {
-      "src": "og-image.png",
+      "src": "/icons/icon-512x512.png",
       "type": "image/png",
       "sizes": "512x512"
     }

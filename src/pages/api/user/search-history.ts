@@ -48,7 +48,7 @@ async function maybeSendHighValueAlert(
   const result = scoreDomain(query, queryType);
   if (!result) return;
 
-  const siteName = await getSiteLabel().catch(() => "NEXT WHOIS");
+  const siteName = await getSiteLabel().catch(() => "X.RW");
   const html = highValueAlertHtml({
     domain: query,
     score: result.score,

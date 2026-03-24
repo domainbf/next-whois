@@ -25,7 +25,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     : (process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_BASE_URL || "https://x.rw");
   const verifyUrl = `${appBase}/stamp?domain=${encodeURIComponent(domain)}`;
 
-  const siteName = await getSiteLabel().catch(() => "NEXT WHOIS");
+  const siteName = await getSiteLabel().catch(() => "X.RW");
 
   await sendEmail({
     to: email,

@@ -43,7 +43,7 @@ export default function ToolsPage() {
   const { t, locale } = useTranslation();
   const { data: session } = useSession();
   const settings = useSiteSettings();
-  const siteLabel = settings.site_logo_text || "NEXT WHOIS";
+  const siteLabel = settings.site_logo_text || "X.RW";
 
   // Initialise from localStorage immediately so the sort order is stable from
   // the very first render — avoids any reorder flash when the component mounts.

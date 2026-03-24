@@ -74,7 +74,18 @@ function AppHead({ origin }: { origin: string }) {
   const keywords = settings.site_keywords || siteKeywords;
   const siteName = settings.og_site_name || settings.site_title || siteTitle;
   const canonicalUrl = settings.og_url || origin;
-  const ogImage = settings.og_image || `${origin}/bannermepng.png`;
+
+  // Always resolve og:image to an absolute URL so social crawlers (WeChat, etc.)
+  // can fetch it. If the stored value is a relative path, prepend the canonical
+  // base URL or the request origin.
+  const rawOgImage = settings.og_image || `/og-banner.png`;
+  const base = canonicalUrl || origin;
+  const ogImage = rawOgImage.startsWith("http")
+    ? rawOgImage
+    : base
+    ? `${base}${rawOgImage.startsWith("/") ? "" : "/"}${rawOgImage}`
+    : rawOgImage;
+
   const twitterCard = settings.twitter_card || "summary_large_image";
 
   return (
@@ -91,8 +102,8 @@ function AppHead({ origin }: { origin: string }) {
       <meta key="og:title" property="og:title" content={title} />
       <meta key="og:description" property="og:description" content={description} />
       <meta key="og:image" property="og:image" content={ogImage} />
-      <meta key="og:image:width" property="og:image:width" content="1440" />
-      <meta key="og:image:height" property="og:image:height" content="1440" />
+      <meta key="og:image:width" property="og:image:width" content="1200" />
+      <meta key="og:image:height" property="og:image:height" content="1200" />
       <meta key="og:image:type" property="og:image:type" content="image/png" />
       {canonicalUrl && <meta key="og:url" property="og:url" content={canonicalUrl} />}
       <meta key="og:site_name" property="og:site_name" content={siteName} />
@@ -106,11 +117,13 @@ function AppHead({ origin }: { origin: string }) {
       {/* Canonical */}
       {canonicalUrl && <link key="canonical" rel="canonical" href={canonicalUrl} />}
 
-      {/* Favicon */}
+      {/* Favicon & app icons */}
       {settings.site_icon_url
         ? <link rel="icon" href={settings.site_icon_url} />
         : <link rel="icon" href="/favicon.ico" />
       }
+      <link rel="apple-touch-icon" sizes="180x180" href="/apple-icon-180.png" />
+      <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png" />
     </Head>
   );
 }

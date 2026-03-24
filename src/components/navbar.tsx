@@ -301,7 +301,7 @@ export function NavDrawer() {
   const [open, setOpen] = React.useState(false);
   const settings = useSiteSettings();
   const { t } = useTranslation();
-  const logoText = settings.site_logo_text || "NEXT WHOIS";
+  const logoText = settings.site_logo_text || "X.RW";
   const visibleNavItems = navItems.filter(item =>
     !item.settingKey || !!(settings as unknown as Record<string, string>)[item.settingKey]
   );
@@ -506,7 +506,7 @@ function UserButton() {
 export function Navbar() {
   const isVisible = useScrollDirection();
   const settings = useSiteSettings();
-  const logoText = settings.site_logo_text || "NEXT WHOIS";
+  const logoText = settings.site_logo_text || "X.RW";
   const { t } = useTranslation();
 
   return (

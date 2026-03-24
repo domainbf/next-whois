@@ -35,7 +35,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (!(await isDbReady())) return res.status(500).json({ error: "Database unavailable" });
 
-  const siteName = await getSiteLabel().catch(() => "NEXT WHOIS");
+  const siteName = await getSiteLabel().catch(() => "X.RW");
 
   try {
     // Load admin-configured TLD lifecycle overrides once for the whole batch

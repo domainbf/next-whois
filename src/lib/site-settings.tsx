@@ -83,15 +83,15 @@ export interface SiteSettings {
 }
 
 export const DEFAULT_SETTINGS: SiteSettings = {
-  site_title: "Next Whois",
+  site_title: "X.RW · RDAP+WHOIS",
   site_subtitle: "专业的 WHOIS / RDAP 查询工具",
   site_description: "快速查询域名、IP、ASN、CIDR 的 WHOIS / RDAP 信息，支持多节点并行查询。",
-  site_keywords: "Whois, RDAP, Lookup, Domain, IPv4, IPv6, ASN, CIDR",
-  site_footer: "© 2024 Next Whois · WHOIS & RDAP Lookup Service",
-  site_logo_text: "NEXT WHOIS",
+  site_keywords: "Whois, RDAP, Lookup, Domain, IPv4, IPv6, ASN, CIDR, X.RW",
+  site_footer: "© 2025 X.RW · WHOIS & RDAP Lookup Service",
+  site_logo_text: "X.RW",
   site_icon_url: "",
   site_announcement: "",
-  og_site_name: "Next Whois",
+  og_site_name: "X.RW",
   og_url: "",
   og_image: "",
   twitter_card: "summary_large_image",

@@ -92,7 +92,7 @@ const FADE = { duration: 0.18, ease: "easeOut" as const };
 export default function IpPage() {
   const router = useRouter();
   const settings = useSiteSettings();
-  const siteLabel = settings.site_logo_text || "NEXT WHOIS";
+  const siteLabel = settings.site_logo_text || "X.RW";
   const [query, setQuery] = React.useState("");
   const [result, setResult] = React.useState<IpResult | null>(null);
   const [loading, setLoading] = React.useState(false);

@@ -55,12 +55,12 @@ export default function LoginPage() {
     }
   }
 
-  const logoText = settings.site_logo_text || "NEXT WHOIS";
+  const logoText = settings.site_logo_text || "X.RW";
   const subtitle = settings.site_subtitle || "专业的 WHOIS 查询工具";
 
   return (
     <>
-      <Head><title key="site-title">{`登录 · ${settings.site_title || "Next Whois"}`}</title></Head>
+      <Head><title key="site-title">{`登录 · ${settings.site_title || "X.RW · RDAP+WHOIS"}`}</title></Head>
       <div className="min-h-screen flex items-center justify-center px-4 py-16">
         <motion.div
           initial={{ opacity: 0, y: 16 }}

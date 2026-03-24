@@ -21,9 +21,9 @@ export async function getSiteLabel(): Promise<string> {
     const row = await one<{ value: string }>(
       "SELECT value FROM site_settings WHERE key = 'site_logo_text'"
     );
-    _labelCache = (row?.value?.trim()) || "NEXT WHOIS";
+    _labelCache = (row?.value?.trim()) || "X.RW";
   } catch {
-    _labelCache = "NEXT WHOIS";
+    _labelCache = "X.RW";
   }
   _labelCacheAt = Date.now();
   return _labelCache!;
@@ -31,7 +31,7 @@ export async function getSiteLabel(): Promise<string> {
 
 // ── Shared primitives ────────────────────────────────────────────────────────
 
-function emailLayout(body: string, siteName = "NEXT WHOIS"): string {
+function emailLayout(body: string, siteName = "X.RW"): string {
   const year = new Date().getFullYear();
   // Split on last space to colour the final word with PRIMARY
   const parts = siteName.trim().split(" ");
@@ -154,7 +154,7 @@ function actionRow(btnHref: string, btnLabel: string, cancelHref?: string, btnCo
 // ──────────────────────────────────────────────────────────────────────────────
 // 1. Welcome email
 // ──────────────────────────────────────────────────────────────────────────────
-export function welcomeHtml({ name, email, siteName = "NEXT WHOIS" }: { name?: string | null; email: string; siteName?: string }): string {
+export function welcomeHtml({ name, email, siteName = "X.RW" }: { name?: string | null; email: string; siteName?: string }): string {
   const greeting = name ? `你好，${name}` : "你好";
   const features: [string, string, string][] = [
     ["🔍", "无限查询", "WHOIS / RDAP · 域名、IP、ASN、CIDR 全支持"],
@@ -212,7 +212,7 @@ export interface SubscriptionEmailParams {
 }
 
 export function subscriptionConfirmHtml(p: SubscriptionEmailParams & { siteName?: string }): string {
-  const siteName = p.siteName || "NEXT WHOIS";
+  const siteName = p.siteName || "X.RW";
   const cancelUrl = `${BASE_URL()}/remind/cancel?token=${p.cancelToken}`;
 
   const expiryStr = p.expirationDate
@@ -282,7 +282,7 @@ export function subscriptionConfirmHtml(p: SubscriptionEmailParams & { siteName?
 // 3. Expiry reminder email
 // ──────────────────────────────────────────────────────────────────────────────
 export function reminderHtml({
-  domain, expirationDate, daysLeft, cancelToken, siteName = "NEXT WHOIS",
+  domain, expirationDate, daysLeft, cancelToken, siteName = "X.RW",
 }: { domain: string; expirationDate: string | null; daysLeft: number; cancelToken: string; siteName?: string }): string {
   const cancelUrl = `${BASE_URL()}/remind/cancel?token=${cancelToken}`;
   const expiryStr = expirationDate
@@ -331,7 +331,7 @@ export interface PhaseEventEmailParams {
 }
 
 export function phaseEventHtml(p: PhaseEventEmailParams & { siteName?: string }): string {
-  const siteName = p.siteName || "NEXT WHOIS";
+  const siteName = p.siteName || "X.RW";
   const cancelUrl = `${BASE_URL()}/remind/cancel?token=${p.cancelToken}`;
   const expiryStr = p.expirationDate
     ? new Date(p.expirationDate).toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric" })
@@ -404,7 +404,7 @@ export interface DropApproachingParams {
 }
 
 export function dropApproachingHtml(p: DropApproachingParams & { siteName?: string }): string {
-  const siteName = p.siteName || "NEXT WHOIS";
+  const siteName = p.siteName || "X.RW";
   const cancelUrl = `${BASE_URL()}/remind/cancel?token=${p.cancelToken}`;
   const expiryStr = p.expirationDate
     ? new Date(p.expirationDate).toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric" })
@@ -451,7 +451,7 @@ export interface DomainDroppedParams {
 }
 
 export function domainDroppedHtml(p: DomainDroppedParams & { siteName?: string }): string {
-  const siteName = p.siteName || "NEXT WHOIS";
+  const siteName = p.siteName || "X.RW";
   const cancelUrl = `${BASE_URL()}/remind/cancel?token=${p.cancelToken}`;
   const expiryStr = p.expirationDate
     ? new Date(p.expirationDate).toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric" })
@@ -483,7 +483,7 @@ export function domainDroppedHtml(p: DomainDroppedParams & { siteName?: string }
 // ──────────────────────────────────────────────────────────────────────────────
 // 5. Password reset email
 // ──────────────────────────────────────────────────────────────────────────────
-export function passwordResetHtml({ resetUrl, siteName = "NEXT WHOIS" }: { resetUrl: string; siteName?: string }): string {
+export function passwordResetHtml({ resetUrl, siteName = "X.RW" }: { resetUrl: string; siteName?: string }): string {
   return emailLayout(`
     ${darkHeader("账户安全", "重置您的密码")}
 
@@ -508,7 +508,7 @@ export function passwordResetHtml({ resetUrl, siteName = "NEXT WHOIS" }: { reset
 // ──────────────────────────────────────────────────────────────────────────────
 // 6. Admin test / notification email
 // ──────────────────────────────────────────────────────────────────────────────
-export function adminNotifyHtml({ subject, body, siteName = "NEXT WHOIS" }: { subject: string; body: string; siteName?: string }): string {
+export function adminNotifyHtml({ subject, body, siteName = "X.RW" }: { subject: string; body: string; siteName?: string }): string {
   return emailLayout(`
     ${darkHeader("管理员通知", subject)}
     ${section(`<p style="margin:0;font-size:13px;color:#475569;line-height:1.8">${body}</p>`)}
@@ -519,7 +519,7 @@ export function adminNotifyHtml({ subject, body, siteName = "NEXT WHOIS" }: { su
 // 7. Feedback notification email (sent to admin)
 // ──────────────────────────────────────────────────────────────────────────────
 export function feedbackHtml({
-  query, queryType, issueLabels, description, email, ip, ts, siteName = "NEXT WHOIS",
+  query, queryType, issueLabels, description, email, ip, ts, siteName = "X.RW",
 }: {
   query: string;
   queryType: string;
@@ -569,7 +569,7 @@ export interface HighValueAlertParams {
 }
 
 export function highValueAlertHtml(p: HighValueAlertParams & { siteName?: string }): string {
-  const siteName = p.siteName || "NEXT WHOIS";
+  const siteName = p.siteName || "X.RW";
   const ALERT_COLOR = p.score >= 80 ? "#dc2626" : p.score >= 60 ? "#d97706" : "#7c3aed";
   const tierBg     = p.score >= 80 ? "#fef2f2" : p.score >= 60 ? "#fffbeb" : "#ede9fe";
   const tierColor  = p.score >= 80 ? "#991b1b" : p.score >= 60 ? "#92400e" : "#5b21b6";
@@ -695,7 +695,7 @@ export async function sendEmail({
 // 9. Stamp DNS verification timeout (sent to user, replaces giveup-notify raw HTML)
 // ──────────────────────────────────────────────────────────────────────────────
 export function stampVerifyTimeoutHtml({
-  domain, fileContent, verifyUrl, siteName = "NEXT WHOIS",
+  domain, fileContent, verifyUrl, siteName = "X.RW",
 }: {
   domain: string;
   fileContent: string;
@@ -736,7 +736,7 @@ export function stampVerifyTimeoutHtml({
 // ──────────────────────────────────────────────────────────────────────────────
 // 10. Email verification code
 // ──────────────────────────────────────────────────────────────────────────────
-export function verifyCodeHtml({ code, email, siteName = "NEXT WHOIS" }: { code: string; email: string; siteName?: string }): string {
+export function verifyCodeHtml({ code, email, siteName = "X.RW" }: { code: string; email: string; siteName?: string }): string {
   return emailLayout(`
     ${darkHeader("账号注册", "邮箱验证码", "请在注册页面填写以下验证码完成账号创建")}
     ${section(`

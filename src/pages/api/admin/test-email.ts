@@ -15,7 +15,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!resendKey) return res.status(503).json({ error: "RESEND_API_KEY 未配置" });
 
   const fromEmail = process.env.RESEND_FROM_EMAIL || "noreply@x.rw";
-  const siteName = await getSiteLabel().catch(() => "NEXT WHOIS");
+  const siteName = await getSiteLabel().catch(() => "X.RW");
 
   try {
     await sendEmail({

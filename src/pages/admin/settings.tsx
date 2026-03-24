@@ -191,12 +191,12 @@ const SECTIONS: Section[] = [
     icon: RiPaletteLine,
     color: "bg-blue-100 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400",
     fields: [
-      { key: "site_title", label: "网站标题", desc: "浏览器标签页和搜索结果中显示的标题", placeholder: "Next Whois", icon: RiGlobalLine },
-      { key: "site_logo_text", label: "Logo 文字", desc: "导航栏中显示的品牌名称（留空使用网站标题）", placeholder: "NEXT WHOIS", icon: RiGlobalLine },
+      { key: "site_title", label: "网站标题", desc: "浏览器标签页和搜索结果中显示的标题", placeholder: "X.RW · RDAP+WHOIS", icon: RiGlobalLine },
+      { key: "site_logo_text", label: "Logo 文字", desc: "导航栏中显示的品牌名称（留空使用网站标题）", placeholder: "X.RW", icon: RiGlobalLine },
       { key: "site_subtitle", label: "网站副标题", desc: "首页 Hero 区域下方的副标题文字", placeholder: "专业的 WHOIS / RDAP 查询工具", icon: RiFileTextLine },
       { key: "site_description", label: "网站描述 (SEO)", desc: "搜索引擎结果中显示的描述文字", placeholder: "快速查询域名、IP、ASN、CIDR...", icon: RiFileTextLine },
       { key: "site_keywords", label: "搜索关键词 (SEO)", desc: "meta keywords 标签内容，多个关键词用英文逗号分隔", placeholder: "Whois, RDAP, Lookup, Domain, IPv4, ASN", icon: RiSearchLine },
-      { key: "site_footer", label: "页脚文字", desc: "页面底部显示的版权/说明文字", placeholder: "© 2024 Next Whois", icon: RiFileTextLine },
+      { key: "site_footer", label: "页脚文字", desc: "页面底部显示的版权/说明文字", placeholder: "© 2025 X.RW · WHOIS & RDAP Lookup Service", icon: RiFileTextLine },
       { key: "site_icon_url", label: "网站图标", desc: "Favicon 图标（支持直接上传，留空使用默认图标）", placeholder: "https://example.com/favicon.ico", icon: RiImageLine, isImage: true },
     ],
   },
@@ -220,7 +220,7 @@ const SECTIONS: Section[] = [
     icon: RiMegaphoneLine,
     color: "bg-amber-100 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400",
     fields: [
-      { key: "site_announcement", label: "公告横幅内容", desc: "显示在页面顶部的公告文字（留空则不显示公告条）", placeholder: "🎉 欢迎使用 Next Whois！", icon: RiMegaphoneLine },
+      { key: "site_announcement", label: "公告横幅内容", desc: "显示在页面顶部的公告文字（留空则不显示公告条）", placeholder: "🎉 欢迎使用 X.RW！", icon: RiMegaphoneLine },
     ],
   },
   {
@@ -229,7 +229,7 @@ const SECTIONS: Section[] = [
     icon: RiShareLine,
     color: "bg-violet-100 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400",
     fields: [
-      { key: "og_site_name", label: "og:site_name", desc: "链接预览中显示的站点名称", placeholder: "Next Whois", icon: RiShareLine },
+      { key: "og_site_name", label: "og:site_name", desc: "链接预览中显示的站点名称", placeholder: "X.RW · RDAP+WHOIS", icon: RiShareLine },
       { key: "og_url", label: "规范链接 (og:url)", desc: "网站主域名，用于 og:url 和 canonical 标签", placeholder: "https://whois.example.com", icon: RiGlobalLine },
       { key: "og_image", label: "分享图片", desc: "社交分享时显示的图片（支持直接上传，留空使用 /banner.png）", placeholder: "https://example.com/og-image.png", icon: RiImageLine, isImage: true },
       { key: "twitter_card", label: "Twitter Card 类型", desc: "summary 或 summary_large_image（推荐大图）", placeholder: "summary_large_image", icon: RiTwitterXLine },

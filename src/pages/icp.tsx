@@ -253,7 +253,7 @@ export default function IcpPage() {
   const router = useRouter();
   const { t } = useTranslation();
   const settings = useSiteSettings();
-  const siteLabel = settings.site_logo_text || "NEXT WHOIS";
+  const siteLabel = settings.site_logo_text || "X.RW";
   const [query, setQuery] = React.useState("");
   const [selectedType, setSelectedType] = React.useState<IcpTypeId>("web");
   const [loading, setLoading] = React.useState(false);

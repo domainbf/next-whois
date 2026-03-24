@@ -80,7 +80,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     registry:        lc.cfg.registry,
   } : undefined;
 
-  const siteName = await getSiteLabel().catch(() => "NEXT WHOIS");
+  const siteName = await getSiteLabel().catch(() => "X.RW");
   await sendEmail({
     to: cleanEmail,
     subject: `✅ 域名订阅已设置 · ${cleanDomain}`,

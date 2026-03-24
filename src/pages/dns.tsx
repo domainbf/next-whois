@@ -205,7 +205,7 @@ const FADE = { duration: 0.18, ease: "easeOut" as const };
 export default function DnsPage() {
   const router = useRouter();
   const settings = useSiteSettings();
-  const siteLabel = settings.site_logo_text || "NEXT WHOIS";
+  const siteLabel = settings.site_logo_text || "X.RW";
   const [domain, setDomain] = React.useState("");
   const [activeTypes, setActiveTypes] = React.useState<RecordType[]>(["A"]);
   const [results, setResults] = React.useState<DnsResult[]>([]);
