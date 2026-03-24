@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { randomBytes } from "crypto";
 import { one, run, isDbReady } from "@/lib/db-query";
 import { sendEmail, passwordResetHtml, getSiteLabel } from "@/lib/email";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 const RESET_EXPIRES_MINUTES = 60;
 const SITE_URL =
@@ -11,6 +12,10 @@ const SITE_URL =
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).end();
+
+  const ip = String(req.headers["x-forwarded-for"] || req.socket?.remoteAddress || "unknown").split(",")[0].trim();
+  const rl = await checkRateLimit(`${ip}:forgot`, 3, 10 * 60_000);
+  if (!rl.ok) return res.status(429).json({ error: "请求过于频繁，请10分钟后再试" });
 
   const { email } = req.body;
   if (!email || typeof email !== "string")

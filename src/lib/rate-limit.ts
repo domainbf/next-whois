@@ -1,6 +1,6 @@
 import { run, one, isDbReady } from "@/lib/db-query";
 
-const WINDOW_MS = 60_000;
+const DEFAULT_WINDOW_MS = 60_000;
 
 const localCache = new Map<string, { count: number; resetAt: number }>();
 
@@ -14,9 +14,10 @@ setInterval(() => {
 export async function checkRateLimit(
   ip: string,
   maxRequests = 5,
+  windowMs = DEFAULT_WINDOW_MS,
 ): Promise<{ ok: boolean; remaining: number }> {
   const now = Date.now();
-  const resetAt = new Date(now + WINDOW_MS);
+  const resetAt = new Date(now + windowMs);
 
   const local = localCache.get(ip);
   if (local && now <= local.resetAt) {

@@ -68,23 +68,32 @@ export default function PaymentOrdersAdmin() {
   const router = useRouter();
   const [orders, setOrders] = React.useState<Order[]>([]);
   const [stats, setStats] = React.useState<Stats>(EMPTY_STATS);
+  const [total, setTotal] = React.useState(0);
   const [loading, setLoading] = React.useState(true);
+  const [loadingMore, setLoadingMore] = React.useState(false);
   const [status, setStatus] = React.useState("all");
   const [search, setSearch] = React.useState("");
   const [acting, setActing] = React.useState<string | null>(null);
   const [pendingAction, setPendingAction] = React.useState<{ id: string; action: string; label: string } | null>(null);
   const pendingTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const PAGE_SIZE = 50;
 
-  async function load() {
-    setLoading(true);
+  async function load(append = false, offsetOverride?: number) {
+    const currentOffset = append ? (offsetOverride ?? orders.length) : 0;
+    if (append) setLoadingMore(true); else setLoading(true);
     try {
-      const params = new URLSearchParams({ status, search, limit: "100" });
+      const params = new URLSearchParams({ status, search, limit: String(PAGE_SIZE), offset: String(currentOffset) });
       const r = await fetch(`/api/admin/payment/orders?${params}`);
       const d = await r.json();
-      setOrders(d.orders ?? []);
-      setStats(d.stats ?? EMPTY_STATS);
+      if (append) {
+        setOrders(prev => [...prev, ...(d.orders ?? [])]);
+      } else {
+        setOrders(d.orders ?? []);
+        setStats(d.stats ?? EMPTY_STATS);
+      }
+      setTotal(d.total ?? 0);
     } catch { toast.error("加载失败"); }
-    finally { setLoading(false); }
+    finally { if (append) setLoadingMore(false); else setLoading(false); }
   }
 
   React.useEffect(() => {
@@ -125,14 +134,6 @@ export default function PaymentOrdersAdmin() {
     finally { setActing(null); }
   }
 
-  const filtered = search
-    ? orders.filter(o =>
-        o.user_email.toLowerCase().includes(search.toLowerCase()) ||
-        o.id.toLowerCase().includes(search.toLowerCase()) ||
-        o.plan_name.toLowerCase().includes(search.toLowerCase())
-      )
-    : orders;
-
   function goToUser(email: string) {
     router.push(`/admin/users?search=${encodeURIComponent(email)}`, undefined, { locale: false });
   }
@@ -152,7 +153,7 @@ export default function PaymentOrdersAdmin() {
             </div>
           </div>
           <button
-            onClick={load}
+            onClick={() => load()}
             disabled={loading}
             className="p-2 rounded-xl hover:bg-muted transition-colors text-muted-foreground"
             title="刷新"
@@ -200,16 +201,19 @@ export default function PaymentOrdersAdmin() {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          <div className="relative flex-1 min-w-[200px]">
-            <RiSearchLine className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-            <Input
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              onKeyDown={e => e.key === "Escape" && setSearch("")}
-              placeholder="邮箱 / 订单号 / 套餐名"
-              className="pl-8 h-8 text-sm"
-            />
-          </div>
+          <form onSubmit={e => { e.preventDefault(); load(); }} className="relative flex-1 min-w-[200px] flex gap-2">
+            <div className="relative flex-1">
+              <RiSearchLine className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                onKeyDown={e => e.key === "Escape" && (setSearch(""), setTimeout(() => load(), 0))}
+                placeholder="邮箱 / 订单号 / 套餐名"
+                className="pl-8 h-8 text-sm"
+              />
+            </div>
+            <button type="submit" className="h-8 px-3 text-xs rounded-lg border border-border bg-muted hover:bg-accent transition-colors">搜索</button>
+          </form>
           <div className="flex gap-1 flex-wrap">
             {STATUS_TABS.map(t => (
               <button key={t.key} onClick={() => setStatus(t.key)} className={cn(
@@ -224,11 +228,11 @@ export default function PaymentOrdersAdmin() {
 
         {loading ? (
           <div className="flex justify-center py-10"><RiLoader4Line className="w-5 h-5 animate-spin text-muted-foreground" /></div>
-        ) : filtered.length === 0 ? (
+        ) : orders.length === 0 ? (
           <div className="text-center py-10 text-muted-foreground text-sm">暂无订单</div>
         ) : (
           <div className="space-y-2">
-            {filtered.map(order => {
+            {orders.map(order => {
               const isPending = pendingAction?.id === order.id;
               return (
                 <div key={order.id} className="border border-border rounded-xl p-3.5 flex items-start gap-3 hover:bg-muted/20 transition-colors group">
@@ -312,6 +316,16 @@ export default function PaymentOrdersAdmin() {
                 </div>
               );
             })}
+            {orders.length < total && (
+              <button
+                onClick={() => load(true)}
+                disabled={loadingMore}
+                className="w-full py-2.5 text-sm text-muted-foreground border border-dashed border-border rounded-xl hover:bg-muted/40 transition-colors flex items-center justify-center gap-2"
+              >
+                {loadingMore ? <RiLoader4Line className="w-3.5 h-3.5 animate-spin" /> : null}
+                {loadingMore ? "加载中…" : `加载更多（已显示 ${orders.length} / ${total}）`}
+              </button>
+            )}
           </div>
         )}
       </div>

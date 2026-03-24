@@ -5,6 +5,7 @@ import { one, run, isDbReady } from "@/lib/db-query";
 import { sendEmail, welcomeHtml, getSiteLabel } from "@/lib/email";
 import { getRedisValue, deleteRedisValue } from "@/lib/server/redis";
 import { getCaptchaConfig, verifyCaptchaToken } from "@/lib/server/captcha";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 type CodeRow = { id: string; is_active: boolean; use_count: number; max_uses: number; expires_at: string | null };
 
@@ -23,6 +24,10 @@ async function validateInviteCode(code: string): Promise<{ codeRow: CodeRow | nu
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).end();
+
+  const ip = String(req.headers["x-forwarded-for"] || req.socket?.remoteAddress || "unknown").split(",")[0].trim();
+  const rl = await checkRateLimit(`${ip}:register`, 10, 60 * 60_000);
+  if (!rl.ok) return res.status(429).json({ error: "注册请求过于频繁，请1小时后再试" });
 
   const { email, password, name, inviteCode, verifyCode, captchaToken } = req.body;
   if (!email || !password) return res.status(400).json({ error: "邮箱和密码不能为空" });

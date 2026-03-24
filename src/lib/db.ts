@@ -225,6 +225,26 @@ const ALTER_COLUMNS = [
   `ALTER TABLE invite_codes  ADD COLUMN IF NOT EXISTS expires_at          TIMESTAMPTZ`,
 ];
 
+const CREATE_INDEXES = [
+  `CREATE INDEX IF NOT EXISTS idx_users_email              ON users (email)`,
+  `CREATE INDEX IF NOT EXISTS idx_users_subscription       ON users (subscription_access)`,
+  `CREATE INDEX IF NOT EXISTS idx_reminders_email          ON reminders (email)`,
+  `CREATE INDEX IF NOT EXISTS idx_reminders_domain         ON reminders (domain)`,
+  `CREATE INDEX IF NOT EXISTS idx_stamps_email             ON stamps (email)`,
+  `CREATE INDEX IF NOT EXISTS idx_stamps_domain            ON stamps (domain)`,
+  `CREATE INDEX IF NOT EXISTS idx_search_history_user_id   ON search_history (user_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_search_history_created   ON search_history (created_at DESC)`,
+  `CREATE INDEX IF NOT EXISTS idx_search_history_domain    ON search_history (domain)`,
+  `CREATE INDEX IF NOT EXISTS idx_payment_orders_email     ON payment_orders (user_email)`,
+  `CREATE INDEX IF NOT EXISTS idx_payment_orders_status    ON payment_orders (status)`,
+  `CREATE INDEX IF NOT EXISTS idx_payment_orders_created   ON payment_orders (created_at DESC)`,
+  `CREATE INDEX IF NOT EXISTS idx_feedback_created         ON feedback (created_at DESC)`,
+  `CREATE INDEX IF NOT EXISTS idx_feedback_issue_type      ON feedback (issue_type)`,
+  `CREATE INDEX IF NOT EXISTS idx_rate_limit_key_exp       ON rate_limit_records (key, expires_at)`,
+  `CREATE INDEX IF NOT EXISTS idx_password_reset_token     ON password_reset_tokens (token)`,
+  `CREATE INDEX IF NOT EXISTS idx_password_reset_email     ON password_reset_tokens (user_email)`,
+];
+
 function getConnectionString(): { url: string; source: string } | null {
   if (process.env.POSTGRES_URL) {
     return { url: process.env.POSTGRES_URL, source: "POSTGRES_URL" };
@@ -300,6 +320,13 @@ export async function runMigrations(db: Pool): Promise<void> {
         await client.query(sql);
       } catch {
         // Column may already exist — ignore
+      }
+    }
+    for (const sql of CREATE_INDEXES) {
+      try {
+        await client.query(sql);
+      } catch {
+        // Index may already exist — ignore
       }
     }
     console.log("[db] Schema ready");

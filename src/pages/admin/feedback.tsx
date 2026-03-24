@@ -50,9 +50,13 @@ export default function AdminFeedbackPage() {
   const [pendingDelete, setPendingDelete] = React.useState<string | null>(null);
   const pendingDeleteTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  function load(q: string, type: string) {
-    setLoading(true);
-    const params = new URLSearchParams({ limit: "50" });
+  const PAGE_SIZE = 30;
+  const [offset, setOffset] = React.useState(0);
+  const [loadingMore, setLoadingMore] = React.useState(false);
+
+  function load(q: string, type: string, append = false, off = 0) {
+    if (append) setLoadingMore(true); else setLoading(true);
+    const params = new URLSearchParams({ limit: String(PAGE_SIZE), offset: String(off) });
     if (q) params.set("search", q);
     if (type) params.set("issue_type", type);
     fetch(`/api/admin/feedback?${params}`)
@@ -60,25 +64,37 @@ export default function AdminFeedbackPage() {
       .then(data => {
         if (data.error) toast.error(data.error);
         else {
-          setItems(data.feedback || []);
+          if (append) {
+            setItems(prev => [...prev, ...(data.feedback || [])]);
+          } else {
+            setItems(data.feedback || []);
+            if (data.typeCounts) setTypeCounts(data.typeCounts);
+          }
           setTotal(data.total || 0);
-          if (data.typeCounts) setTypeCounts(data.typeCounts);
         }
       })
       .catch(() => toast.error("加载失败"))
-      .finally(() => setLoading(false));
+      .finally(() => { if (append) setLoadingMore(false); else setLoading(false); });
   }
 
-  React.useEffect(() => { load("", ""); }, []);
+  React.useEffect(() => { setOffset(0); load("", ""); }, []);
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
-    load(search, activeType);
+    setOffset(0);
+    load(search, activeType, false, 0);
   }
 
   function selectType(type: string) {
     setActiveType(type);
-    load(search, type);
+    setOffset(0);
+    load(search, type, false, 0);
+  }
+
+  function loadMore() {
+    const newOffset = offset + PAGE_SIZE;
+    setOffset(newOffset);
+    load(search, activeType, true, newOffset);
   }
 
   function requestDelete(id: string) {
@@ -344,7 +360,14 @@ export default function AdminFeedbackPage() {
               );
             })}
             {items.length < total && (
-              <p className="text-center text-xs text-muted-foreground py-2">显示前 50 条，共 {total} 条</p>
+              <button
+                onClick={loadMore}
+                disabled={loadingMore}
+                className="w-full py-2.5 text-sm text-muted-foreground border border-dashed border-border rounded-xl hover:bg-muted/40 transition-colors flex items-center justify-center gap-2"
+              >
+                {loadingMore ? <RiLoader4Line className="w-3.5 h-3.5 animate-spin" /> : null}
+                {loadingMore ? "加载中…" : `加载更多（已显示 ${items.length} / ${total}）`}
+              </button>
             )}
           </div>
         )}
