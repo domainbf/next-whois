@@ -1406,15 +1406,84 @@ export async function getServerSideProps(context: GetServerSidePropsContext) {
   }
 }
 
-function CssGlobe() {
+// [lat, lng, zh name]
+const GLOBE_COUNTRY_COORDS: Record<string, [number, number, string]> = {
+  US: [38, -97, "美国"],   CA: [60, -95, "加拿大"],  MX: [23,-102, "墨西哥"],
+  BR: [-15,-47, "巴西"],   AR: [-38,-63, "阿根廷"],  CL: [-33,-70, "智利"],
+  GB: [52,  -2, "英国"],   DE: [51,  10, "德国"],     FR: [46,   2, "法国"],
+  IT: [42,  12, "意大利"], ES: [40,  -3, "西班牙"],   NL: [52,   5, "荷兰"],
+  SE: [59,  18, "瑞典"],   NO: [60,   8, "挪威"],     FI: [64,  26, "芬兰"],
+  DK: [56,  10, "丹麦"],   CH: [47,   8, "瑞士"],     AT: [47,  14, "奥地利"],
+  BE: [50,   4, "比利时"], PL: [52,  20, "波兰"],     CZ: [50,  15, "捷克"],
+  RO: [46,  25, "罗马尼亚"],UA: [49,  32, "乌克兰"],  RU: [60, 100, "俄罗斯"],
+  PT: [39,  -8, "葡萄牙"], GR: [39,  22, "希腊"],     HU: [47,  19, "匈牙利"],
+  SK: [48,  19, "斯洛伐克"],LV: [57,  25, "拉脱维亚"],LT: [55,  24, "立陶宛"],
+  EE: [59,  25, "爱沙尼亚"],IE: [53,  -8, "爱尔兰"],  IS: [65, -18, "冰岛"],
+  CN: [35, 105, "中国"],   JP: [36, 138, "日本"],     KR: [37, 127, "韩国"],
+  TW: [23, 121, "台湾"],   HK: [22, 114, "香港"],     SG: [ 1, 103, "新加坡"],
+  IN: [20,  78, "印度"],   PK: [30,  70, "巴基斯坦"], BD: [24,  90, "孟加拉国"],
+  TH: [15, 100, "泰国"],   VN: [15, 108, "越南"],     MY: [ 3, 109, "马来西亚"],
+  ID: [-5, 120, "印度尼西亚"],PH:[13, 122, "菲律宾"],  AU: [-25, 133, "澳大利亚"],
+  NZ: [-41, 174, "新西兰"],TR: [39,  35, "土耳其"],   SA: [24,  45, "沙特阿拉伯"],
+  AE: [24,  54, "阿联酋"], IL: [31,  35, "以色列"],   IR: [32,  53, "伊朗"],
+  EG: [27,  30, "埃及"],   NG: [10,   8, "尼日利亚"], ZA: [-29,  25, "南非"],
+  KE: [ 1,  38, "肯尼亚"], MA: [32,  -6, "摩洛哥"],   TZ: [-6,  35, "坦桑尼亚"],
+  ZW: [-20,  30, "津巴布韦"],UG: [1,  32, "乌干达"],   GH: [8,   -1, "加纳"],
+  CY: [35,  33, "塞浦路斯"],MT: [36,  14, "马耳他"],  LU: [49,   6, "卢森堡"],
+  HR: [45,  16, "克罗地亚"],RS: [44,  21, "塞尔维亚"],BG: [43,  25, "保加利亚"],
+  MK: [41,  22, "北马其顿"],AL: [41,  20, "阿尔巴尼亚"],BA: [44, 17, "波黑"],
+  ME: [42,  19, "黑山"],   SI: [46,  15, "斯洛文尼亚"],LI: [47, 10, "列支敦士登"],
+  KZ: [48,  68, "哈萨克斯坦"],UZ: [41,  64, "乌兹别克斯坦"],VE:[8,-66,"委内瑞拉"],
+  CO: [4,  -74, "哥伦比亚"],PE: [-10,-76, "秘鲁"],    EC: [-2,  -78, "厄瓜多尔"],
+  UY: [-33, -56, "乌拉圭"],PY: [-23, -58, "巴拉圭"],  BO: [-17, -65, "玻利维亚"],
+  PA: [9,  -80, "巴拿马"], CR: [10,  -84, "哥斯达黎加"],GT:[15,-90,"危地马拉"],
+  CU: [22, -80, "古巴"],   DO: [19,  -70, "多米尼加"], JM: [18, -77, "牙买加"],
+  PR: [18, -66, "波多黎各"],TT: [11,  -61, "特立尼达"],HT:[19,-72,"海地"],
+  BY: [53,  28, "白俄罗斯"], MD: [47,  29, "摩尔多瓦"],
+  GE: [42,  44, "格鲁吉亚"],AM: [40,  45, "亚美尼亚"],AZ: [40, 48, "阿塞拜疆"],
+  AF: [33,  66, "阿富汗"], IQ: [33,  44, "伊拉克"],   SY: [35,  38, "叙利亚"],
+  LB: [34,  36, "黎巴嫩"], JO: [31,  36, "约旦"],     KW: [29,  48, "科威特"],
+  QA: [25,  51, "卡塔尔"], BH: [26,  51, "巴林"],     OM: [22,  57, "阿曼"],
+  YE: [15,  48, "也门"],   LK: [7,   81, "斯里兰卡"], NP: [28,  84, "尼泊尔"],
+  MM: [17,  96, "缅甸"],   KH: [12, 105, "柬埔寨"],   LA: [18, 103, "老挝"],
+  MN: [46, 103, "蒙古"],   KP: [40, 127, "朝鲜"],     BN: [4,  115, "文莱"],
+  MO: [22, 113, "澳门"],   TL: [-9, 126, "东帝汶"],   PG: [-6,  147, "巴布亚新几内亚"],
+  FJ: [-18, 178, "斐济"],  VU: [-16, 168, "瓦努阿图"], WS: [-14,-172, "萨摩亚"],
+  SC: [-5,   55, "塞舌尔"],MU: [-20,  57, "毛里求斯"], RE: [-21,  56, "留尼汪"],
+  DJ: [12,   43, "吉布提"],ET: [9,    40, "埃塞俄比亚"],SO:[6,  46,"索马里"],
+  SD: [13,   30, "苏丹"],  LY: [26,   17, "利比亚"],  TN: [34,    9, "突尼斯"],
+  DZ: [28,    3, "阿尔及利亚"],CM: [6,12,"喀麦隆"],   AO: [-12,18, "安哥拉"],
+  ZM: [-13,  30, "赞比亚"],MZ: [-18,  35, "莫桑比克"],BW: [-22,24, "博茨瓦纳"],
+  NA: [-22,  18, "纳米比亚"],SN: [14, -14, "塞内加尔"],CI: [8,  -5, "科特迪瓦"],
+  VI: [18,  -65, "美属维京群岛"],GU: [13, 144, "关岛"],
+};
+
+function CssGlobe({ countryCode }: { countryCode?: string }) {
+  const [labelVisible, setLabelVisible] = React.useState(false);
+
+  const code = countryCode ? countryCode.toUpperCase().trim() : null;
+  const coords = code ? GLOBE_COUNTRY_COORDS[code] : null;
+
+  // Calculate globe scroll position to center the country
+  // One world = 240px wide (font-size 120px, SVG 4em = 480px → two worlds = 240px each)
+  let svgMarginEm: number | undefined;
+  let dotY = 60; // default center
+
+  if (coords) {
+    const [lat, lng] = coords;
+    const xFirst = (lng + 180) / 360 * 240; // 0–240 px
+    const marginPx = xFirst >= 60 ? -(xFirst - 60) : -(xFirst + 180);
+    svgMarginEm = marginPx / 120;
+    dotY = (90 - lat) / 180 * 120;
+    // clamp so dot stays within 10–110px (visible inside circle)
+    dotY = Math.max(10, Math.min(110, dotY));
+  }
+
   return (
-    <>
-      <svg
-        aria-hidden="true"
+    <div className="relative" style={{ width: 120, height: 120 }}>
+      <svg aria-hidden="true"
         style={{ position: "absolute", width: 0, height: 0, overflow: "hidden" }}
-        xmlns="http://www.w3.org/2000/svg"
-        xmlnsXlink="http://www.w3.org/1999/xlink"
-      >
+        xmlns="http://www.w3.org/2000/svg" xmlnsXlink="http://www.w3.org/1999/xlink">
         <defs>
           <symbol id="nw-icon-world" viewBox="0 0 216 100">
             <g fillRule="nonzero">
@@ -1434,32 +1503,77 @@ function CssGlobe() {
           from { margin-left: -2.75em; }
           to   { margin-left: -0.75em; }
         }
+        @keyframes nw-dot-ping {
+          0%   { transform: translate(-50%,-50%) scale(1); opacity: 0.8; }
+          70%  { transform: translate(-50%,-50%) scale(2.6); opacity: 0; }
+          100% { transform: translate(-50%,-50%) scale(2.6); opacity: 0; }
+        }
+        @keyframes nw-dot-pulse {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(56,189,248,0.6); }
+          50%       { box-shadow: 0 0 0 5px rgba(56,189,248,0); }
+        }
         .nw-globe-wrap {
-          width: 120px;
-          height: 120px;
-          font-size: 120px;
-          display: inline-block;
-          border-radius: 50%;
-          overflow: hidden;
-          white-space: nowrap;
-          box-sizing: border-box;
+          width: 120px; height: 120px; font-size: 120px;
+          display: block; border-radius: 50%; overflow: hidden;
+          white-space: nowrap; box-sizing: border-box;
           border: 2px solid currentColor;
         }
         .nw-globe-wrap svg {
-          width: 4em;
-          height: 1em;
-          margin-top: -0.05em;
-          display: inline;
-          animation: nw-world-scroll 4s linear infinite;
-          fill: currentColor;
+          width: 4em; height: 1em; margin-top: -0.05em;
+          display: inline; fill: currentColor;
+        }
+        .nw-globe-wrap svg.scrolling { animation: nw-world-scroll 4s linear infinite; }
+        .nw-dot-ring {
+          position: absolute; border-radius: 50%;
+          background: rgba(56,189,248,0.5);
+          animation: nw-dot-ping 1.8s ease-out infinite;
+          width: 14px; height: 14px;
+          pointer-events: none;
+        }
+        .nw-dot-core {
+          position: absolute; border-radius: 50%;
+          background: #38bdf8; border: 2px solid #fff;
+          width: 9px; height: 9px;
+          box-shadow: 0 0 6px 2px rgba(56,189,248,0.7);
+          animation: nw-dot-pulse 1.8s ease-in-out infinite;
+          cursor: pointer;
+          transform: translate(-50%, -50%);
         }
       `}</style>
+
+      {/* Globe map */}
       <span className="nw-globe-wrap text-foreground/70">
-        <svg>
+        <svg
+          className={coords ? undefined : "scrolling"}
+          style={coords ? { marginLeft: `${svgMarginEm}em` } : undefined}
+        >
           <use href="#nw-icon-repeated-world" />
         </svg>
       </span>
-    </>
+
+      {/* Country pulsing dot */}
+      {coords && (
+        <>
+          <span className="nw-dot-ring" style={{ left: 60, top: dotY, transform: "translate(-50%,-50%)" }} />
+          <button
+            className="nw-dot-core"
+            style={{ left: 60, top: dotY }}
+            title={coords[2]}
+            onClick={() => setLabelVisible(v => !v)}
+          />
+          {labelVisible && (
+            <div
+              className="absolute z-20 left-1/2 -translate-x-1/2 pointer-events-none"
+              style={{ top: Math.min(dotY + 10, 86) }}
+            >
+              <div className="bg-black/80 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap backdrop-blur-sm shadow-lg">
+                {code} · {coords[2]}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
   );
 }
 
@@ -3980,9 +4094,18 @@ export default function LookupPage({
                 {" "}
                 <motion.div variants={CARD_ITEM_VARIANTS} className="lg:col-span-8 space-y-6">
                   <div className="glass-panel border border-border rounded-xl p-6 sm:p-8 relative overflow-hidden">
-                    <div className="absolute top-3 right-2 opacity-60 pointer-events-none select-none w-[120px] h-[120px] overflow-hidden">
-                      <CssGlobe />
-                    </div>
+                    {(() => {
+                      const rc = result.registrantCountry?.trim().toUpperCase();
+                      const hasCountryDot = !!rc && rc !== "UNKNOWN" && rc in GLOBE_COUNTRY_COORDS;
+                      return (
+                        <div className={cn(
+                          "absolute top-3 right-2 select-none w-[120px] h-[120px]",
+                          hasCountryDot ? "opacity-80 z-10" : "opacity-60 pointer-events-none overflow-hidden"
+                        )}>
+                          <CssGlobe countryCode={hasCountryDot ? rc : undefined} />
+                        </div>
+                      );
+                    })()}
                     <div className="relative z-10">
                       <div className="flex items-center gap-2 mb-2">
                         <Badge

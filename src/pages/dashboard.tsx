@@ -19,6 +19,8 @@ import {
   RiBellLine, RiFileTextLine, RiWifiLine,
   RiDownloadLine, RiFilterLine, RiDeleteBack2Line, RiFireLine,
   RiTimerLine, RiBarChartLine, RiKeyLine,
+  RiIdCardLine, RiBuildingLine, RiAwardLine, RiShakeHandsLine,
+  RiCodeSLine, RiVipCrownLine,
 } from "@remixicon/react";
 import { ADMIN_EMAIL } from "@/lib/admin-shared";
 import type { HistoryItem } from "@/lib/history";
@@ -87,15 +89,26 @@ function fmt(d: Date) {
 }
 
 /* ── Tag style definitions — mirrored from admin stamps.tsx ──────────────── */
-const EDIT_TAG_STYLES: { value: string; zhLabel: string; enLabel: string; color: string }[] = [
-  { value: "personal", zhLabel: "个人持有", enLabel: "Personal",  color: "bg-teal-500 text-white" },
-  { value: "official", zhLabel: "官方",     enLabel: "Official",  color: "bg-blue-500 text-white" },
-  { value: "brand",    zhLabel: "品牌",     enLabel: "Brand",     color: "bg-violet-500 text-white" },
-  { value: "verified", zhLabel: "认证",     enLabel: "Verified",  color: "bg-emerald-500 text-white" },
-  { value: "partner",  zhLabel: "合作",     enLabel: "Partner",   color: "bg-orange-500 text-white" },
-  { value: "dev",      zhLabel: "开发者",   enLabel: "Developer", color: "bg-sky-500 text-white" },
-  { value: "warning",  zhLabel: "提醒",     enLabel: "Warning",   color: "bg-amber-400 text-white" },
-  { value: "premium",  zhLabel: "高级",     enLabel: "Premium",   color: "bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white" },
+const EDIT_TAG_STYLES: {
+  value: string; zhLabel: string; enLabel: string; color: string;
+  icon: React.ElementType; previewBorder: string; previewBg: string; previewIcon: string;
+}[] = [
+  { value: "personal", zhLabel: "个人持有", enLabel: "Personal",  color: "bg-teal-500 text-white",
+    icon: RiIdCardLine,      previewBorder: "border-l-teal-500",    previewBg: "bg-teal-50 dark:bg-teal-900/20",    previewIcon: "text-teal-500" },
+  { value: "official", zhLabel: "官方",     enLabel: "Official",  color: "bg-blue-500 text-white",
+    icon: RiBuildingLine,    previewBorder: "border-l-blue-500",    previewBg: "bg-blue-50 dark:bg-blue-900/20",    previewIcon: "text-blue-500" },
+  { value: "brand",    zhLabel: "品牌",     enLabel: "Brand",     color: "bg-violet-500 text-white",
+    icon: RiAwardLine,       previewBorder: "border-l-violet-500",  previewBg: "bg-violet-50 dark:bg-violet-900/20",previewIcon: "text-violet-500" },
+  { value: "verified", zhLabel: "认证",     enLabel: "Verified",  color: "bg-emerald-500 text-white",
+    icon: RiShieldCheckLine, previewBorder: "border-l-emerald-500", previewBg: "bg-emerald-50 dark:bg-emerald-900/20",previewIcon: "text-emerald-500" },
+  { value: "partner",  zhLabel: "合作",     enLabel: "Partner",   color: "bg-orange-500 text-white",
+    icon: RiShakeHandsLine,  previewBorder: "border-l-orange-500",  previewBg: "bg-orange-50 dark:bg-orange-900/20",previewIcon: "text-orange-500" },
+  { value: "dev",      zhLabel: "开发者",   enLabel: "Developer", color: "bg-sky-500 text-white",
+    icon: RiCodeSLine,       previewBorder: "border-l-sky-500",     previewBg: "bg-sky-50 dark:bg-sky-900/20",     previewIcon: "text-sky-500" },
+  { value: "warning",  zhLabel: "提醒",     enLabel: "Warning",   color: "bg-amber-400 text-white",
+    icon: RiAlertLine,       previewBorder: "border-l-amber-400",   previewBg: "bg-amber-50 dark:bg-amber-900/20", previewIcon: "text-amber-500" },
+  { value: "premium",  zhLabel: "高级",     enLabel: "Premium",   color: "bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white",
+    icon: RiVipCrownLine,    previewBorder: "border-l-fuchsia-500", previewBg: "bg-fuchsia-50 dark:bg-fuchsia-900/20",previewIcon: "text-fuchsia-500" },
 ];
 
 // ── Edit Stamp Modal ──────────────────────────────────────────────────────────
@@ -149,19 +162,56 @@ function EditStampModal({ stamp, onClose, onSaved }: { stamp: Stamp; onClose: ()
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold">标签样式</Label>
             <div className="flex flex-wrap gap-1.5">
-              {EDIT_TAG_STYLES.map(ts => (
-                <button key={ts.value} type="button" onClick={() => setTagStyle(ts.value)}
-                  className={cn(
-                    "px-2.5 py-1 rounded-lg text-xs font-semibold border-2 transition-all active:scale-[0.96]",
-                    tagStyle === ts.value
-                      ? "border-white/60 ring-2 ring-offset-1 ring-primary scale-105 shadow-md"
-                      : "border-transparent opacity-75 hover:opacity-100",
-                    ts.color
-                  )}>
-                  {isZh ? ts.zhLabel : ts.enLabel}
-                </button>
-              ))}
+              {EDIT_TAG_STYLES.map(ts => {
+                const Icon = ts.icon;
+                return (
+                  <button key={ts.value} type="button" onClick={() => setTagStyle(ts.value)}
+                    className={cn(
+                      "flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold border-2 transition-all active:scale-[0.96]",
+                      tagStyle === ts.value
+                        ? "border-white/60 ring-2 ring-offset-1 ring-primary scale-105 shadow-md"
+                        : "border-transparent opacity-75 hover:opacity-100",
+                      ts.color
+                    )}>
+                    <Icon className="w-3 h-3 shrink-0" />
+                    {isZh ? ts.zhLabel : ts.enLabel}
+                  </button>
+                );
+              })}
             </div>
+
+            {/* Live style preview */}
+            {(() => {
+              const sel = EDIT_TAG_STYLES.find(ts => ts.value === tagStyle) || EDIT_TAG_STYLES[0];
+              const Icon = sel.icon;
+              return (
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={tagStyle}
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -4 }}
+                    transition={{ duration: 0.15 }}
+                    className={cn(
+                      "flex items-center gap-3 px-3 py-2.5 rounded-xl border-l-4 mt-2",
+                      sel.previewBg, sel.previewBorder
+                    )}
+                  >
+                    <Icon className={cn("w-5 h-5 shrink-0", sel.previewIcon)} />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-xs font-mono text-muted-foreground truncate">{stamp.domain}</span>
+                        <span className={cn("inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[10px] font-semibold", sel.color)}>
+                          <Icon className="w-2.5 h-2.5" />
+                          {tagName || (isZh ? sel.zhLabel : sel.enLabel)}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{nickname || "昵称"}</p>
+                    </div>
+                  </motion.div>
+                </AnimatePresence>
+              );
+            })()}
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold">昵称</Label>
