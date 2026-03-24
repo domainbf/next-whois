@@ -252,14 +252,67 @@ export default function StampStylesPage() {
   const standardThemes = Object.entries(CARD_THEMES).filter(([, t]) => !t.special);
   const specialThemes  = Object.entries(CARD_THEMES).filter(([, t]) => !!t.special);
 
+  const [previewKey, setPreviewKey] = React.useState<string | null>(null);
+  const [countdown, setCountdown]   = React.useState(3);
+  const timerRef    = React.useRef<ReturnType<typeof setTimeout>  | null>(null);
+  const intervalRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const openPreview = (key: string) => {
+    if (timerRef.current)    clearTimeout(timerRef.current);
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    setPreviewKey(key);
+    setCountdown(3);
+    let c = 3;
+    intervalRef.current = setInterval(() => {
+      c -= 1;
+      setCountdown(c);
+      if (c <= 0) clearInterval(intervalRef.current!);
+    }, 1000);
+    timerRef.current = setTimeout(() => {
+      setPreviewKey(null);
+      clearInterval(intervalRef.current!);
+    }, 3000);
+  };
+
+  const closePreview = () => {
+    if (timerRef.current)    clearTimeout(timerRef.current);
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    setPreviewKey(null);
+  };
+
+  React.useEffect(() => () => {
+    if (timerRef.current)    clearTimeout(timerRef.current);
+    if (intervalRef.current) clearInterval(intervalRef.current);
+  }, []);
+
   return (
     <AdminLayout title="弹窗样式">
+
+      {/* ── 3-second full-size preview overlay ── */}
+      {previewKey && (
+        <div
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/65 backdrop-blur-sm"
+          onClick={closePreview}>
+          <div
+            className="rounded-[22px] overflow-hidden shadow-2xl"
+            style={{width:340, transform:"scale(1)", transformOrigin:"center"}}
+            onClick={e => e.stopPropagation()}>
+            <StampPreviewCard themeKey={previewKey} />
+          </div>
+          <div className="mt-5 flex items-center gap-2 text-white/60 text-sm font-medium select-none">
+            <span>{countdown}s</span>
+            <span>·</span>
+            <span>点击任意处关闭</span>
+          </div>
+        </div>
+      )}
+
       <div className="space-y-10 max-w-3xl">
 
         <div>
           <h1 className="text-xl font-bold">弹窗样式一览</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            在「品牌管理」编辑认领时可选择以下样式，下方为实际弹窗的缩略预览。
+            在「品牌管理」编辑认领时可选择以下样式，点击缩略图可预览 3 秒。
           </p>
         </div>
 
@@ -271,7 +324,10 @@ export default function StampStylesPage() {
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             {standardThemes.map(([key, t]) => (
               <div key={key} className="space-y-1.5">
-                <StampPreviewCard themeKey={key} />
+                <button className="w-full text-left cursor-pointer rounded-xl overflow-hidden ring-0 hover:ring-2 ring-primary/40 transition-all active:scale-[0.98]"
+                  onClick={() => openPreview(key)}>
+                  <StampPreviewCard themeKey={key} />
+                </button>
                 <div className="flex items-center gap-1.5 px-0.5">
                   <p className="text-xs font-semibold">{t.label}</p>
                   <code className="text-[10px] text-muted-foreground/50 font-mono ml-auto">{key}</code>
@@ -289,7 +345,10 @@ export default function StampStylesPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             {specialThemes.map(([key, t]) => (
               <div key={key} className="space-y-1.5">
-                <StampPreviewCard themeKey={key} />
+                <button className="w-full text-left cursor-pointer rounded-xl overflow-hidden ring-0 hover:ring-2 ring-primary/40 transition-all active:scale-[0.98]"
+                  onClick={() => openPreview(key)}>
+                  <StampPreviewCard themeKey={key} />
+                </button>
                 <div className="flex items-center gap-1.5 px-0.5">
                   <span className="text-sm leading-none">{t.special}</span>
                   <p className="text-xs font-semibold">{t.label}</p>

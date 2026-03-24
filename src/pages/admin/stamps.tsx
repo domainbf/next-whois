@@ -712,7 +712,7 @@ export default function AdminStampsPage() {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex items-center gap-1 shrink-0">
                       <button
                         onClick={() => setEditStamp(stamp)}
                         className="p-1.5 rounded-lg text-muted-foreground hover:bg-blue-50 dark:hover:bg-blue-950/30 hover:text-blue-500 transition-colors"
