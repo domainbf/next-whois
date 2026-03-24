@@ -42,6 +42,10 @@ const STATIC_NO_RDAP = new Set<string>([
   "ve", "ec", "bo", "py",
   // Pacific — Timor-Leste, no RDAP
   "tl",
+  // Sub-Saharan Africa — confirmed no RDAP via IANA bootstrap check
+  "cd", "af", "bi", "cg", "sz", "gh", "ug", "et", "ci",
+  // Additional Africa — no RDAP
+  "ne", "gw", "sl", "lr", "dj", "km", "er", "ss",
 ]);
 
 // Runtime-learned skip set (updated by markRdapSkipped / markRdapSupported)
