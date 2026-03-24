@@ -30,6 +30,11 @@ type Subscription = {
   drop_date: string | null; grace_end: string | null; redemption_end: string | null;
   phase: string | null; days_to_expiry: number | null; days_to_drop: number | null;
   tld_confidence: string | null;
+  days_before: number | null;
+  sent_keys: number[];
+  last_reminded_at: string | null;
+  next_reminder_at: string | null;
+  next_reminder_days: number | null;
 };
 
 type RegStatus = "registered" | "unregistered" | "reserved" | "error" | "unknown";
@@ -466,6 +471,7 @@ export default function DashboardPage() {
   const [loadingHistory, setLoadingHistory] = React.useState(false);
   const [editingStamp, setEditingStamp] = React.useState<Stamp | null>(null);
   const [editingSubscription, setEditingSubscription] = React.useState<Subscription | null>(null);
+  const [savingDaysBefore, setSavingDaysBefore] = React.useState<string | null>(null);
   const [cancelling, setCancelling] = React.useState<string | null>(null);
   const [deletingStamp, setDeletingStamp] = React.useState<string | null>(null);
   const [showClaimGuide, setShowClaimGuide] = React.useState(false);
@@ -561,6 +567,24 @@ export default function DashboardPage() {
     }
   }
 
+  async function saveDaysBefore(id: string, days: number) {
+    setSavingDaysBefore(id);
+    try {
+      const res = await fetch(`/api/user/subscriptions?id=${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ days_before: days }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error);
+      setSubscriptions(prev => prev.map(s => s.id === id ? { ...s, days_before: days } : s));
+      toast.success(`提前 ${days} 天提醒已更新`);
+    } catch (e: any) {
+      toast.error(e.message || "更新失败");
+    } finally {
+      setSavingDaysBefore(null);
+    }
+  }
+
   async function deleteStamp(id: string) {
     setDeletingStamp(id);
     try {
@@ -596,10 +620,15 @@ export default function DashboardPage() {
     const activeSubs = subscriptions.filter(s => s.active);
     if (activeSubs.length === 0) { toast.info("没有有效订阅可导出"); return; }
     const rows = [
-      ["域名", "到期日期", "订阅时间"],
+      ["域名", "到期日期", "当前阶段", "距到期天数", "预计释放日", "提前提醒天数", "上次提醒", "订阅时间"],
       ...activeSubs.map(s => [
         s.domain,
         s.expiration_date ? new Date(s.expiration_date).toLocaleDateString("zh-CN") : "未知",
+        s.phase ?? "未知",
+        s.days_to_expiry !== null ? String(s.days_to_expiry) : "—",
+        s.drop_date ? new Date(s.drop_date).toLocaleDateString("zh-CN") : "—",
+        String(s.days_before ?? 30),
+        s.last_reminded_at ? new Date(s.last_reminded_at).toLocaleDateString("zh-CN") : "从未",
         new Date(s.created_at).toLocaleDateString("zh-CN"),
       ]),
     ];
@@ -774,6 +803,7 @@ export default function DashboardPage() {
     const dd = s.days_to_drop;
     return (d !== null && d >= 0 && d <= 7) || (dd !== null && dd >= 0 && dd <= 7);
   });
+  const postExpirySubs = activeSubs.filter(s => s.phase && s.phase !== "active");
   const verifiedStamps = stamps.filter(s => s.verified);
 
   const TABS = [
@@ -960,6 +990,7 @@ export default function DashboardPage() {
                 </div>
               )}
               {(user as any).subscriptionAccess && <>
+              {/* Header */}
               <div className="flex items-center justify-between gap-2">
                 <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">域名到期提醒</p>
                 <div className="flex items-center gap-2">
@@ -980,15 +1011,60 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              {/* Urgent alert */}
-              {urgentSubs.length > 0 && (
-                <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200/60 dark:border-red-800/40">
-                  <RiFireLine className="w-4 h-4 text-red-500 shrink-0" />
-                  <p className="text-xs text-red-700 dark:text-red-300 font-medium">
-                    <strong>{urgentSubs.length}</strong> 个域名将在 7 天内到期，请尽快续费！
-                  </p>
+              {/* In-tab stats chips */}
+              {activeSubs.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 text-[10px] font-semibold border border-emerald-200/50 dark:border-emerald-700/30">
+                    <RiCheckLine className="w-2.5 h-2.5" />{activeSubs.length} 有效
+                  </span>
+                  {expiringSoon.length > 0 && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 text-[10px] font-semibold border border-amber-200/50 dark:border-amber-700/30">
+                      <RiTimerLine className="w-2.5 h-2.5" />{expiringSoon.length} 即将到期
+                    </span>
+                  )}
+                  {urgentSubs.length > 0 && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400 text-[10px] font-semibold border border-red-200/50 dark:border-red-700/30">
+                      <RiFireLine className="w-2.5 h-2.5" />{urgentSubs.length} 紧急
+                    </span>
+                  )}
+                  {postExpirySubs.length > 0 && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-orange-50 dark:bg-orange-950/30 text-orange-700 dark:text-orange-400 text-[10px] font-semibold border border-orange-200/50 dark:border-orange-700/30">
+                      <RiAlertLine className="w-2.5 h-2.5" />{postExpirySubs.length} 已过期
+                    </span>
+                  )}
                 </div>
               )}
+
+              {/* Urgent alert banner */}
+              {urgentSubs.length > 0 && (
+                <div className="flex items-start gap-2.5 px-3.5 py-2.5 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200/60 dark:border-red-800/40">
+                  <RiFireLine className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-xs text-red-700 dark:text-red-300 font-semibold">
+                      {urgentSubs.length} 个域名即将到期
+                    </p>
+                    <p className="text-[11px] text-red-600/80 dark:text-red-400/80 mt-0.5">
+                      {urgentSubs.map(s => s.domain).join("、")}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Post-expiry phase alert */}
+              {postExpirySubs.length > 0 && urgentSubs.length === 0 && (
+                <div className="flex items-start gap-2.5 px-3.5 py-2.5 rounded-xl bg-orange-50 dark:bg-orange-950/30 border border-orange-200/60 dark:border-orange-800/40">
+                  <RiAlertLine className="w-4 h-4 text-orange-500 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-xs text-orange-700 dark:text-orange-300 font-semibold">
+                      {postExpirySubs.length} 个域名已过到期日，处于保护期内
+                    </p>
+                    <p className="text-[11px] text-orange-600/80 dark:text-orange-400/80 mt-0.5">
+                      {postExpirySubs.map(s => s.domain).join("、")}
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {loadingData ? (
                 <div className="flex justify-center py-8"><RiLoader4Line className="w-5 h-5 animate-spin text-muted-foreground" /></div>
               ) : subscriptions.length === 0 ? (
@@ -1032,21 +1108,48 @@ export default function DashboardPage() {
                 const isDropSoon = sub.active && daysDropping !== null && daysDropping >= 0 && daysDropping <= 7 && phase !== "active";
                 const isUrgent = sub.active && ((days !== null && days >= 0 && days <= 7) || isDropSoon);
                 const isWarn = sub.active && days !== null && days >= 0 && days <= 30 && !isUrgent;
+                const isPostExpiry = sub.active && phase && phase !== "active";
+
+                // Lifecycle progress bar (days remaining / 365)
+                const barPct = (days !== null && days > 0 && phase === "active")
+                  ? Math.min(100, Math.round((days / 365) * 100))
+                  : 0;
+                const barColor = isUrgent ? "bg-red-500" : isWarn ? "bg-amber-500" : days !== null && days <= 90 ? "bg-yellow-500" : "bg-emerald-500";
+
+                // Reminder info
+                const nextReminderDate = sub.next_reminder_at ? new Date(sub.next_reminder_at) : null;
+                const lastReminderDate = sub.last_reminded_at ? new Date(sub.last_reminded_at) : null;
+                const daysSinceLastReminder = lastReminderDate
+                  ? Math.floor((Date.now() - lastReminderDate.getTime()) / 86400000)
+                  : null;
+                const nextReminderIsUpcoming = nextReminderDate && nextReminderDate > new Date();
+
+                // Phase guidance text
+                const phaseGuidance: Record<string, string> = {
+                  grace: "域名已过期仍在宽限期，请尽快联系注册商续费",
+                  redemption: "宽限期已过，需支付赎回费用方可找回",
+                  pendingDelete: "赎回期已过，域名即将删除，等待公开抢注",
+                  dropped: "域名已释放，可直接重新注册",
+                };
 
                 return (
                   <div key={sub.id} className={cn(
                     "glass-panel border rounded-2xl p-4 space-y-3 transition-all",
                     !sub.active ? "border-border/40 opacity-60" :
                     isUrgent ? "border-red-300/60 dark:border-red-700/50" :
+                    isPostExpiry ? "border-orange-300/60 dark:border-orange-700/50" :
                     isWarn ? "border-amber-300/60 dark:border-amber-700/50" : "border-border"
                   )}>
+                    {/* Card header: icon + domain name + badges + actions */}
                     <div className="flex items-start gap-3">
                       <div className={cn(
                         "w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5",
                         isUrgent ? "bg-red-100 dark:bg-red-950/40" :
+                        isPostExpiry ? "bg-orange-100 dark:bg-orange-950/40" :
                         isWarn ? "bg-amber-100 dark:bg-amber-950/40" : "bg-primary/10"
                       )}>
                         {isUrgent ? <RiFireLine className="w-4 h-4 text-red-500" /> :
+                         isPostExpiry ? <RiAlertLine className="w-4 h-4 text-orange-500" /> :
                          isWarn ? <RiTimerLine className="w-4 h-4 text-amber-500" /> :
                          <RiGlobalLine className="w-4 h-4 text-primary" />}
                       </div>
@@ -1059,7 +1162,7 @@ export default function DashboardPage() {
                               {days === 0 ? "今日到期" : `${days}天后到期`}
                             </span>
                           )}
-                          {isWarn && (
+                          {isWarn && !isUrgent && !isPostExpiry && (
                             <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 font-semibold border border-amber-300/50">
                               {days}天后到期
                             </span>
@@ -1069,8 +1172,13 @@ export default function DashboardPage() {
                               {daysDropping === 0 ? "今日可抢注" : `${daysDropping}天后可抢注`}
                             </span>
                           )}
-                          {phaseInfo && phase !== "active" && !isUrgent && !isWarn && (
-                            <span className={cn("text-[10px] font-semibold", phaseInfo.color)}>{phaseInfo.label}</span>
+                          {phaseInfo && phase !== "active" && (
+                            <span className={cn("text-[10px] font-semibold px-1.5 py-0.5 rounded-md border", phaseInfo.color,
+                              phase === "grace" ? "bg-amber-50 dark:bg-amber-950/30 border-amber-300/50" :
+                              phase === "redemption" ? "bg-orange-50 dark:bg-orange-950/30 border-orange-300/50" :
+                              phase === "pendingDelete" ? "bg-purple-50 dark:bg-purple-950/30 border-purple-300/50" :
+                              "bg-muted border-border/50"
+                            )}>{phaseInfo.label}</span>
                           )}
                         </div>
                         <p className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1">
@@ -1101,9 +1209,95 @@ export default function DashboardPage() {
                       </div>
                     </div>
 
+                    {/* Lifecycle progress bar */}
+                    {sub.active && sub.expiration_date && phase === "active" && (
+                      <div className="space-y-1">
+                        <div className="flex justify-between items-center">
+                          <span className="text-[10px] text-muted-foreground">剩余有效期</span>
+                          <span className="text-[10px] font-semibold text-muted-foreground tabular-nums">
+                            {days !== null && days > 0 ? `${days} 天` : days === 0 ? "今日到期" : "已到期"}
+                          </span>
+                        </div>
+                        <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
+                          <div
+                            className={cn("h-full rounded-full transition-all", barColor)}
+                            style={{ width: `${barPct}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Phase-specific guidance for post-expiry domains */}
+                    {isPostExpiry && phase && phaseGuidance[phase] && (
+                      <div className="px-3 py-2 rounded-lg bg-orange-50 dark:bg-orange-950/20 border border-orange-200/50 dark:border-orange-700/30">
+                        <p className="text-[11px] text-orange-700 dark:text-orange-300 leading-relaxed">
+                          {phaseGuidance[phase]}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Reminder info section */}
+                    {sub.active && (
+                      <div className="pt-2 border-t border-border/40 space-y-2">
+                        {/* Next reminder */}
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <RiCalendarLine className="w-3 h-3 text-muted-foreground shrink-0" />
+                            <span className="text-[11px] text-muted-foreground truncate">
+                              {nextReminderIsUpcoming
+                                ? <>下次提醒 <span className="font-medium text-foreground">{fmt(nextReminderDate!)}</span></>
+                                : phase === "dropped"
+                                  ? "域名已释放，无待发提醒"
+                                  : "暂无待发提醒"
+                              }
+                            </span>
+                          </div>
+                          {sub.next_reminder_days !== null && sub.next_reminder_days !== undefined && nextReminderIsUpcoming && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/8 text-primary font-semibold shrink-0 tabular-nums">
+                              提前 {sub.next_reminder_days}天
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Last reminded */}
+                        <div className="flex items-center gap-1.5">
+                          <RiMailLine className="w-3 h-3 text-muted-foreground shrink-0" />
+                          <span className="text-[11px] text-muted-foreground">
+                            {daysSinceLastReminder !== null
+                              ? daysSinceLastReminder === 0
+                                ? <>上次提醒 <span className="font-medium text-foreground">今天</span></>
+                                : <>上次提醒 <span className="font-medium text-foreground">{daysSinceLastReminder} 天前</span></>
+                              : "尚未发送过提醒"}
+                          </span>
+                        </div>
+
+                        {/* days_before inline editor */}
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-[10px] text-muted-foreground">提醒阈值：</span>
+                          {[7, 14, 30, 60, 90].map(d => (
+                            <button
+                              key={d}
+                              disabled={savingDaysBefore === sub.id}
+                              onClick={() => saveDaysBefore(sub.id, d)}
+                              className={cn(
+                                "text-[10px] px-2 py-0.5 rounded-full border transition-colors font-semibold",
+                                sub.days_before === d
+                                  ? "bg-primary text-primary-foreground border-primary"
+                                  : "bg-muted/50 text-muted-foreground border-border hover:border-primary/50 hover:text-foreground"
+                              )}
+                            >
+                              {savingDaysBefore === sub.id && sub.days_before === d
+                                ? "…"
+                                : `${d}天`}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     {/* Lifecycle dates (server-computed) */}
                     {sub.drop_date && sub.expiration_date && (
-                      <div className="grid grid-cols-3 gap-2 pt-1 border-t border-border/40">
+                      <div className="grid grid-cols-3 gap-2 pt-2 border-t border-border/40">
                         <div className="text-center">
                           <p className="text-[10px] text-muted-foreground mb-0.5">宽限期结束</p>
                           <p className={cn("text-[11px] font-semibold tabular-nums", phase === "grace" ? "text-amber-600 dark:text-amber-400" : "text-foreground")}>
