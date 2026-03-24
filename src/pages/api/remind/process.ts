@@ -14,7 +14,7 @@ import {
 import { many, run, isDbReady } from "@/lib/db-query";
 import { loadLifecycleOverrides } from "@/lib/server/lifecycle-overrides";
 
-const THRESHOLDS = [60, 30, 10, 5, 1];
+const DEFAULT_THRESHOLDS = [60, 30, 10, 5, 1];
 const DROP_SOON_KEY = -4;   // 7 days before drop date
 const DROPPED_KEY   = -5;   // domain just became available
 
@@ -43,9 +43,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const remindersRaw = await many<{
       id: string; domain: string; email: string;
-      expiration_date: string | null; cancel_token: string; phase_flags: string | null;
+      expiration_date: string | null; cancel_token: string; phase_flags: string | null; thresholds_json: string | null;
     }>(
-      `SELECT id, domain, email, expiration_date, cancel_token, phase_flags
+      `SELECT id, domain, email, expiration_date, cancel_token, phase_flags, thresholds_json
        FROM reminders WHERE active = true AND expiration_date IS NOT NULL`,
     );
 
@@ -94,7 +94,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         // ── Domain dropped: send notification then deactivate ─────────────────
         if (phase === "dropped") {
-          if (!sentKeys.includes(DROPPED_KEY)) {
+          if (phaseFlags.dropped && !sentKeys.includes(DROPPED_KEY)) {
             await sendEmail({
               to: reminder.email,
               subject: `✅ ${reminder.domain} 已释放，现在可以注册了`,
@@ -133,9 +133,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           continue;
         }
 
-        let phaseFlags = { grace: true, redemption: true, pendingDelete: true };
+        let phaseFlags = { grace: true, redemption: true, pendingDelete: true, dropSoon: true, dropped: true };
         try {
           if (reminder.phase_flags) phaseFlags = { ...phaseFlags, ...JSON.parse(reminder.phase_flags) };
+        } catch { /* keep defaults */ }
+
+        let thresholds = DEFAULT_THRESHOLDS;
+        try {
+          if (reminder.thresholds_json) {
+            const parsed = JSON.parse(reminder.thresholds_json);
+            if (Array.isArray(parsed) && parsed.length > 0) thresholds = parsed;
+          }
         } catch { /* keep defaults */ }
 
         let didSend = false;
@@ -199,7 +207,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
 
         // ── Drop approaching: 7 days before drop date ─────────────────────────
-        if (!didSend && phase === "pendingDelete" && daysToDropDate <= 7 && !sentKeys.includes(DROP_SOON_KEY)) {
+        if (!didSend && phaseFlags.dropSoon && phase === "pendingDelete" && daysToDropDate <= 7 && !sentKeys.includes(DROP_SOON_KEY)) {
           await sendEmail({
             to: reminder.email,
             subject: `⚡ ${reminder.domain} 将在 ${daysToDropDate} 天后可抢注`,
@@ -219,7 +227,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         // ── Active phase: days-to-expiry thresholds ───────────────────────────
         if (!didSend && phase === "active") {
-          for (const threshold of THRESHOLDS) {
+          for (const threshold of thresholds) {
             if (daysToExpiry <= threshold && !sentKeys.includes(threshold)) {
               const urgencyLabel =
                 daysToExpiry <= 5 ? "🔴 紧急" :

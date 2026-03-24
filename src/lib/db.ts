@@ -223,6 +223,7 @@ const ALTER_COLUMNS = [
   `ALTER TABLE users         ADD COLUMN IF NOT EXISTS invite_code_used    TEXT`,
   `ALTER TABLE stamps        ADD COLUMN IF NOT EXISTS card_theme          TEXT NOT NULL DEFAULT 'app'`,
   `ALTER TABLE invite_codes  ADD COLUMN IF NOT EXISTS expires_at          TIMESTAMPTZ`,
+  `ALTER TABLE reminders     ADD COLUMN IF NOT EXISTS thresholds_json     TEXT`,
 ];
 
 const CREATE_INDEXES = [

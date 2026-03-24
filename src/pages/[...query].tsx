@@ -2155,7 +2155,8 @@ function ConfettiPieces() {
   );
 }
 
-const REMINDER_THRESHOLDS = [60, 30, 10, 5, 1];
+const ALL_REMINDER_THRESHOLDS = [60, 30, 10, 5, 1];
+const DEFAULT_REMINDER_THRESHOLDS = [60, 30, 1];
 
 function DomainReminderDialog({
   domain,
@@ -2186,9 +2187,16 @@ function DomainReminderDialog({
   const [email, setEmail] = React.useState("");
   const [submitting, setSubmitting] = React.useState(false);
   const [done, setDone] = React.useState(false);
+  const [selectedThresholds, setSelectedThresholds] = React.useState<number[]>(DEFAULT_REMINDER_THRESHOLDS);
+
+  function toggleThreshold(d: number) {
+    setSelectedThresholds(prev =>
+      prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d]
+    );
+  }
 
   React.useEffect(() => {
-    if (open) { setEmail(userEmail || ""); setDone(false); }
+    if (open) { setEmail(userEmail || ""); setDone(false); setSelectedThresholds(DEFAULT_REMINDER_THRESHOLDS); }
   }, [open, userEmail]);
 
   async function handleSubmit() {
@@ -2196,12 +2204,16 @@ function DomainReminderDialog({
       toast.error(isZh ? "请输入有效邮箱" : "Please enter a valid email");
       return;
     }
+    if (selectedThresholds.length === 0) {
+      toast.error(isZh ? "请至少选择一个到期前提醒时间" : "Please select at least one pre-expiry reminder");
+      return;
+    }
     setSubmitting(true);
     try {
       const res = await fetch("/api/remind/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ domain, email, expirationDate, phaseAlerts }),
+        body: JSON.stringify({ domain, email, expirationDate, phaseAlerts, thresholds: selectedThresholds }),
       });
       if (res.ok) {
         setDone(true);
@@ -2247,9 +2259,9 @@ function DomainReminderDialog({
 
   const phaseUI = lc ? PHASE_UI[lc.phase] : null;
 
-  type PhaseAlerts = { grace: boolean; redemption: boolean; pendingDelete: boolean };
+  type PhaseAlerts = { grace: boolean; redemption: boolean; pendingDelete: boolean; dropSoon: boolean; dropped: boolean };
   const [phaseAlerts, setPhaseAlerts] = React.useState<PhaseAlerts>({
-    grace: true, redemption: true, pendingDelete: true,
+    grace: true, redemption: true, pendingDelete: true, dropSoon: true, dropped: true,
   });
   function togglePhase(key: keyof PhaseAlerts) {
     setPhaseAlerts((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -2261,11 +2273,14 @@ function DomainReminderDialog({
     icon: React.ReactNode;
     activeCls: string;
     inactiveCls: string;
+    always?: boolean;
   };
   const phaseChips: PhaseChip[] = lc ? [
-    lc.cfg.grace > 0         && { key: "grace"      as const, label: isZh ? "进入宽限期"   : "Grace entered",    icon: <RiTimeLine className="w-2.5 h-2.5" />,          activeCls: "bg-amber-500/15 border-amber-400/40 text-amber-600 dark:text-amber-400",   inactiveCls: "bg-muted/20 border-border/30 text-muted-foreground/40 line-through" },
-    lc.cfg.redemption > 0    && { key: "redemption" as const, label: isZh ? "进入赎回期"   : "Redemption",       icon: <RiExchangeDollarFill className="w-2.5 h-2.5" />, activeCls: "bg-orange-500/15 border-orange-400/40 text-orange-600 dark:text-orange-400", inactiveCls: "bg-muted/20 border-border/30 text-muted-foreground/40 line-through" },
-    lc.cfg.pendingDelete > 0 && { key: "pendingDelete" as const, label: isZh ? "进入待删除期" : "Pending delete", icon: <RiDeleteBin2Line className="w-2.5 h-2.5" />,    activeCls: "bg-red-500/15 border-red-400/40 text-red-600 dark:text-red-400",          inactiveCls: "bg-muted/20 border-border/30 text-muted-foreground/40 line-through" },
+    lc.cfg.grace > 0         && { key: "grace"       as const, label: isZh ? "进入宽限期"   : "Grace",         icon: <RiTimeLine className="w-2.5 h-2.5" />,            activeCls: "bg-amber-500/15 border-amber-400/40 text-amber-600 dark:text-amber-400",   inactiveCls: "bg-muted/20 border-border/30 text-muted-foreground/40 line-through" },
+    lc.cfg.redemption > 0    && { key: "redemption"  as const, label: isZh ? "进入赎回期"   : "Redemption",    icon: <RiExchangeDollarFill className="w-2.5 h-2.5" />,  activeCls: "bg-orange-500/15 border-orange-400/40 text-orange-600 dark:text-orange-400", inactiveCls: "bg-muted/20 border-border/30 text-muted-foreground/40 line-through" },
+    lc.cfg.pendingDelete > 0 && { key: "pendingDelete" as const, label: isZh ? "进入待删除期" : "Pending del.", icon: <RiDeleteBin2Line className="w-2.5 h-2.5" />,     activeCls: "bg-red-500/15 border-red-400/40 text-red-600 dark:text-red-400",          inactiveCls: "bg-muted/20 border-border/30 text-muted-foreground/40 line-through" },
+    (lc.cfg.pendingDelete > 0 || lc.cfg.redemption > 0 || lc.cfg.grace > 0) && { key: "dropSoon" as const, always: true, label: isZh ? "即将可注册" : "Drop soon",     icon: <RiAlertLine className="w-2.5 h-2.5" />,           activeCls: "bg-sky-500/15 border-sky-400/40 text-sky-600 dark:text-sky-400",          inactiveCls: "bg-muted/20 border-border/30 text-muted-foreground/40 line-through" },
+    (lc.cfg.pendingDelete > 0 || lc.cfg.redemption > 0 || lc.cfg.grace > 0) && { key: "dropped"  as const, always: true, label: isZh ? "域名可注册"  : "Available",    icon: <RiShoppingCartLine className="w-2.5 h-2.5" />,    activeCls: "bg-emerald-500/15 border-emerald-400/40 text-emerald-600 dark:text-emerald-400", inactiveCls: "bg-muted/20 border-border/30 text-muted-foreground/40 line-through" },
   ].filter(Boolean) as PhaseChip[] : [];
 
   return (
@@ -2325,7 +2340,7 @@ function DomainReminderDialog({
                   <div>
                     <p className="text-[10px] text-muted-foreground/60 mb-1.5">{isZh ? "到期前提醒" : "Pre-expiry"}</p>
                     <div className="flex flex-wrap gap-1">
-                      {REMINDER_THRESHOLDS.map((d) => (
+                      {[...selectedThresholds].sort((a, b) => b - a).map((d) => (
                         <span key={d} className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-sky-500/10 border border-sky-400/20 text-sky-600 dark:text-sky-400 text-[10px] font-semibold">
                           <RiTimerLine className="w-2.5 h-2.5" />{isZh ? `提前${d}天` : `${d}d`}
                         </span>
@@ -2500,34 +2515,39 @@ function DomainReminderDialog({
                             );
                           })}
 
-                        {/* 预期可注册时间 — shown only when domain will drop */}
+                        {/* 预期可注册时间 — prominently highlighted */}
                         {(lc.cfg.pendingDelete > 0 || lc.cfg.grace > 0 || lc.cfg.redemption > 0) && (() => {
                           const dropIsPast = new Date() > lc.dropDate;
                           return (
                             <div className={cn(
                               "rounded-lg border px-2.5 py-2 mt-1",
                               dropIsPast
-                                ? "border-sky-400/40 bg-sky-500/10"
-                                : "border-dashed border-border/50 bg-background/50"
+                                ? "border-emerald-400/50 bg-emerald-500/10"
+                                : "border-sky-400/35 bg-sky-500/8"
                             )}>
                               <div className="flex items-start justify-between gap-2">
                                 <div className="flex items-center gap-1.5">
-                                  <RiShoppingCartLine className={cn("w-2.5 h-2.5 shrink-0", dropIsPast ? "text-sky-500" : "text-muted-foreground/40")} />
-                                  <span className={cn("text-[10px] font-semibold", dropIsPast ? "text-sky-600 dark:text-sky-400" : "text-muted-foreground/60")}>
-                                    {isZh ? "预期可注册" : "Est. available"}
+                                  <RiShoppingCartLine className={cn("w-3 h-3 shrink-0", dropIsPast ? "text-emerald-500" : "text-sky-500")} />
+                                  <span className={cn("text-[11px] font-bold", dropIsPast ? "text-emerald-600 dark:text-emerald-400" : "text-sky-600 dark:text-sky-400")}>
+                                    {isZh ? "预计可注册" : "Est. available"}
                                   </span>
+                                  {dropIsPast && (
+                                    <span className="inline-flex items-center px-1 py-0 rounded text-[8px] font-bold bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-400/30 uppercase tracking-wide">
+                                      {isZh ? "现在" : "NOW"}
+                                    </span>
+                                  )}
                                 </div>
                                 <span className={cn(
-                                  "text-[10px] font-mono font-semibold tabular-nums text-right",
-                                  dropIsPast ? "text-sky-600 dark:text-sky-400" : "text-muted-foreground/50"
+                                  "text-[11px] font-mono font-bold tabular-nums text-right",
+                                  dropIsPast ? "text-emerald-600 dark:text-emerald-400" : "text-sky-600 dark:text-sky-400"
                                 )}>
                                   {fmtDateTime(lc.dropDate, false)}
                                 </span>
                               </div>
-                              <p className={cn("text-[9px] pl-4 mt-0.5 leading-relaxed font-mono tabular-nums", dropIsPast ? "text-sky-500/70" : "text-muted-foreground/40")}>
+                              <p className={cn("text-[9px] pl-4 mt-0.5 leading-relaxed font-mono tabular-nums", dropIsPast ? "text-emerald-600/60" : "text-sky-500/60")}>
                                 {dropIsPast
-                                  ? (isZh ? "UTC · 域名现已可注册" : "UTC · Domain may be available now")
-                                  : `UTC · ${fmtCountdown(lc.dropDate, isZh)}${isZh ? "后可抢注" : " until drop"}`}
+                                  ? (isZh ? "UTC · 域名现已可注册，请尽快抢注" : "UTC · Domain may be available for registration now")
+                                  : `UTC · ${fmtCountdown(lc.dropDate, isZh)}${isZh ? "后可抢注" : " until available"}`}
                               </p>
                             </div>
                           );
@@ -2556,18 +2576,37 @@ function DomainReminderDialog({
                   <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
                     {isZh ? "提醒计划" : "Reminder plan"}
                   </p>
-                  {/* Pre-expiry day alerts */}
+                  {/* Pre-expiry day alerts — interactive */}
                   <div>
                     <p className="text-[10px] text-muted-foreground/70 mb-1.5 flex items-center gap-1 font-medium">
                       <RiTimerLine className="w-3 h-3" />
                       {isZh ? "到期前提醒" : "Pre-expiry alerts"}
+                      <span className="ml-auto text-[9px] text-muted-foreground/40 font-normal normal-case">
+                        {isZh ? "点击选择" : "click to toggle"}
+                      </span>
                     </p>
                     <div className="flex flex-wrap gap-1.5">
-                      {REMINDER_THRESHOLDS.map((d) => (
-                        <span key={d} className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md bg-sky-500/10 border border-sky-400/20 text-sky-600 dark:text-sky-400 text-[11px] font-semibold">
-                          {isZh ? `提前 ${d} 天` : `${d}d before`}
-                        </span>
-                      ))}
+                      {ALL_REMINDER_THRESHOLDS.map((d) => {
+                        const on = selectedThresholds.includes(d);
+                        return (
+                          <button
+                            key={d}
+                            type="button"
+                            onClick={() => toggleThreshold(d)}
+                            className={cn(
+                              "inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md border text-[11px] font-semibold transition-all cursor-pointer select-none",
+                              on
+                                ? "bg-sky-500/12 border-sky-400/30 text-sky-600 dark:text-sky-400"
+                                : "bg-muted/20 border-border/30 text-muted-foreground/40 line-through"
+                            )}
+                          >
+                            {on
+                              ? <RiCheckboxCircleLine className="w-2.5 h-2.5 shrink-0" />
+                              : <RiCheckboxBlankCircleLine className="w-2.5 h-2.5 shrink-0" />}
+                            {isZh ? `提前 ${d} 天` : `${d}d before`}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                   {/* Phase event alerts */}
@@ -2610,7 +2649,9 @@ function DomainReminderDialog({
                     </p>
                   ) : null}
                   <p className="text-[10px] text-muted-foreground/50 border-t border-border/30 pt-2.5 leading-relaxed">
-                    {isZh ? "续费后自动停止 · 可随时取消订阅" : "Auto-stops on renewal · Unsubscribe anytime"}
+                    {isZh
+                      ? "域名释放后自动停止 · 续费时提醒保留直至到期 · 可随时取消"
+                      : "Auto-stops on drop · Reminders continue after renewal until new expiry · Unsubscribe anytime"}
                   </p>
                 </div>
 

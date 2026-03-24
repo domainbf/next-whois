@@ -5,7 +5,8 @@ import { sendEmail, subscriptionConfirmHtml, getSiteLabel } from "@/lib/email";
 import { computeLifecycle, fmtDate } from "@/lib/lifecycle";
 import { one, run, isDbReady } from "@/lib/db-query";
 
-const REMINDER_THRESHOLDS = [60, 30, 10, 5, 1];
+const ALL_THRESHOLDS   = [60, 30, 10, 5, 1];
+const DEFAULT_THRESHOLDS = [60, 30, 1];
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).end();
@@ -14,14 +15,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const rl = await checkRateLimit(ip, 5);
   if (!rl.ok) return res.status(429).json({ error: "请求过于频繁，请稍后再试" });
 
-  const { domain, email, expirationDate, phaseAlerts } = req.body;
+  const { domain, email, expirationDate, phaseAlerts, thresholds } = req.body;
   if (!domain || !email) return res.status(400).json({ error: "Missing required fields" });
 
   const flags = {
     grace:         phaseAlerts?.grace         !== false,
     redemption:    phaseAlerts?.redemption    !== false,
     pendingDelete: phaseAlerts?.pendingDelete !== false,
+    dropSoon:      phaseAlerts?.dropSoon      !== false,
+    dropped:       phaseAlerts?.dropped       !== false,
   };
+
+  // Validate & deduplicate thresholds (only allow known values)
+  const selectedThresholds: number[] = Array.isArray(thresholds)
+    ? [...new Set(thresholds.filter((t: any) => ALL_THRESHOLDS.includes(Number(t))).map(Number))].sort((a, b) => b - a)
+    : DEFAULT_THRESHOLDS;
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(email)) return res.status(400).json({ error: "邮箱格式不正确" });
@@ -49,18 +57,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       await run(
         `UPDATE reminders
          SET expiration_date = $1, active = true, cancelled_at = NULL,
-             cancel_reason = NULL, cancel_token = $2, phase_flags = $3
-         WHERE id = $4`,
-        [expDate, cancelTok, JSON.stringify(flags), reminderId],
+             cancel_reason = NULL, cancel_token = $2, phase_flags = $3, thresholds_json = $4
+         WHERE id = $5`,
+        [expDate, cancelTok, JSON.stringify(flags), JSON.stringify(selectedThresholds), reminderId],
       );
       await run("DELETE FROM reminder_logs WHERE reminder_id = $1", [reminderId]);
     } else {
       reminderId = id;
       cancelTok  = cancelToken;
       await run(
-        `INSERT INTO reminders (id, domain, email, expiration_date, active, cancel_token, phase_flags)
-         VALUES ($1, $2, $3, $4, true, $5, $6)`,
-        [reminderId, cleanDomain, cleanEmail, expDate, cancelTok, JSON.stringify(flags)],
+        `INSERT INTO reminders (id, domain, email, expiration_date, active, cancel_token, phase_flags, thresholds_json)
+         VALUES ($1, $2, $3, $4, true, $5, $6, $7)`,
+        [reminderId, cleanDomain, cleanEmail, expDate, cancelTok, JSON.stringify(flags), JSON.stringify(selectedThresholds)],
       );
     }
   } catch (dbErr: any) {
@@ -88,13 +96,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       domain: cleanDomain,
       expirationDate: expDate,
       cancelToken: cancelTok,
-      thresholds: REMINDER_THRESHOLDS,
+      thresholds: selectedThresholds,
       lifecycle: lifecycleInfo,
       siteName,
     }),
   });
 
-  return res.status(200).json({ id: reminderId, thresholds: REMINDER_THRESHOLDS });
+  return res.status(200).json({ id: reminderId, thresholds: selectedThresholds });
 }
 
 export { sendEmail };
