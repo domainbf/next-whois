@@ -617,9 +617,10 @@ export async function lookupWhoisWithCache(
 const WHOIS_MERGE_WAIT_MS = 350;
 
 // Separate timeout caps for each protocol.
-// RDAP is HTTP/JSON (fast on Vercel's network) — 2 s is generous.
+// RDAP: ccTLD overrides now bypass IANA bootstrap (fast direct fetch) — 5 s
+//       gives ccTLD RDAP servers (sometimes slow) enough headroom.
 // WHOIS TCP varies more; give legitimate slow servers 4 s before giving up.
-const RDAP_TIMEOUT  = intEnv("RDAP_TIMEOUT_MS",  2_000);
+const RDAP_TIMEOUT  = intEnv("RDAP_TIMEOUT_MS",  5_000);
 const WHOIS_TIMEOUT = intEnv("WHOIS_TIMEOUT_MS", 4_000);
 
 // How long to wait for native lookups before starting third-party fallbacks

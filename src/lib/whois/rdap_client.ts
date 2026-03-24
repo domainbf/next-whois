@@ -201,6 +201,18 @@ export async function lookupRdap(query: string): Promise<any> {
     return await autnum(parseInt(asNumber));
   } else {
     const domainToQuery = extractDomain(cleanQuery) || cleanQuery;
+    const tld = domainToQuery.split(".").pop()?.toLowerCase() ?? "";
+
+    // Fast path: if we have an explicit ccTLD override, use it directly and
+    // skip the node-rdap IANA-bootstrap round-trip entirely.  This avoids a
+    // sequential "IANA probe → override" chain that can exceed the outer
+    // RDAP_TIMEOUT for ccTLDs whose IANA entry is missing or slow.
+    if (CCTLD_RDAP_OVERRIDES[tld]) {
+      const override = await tryRdapOverride(domainToQuery, 4000);
+      if (override) return override;
+      throw new Error(`No RDAP server found for ${domainToQuery}`);
+    }
+
     try {
       const { domain } = await getRdap();
       const result = await domain(domainToQuery);
