@@ -44,9 +44,27 @@ interface DynamicEntry {
 
 const VERSIONS: Version[] = [
   {
-    version: "2.2",
+    version: "2.3",
     date: "2026-03",
     highlight: true,
+    changes: [
+      { type: "improve", zh: "订阅标签页全面重构：统计概览芯片（有效/即将到期/紧急/已过期），高亮提醒横幅列出受影响域名，域名卡片内联生命周期进度条及阶段提示", en: "Subscription tab redesign: stats chips (active/expiring/urgent/post-expiry), alert banners listing affected domains, per-card lifecycle progress bar with phase guidance" },
+      { type: "improve", zh: "订阅卡片新增：下次提醒日期 + 「提前 N 天」标签、上次提醒时间戳、内联 days_before 芯片选择器（7/14/30/60/90 天，即点即存）", en: "Subscription cards: next reminder date with 'Remind N days ahead' badge, last-reminded timestamp, inline days-before chip selector (7/14/30/60/90 d, instant save)" },
+      { type: "improve", zh: "匿名查询记录上限取消：原 50 条硬上限移除，所有匿名查询永久保存，同 IP 同查询自动去重", en: "Anonymous query cap removed: old 50-record hard limit eliminated; all queries persist with same-query deduplication" },
+      { type: "new", zh: "管理后台查询记录新增「已登录用户」筛选标签，与「全部」/「匿名查询」并列，数量角标实时准确", en: "Admin search records: new 'Logged-in Users' filter tab alongside All / Anonymous, with correct badge counts" },
+      { type: "improve", zh: "OG 图片 CDN 缓存：添加 Cache-Control 响应头（s-maxage=3600），相同 URL 首次生成后由 CDN 直接返回，无需再经 Edge Function", en: "OG image CDN caching: Cache-Control headers added (s-maxage=3600); same URL served from CDN edge after first render" },
+      { type: "improve", zh: "域名查询缓存策略分级精细化：到期 > 180 天 → 缓存 12 小时；> 60 天 → 6 小时；≤ 7 天 → 30 分钟，减少稳定域名的重复 WHOIS 查询", en: "Domain query cache tiers refined: >180 d remaining → 12 h cache; >60 d → 6 h; ≤7 d → 30 min — cuts redundant queries for stable domains" },
+      { type: "improve", zh: "致谢页面网站图标：各项目展示真实网站 favicon（Google Favicon 服务），无法加载时自动回退至默认图标", en: "About page acknowledgements: real website favicons via Google Favicon API with graceful fallback" },
+      { type: "improve", zh: "更新记录页面重设计：竖向时间线布局 + 超大版本号 + 彩色 NEW/IMPROVE/FIX 标签，整体更通透简洁", en: "Changelog redesign: vertical timeline layout, oversized version numbers, color-coded NEW/IMPROVE/FIX pill tags" },
+      { type: "improve", zh: "用户中心数据加载优化：合并为单一 API 端点，订阅列表 + 品牌认领 + TLD 配置四个数据库查询完全并行，首屏数据到达时间大幅缩短", en: "Dashboard data load optimized: single combined API endpoint; subscriptions + stamps + lifecycle config fetched in parallel — significantly faster first paint" },
+      { type: "improve", zh: "用户中心 60 秒客户端缓存：页面内导航切换立即显示缓存数据，后台静默刷新，彻底消除重复加载转圈", en: "Dashboard 60 s client cache: navigation between tabs shows data instantly from memory; silent background refresh eliminates repeat loading spinners" },
+      { type: "fix", zh: "订阅权限跨设备/跨会话失效修复：后台从数据库实时读取权限，JWT 过期时自动修复，无需重新登录", en: "Subscription access stale-session fix: DB-authoritative check on every dashboard load; stale JWT auto-healed without re-login" },
+    ],
+  },
+  {
+    version: "2.2",
+    date: "2026-03",
+    highlight: false,
     changes: [
       { type: "new", zh: "OG 图片 8 种视觉样式：极简网格、渐变侧栏、终端暗色、品牌顶栏、极致留白、工程蓝图、报刊版式、类型渐变", en: "8 distinct OG image styles: Minimal Grid, Gradient Panel, Terminal Dark, Header Bar, Premium Dark, Blueprint, Editorial Frame, Type Gradient" },
       { type: "new", zh: "后台 OG 卡片样式管理：预览全部样式、一键启用/停用、多选配置，按域名哈希随机选取已启用样式", en: "Admin OG style management: preview all styles, enable/disable individually, hash-based random selection from enabled styles" },
