@@ -3876,7 +3876,7 @@ export default function LookupPage({
                                     <div className="w-14 h-14 rounded-2xl bg-white/15 backdrop-blur-sm border border-white/20 flex items-center justify-center shadow-lg">
                                       <StampIcon className="w-7 h-7 text-white" />
                                     </div>
-                                    <p className="text-white/45 text-[10px] font-mono tracking-[0.18em] uppercase">
+                                    <p className="text-shimmer-white text-[10px] font-mono tracking-[0.18em] uppercase">
                                       {result.domain || target}
                                     </p>
                                   </div>
@@ -3892,13 +3892,28 @@ export default function LookupPage({
                                     <span className={cn("text-lg font-black leading-tight tracking-tight", theme.shimmer)}>
                                       {stamp.tagName}
                                     </span>
-                                    <span className={cn(
-                                      "inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0",
-                                      theme.badge,
-                                    )}>
-                                      <RiShieldCheckLine className="w-2.5 h-2.5" />
-                                      {isChinese ? "已认证" : "Verified"}
-                                    </span>
+                                    {(() => {
+                                      const labelMap: Record<string, { zh: string; en: string }> = {
+                                        personal: { zh: "个人认领", en: "Personal"  },
+                                        official: { zh: "官方认证", en: "Official"  },
+                                        brand:    { zh: "品牌认领", en: "Brand"     },
+                                        verified: { zh: "已认证",   en: "Verified"  },
+                                        partner:  { zh: "合作伙伴", en: "Partner"   },
+                                        dev:      { zh: "开发者",   en: "Developer" },
+                                        warning:  { zh: "注意",     en: "Warning"   },
+                                        premium:  { zh: "高级认证", en: "Premium"   },
+                                      };
+                                      const lbl = labelMap[stamp.tagStyle] ?? { zh: "已认领", en: "Claimed" };
+                                      return (
+                                        <span className={cn(
+                                          "inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap",
+                                          theme.badge,
+                                        )}>
+                                          <RiShieldCheckLine className="w-2.5 h-2.5" />
+                                          {isChinese ? lbl.zh : lbl.en}
+                                        </span>
+                                      );
+                                    })()}
                                   </div>
                                   {stamp.description && (
                                     <p className="text-[12px] text-muted-foreground leading-relaxed mt-1.5">
@@ -3908,19 +3923,19 @@ export default function LookupPage({
                                 </div>
 
                                 {/* ── CTA / footer ── */}
-                                <div className="px-4 pt-3 pb-4">
+                                <div className="px-4 pt-2.5 pb-4 flex justify-center">
                                   {stamp.link ? (
                                     <a
                                       href={stamp.link}
                                       target="_blank"
                                       rel="noopener noreferrer"
                                       className={cn(
-                                        "flex items-center justify-center gap-2 w-full rounded-2xl py-2.5 text-sm font-bold transition-all hover:opacity-90 active:scale-[0.97]",
+                                        "inline-flex items-center gap-1.5 px-5 py-2 rounded-full text-[13px] font-semibold transition-all hover:opacity-90 active:scale-[0.97] shadow-sm",
                                         theme.btn,
                                       )}
                                     >
                                       {isChinese ? "访问主页" : "Visit Profile"}
-                                      <RiArrowRightSLine className="w-4 h-4" />
+                                      <RiArrowRightSLine className="w-3.5 h-3.5" />
                                     </a>
                                   ) : (
                                     <p className="text-[11px] text-muted-foreground/40 text-center font-mono py-1">

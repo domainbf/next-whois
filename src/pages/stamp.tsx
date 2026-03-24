@@ -26,6 +26,7 @@ import {
   RiFlashlightLine,
   RiGlobalLine,
   RiArrowRightLine,
+  RiArrowRightSLine,
   RiCloudLine,
   RiDeleteBinLine,
   RiFileTextLine,
@@ -327,13 +328,16 @@ export default function StampPage() {
     }
   }, [authStatus, domain, router]);
 
-  const CARD_THEME_OPTIONS: { id: string; label: string; hero: string; dot: string }[] = [
-    { id: "app",      label: "极简",  hero: "bg-gradient-to-br from-zinc-700 to-zinc-900",                              dot: "bg-zinc-600" },
-    { id: "glow",     label: "流光",  hero: "bg-gradient-to-br from-teal-400 to-teal-600",                              dot: "bg-teal-500" },
-    { id: "midnight", label: "午夜",  hero: "bg-gradient-to-br from-slate-700 via-blue-900 to-slate-900",               dot: "bg-blue-700" },
-    { id: "aurora",   label: "极光",  hero: "bg-gradient-to-br from-violet-500 via-fuchsia-500 to-pink-400",            dot: "bg-fuchsia-500" },
-    { id: "solar",    label: "暖阳",  hero: "bg-gradient-to-br from-amber-400 to-orange-600",                           dot: "bg-orange-500" },
-    { id: "ink",      label: "墨染",  hero: "bg-gradient-to-br from-zinc-800 via-zinc-900 to-black",                   dot: "bg-zinc-800" },
+  const CARD_THEME_OPTIONS: {
+    id: string; label: string; hero: string; dot: string;
+    shimmer: string; cardBg: string; cardBorder: string; cardText: string; btn: string;
+  }[] = [
+    { id: "app",      label: "极简",  hero: "bg-gradient-to-br from-zinc-700 to-zinc-900",                     dot: "bg-zinc-600",   shimmer: "text-shimmer",       cardBg: "bg-background",  cardBorder: "border-border/50",                             cardText: "text-foreground",  btn: "bg-zinc-800 text-white"  },
+    { id: "glow",     label: "流光",  hero: "bg-gradient-to-br from-teal-400 to-teal-600",                     dot: "bg-teal-500",   shimmer: "text-shimmer",       cardBg: "bg-background",  cardBorder: "border-teal-200/60 dark:border-teal-800/40",   cardText: "text-foreground",  btn: "bg-teal-500 text-white"  },
+    { id: "midnight", label: "午夜",  hero: "bg-gradient-to-br from-slate-700 via-blue-900 to-slate-900",      dot: "bg-blue-700",   shimmer: "text-shimmer-white", cardBg: "bg-slate-900",   cardBorder: "border-slate-700",                             cardText: "text-white",       btn: "bg-blue-600 text-white"  },
+    { id: "aurora",   label: "极光",  hero: "bg-gradient-to-br from-violet-500 via-fuchsia-500 to-pink-400",   dot: "bg-fuchsia-500",shimmer: "text-shimmer",       cardBg: "bg-background",  cardBorder: "border-violet-200/60 dark:border-violet-800/40",cardText: "text-foreground",  btn: "bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white" },
+    { id: "solar",    label: "暖阳",  hero: "bg-gradient-to-br from-amber-400 to-orange-600",                  dot: "bg-orange-500", shimmer: "text-shimmer",       cardBg: "bg-background",  cardBorder: "border-amber-200/60 dark:border-amber-800/40", cardText: "text-foreground",  btn: "bg-orange-500 text-white" },
+    { id: "ink",      label: "墨染",  hero: "bg-gradient-to-br from-zinc-800 via-zinc-900 to-black",           dot: "bg-zinc-800",   shimmer: "text-shimmer-white", cardBg: "bg-zinc-950",    cardBorder: "border-zinc-800",                              cardText: "text-white",       btn: "bg-zinc-700 text-white"  },
   ];
 
   const defaultForm = { tagName: "", tagStyle: "personal", cardTheme: "app", link: "", description: "", nickname: "", email: "" };
@@ -907,28 +911,6 @@ export default function StampPage() {
                                 );
                               })}
                             </div>
-                            {form.tagName && (
-                              <div className="mt-3 px-4 py-3 rounded-xl bg-gradient-to-br from-violet-50/60 to-fuchsia-50/40 dark:from-violet-950/30 dark:to-fuchsia-950/20 border border-violet-200/50 dark:border-violet-800/30 space-y-2">
-                                <div className="flex items-center gap-2">
-                                  <span className="text-[10px] font-bold uppercase tracking-widest text-violet-400/70">{s("live_preview")}</span>
-                                  <div className="flex-1 h-px bg-violet-200/40 dark:bg-violet-800/30" />
-                                </div>
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <TagBadge tagName={form.tagName} tagStyle={form.tagStyle} live />
-                                </div>
-                                {form.description && (
-                                  <p className="text-[11px] leading-relaxed" style={{
-                                    background: "linear-gradient(135deg, #7c3aed 0%, #a855f7 40%, #ec4899 70%, #f59e0b 100%)",
-                                    WebkitBackgroundClip: "text",
-                                    WebkitTextFillColor: "transparent",
-                                    backgroundClip: "text",
-                                    fontStyle: "italic",
-                                  }}>
-                                    &ldquo;{form.description}&rdquo;
-                                  </p>
-                                )}
-                              </div>
-                            )}
                           </div>
 
                           {/* Card theme */}
@@ -990,6 +972,67 @@ export default function StampPage() {
                               className="w-full text-base sm:text-sm rounded-lg border border-border bg-background px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-violet-400/40 transition-shadow placeholder:text-muted-foreground/50"
                             />
                           </div>
+
+                          {/* Live mini card preview */}
+                          {(() => {
+                            if (!form.tagName) return null;
+                            const curTheme = CARD_THEME_OPTIONS.find(t => t.id === form.cardTheme) || CARD_THEME_OPTIONS[0];
+                            const styleObj = TAG_STYLES.find(ts => ts.id === form.tagStyle) || TAG_STYLES[0];
+                            const CurIcon = styleObj.icon;
+                            const stampLabels: Record<string, string> = {
+                              personal: "个人认领", official: "官方认证", brand: "品牌认领",
+                              verified: "已认证",   partner: "合作伙伴", dev: "开发者",
+                              warning:  "注意",     premium: "高级认证",
+                            };
+                            const badgeLabel = stampLabels[form.tagStyle] ?? "已认领";
+                            return (
+                              <div>
+                                <div className="flex items-center gap-2 mb-2">
+                                  <span className="text-[10px] font-bold uppercase tracking-widest text-violet-400/70">{s("live_preview")}</span>
+                                  <div className="flex-1 h-px bg-violet-200/40 dark:bg-violet-800/30" />
+                                </div>
+                                <div className="rounded-xl overflow-hidden border border-border/40 shadow-md">
+                                  <div className={cn("relative px-3 pt-4 pb-6 text-center select-none", curTheme.hero)}>
+                                    <div className="absolute inset-0 opacity-[0.07]"
+                                      style={{ backgroundImage: "radial-gradient(circle, white 1px, transparent 1px)", backgroundSize: "14px 14px" }} />
+                                    <div className="relative flex flex-col items-center gap-1.5">
+                                      <div className="w-10 h-10 rounded-xl bg-white/15 border border-white/20 flex items-center justify-center shadow-md">
+                                        <CurIcon className="w-5 h-5 text-white" />
+                                      </div>
+                                      <p className="text-shimmer-white text-[9px] font-mono tracking-[0.18em] uppercase">
+                                        {domain || "your-domain.com"}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <div className={cn("relative -mt-4 mx-3 rounded-xl border shadow-sm px-3 py-2", curTheme.cardBg, curTheme.cardBorder)}>
+                                    <div className="flex items-center justify-between gap-2">
+                                      <span className={cn("text-sm font-black leading-tight tracking-tight", curTheme.shimmer)}>
+                                        {form.tagName}
+                                      </span>
+                                      <span className={cn("inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0 whitespace-nowrap", styleObj.className)}>
+                                        <RiShieldCheckLine className="w-2 h-2" />
+                                        {badgeLabel}
+                                      </span>
+                                    </div>
+                                    {form.description && (
+                                      <p className={cn("text-[10px] leading-relaxed mt-1", curTheme.cardText === "text-white" ? "text-white/60" : "text-muted-foreground")}>
+                                        {form.description}
+                                      </p>
+                                    )}
+                                  </div>
+                                  <div className="px-3 pt-2 pb-3 flex justify-center">
+                                    {form.link ? (
+                                      <span className={cn("inline-flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-semibold", curTheme.btn)}>
+                                        访问主页 <RiArrowRightSLine className="w-3 h-3" />
+                                      </span>
+                                    ) : (
+                                      <p className="text-[9px] text-muted-foreground/40 font-mono">未设置主页链接</p>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })()}
 
                           <div className="h-px bg-border/50" />
 
