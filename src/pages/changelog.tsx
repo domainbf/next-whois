@@ -44,26 +44,8 @@ interface DynamicEntry {
 
 const VERSIONS: Version[] = [
   {
-    version: "2.3",
-    date: "2026-03",
-    highlight: true,
-    changes: [
-      { type: "improve", zh: "订阅标签页全面重构：统计概览芯片（有效/即将到期/紧急/已过期），高亮提醒横幅列出受影响域名，域名卡片内联生命周期进度条及阶段提示", en: "Subscription tab redesign: stats chips (active/expiring/urgent/post-expiry), alert banners listing affected domains, per-card lifecycle progress bar with phase guidance" },
-      { type: "improve", zh: "订阅卡片新增：下次提醒日期 + 「提前 N 天」标签、上次提醒时间戳、内联 days_before 芯片选择器（7/14/30/60/90 天，即点即存）", en: "Subscription cards: next reminder date with 'Remind N days ahead' badge, last-reminded timestamp, inline days-before chip selector (7/14/30/60/90 d, instant save)" },
-      { type: "improve", zh: "匿名查询记录上限取消：原 50 条硬上限移除，所有匿名查询永久保存，同 IP 同查询自动去重", en: "Anonymous query cap removed: old 50-record hard limit eliminated; all queries persist with same-query deduplication" },
-      { type: "new", zh: "管理后台查询记录新增「已登录用户」筛选标签，与「全部」/「匿名查询」并列，数量角标实时准确", en: "Admin search records: new 'Logged-in Users' filter tab alongside All / Anonymous, with correct badge counts" },
-      { type: "improve", zh: "OG 图片 CDN 缓存：添加 Cache-Control 响应头（s-maxage=3600），相同 URL 首次生成后由 CDN 直接返回，无需再经 Edge Function", en: "OG image CDN caching: Cache-Control headers added (s-maxage=3600); same URL served from CDN edge after first render" },
-      { type: "improve", zh: "域名查询缓存策略分级精细化：到期 > 180 天 → 缓存 12 小时；> 60 天 → 6 小时；≤ 7 天 → 30 分钟，减少稳定域名的重复 WHOIS 查询", en: "Domain query cache tiers refined: >180 d remaining → 12 h cache; >60 d → 6 h; ≤7 d → 30 min — cuts redundant queries for stable domains" },
-      { type: "improve", zh: "致谢页面网站图标：各项目展示真实网站 favicon（Google Favicon 服务），无法加载时自动回退至默认图标", en: "About page acknowledgements: real website favicons via Google Favicon API with graceful fallback" },
-      { type: "improve", zh: "更新记录页面重设计：竖向时间线布局 + 超大版本号 + 彩色 NEW/IMPROVE/FIX 标签，整体更通透简洁", en: "Changelog redesign: vertical timeline layout, oversized version numbers, color-coded NEW/IMPROVE/FIX pill tags" },
-      { type: "improve", zh: "用户中心数据加载优化：合并为单一 API 端点，订阅列表 + 品牌认领 + TLD 配置四个数据库查询完全并行，首屏数据到达时间大幅缩短", en: "Dashboard data load optimized: single combined API endpoint; subscriptions + stamps + lifecycle config fetched in parallel — significantly faster first paint" },
-      { type: "improve", zh: "用户中心 60 秒客户端缓存：页面内导航切换立即显示缓存数据，后台静默刷新，彻底消除重复加载转圈", en: "Dashboard 60 s client cache: navigation between tabs shows data instantly from memory; silent background refresh eliminates repeat loading spinners" },
-      { type: "fix", zh: "订阅权限跨设备/跨会话失效修复：后台从数据库实时读取权限，JWT 过期时自动修复，无需重新登录", en: "Subscription access stale-session fix: DB-authoritative check on every dashboard load; stale JWT auto-healed without re-login" },
-    ],
-  },
-  {
     version: "2.2",
-    date: "2026-03",
+    date: "2026-03-20",
     highlight: false,
     changes: [
       { type: "new", zh: "OG 图片 8 种视觉样式：极简网格、渐变侧栏、终端暗色、品牌顶栏、极致留白、工程蓝图、报刊版式、类型渐变", en: "8 distinct OG image styles: Minimal Grid, Gradient Panel, Terminal Dark, Header Bar, Premium Dark, Blueprint, Editorial Frame, Type Gradient" },
@@ -77,7 +59,7 @@ const VERSIONS: Version[] = [
   },
   {
     version: "2.1",
-    date: "2026-03",
+    date: "2026-03-16",
     highlight: false,
     changes: [
       { type: "new", zh: "ICP 备案查询：支持网站 / APP / 小程序 / 快应用及对应违规类型，分页展示全量结果", en: "ICP filing query: supports website/app/mini-program/quick-app and blacklist types with paginated results" },
@@ -93,7 +75,7 @@ const VERSIONS: Version[] = [
   },
   {
     version: "2.0",
-    date: "2026-03",
+    date: "2026-03-12",
     changes: [
       { type: "new", zh: "友情链接后台管理：数据库驱动，支持增删改查、显示/隐藏、分类分组、排序", en: "Friendly Links admin: DB-backed CRUD with show/hide toggle, category grouping, custom sort order" },
       { type: "new", zh: "关于我们页面全面可编辑：中/英简介、联系邮箱、GitHub 链接、原作者信息均可在管理后台配置", en: "About page fully admin-editable: zh/en intro, contact email, GitHub URL, author info all configurable" },
@@ -114,7 +96,7 @@ const VERSIONS: Version[] = [
   },
   {
     version: "1.9",
-    date: "2026-03",
+    date: "2026-03-10",
     changes: [
       { type: "improve", zh: "页面切换动画精简：时长 0.28 s → 0.22 s，曲线换用 ease-out-expo，去除 scale 抖动", en: "Page transition refined: 0.28 s → 0.22 s, ease-out-expo curve, scale jitter removed" },
       { type: "improve", zh: "动画层添加 will-change: opacity, transform，浏览器提前提升 GPU 合成层", en: "Animated wrapper gains will-change: opacity, transform for early GPU layer promotion" },
@@ -125,7 +107,7 @@ const VERSIONS: Version[] = [
   },
   {
     version: "1.8",
-    date: "2026-03",
+    date: "2026-03-08",
     changes: [
       { type: "improve", zh: "WHOIS 合并等待窗口从 600 ms 压缩至 350 ms，RDAP 优先结果更快返回", en: "WHOIS merge-wait window reduced 600 → 350 ms; RDAP-first results arrive ~250 ms earlier" },
       { type: "improve", zh: "渐进式容灾触发时间从 3500 ms 提前至 3000 ms，慢 TLD 最坏情况提速 500 ms", en: "Progressive fallback trigger lowered 3 500 → 3 000 ms; worst-case 500 ms faster for slow TLDs" },
@@ -135,7 +117,7 @@ const VERSIONS: Version[] = [
   },
   {
     version: "1.7",
-    date: "2026-03",
+    date: "2026-03-05",
     changes: [
       { type: "improve", zh: "查询 API 新增 IP 滑动窗口限流（每 IP 每分钟 40 次），防止滥用爬取", en: "Lookup API: IP-based sliding-window rate limiting (40 req/min) to prevent abuse" },
       { type: "improve", zh: "查询 API 严格校验 HTTP 方法（仅 GET），拒绝非法请求", en: "Lookup API: strict HTTP method validation — only GET accepted" },
@@ -147,7 +129,7 @@ const VERSIONS: Version[] = [
   },
   {
     version: "1.6",
-    date: "2026-03",
+    date: "2026-03-01",
     changes: [
       { type: "new", zh: "域名价值评分系统：100 分制多维评估（长度/后缀/关键词/拼写模式）", en: "Domain value scoring: 100-point multi-dimensional evaluation (length/TLD/keywords/pattern)" },
       { type: "new", zh: "支持后缀页：IANA 全量 1436 个 TLD，含 248 ccTLD + 1188 gTLD", en: "TLDs page: full IANA list of 1436 TLDs including 248 ccTLD and 1188 gTLD" },
@@ -165,7 +147,7 @@ const VERSIONS: Version[] = [
   },
   {
     version: "1.5",
-    date: "2026-02",
+    date: "2026-02-05",
     changes: [
       { type: "new", zh: "Dashboard 新增订阅引导弹窗与品牌认领引导弹窗", en: "Dashboard: subscription guide modal and brand claim guide modal added" },
       { type: "new", zh: "/remind 页面：域名到期提醒管理，支持取消订阅", en: "/remind page: domain expiry reminder management with unsubscribe support" },
@@ -173,7 +155,7 @@ const VERSIONS: Version[] = [
   },
   {
     version: "1.4",
-    date: "2026-01",
+    date: "2026-01-15",
     changes: [
       { type: "new", zh: "域名到期提醒系统：订阅后 90/30/7/1 天自动发送邮件", en: "Domain expiry reminder system: email alerts at 90/30/7/1 days before expiry" },
       { type: "new", zh: "RDAP 查询支持，优先于传统 WHOIS 协议", en: "RDAP query support, prioritized over legacy WHOIS protocol" },
@@ -184,7 +166,7 @@ const VERSIONS: Version[] = [
   },
   {
     version: "1.3",
-    date: "2025-12",
+    date: "2025-12-01",
     changes: [
       { type: "new", zh: "品牌认领（Brand Stamp）：DNS TXT 验证后展示品牌标签", en: "Brand Stamp: show verified brand tags via DNS TXT verification" },
       { type: "new", zh: "DNS 记录查询工具：A/MX/TXT/SPF/DMARC 多解析器", en: "DNS lookup tool: A/MX/TXT/SPF/DMARC multi-resolver" },
@@ -195,7 +177,7 @@ const VERSIONS: Version[] = [
   },
   {
     version: "1.2",
-    date: "2025-11",
+    date: "2025-11-08",
     changes: [
       { type: "new", zh: "用户系统：注册 / 登录 / 找回密码", en: "User system: register, login, forgot/reset password" },
       { type: "new", zh: "Dashboard：域名订阅管理与品牌认领列表", en: "Dashboard: domain subscription management and brand claims list" },
@@ -205,7 +187,7 @@ const VERSIONS: Version[] = [
   },
   {
     version: "1.1",
-    date: "2025-10",
+    date: "2025-10-15",
     changes: [
       { type: "new", zh: "8 种语言支持：中/英/日/韩/德/法/俄/繁中", en: "8-language support: zh/en/ja/ko/de/fr/ru/zh-tw" },
       { type: "new", zh: "深色 / 浅色主题切换", en: "Dark/light theme toggle" },
@@ -216,7 +198,7 @@ const VERSIONS: Version[] = [
   },
   {
     version: "1.0",
-    date: "2025-09",
+    date: "2025-09-01",
     changes: [
       { type: "new", zh: "项目上线：域名 WHOIS 查询，支持 200+ 后缀", en: "Initial launch: domain WHOIS lookup with 200+ TLD support" },
       { type: "new", zh: "ASN 自治系统查询", en: "ASN autonomous system lookup" },
