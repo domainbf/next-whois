@@ -58,153 +58,164 @@ function StampPreviewCard({ themeKey }: { themeKey: string }) {
     </div>
   );
 
-  /* ── celebrate (faithful to IMG_9083) ── */
+  /* ── celebrate — sky gradient + wave + glowing indigo badge ── */
   if (t.layout === "celebrate") return (
     <div className="rounded-2xl overflow-hidden shadow-md bg-white">
-      {/* Sky-blue hero with confetti */}
-      <div className="relative bg-sky-400 px-4 pt-4 pb-10 overflow-hidden">
+      <div className="relative px-4 pt-4 pb-12 overflow-hidden"
+        style={{background:"linear-gradient(160deg,#7DD3FC 0%,#0EA5E9 100%)"}}>
         {[
-          {x:"7%", y:"12%",w:10,h:4,bg:"#f43f5e",r:"-45deg"},{x:"22%",y:"6%", w:6, h:6, bg:"#facc15",r:"0"},
-          {x:"38%",y:"18%",w:14,h:3,bg:"#a78bfa",r:"20deg"}, {x:"55%",y:"5%", w:7, h:7, bg:"#34d399",r:"0"},
+          {x:"7%", y:"10%",w:10,h:4,bg:"#f43f5e",r:"-45deg"},{x:"22%",y:"5%", w:6, h:6, bg:"#facc15",r:"0"},
+          {x:"38%",y:"20%",w:14,h:3,bg:"#a78bfa",r:"20deg"}, {x:"55%",y:"4%", w:7, h:7, bg:"#34d399",r:"0"},
           {x:"68%",y:"14%",w:12,h:3,bg:"#60a5fa",r:"30deg"}, {x:"82%",y:"8%", w:5, h:5, bg:"#f472b6",r:"0"},
-          {x:"12%",y:"40%",w:9, h:3, bg:"#4ade80",r:"15deg"},{x:"50%",y:"35%",w:5, h:5, bg:"#f87171",r:"0"},
-          {x:"75%",y:"38%",w:11,h:3,bg:"#38bdf8",r:"-20deg"},{x:"90%",y:"42%",w:8, h:3, bg:"#fbbf24",r:"10deg"},
+          {x:"12%",y:"38%",w:9, h:3, bg:"#4ade80",r:"15deg"},{x:"50%",y:"32%",w:5, h:5, bg:"#f87171",r:"0"},
+          {x:"75%",y:"35%",w:11,h:3,bg:"#38bdf8",r:"-20deg"},{x:"90%",y:"40%",w:8, h:3, bg:"#fbbf24",r:"10deg"},
         ].map((p,i)=>(
           <span key={i} className="absolute pointer-events-none rounded-sm"
             style={{left:p.x,top:p.y,width:p.w,height:p.h,backgroundColor:p.bg,transform:`rotate(${p.r})`}} />
         ))}
-      </div>
-      {/* Floating circle badge */}
-      <div className="flex justify-center -mt-8 relative z-10 mb-3">
-        <div className="w-16 h-16 rounded-full bg-indigo-600 border-4 border-white shadow-xl flex items-center justify-center">
-          <Icon className="w-7 h-7 text-white" />
+        <div className="absolute bottom-0 left-0 right-0 pointer-events-none">
+          <svg viewBox="0 0 400 32" preserveAspectRatio="none" className="w-full h-8 block">
+            <path d="M0 32 C120 4, 280 22, 400 2 L400 32 Z" fill="white"/>
+          </svg>
         </div>
       </div>
-      {/* White body */}
-      <div className="px-5 pb-2 text-center">
+      <div className="flex justify-center -mt-9 relative z-10 mb-2">
+        <div className="relative">
+          <div className="absolute inset-0 rounded-full scale-[1.3]" style={{background:"rgba(99,102,241,0.12)"}}/>
+          <div className="relative w-[60px] h-[60px] rounded-full border-[4px] border-white shadow-xl flex items-center justify-center ring-[2px] ring-indigo-200/60"
+            style={{background:"linear-gradient(135deg,#6366F1,#4338CA)"}}>
+            <Icon className="w-6 h-6 text-white"/>
+          </div>
+        </div>
+      </div>
+      <div className="px-4 pb-2 text-center">
         <p className="text-[15px] font-black text-gray-900 leading-tight">{DEMO.tagName}</p>
         <p className="text-[9px] text-gray-400 mt-0.5 mb-3">{DEMO.desc}</p>
-        <div className="w-full py-2.5 rounded-full bg-indigo-600 text-white text-[10px] font-bold text-center mb-2">访问主页</div>
+        <div className="w-full py-2.5 rounded-full text-white text-[10px] font-bold text-center mb-2"
+          style={{background:"linear-gradient(135deg,#6366F1,#4338CA)", boxShadow:"0 4px 12px rgba(99,102,241,0.3)"}}>访问主页</div>
         <p className="text-[9px] text-gray-400 pb-2">关闭</p>
       </div>
     </div>
   );
 
-  /* ── neon (faithful to IMG_9091 Location Access style) ── */
+  /* ── neon — #0d1117 + emerald pin + ambient glow + skyline ── */
   if (t.layout === "neon") return (
-    <div className="rounded-2xl overflow-hidden shadow-md" style={{background:"#1a1a1a"}}>
-      {/* Top illustration: green map-pin */}
-      <div className="flex flex-col items-center pt-6 pb-3" style={{background:"#1a1a1a"}}>
-        <div className="flex flex-col items-center">
-          <div className="relative w-16 h-16 rounded-full flex items-center justify-center" style={{background:"#4ade80"}}>
-            <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{background:"#1a1a1a"}}>
-              <Icon className="w-5 h-5 text-white" />
+    <div className="rounded-2xl overflow-hidden shadow-md" style={{background:"#0d1117"}}>
+      <div className="relative flex flex-col items-center pt-6 pb-3 overflow-hidden" style={{background:"#0d1117"}}>
+        <div className="absolute pointer-events-none" style={{width:140,height:120,top:0,left:"50%",transform:"translateX(-50%)",background:"radial-gradient(ellipse, rgba(34,197,94,0.16) 0%, transparent 68%)"}}/>
+        <div className="absolute rounded-full pointer-events-none" style={{width:88,height:88,top:14,left:"50%",transform:"translateX(-50%)",border:"1px solid rgba(34,197,94,0.18)"}}/>
+        <div className="flex flex-col items-center z-10">
+          <div className="w-[72px] h-[72px] rounded-full flex items-center justify-center" style={{background:"#22c55e",boxShadow:"0 0 20px rgba(34,197,94,0.28)"}}>
+            <div className="w-[44px] h-[44px] rounded-full flex items-center justify-center" style={{background:"#0d1117"}}>
+              <Icon className="w-5 h-5 text-white"/>
             </div>
           </div>
-          <div style={{width:0,height:0,borderLeft:"12px solid transparent",borderRight:"12px solid transparent",borderTop:"15px solid #4ade80",marginTop:"-1px"}} />
+          <div style={{width:0,height:0,borderLeft:"14px solid transparent",borderRight:"14px solid transparent",borderTop:"18px solid #22c55e",marginTop:"-1px"}}/>
         </div>
-        {/* Mini city skyline */}
-        <div className="mt-2 opacity-35">
-          <svg viewBox="0 0 140 20" className="w-28 h-4" fill="white">
+        <div className="mt-3 z-10" style={{opacity:0.2}}>
+          <svg viewBox="0 0 140 20" className="w-28 h-4" fill="#22c55e">
             <path d="M0 20L0 13 7 13 7 7 10 7 10 4 13 4 13 7 16 7 16 13 23 13 23 9 26 9 26 13 33 13 33 7 36 7 36 2 39 2 39 7 42 7 42 13 53 13 53 10 56 10 56 13 63 13 63 8 66 8 66 3 69 3 69 8 72 8 72 13 83 13 83 9 86 9 86 12 89 12 89 13 97 13 97 7 100 7 100 13 110 13 110 10 113 10 113 5 116 5 116 10 119 10 119 13 127 13 127 11 130 11 130 13 140 13 140 20Z"/>
           </svg>
         </div>
       </div>
-      {/* Text */}
       <div className="px-4 pb-2 text-center">
         <p className="text-white text-[14px] font-black leading-tight mb-1">{DEMO.tagName}</p>
-        <p className="text-[9px] leading-relaxed" style={{color:"#888"}}>{DEMO.desc}</p>
+        <p className="text-[9px] leading-relaxed" style={{color:"#6b7280"}}>{DEMO.desc}</p>
       </div>
-      {/* Two buttons */}
-      <div className="px-4 pb-4 pt-2 space-y-2">
-        <div className="w-full py-2 rounded-xl text-[9px] font-bold text-center" style={{background:"#4ade80",color:"#111"}}>访问主页</div>
-        <div className="w-full py-2 rounded-xl text-[9px] font-bold text-white text-center border-2" style={{borderColor:"rgba(255,255,255,0.18)"}}>关闭</div>
+      <div className="px-4 pb-4 pt-2 space-y-1.5">
+        <div className="w-full py-2 rounded-xl text-[9px] font-bold text-center" style={{background:"#22c55e",color:"#0d1117"}}>访问主页</div>
+        <div className="w-full py-2 rounded-xl text-[9px] font-bold text-white/70 text-center" style={{border:"1.5px solid rgba(255,255,255,0.13)"}}>关闭</div>
       </div>
     </div>
   );
 
-  /* ── gradient (faithful to IMG_9093 Apple Card) ── */
+  /* ── gradient — multi-radial Apple Card soft gradient ── */
   if (t.layout === "gradient") return (
     <div className="rounded-2xl overflow-hidden shadow-md flex flex-col"
-      style={{background:"linear-gradient(135deg,#b8e0f7 0%,#e8d5f0 30%,#f7c8d4 55%,#f9d89e 80%,#fde8a0 100%)"}}>
-      <div className="px-4 pt-4 pb-5 flex flex-col items-center text-center flex-1">
-        {/* Outlined pill badge */}
-        <span className="inline-flex items-center px-4 py-1.5 rounded-full border-2 border-gray-800/50 text-gray-800 text-[9px] font-bold mb-3 tracking-tight">
+      style={{background:"radial-gradient(ellipse at 22% 28%, rgba(147,197,253,0.92) 0%, transparent 55%), radial-gradient(ellipse at 78% 22%, rgba(249,168,212,0.85) 0%, transparent 55%), radial-gradient(ellipse at 72% 82%, rgba(253,230,138,0.88) 0%, transparent 55%), radial-gradient(ellipse at 22% 82%, rgba(167,243,208,0.6) 0%, transparent 55%), #fafcff"}}>
+      <div className="px-4 pt-5 pb-4 flex flex-col items-center text-center flex-1">
+        <span className="inline-flex items-center px-4 py-1.5 rounded-full text-[9px] font-bold mb-3 tracking-tight"
+          style={{border:"2px solid rgba(20,20,20,0.6)", color:"rgba(20,20,20,0.75)"}}>
           {DEMO.tagLabel}
         </span>
-        {/* Very large title */}
-        <p className="text-[20px] font-black text-gray-900 leading-tight tracking-tight mb-2">{DEMO.tagName}</p>
+        <p className="font-black text-gray-900 leading-tight tracking-tight mb-2" style={{fontSize:22}}>{DEMO.tagName}</p>
         <p className="text-[9.5px] text-gray-600 leading-relaxed">{DEMO.desc}</p>
       </div>
-      {/* Bottom CTA */}
       <div className="px-4 pb-4">
-        <div className="flex items-center justify-between w-full px-3.5 py-2.5 rounded-xl bg-gray-900 text-white text-[9px] font-bold">
-          <span>访问主页</span><span>→</span>
+        <div className="flex items-center justify-between w-full px-3.5 py-2.5 rounded-xl text-white text-[9px] font-bold"
+          style={{background:"rgba(15,20,35,0.85)"}}>
+          <span>访问主页</span><span style={{opacity:0.6}}>→</span>
         </div>
-        <p className="text-[8px] text-gray-500/70 text-center font-mono mt-1.5">{DEMO.domain}</p>
+        <p className="text-[8px] text-center font-mono mt-1.5" style={{color:"rgba(100,100,100,0.6)"}}>{DEMO.domain}</p>
       </div>
     </div>
   );
 
-  /* ── split (faithful to IMG_9087 photo/text split) ── */
+  /* ── split — navy left with ghost initial + white right ── */
   if (t.layout === "split") return (
     <div className="rounded-2xl overflow-hidden shadow-md flex" style={{minHeight:140}}>
-      {/* Left dark photo-like panel */}
       <div className="relative flex flex-col items-center justify-center w-[38%] shrink-0 overflow-hidden"
-        style={{background:"linear-gradient(160deg,#2d2d2d 0%,#1a1a1a 100%)"}}>
-        <div className="absolute inset-0 opacity-[0.07]"
-          style={{backgroundImage:"repeating-linear-gradient(-55deg,white 0,white 1px,transparent 1px,transparent 14px)"}} />
-        <div className="w-10 h-10 rounded-xl bg-white/10 border border-white/15 flex items-center justify-center">
-          <Icon className="w-5 h-5 text-white/80" />
+        style={{background:"linear-gradient(145deg,#1e3a5f 0%,#0f172a 100%)"}}>
+        <div className="absolute inset-0 flex items-center justify-center overflow-hidden select-none pointer-events-none">
+          <span className="font-black leading-none select-none" style={{fontSize:100,color:"rgba(255,255,255,0.04)",lineHeight:1}}>
+            {(DEMO.tagName||"A")[0].toUpperCase()}
+          </span>
         </div>
-        <p className="text-white/25 text-[7px] font-mono mt-1.5 px-2 text-center truncate tracking-widest">{DEMO.domain}</p>
+        <div className="absolute top-0 right-0 w-[2px] h-full" style={{background:"linear-gradient(to bottom,#3b82f6,#1d4ed8)"}}/>
+        <div className="relative z-10 w-9 h-9 rounded-xl flex items-center justify-center" style={{background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.1)"}}>
+          <Icon className="w-4 h-4 text-white/80"/>
+        </div>
+        <p className="text-center px-2 font-mono tracking-widest uppercase mt-1" style={{fontSize:7,color:"rgba(255,255,255,0.22)"}}>{DEMO.domain}</p>
       </div>
-      {/* Right white panel */}
       <div className="flex-1 bg-white flex flex-col justify-between px-3 py-3 relative">
-        {/* Red X */}
-        <div className="absolute top-2 right-2 text-red-400 text-[9px] font-bold">✕</div>
-        <div>
-          <p className="text-gray-400 text-[7px] uppercase tracking-widest font-semibold mb-0.5">域名认领</p>
-          <p className="text-[17px] font-black text-gray-900 leading-none tracking-tight">{DEMO.tagName}</p>
-          <p className="text-[8px] text-gray-400 mt-0.5">{DEMO.domain}</p>
+        <div className="absolute top-2 right-2" style={{color:"#ef4444",fontSize:10,fontWeight:700,lineHeight:1}}>✕</div>
+        <div className="mt-0.5">
+          <p className="text-[7px] font-semibold uppercase tracking-[0.2em] mb-0.5" style={{color:"#9ca3af"}}>域名认领</p>
+          <p className="font-black text-gray-900 leading-none tracking-tight" style={{fontSize:18}}>{DEMO.tagName}</p>
+          <p className="text-[8px] mt-0.5" style={{color:"#9ca3af"}}>{DEMO.domain}</p>
         </div>
-        {/* Input+button row */}
         <div className="flex items-center gap-1 mt-2">
-          <div className="flex-1 border border-gray-200 rounded-md px-2 py-1.5 text-[8px] text-gray-300 font-mono">{DEMO.domain}</div>
-          <div className="shrink-0 px-2 py-1.5 bg-gray-900 text-white text-[8px] font-bold rounded-md">访问</div>
+          <div className="flex-1 border border-gray-200 rounded-md px-2 py-1.5 text-[8px] font-mono truncate" style={{color:"#d1d5db"}}>{DEMO.domain}</div>
+          <div className="shrink-0 px-2 py-1.5 text-white text-[8px] font-bold rounded-md" style={{background:"#111827"}}>访问</div>
         </div>
       </div>
     </div>
   );
 
-  /* ── flash (faithful to IMG_9090 Flash Sale style) ── */
+  /* ── flash — purple header + gold yellow left + white right + ✦ ── */
   if ((t as any).layout === "flash") return (
-    <div className="rounded-2xl overflow-hidden shadow-md bg-white">
-      {/* Purple header bar */}
-      <div className="px-3 py-1.5 flex items-center justify-between" style={{background:"#7c3aed"}}>
-        <p className="text-white/60 text-[8px] font-mono tracking-widest">{DEMO.domain}</p>
-        <span className="text-white/60 text-[8px] font-bold">✕</span>
+    <div className="rounded-2xl overflow-hidden shadow-md">
+      <div className="px-3 py-2 flex items-center justify-between" style={{background:"#7c3aed"}}>
+        <div className="flex items-center gap-1.5">
+          <div className="w-4 h-4 rounded-full flex items-center justify-center" style={{background:"rgba(255,255,255,0.2)"}}>
+            <Icon className="w-2.5 h-2.5 text-white"/>
+          </div>
+          <p className="text-[8px] font-semibold tracking-wide" style={{color:"rgba(255,255,255,0.8)"}}>{DEMO.domain}</p>
+        </div>
+        <span style={{color:"rgba(255,255,255,0.5)",fontSize:9,fontWeight:700}}>✕</span>
       </div>
-      {/* Two-column body */}
       <div className="flex" style={{minHeight:110}}>
-        {/* Left yellow */}
-        <div className="w-[44%] shrink-0 flex flex-col justify-end px-3 pb-3 pt-2" style={{background:"#FFE300"}}>
-          <div className="space-y-[-5px]">
-            <p className="font-black text-[8px] leading-none uppercase" style={{color:"#7c3aed"}}>{DEMO.tagLabel}</p>
-            <p className="font-black text-[15px] leading-none" style={{color:"#111"}}>{DEMO.tagName}</p>
-            <p className="font-black text-[15px] leading-none" style={{color:"#FFE300", WebkitTextStroke:"1.5px #111"}}>{DEMO.tagName}</p>
-            <p className="font-black text-[15px] leading-none" style={{color:"#FFE300", WebkitTextStroke:"1.5px #111"}}>{DEMO.tagName}</p>
+        <div className="w-[44%] shrink-0 flex flex-col justify-end px-3 pb-3 pt-2" style={{background:"#FFD700"}}>
+          <div style={{lineHeight:"0.88"}}>
+            <p className="font-black text-[7px] uppercase tracking-wide mb-1" style={{color:"#6d28d9",lineHeight:1}}>{DEMO.tagLabel}</p>
+            <p className="font-black" style={{fontSize:16,color:"#111",lineHeight:"0.88"}}>{DEMO.tagName}</p>
+            <p className="font-black" style={{fontSize:16,color:"#FFD700",WebkitTextStroke:"1.5px #111",lineHeight:"0.88"}}>{DEMO.tagName}</p>
+            <p className="font-black" style={{fontSize:16,color:"#FFD700",WebkitTextStroke:"1.5px #111",lineHeight:"0.88"}}>{DEMO.tagName}</p>
           </div>
         </div>
-        {/* Right white */}
-        <div className="flex-1 flex flex-col justify-between px-3 py-3 relative">
-          <span className="absolute top-2 right-8 text-yellow-400 text-[9px] font-black">✦</span>
-          <span className="absolute top-2 right-3 text-yellow-400 text-[7px] font-black">✦</span>
+        <div className="flex-1 flex flex-col justify-between px-3 py-3 bg-white relative">
+          {[{b:40,r:20,s:8},{b:38,r:8,s:6}].map((sp,i)=>(
+            <svg key={i} width={sp.s} height={sp.s} viewBox="0 0 10 10" className="absolute pointer-events-none"
+              style={{right:`${sp.r}px`,bottom:`${sp.b}px`,fill:"#FBBF24"}}>
+              <path d="M5 0 L6 4 L10 5 L6 6 L5 10 L4 6 L0 5 L4 4 Z"/>
+            </svg>
+          ))}
           <div>
-            <p className="text-[16px] font-black text-gray-900 leading-none">{DEMO.tagName}</p>
-            <p className="text-[8px] font-bold uppercase tracking-widest mt-0.5" style={{color:"#7c3aed"}}>域名认领</p>
+            <p className="font-black text-gray-900 leading-none" style={{fontSize:17}}>{DEMO.tagName}</p>
+            <p className="text-[7px] font-bold uppercase tracking-widest mt-0.5" style={{color:"#7c3aed"}}>域名认领</p>
           </div>
-          <div className="w-full py-1.5 rounded-lg text-[9px] font-bold text-white text-center mt-2" style={{background:"#7c3aed"}}>访问主页</div>
+          <div className="w-full py-1.5 rounded-lg text-[9px] font-bold text-white text-center"
+            style={{background:"linear-gradient(135deg,#8B5CF6,#7C3AED)"}}>访问主页</div>
         </div>
       </div>
     </div>
