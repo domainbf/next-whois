@@ -1592,14 +1592,81 @@ function getDomainRegistrationStatus(
     /\bdomainstatus\s*:\s*reserved\b/.test(rawContent) ||
     // German (DENIC .de): "% Status: reserviert"
     rawContent.includes("reserviert") ||
+    /\bstatus\s*:\s*reserviert\b/.test(rawContent) ||
     // Czech/Slovak (CZ.NIC .cz .sk): "rezervovan: ano"
     rawContent.includes("rezervovan") ||
     // French ccTLD (AFNIC .fr .re .pm .tf .wf .yt)
     rawContent.includes("réservé") ||
-    rawContent.includes("reserver") ||
-    // Spanish / Portuguese ccTLD
+    rawContent.includes("domaine réservé") ||
+    rawContent.includes("domaine reserve") ||
+    /\bstatus\s*:\s*r[eé]serv[eé]\b/.test(rawContent) ||
+    // Spanish ccTLD (.es, .ar, .mx, .co, .cl, .pe, .uy, etc.)
     rawContent.includes("reservado") ||
-    // Chinese WHOIS (CNNIC, TELE-INFO, ZDNS)
+    rawContent.includes("dominio reservado") ||
+    /\bestado\s*:\s*reservado\b/.test(rawContent) ||
+    // Portuguese (.pt / .br)
+    rawContent.includes("domínio reservado") ||
+    // Italian (NIC.it .it): RISERVATO
+    /\bstatus\s*:\s*riservato\b/.test(rawContent) ||
+    rawContent.includes("dominio riservato") ||
+    // Swedish (IIS .se .nu): "state: reserverad"
+    /\bstate\s*:\s*reserverad\b/.test(rawContent) ||
+    /\bstatus\s*:\s*reserverad\b/.test(rawContent) ||
+    rawContent.includes("domännamnet är reserverat") ||
+    // Norwegian (Norid .no)
+    /\bstatus\s*:\s*reservert\b/.test(rawContent) ||
+    rawContent.includes("domenet er reservert") ||
+    // Danish (DK Hostmaster .dk)
+    /\bstatus\s*:\s*reserveret\b/.test(rawContent) ||
+    rawContent.includes("domænet er reserveret") ||
+    // Polish (DNS Polska / NASK .pl)
+    /\bstatus\s*:\s*zarezerwowany\b/.test(rawContent) ||
+    rawContent.includes("domena zarezerwowana") ||
+    // Dutch (SIDN .nl)
+    /\bstatus\s*:\s*gereserveerd\b/.test(rawContent) ||
+    rawContent.includes("domein is gereserveerd") ||
+    // Finnish (Traficom .fi): "varattu"
+    /\bstatus\s*:\s*varattu\b/.test(rawContent) ||
+    rawContent.includes("verkkotunnus varattu") ||
+    rawContent.includes("on varattu") ||
+    // Hungarian (.hu): "fenntartott"
+    /\bstatus\s*:\s*fenntartott\b/.test(rawContent) ||
+    rawContent.includes("fenntartott tartomány") ||
+    // Romanian (RoTLD .ro): "rezervat"
+    /\bstatus\s*:\s*rezervat\b/.test(rawContent) ||
+    rawContent.includes("domeniu rezervat") ||
+    // Turkish (NIC.TR .tr): "rezerve"
+    /\bstatus\s*:\s*rezerve\b/.test(rawContent) ||
+    rawContent.includes("alan adı rezerve") ||
+    // Greek (ICS.FORTH .gr)
+    rawContent.includes("δεσμευμένο") ||
+    // Russian (.ru / .рф) — non-Latin, safe direct includes
+    rawContent.includes("зарезервирован") ||
+    rawContent.includes("зарезервировано") ||
+    rawContent.includes("зарезервирована") ||
+    rawContent.includes("домен зарезервирован") ||
+    rawContent.includes("заблокирован") ||
+    // Ukrainian (.ua)
+    rawContent.includes("зарезервовано") ||
+    rawContent.includes("домен зарезервовано") ||
+    // Japanese (.jp — JPRS): bilingual WHOIS
+    rawContent.includes("予約済み") ||
+    rawContent.includes("利用停止") ||
+    rawContent.includes("登録停止") ||
+    // Korean (.kr — KRNIC)
+    rawContent.includes("예약됨") ||
+    rawContent.includes("예약된") ||
+    rawContent.includes("예약된 도메인") ||
+    // Arabic ccTLDs (.sa / .ae / .eg / .iq / .ly)
+    rawContent.includes("محجوز") ||
+    rawContent.includes("النطاق محجوز") ||
+    // Hebrew (.il — ISOC-IL)
+    rawContent.includes("שמור") ||
+    rawContent.includes("הדומיין שמור") ||
+    // Traditional Chinese (.tw / .hk)
+    rawContent.includes("保留網域") ||
+    rawContent.includes("已保留") ||
+    // Simplified Chinese (CNNIC, TELE-INFO, ZDNS)
     rawContent.includes("保留域名") ||
     rawContent.includes("已被保留") ||
     rawContent.includes("注册局保留") ||
@@ -1674,6 +1741,24 @@ function getDomainRegistrationStatus(
     rawContent.includes("blacklisted") ||
     rawContent.includes("禁止注册") ||
     rawContent.includes("不开放注册") ||
+    rawContent.includes("不可注册") ||
+    rawContent.includes("禁止使用") ||
+    // Russian / Ukrainian
+    rawContent.includes("запрещена регистрация") ||
+    rawContent.includes("регистрация запрещена") ||
+    rawContent.includes("реєстрація заборонена") ||
+    // Italian
+    /\bstatus\s*:\s*vietato\b/.test(rawContent) ||
+    rawContent.includes("registrazione vietata") ||
+    // Japanese
+    rawContent.includes("登録不可") ||
+    rawContent.includes("登録制限") ||
+    // Korean
+    rawContent.includes("등록불가") ||
+    rawContent.includes("등록 금지") ||
+    // Arabic
+    rawContent.includes("محظور") ||
+    rawContent.includes("التسجيل محظور") ||
     /\bblocked\s+by\s+(?:registry|registrar)\b/.test(rawContent) ||
     /\bregistration\s+blocked\b/.test(rawContent);
 
@@ -1696,8 +1781,40 @@ function getDomainRegistrationStatus(
     rawContent.includes("gesperrt") ||
     rawContent.includes("suspendido") ||
     rawContent.includes("suspendu") ||
+    // Portuguese (.pt / .br)
+    rawContent.includes("suspenso") ||
+    rawContent.includes("domínio suspenso") ||
+    // Italian (NIC.it .it)
+    /\bstatus\s*:\s*sospeso\b/.test(rawContent) ||
+    rawContent.includes("dominio sospeso") ||
+    // Dutch (.nl)
+    rawContent.includes("opgeschort") ||
+    rawContent.includes("domein opgeschort") ||
+    // Polish (.pl)
+    rawContent.includes("zawieszony") ||
+    rawContent.includes("domena zawieszona") ||
+    // Finnish (.fi)
+    rawContent.includes("keskeytetty") ||
+    // Russian (.ru / .рф)
+    rawContent.includes("приостановлен") ||
+    rawContent.includes("приостановлено") ||
+    rawContent.includes("домен заблокирован") ||
+    // Ukrainian (.ua)
+    rawContent.includes("призупинено") ||
+    // Japanese (.jp)
+    rawContent.includes("停止中") ||
+    rawContent.includes("利用停止") ||
+    // Korean (.kr)
+    rawContent.includes("정지됨") ||
+    rawContent.includes("사용 정지") ||
+    // Arabic
+    rawContent.includes("موقوف") ||
+    rawContent.includes("معلق") ||
+    // Chinese
     rawContent.includes("已暂停") ||
     rawContent.includes("域名暂停") ||
+    rawContent.includes("已停用") ||
+    rawContent.includes("暂停使用") ||
     /(?:^|\n)\s*suspended\s*(?:\n|$)/.test(rawContent);
 
   const isProhibited =

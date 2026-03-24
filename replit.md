@@ -1,10 +1,36 @@
-# Next Whois UI — v3.20
+# Next Whois UI — v3.22
 
 A fast, modern WHOIS and RDAP lookup tool supporting domains, IPv4/IPv6, ASN, and CIDR. Also includes built-in DNS, SSL certificate, and IP/ASN geolocation tools.
 
 ---
 
 ## Changelog
+
+### v3.22 — Comprehensive Multilingual WHOIS Status Detection (2026-03-24)
+
+**Scope:** Full multilingual expansion of domain status detection (reserved / prohibited / suspended). Both `common_parser.ts` (server-side) and `[...query].tsx` (client-side safety net) are now synced with identical pattern coverage for 25+ languages/registries.
+
+**Changes:**
+
+| File | Change | Detail |
+|---|---|---|
+| `src/lib/whois/common_parser.ts` | `syntheticReserved` expansion | Added field:value regex patterns for Italian `riservato`, Swedish `reserverad`, Norwegian `reservert`, Danish `reserveret`, Polish `zarezerwowany`, Dutch `gereserveerd`, Finnish `varattu`, Hungarian `fenntartott`, Romanian `rezervat`, Turkish `rezerve`, Greek `δεσμευμένο`; direct includes for Russian `зарезервирован`/`зарезервировано`/`зарезервирована`, Ukrainian `зарезервовано`, Japanese `予約済み`/`登録停止`, Korean `예약됨`/`예약된`, Arabic `محجوز`, Hebrew `שמור`, Traditional Chinese `保留網域`. |
+| `src/lib/whois/common_parser.ts` | `syntheticProhibited` expansion | Added Russian `запрещена регистрация`/`регистрация запрещена`, Ukrainian `реєстрація заборонена`, Italian `registrazione vietata`/`status: vietato`, Japanese `登録不可`/`登録制限`, Korean `등록불가`/`등록 금지`, Arabic `محظور`, Chinese `不可注册`/`禁止使用`. |
+| `src/lib/whois/common_parser.ts` | `syntheticSuspended` expansion | Added Portuguese `suspenso`, Italian `status: sospeso`/`dominio sospeso`, Dutch `opgeschort`, Polish `zawieszony`, Finnish `keskeytetty`, Russian `приостановлен`/`приостановлено`, Ukrainian `призупинено`, Japanese `停止中`/`利用停止`, Korean `정지됨`/`사용 정지`, Arabic `موقوف`/`معلق`, Chinese `已停用`/`暂停使用`. |
+| `src/pages/[...query].tsx` | `rawHasReserved` / `rawHasProhibited` / `rawHasSuspended` | Synced with identical expanded pattern lists from `common_parser.ts`. Latin-script patterns use field:value regex to avoid false positives from domain names containing those words. Non-Latin scripts use direct includes (safe: domain names are punycode in WHOIS). |
+| `src/lib/env.ts` | VERSION bumped to "3.22" | |
+
+**Design rationale:**
+- Latin-script single words (e.g. `reserviert`, `riservato`) use `/\bstatus\s*:\s*<word>\b/` regex OR require phrase context, preventing false positives when a domain name itself contains that word (e.g. `riservato.it`).
+- Non-Latin scripts (Cyrillic, CJK, Arabic, Hebrew) safely use `includes()` — domain labels appear as punycode (`xn--…`) in WHOIS, never as raw Unicode characters.
+
+---
+
+### v3.21 — Reserved/Premium Domain Detection + Multilingual Patterns (2026-03-24)
+
+**Scope:** Introduced `registry-premium` status tag; added 30+ English reserved phrases; initial multilingual reserved/prohibited/suspended patterns.
+
+---
 
 ### v3.20 — Invite Code System Overhaul + UX Fixes (2026-03-24)
 
