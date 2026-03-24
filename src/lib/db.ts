@@ -162,6 +162,17 @@ const CREATE_TABLES = [
     active       BOOLEAN      NOT NULL DEFAULT true,
     created_at   TIMESTAMPTZ  NOT NULL DEFAULT NOW()
   )`,
+  `CREATE TABLE IF NOT EXISTS access_keys (
+    id           VARCHAR(16)  PRIMARY KEY,
+    key          TEXT         UNIQUE NOT NULL,
+    label        TEXT,
+    scope        TEXT         NOT NULL DEFAULT 'api',
+    is_active    BOOLEAN      NOT NULL DEFAULT true,
+    created_at   TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    expires_at   TIMESTAMPTZ,
+    last_used_at TIMESTAMPTZ,
+    use_count    INTEGER      NOT NULL DEFAULT 0
+  )`,
 ];
 
 const ALTER_COLUMNS = [

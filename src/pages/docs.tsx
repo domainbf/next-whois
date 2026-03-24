@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import {
   RiArrowLeftSLine, RiFileCopyLine,
   RiGlobalLine, RiImageLine, RiSignalWifiLine,
-  RiShieldCheckLine, RiMapPinLine, RiListCheck2,
+  RiShieldCheckLine, RiShieldUserLine, RiMapPinLine, RiListCheck2,
   RiFileList2Line,
 } from "@remixicon/react";
 import { VERSION } from "@/lib/env";
@@ -160,11 +160,11 @@ function ParamsTable({ params, t }: {
 }
 
 // ── Section divider with category label ─────────────────────────────────────
-function SectionHeader({ icon: Icon, label, color }: {
-  icon: typeof RiGlobalLine; label: string; color: string;
+function SectionHeader({ icon: Icon, label, color, id }: {
+  icon: typeof RiGlobalLine; label: string; color: string; id?: string;
 }) {
   return (
-    <div className="flex items-center gap-3 pt-2">
+    <div id={id} className="flex items-center gap-3 pt-2">
       <div className={`p-1.5 rounded-lg ${color}`}><Icon className="w-4 h-4" /></div>
       <span className="text-sm font-bold">{label}</span>
       <div className="flex-1 h-px bg-border/50" />
@@ -262,6 +262,7 @@ export default function DocsPage({ origin }: { origin: string }) {
           <div className="rounded-xl border border-border/50 bg-muted/20 p-3 mb-8">
             <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-widest mb-2.5 px-0.5">快速跳转</p>
             <div className="flex flex-wrap gap-2">
+              <NavPill href="#api-key"     color="zinc">    <RiShieldUserLine  className="w-3 h-3" />API Key</NavPill>
               <NavPill href="#whois"       color="blue">   <RiGlobalLine      className="w-3 h-3" />WHOIS / 查询</NavPill>
               <NavPill href="#dns-records" color="violet">  <RiSignalWifiLine  className="w-3 h-3" />DNS 记录</NavPill>
               <NavPill href="#dns-txt"     color="violet">  <RiListCheck2      className="w-3 h-3" />DNS TXT</NavPill>
@@ -274,6 +275,87 @@ export default function DocsPage({ origin }: { origin: string }) {
           </div>
 
           <div className="space-y-8">
+
+            {/* ══════════════════════════════════════════
+                API Key 鉴权
+            ══════════════════════════════════════════ */}
+            <SectionHeader id="api-key" icon={RiShieldUserLine} label="API Key 鉴权" color="bg-zinc-500/10 text-zinc-500" />
+
+            <Card id="api-key-info">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-semibold">概述</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4 text-sm text-muted-foreground">
+                <p>
+                  当管理员开启 <span className="font-mono text-foreground text-xs bg-muted px-1.5 py-0.5 rounded">API Key 验证</span> 后，
+                  所有公开 API（WHOIS、DNS、SSL、IP 查询）均需在请求中携带有效的 API Key，否则返回 <span className="font-mono text-xs">401</span>。
+                </p>
+                <div>
+                  <p className="text-xs font-semibold text-foreground mb-2 uppercase tracking-wider">传递方式</p>
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-[11px] font-semibold text-muted-foreground mb-1.5 uppercase tracking-wide">请求头（推荐）</p>
+                      <CodeBlock>{`curl "${origin}/api/lookup?query=example.com" \\
+  -H "X-API-Key: rwh_your_key_here"`}</CodeBlock>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-semibold text-muted-foreground mb-1.5 uppercase tracking-wide">URL 查询参数（备用）</p>
+                      <CodeBlock>{`curl "${origin}/api/lookup?query=example.com&key=rwh_your_key_here"`}</CodeBlock>
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-foreground mb-2 uppercase tracking-wider">权限范围</p>
+                  <div className="rounded-lg border border-border overflow-hidden text-xs">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="bg-muted/40 border-b border-border text-muted-foreground">
+                          <th className="text-left px-3 py-2 font-semibold">范围值</th>
+                          <th className="text-left px-3 py-2 font-semibold">覆盖的 API</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        <tr>
+                          <td className="px-3 py-2 font-mono">api</td>
+                          <td className="px-3 py-2 text-muted-foreground">WHOIS/RDAP、DNS 记录、SSL 证书、IP / ASN 查询</td>
+                        </tr>
+                        <tr>
+                          <td className="px-3 py-2 font-mono">subscription</td>
+                          <td className="px-3 py-2 text-muted-foreground">域名到期订阅提醒相关接口</td>
+                        </tr>
+                        <tr>
+                          <td className="px-3 py-2 font-mono">all</td>
+                          <td className="px-3 py-2 text-muted-foreground">全部 API 功能</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-foreground mb-2 uppercase tracking-wider">错误响应</p>
+                  <div className="rounded-lg border border-border overflow-hidden text-xs">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="bg-muted/40 border-b border-border text-muted-foreground">
+                          <th className="text-left px-3 py-2 font-semibold">HTTP 状态码</th>
+                          <th className="text-left px-3 py-2 font-semibold">原因</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        <tr>
+                          <td className="px-3 py-2 font-mono">401</td>
+                          <td className="px-3 py-2 text-muted-foreground">未提供 API Key</td>
+                        </tr>
+                        <tr>
+                          <td className="px-3 py-2 font-mono">403</td>
+                          <td className="px-3 py-2 text-muted-foreground">Key 无效、已停用、已过期或权限不足</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
             {/* ══════════════════════════════════════════
                 WHOIS & 查询

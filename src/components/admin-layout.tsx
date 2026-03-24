@@ -29,6 +29,7 @@ const NAV = [
   { href: "/admin/feedback",        label: "反馈", icon: RiFeedbackLine,    activeIcon: RiFeedbackFill },
   { href: "/admin/tld-fallback",    label: "兜底", icon: RiRadarLine,       activeIcon: RiRadarLine },
   { href: "/admin/invite-codes",    label: "邀请", icon: RiKeyLine,         activeIcon: RiKeyFill },
+  { href: "/admin/access-keys",     label: "密钥", icon: RiShieldUserLine,  activeIcon: RiShieldUserLine },
   { href: "/admin/links",           label: "链接", icon: RiLinksLine,       activeIcon: RiLinksLine },
   { href: "/admin/tld-lifecycle",   label: "规则", icon: RiTimeLine,        activeIcon: RiTimeLine },
   { href: "/admin/og-styles",       label: "OG卡片",icon: RiImageLine,       activeIcon: RiImageLine },

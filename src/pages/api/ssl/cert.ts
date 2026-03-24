@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import tls from "tls";
 import { rateLimit, getClientIp } from "@/lib/server/rate-limit";
+import { enforceApiKey } from "@/lib/access-key";
 
 export const config = { maxDuration: 20 };
 
@@ -141,6 +142,7 @@ async function fetchCert(hostname: string, port: number): Promise<CertResult> {
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { allowed } = rateLimit(getClientIp(req), RL_LIMIT, RL_WINDOW);
   if (!allowed) return res.status(429).json({ error: "Too many requests" });
+  if (!await enforceApiKey(req, res)) return;
 
   let hostname = (req.query.hostname as string | undefined)?.trim().toLowerCase();
   if (!hostname) return res.status(400).json({ error: "hostname parameter is required" });

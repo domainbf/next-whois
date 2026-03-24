@@ -1,10 +1,26 @@
-# Next Whois UI — v3.8
+# Next Whois UI — v3.9
 
 A fast, modern WHOIS and RDAP lookup tool supporting domains, IPv4/IPv6, ASN, and CIDR. Also includes built-in DNS, SSL certificate, and IP/ASN geolocation tools.
 
 ---
 
 ## Changelog
+
+### v3.9 — API Key Authentication System (2026-03-24)
+
+**Scope:** Complete API Key management system. Admins can create, revoke, and scope access keys, and optionally enforce key authentication across all public API endpoints.
+
+**New features:**
+
+- **`access_keys` DB table:** Stores keys with fields: `id`, `key` (`rwh_` + 40 hex), `label`, `scope` (`api` / `subscription` / `all`), `is_active`, `created_at`, `expires_at`, `last_used_at`, `use_count`. Auto-provisioned via `initDb()`.
+- **`src/lib/access-key.ts` library:** `generateKey()` (rwh_ prefix + 40 hex chars), `validateApiKey()` (checks active, expired, scope), `extractApiKey()` (reads `X-API-Key` header or `?key=` query param), `enforceApiKey(req, res, scope)` (returns `boolean` — returns early if invalid), `isApiKeyRequired()` (reads `site_settings.require_api_key` with 30 s in-memory cache).
+- **`/api/admin/access-keys` endpoint (GET/POST/PATCH/DELETE):** Full CRUD + a `POST { action: "toggle_require", enabled: bool }` to flip global enforcement; cache invalidated on toggle.
+- **`/admin/access-keys` page:** Lists all keys (masked), shows scope badge, use count, last-used date; global enforcement toggle; "Generate Key" modal with label/scope/expiry fields; newly-created key revealed once in a dismissible alert; per-row enable/disable and delete actions.
+- **Admin nav:** Added "密钥" entry pointing to `/admin/access-keys`.
+- **API enforcement:** `enforceApiKey()` inserted (after rate limit, before business logic) in `api/lookup.ts`, `api/dns/records.ts`, `api/dns/txt.ts`, `api/ssl/cert.ts`, `api/ip/lookup.ts`. When `require_api_key = 0` (default), enforcement is a no-op (zero overhead).
+- **Docs page:** New "API Key 鉴权" section with `#api-key` anchor; nav pill added; covers: header vs query-param usage, scope table, error response codes (401 / 403). `SectionHeader` updated to accept optional `id` prop.
+
+---
 
 ### v3.8 — Page Transition Fixes, URL Param Loading & API Rate Limiting (2026-03-23)
 

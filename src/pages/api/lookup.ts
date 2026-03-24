@@ -6,6 +6,7 @@ import { run, isDbReady } from "@/lib/db-query";
 import { randomBytes } from "crypto";
 import { rateLimit, getClientIp } from "@/lib/server/rate-limit";
 import { getCnReservedSldInfo } from "@/lib/whois/cn-reserved-sld";
+import { enforceApiKey } from "@/lib/access-key";
 
 export const config = {
   maxDuration: 30,
@@ -105,6 +106,10 @@ export default async function handler(
   if (!allowed) {
     return res.status(429).json({ time: -1, status: false, error: "Too many requests — please slow down" });
   }
+
+  // API key enforcement (when enabled in admin)
+  const keyOk = await enforceApiKey(req, res, "api");
+  if (!keyOk) return;
 
   // Input validation
   const query = req.query.query || req.query.q;
