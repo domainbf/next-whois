@@ -4,6 +4,7 @@ import { WhoisAnalyzeResult, DomainStatusProps } from "./types";
 import { extractDomain } from "@/lib/utils";
 import { applyParams } from "./common_parser";
 import { domainToASCII } from "url";
+import { getGtldRdapServer } from "./rdap_gtld_bootstrap";
 
 function derivePunycode(unicodeName: string): string | undefined {
   try {
@@ -222,18 +223,32 @@ const CCTLD_RDAP_OVERRIDES: Record<string, string> = {
   yt: "https://rdap.nic.yt/",
 };
 
-async function tryRdapOverride(domainToQuery: string, timeoutMs = 2500): Promise<any | null> {
-  const tld = domainToQuery.split(".").pop()?.toLowerCase();
-  if (!tld) return null;
-  const base = CCTLD_RDAP_OVERRIDES[tld];
-  if (!base) return null;
-
-  const url = `${base}domain/${domainToQuery}`;
+/**
+ * Direct RDAP fetch to a known server URL.
+ * Returns the parsed JSON on success, an error object for HTTP errors (including 404),
+ * or null on network failure / timeout.
+ */
+async function tryRdapWithUrl(
+  baseUrl: string,
+  domainToQuery: string,
+  timeoutMs = 4000,
+): Promise<any | null> {
+  const url = `${baseUrl}domain/${domainToQuery}`;
   try {
     const res = await fetch(url, {
       headers: { Accept: "application/rdap+json, application/json" },
       signal: AbortSignal.timeout(timeoutMs),
     });
+    // 404 = domain not found — return the RDAP error object so callers can
+    // distinguish "domain doesn't exist" from "server unreachable".
+    if (res.status === 404) {
+      try {
+        const errJson = await res.json();
+        return errJson?.errorCode ? errJson : { errorCode: 404, title: "Object Not Found" };
+      } catch {
+        return { errorCode: 404, title: "Object Not Found" };
+      }
+    }
     if (!res.ok) return null;
     const json = await res.json();
     return json?.ldhName || json?.handle ? json : null;
@@ -256,26 +271,29 @@ export async function lookupRdap(query: string): Promise<any> {
     const domainToQuery = extractDomain(cleanQuery) || cleanQuery;
     const tld = domainToQuery.split(".").pop()?.toLowerCase() ?? "";
 
-    // Fast path: if we have an explicit ccTLD override, use it directly and
-    // skip the node-rdap IANA-bootstrap round-trip entirely.  This avoids a
-    // sequential "IANA probe → override" chain that can exceed the outer
-    // RDAP_TIMEOUT for ccTLDs whose IANA entry is missing or slow.
-    if (CCTLD_RDAP_OVERRIDES[tld]) {
-      const override = await tryRdapOverride(domainToQuery, 4000);
-      if (override) return override;
-      throw new Error(`No RDAP server found for ${domainToQuery}`);
+    // ── Local bootstrap fast path ─────────────────────────────────────────
+    // Check our local maps first (ccTLD overrides + embedded IANA gTLD bootstrap).
+    // This bypasses the node-rdap IANA-bootstrap network round-trip entirely for
+    // any TLD we know about locally (130+ ccTLDs + 1128+ gTLDs = ~1260 TLDs total).
+    const localServer = CCTLD_RDAP_OVERRIDES[tld] ?? getGtldRdapServer(tld);
+    if (localServer) {
+      const result = await tryRdapWithUrl(localServer, domainToQuery, 4000);
+      if (result !== null) return result;
+      // Network/timeout failure on the local-bootstrap server.
+      // For ccTLDs: we committed to this server — fail immediately (no fallback).
+      // For gTLDs:  fall through to node-rdap which may know an alternate path.
+      if (CCTLD_RDAP_OVERRIDES[tld]) {
+        throw new Error(`No RDAP server found for ${domainToQuery}`);
+      }
     }
 
+    // ── node-rdap fallback (unknown or new TLDs) ──────────────────────────
     try {
       const { domain } = await getRdap();
       const result = await domain(domainToQuery);
-      // node-rdap sometimes returns an error object instead of throwing
       if (result && result.errorCode) throw new Error(`RDAP error ${result.errorCode}`);
       return result;
     } catch {
-      // Fall back to direct ccTLD RDAP override if available
-      const override = await tryRdapOverride(domainToQuery);
-      if (override) return override;
       throw new Error(`No RDAP server found for ${domainToQuery}`);
     }
   }
