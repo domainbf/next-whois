@@ -3,15 +3,15 @@ import { strEnv } from "@/lib/env";
 
 export const siteTitle = strEnv(
   "NEXT_PUBLIC_SITE_TITLE",
-  "Next Whois - Easily Lookup Whois Information",
+  "X.RW · RDAP+WHOIS - Domain Lookup Tool",
 );
 export const siteDescription = strEnv(
   "NEXT_PUBLIC_SITE_DESCRIPTION",
-  "\u{1f9ea} Your Next Generation Of Whois Lookup Tool With Modern UI. Support Domain/IPv4/IPv6/ASN/CIDR Whois Lookup And Powerful Features.",
+  "快速查询域名、IP、ASN、CIDR 的 WHOIS / RDAP 信息，支持多节点并行查询。",
 );
 export const siteKeywords = strEnv(
   "NEXT_PUBLIC_SITE_KEYWORDS",
-  "Whois, Lookup, Tool, Next Whois",
+  "Whois, RDAP, Lookup, Domain, IPv4, IPv6, ASN, CIDR, X.RW",
 );
 
 const configuredUrl = strEnv("NEXT_PUBLIC_SITE_URL", "");

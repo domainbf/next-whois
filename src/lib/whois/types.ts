@@ -5,14 +5,18 @@ export type WhoisResult = {
   status: boolean;
   time: number;
   cached?: boolean;
+  cachedAt?: number;
+  cacheTtl?: number;
   source?: "rdap" | "whois";
   result?: WhoisAnalyzeResult;
   error?: string;
   dnsProbe?: DnsProbeResult;
+  registryUrl?: string;
 };
 
 export type WhoisAnalyzeResult = {
   domain: string;
+  domainPunycode?: string;
   registrar: string;
   registrarURL: string;
   ianaId: string;
@@ -38,12 +42,7 @@ export type WhoisAnalyzeResult = {
   // Domain pricing
   registerPrice: DomainPricing | null;
   renewPrice: DomainPricing | null;
-  transferPrice: DomainPricing | null;
-
-  // Moz statistics
-  mozDomainAuthority: number;
-  mozPageAuthority: number;
-  mozSpamScore: number;
+  negotiable: boolean | null;
 
   cidr: string;
   inetNum: string;
@@ -85,12 +84,7 @@ export const initialWhoisAnalyzeResult: WhoisAnalyzeResult = {
   // Domain pricing
   registerPrice: null,
   renewPrice: null,
-  transferPrice: null,
-
-  // Moz statistics
-  mozDomainAuthority: 0,
-  mozPageAuthority: 0,
-  mozSpamScore: 0,
+  negotiable: null,
 
   cidr: "Unknown",
   inetNum: "Unknown",

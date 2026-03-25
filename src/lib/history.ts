@@ -1,9 +1,12 @@
 import { HISTORY_LIMIT } from "@/lib/env";
 
+export type RegStatus = "registered" | "unregistered" | "reserved" | "error" | "unknown";
+
 export type HistoryItem = {
   query: string;
   timestamp: number;
   queryType: "domain" | "ipv4" | "ipv6" | "asn" | "cidr";
+  regStatus?: RegStatus;
 };
 
 export function detectQueryType(query: string): HistoryItem["queryType"] {
@@ -60,7 +63,7 @@ export function listHistory(): HistoryItem[] {
   }
 }
 
-export function addHistory(query: string) {
+export function addHistory(query: string, regStatus?: RegStatus) {
   if (!query || query.length === 0 || !isLocalStorageAvailable()) return;
 
   try {
@@ -70,6 +73,7 @@ export function addHistory(query: string) {
       query: domain,
       timestamp: Date.now(),
       queryType: detectQueryType(domain),
+      ...(regStatus ? { regStatus } : {}),
     };
 
     history = history.filter((item) => item.query !== domain);
@@ -96,5 +100,38 @@ export function removeHistory(query: string) {
     localStorage.setItem("history", JSON.stringify(history));
   } catch (error) {
     console.warn("Failed to remove history from localStorage:", error);
+  }
+}
+
+const SYNC_KEY = "history_synced_uid";
+
+export async function syncLocalHistoryToServer(userId: string): Promise<void> {
+  if (!isLocalStorageAvailable()) return;
+  const syncedUid = localStorage.getItem(SYNC_KEY);
+  if (syncedUid === userId) return;
+
+  const history = listHistory();
+  if (history.length === 0) {
+    localStorage.setItem(SYNC_KEY, userId);
+    return;
+  }
+
+  try {
+    const records = history.map(item => ({
+      query: item.query,
+      queryType: item.queryType,
+      regStatus: item.regStatus,
+      timestamp: item.timestamp,
+    }));
+    const res = await fetch("/api/user/search-history", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ records }),
+    });
+    if (res.ok) {
+      localStorage.setItem(SYNC_KEY, userId);
+    }
+  } catch {
+    // silent fail
   }
 }
