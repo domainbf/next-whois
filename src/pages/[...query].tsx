@@ -68,6 +68,7 @@ import { FeedbackDrawer } from "@/components/feedback-drawer";
 import { useSiteSettings } from "@/lib/site-settings";
 import { computeLifecycle, fmtDate, fmtDateTime, fmtCountdown } from "@/lib/lifecycle";
 import React, { useEffect, useMemo } from "react";
+import ReactDOM from "react-dom";
 import { addHistory, detectQueryType } from "@/lib/history";
 import { useSession } from "next-auth/react";
 import { Badge } from "@/components/ui/badge";
@@ -3473,6 +3474,7 @@ export default function LookupPage({
   const [reminderDialogOpen, setReminderDialogOpen] = React.useState(false);
   const [stampDetailOpen, setStampDetailOpen] = React.useState(false);
   const [officialPopoverOpen, setOfficialPopoverOpen] = React.useState(false);
+  const [officialPopoverPos, setOfficialPopoverPos] = React.useState<{ bottom: number; centerX: number } | null>(null);
 
   const [verifiedStamps, setVerifiedStamps] = React.useState<
     { id: string; tagName: string; tagStyle: string; cardTheme: string; link: string; nickname: string; description?: string }[]
@@ -4191,68 +4193,27 @@ export default function LookupPage({
                           <RiTimerLine className="w-3 h-3" />
                         </button>
                         {isOfficialDomain ? (
-                          <div className="relative sm:hidden">
-                            {officialPopoverOpen && (
-                              <div className="fixed inset-0 z-40" onClick={() => setOfficialPopoverOpen(false)} />
+                          <button
+                            onClick={(e) => {
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              if (officialPopoverOpen) {
+                                setOfficialPopoverOpen(false);
+                                setOfficialPopoverPos(null);
+                              } else {
+                                setOfficialPopoverOpen(true);
+                                setOfficialPopoverPos({ bottom: window.innerHeight - rect.top + 10, centerX: rect.left + rect.width / 2 });
+                              }
+                            }}
+                            className={cn(
+                              "stamp-claimed-badge sm:hidden flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border transition-all active:scale-[0.93]",
+                              officialPopoverOpen
+                                ? "bg-blue-100 dark:bg-blue-900/40 border-blue-500/80 text-blue-700 dark:text-blue-300"
+                                : "bg-blue-50 dark:bg-blue-900/20 border-blue-400/60 text-blue-600 dark:text-blue-400"
                             )}
-                            <button
-                              onClick={() => setOfficialPopoverOpen(o => !o)}
-                              className={cn(
-                                "stamp-claimed-badge flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border transition-all active:scale-[0.93]",
-                                officialPopoverOpen
-                                  ? "bg-blue-100 dark:bg-blue-900/40 border-blue-500/80 text-blue-700 dark:text-blue-300"
-                                  : "bg-blue-50 dark:bg-blue-900/20 border-blue-400/60 text-blue-600 dark:text-blue-400"
-                              )}
-                            >
-                              <RiGlobalLine className="w-3 h-3" />
-                              {isChinese ? "官网认证" : "Official"}
-                            </button>
-                            <AnimatePresence>
-                              {officialPopoverOpen && (
-                                <motion.div
-                                  initial={{ opacity: 0, y: 8, scale: 0.94 }}
-                                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                                  exit={{ opacity: 0, y: 5, scale: 0.96 }}
-                                  transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-                                  className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 z-50 w-[218px]"
-                                  onClick={e => e.stopPropagation()}
-                                >
-                                  <div className="rounded-2xl border border-blue-200/70 dark:border-blue-700/50 bg-white/97 dark:bg-zinc-900/97 backdrop-blur-xl shadow-xl shadow-blue-500/12 overflow-hidden relative">
-                                    <div className="h-[3px] w-full bg-gradient-to-r from-blue-400 via-sky-400 to-indigo-500" />
-                                    <div className="px-3.5 pt-3 pb-3.5">
-                                      <div className="flex items-start gap-2.5 mb-2">
-                                        <div className="relative shrink-0 w-8 h-8 rounded-xl bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900/40 dark:to-indigo-900/40 border border-blue-200/60 dark:border-blue-700/50 flex items-center justify-center">
-                                          <RiGlobalLine className="w-4 h-4 text-blue-500" />
-                                          <motion.span
-                                            className="absolute inset-0 rounded-xl border-2 border-blue-400/50"
-                                            animate={{ scale: [1, 1.5, 1], opacity: [0.6, 0, 0.6] }}
-                                            transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
-                                          />
-                                        </div>
-                                        <div className="pt-0.5 min-w-0">
-                                          <p className="text-[12px] font-bold text-foreground leading-tight">
-                                            {isChinese ? "官方网站认证" : "Official Website"}
-                                          </p>
-                                          <span className="inline-flex items-center gap-0.5 mt-0.5">
-                                            <RiCheckLine className="w-2.5 h-2.5 text-blue-500" />
-                                            <span className="text-[10px] text-blue-500 font-semibold">
-                                              {isChinese ? "系统自动认证" : "Auto-Certified"}
-                                            </span>
-                                          </span>
-                                        </div>
-                                      </div>
-                                      <p className="text-[10.5px] text-muted-foreground leading-relaxed">
-                                        {isChinese
-                                          ? "该域名已被识别为全球知名主流网站，系统自动授予官网认证标识，无需人工审核。"
-                                          : "Recognized as a globally mainstream website and auto-certified without manual review."}
-                                      </p>
-                                    </div>
-                                    <div className="absolute -bottom-[7px] left-1/2 -translate-x-1/2 w-3.5 h-3.5 rotate-45 bg-white dark:bg-zinc-900 border-r border-b border-blue-200/70 dark:border-blue-700/50" />
-                                  </div>
-                                </motion.div>
-                              )}
-                            </AnimatePresence>
-                          </div>
+                          >
+                            <RiGlobalLine className="w-3 h-3" />
+                            {isChinese ? "官网认证" : "Official"}
+                          </button>
                         ) : verifiedStamps.length > 0 ? (
                           <button
                             onClick={() => setStampDetailOpen(true)}
@@ -4396,68 +4357,27 @@ export default function LookupPage({
                           {isChinese ? "域名订阅" : "Subscribe"}
                         </button>
                         {isOfficialDomain ? (
-                          <div className="relative hidden sm:block">
-                            {officialPopoverOpen && (
-                              <div className="fixed inset-0 z-40" onClick={() => setOfficialPopoverOpen(false)} />
+                          <button
+                            onClick={(e) => {
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              if (officialPopoverOpen) {
+                                setOfficialPopoverOpen(false);
+                                setOfficialPopoverPos(null);
+                              } else {
+                                setOfficialPopoverOpen(true);
+                                setOfficialPopoverPos({ bottom: window.innerHeight - rect.top + 10, centerX: rect.left + rect.width / 2 });
+                              }
+                            }}
+                            className={cn(
+                              "stamp-claimed-badge hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border transition-all active:scale-[0.93]",
+                              officialPopoverOpen
+                                ? "bg-blue-100 dark:bg-blue-900/40 border-blue-500/80 text-blue-700 dark:text-blue-300"
+                                : "bg-blue-50 dark:bg-blue-900/20 border-blue-400/60 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40"
                             )}
-                            <button
-                              onClick={() => setOfficialPopoverOpen(o => !o)}
-                              className={cn(
-                                "stamp-claimed-badge flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border transition-all active:scale-[0.93]",
-                                officialPopoverOpen
-                                  ? "bg-blue-100 dark:bg-blue-900/40 border-blue-500/80 text-blue-700 dark:text-blue-300"
-                                  : "bg-blue-50 dark:bg-blue-900/20 border-blue-400/60 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40"
-                              )}
-                            >
-                              <RiGlobalLine className="w-3 h-3" />
-                              {isChinese ? "官网认证" : "Official"}
-                            </button>
-                            <AnimatePresence>
-                              {officialPopoverOpen && (
-                                <motion.div
-                                  initial={{ opacity: 0, y: 8, scale: 0.94 }}
-                                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                                  exit={{ opacity: 0, y: 5, scale: 0.96 }}
-                                  transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-                                  className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 z-50 w-[240px]"
-                                  onClick={e => e.stopPropagation()}
-                                >
-                                  <div className="rounded-2xl border border-blue-200/70 dark:border-blue-700/50 bg-white/97 dark:bg-zinc-900/97 backdrop-blur-xl shadow-xl shadow-blue-500/12 overflow-hidden relative">
-                                    <div className="h-[3px] w-full bg-gradient-to-r from-blue-400 via-sky-400 to-indigo-500" />
-                                    <div className="px-4 pt-3.5 pb-4">
-                                      <div className="flex items-start gap-3 mb-2.5">
-                                        <div className="relative shrink-0 w-9 h-9 rounded-xl bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900/40 dark:to-indigo-900/40 border border-blue-200/60 dark:border-blue-700/50 flex items-center justify-center">
-                                          <RiGlobalLine className="w-4.5 h-4.5 text-blue-500" />
-                                          <motion.span
-                                            className="absolute inset-0 rounded-xl border-2 border-blue-400/50"
-                                            animate={{ scale: [1, 1.5, 1], opacity: [0.6, 0, 0.6] }}
-                                            transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
-                                          />
-                                        </div>
-                                        <div className="pt-0.5 min-w-0">
-                                          <p className="text-[13px] font-bold text-foreground leading-tight">
-                                            {isChinese ? "官方网站认证" : "Official Website"}
-                                          </p>
-                                          <span className="inline-flex items-center gap-0.5 mt-0.5">
-                                            <RiCheckLine className="w-2.5 h-2.5 text-blue-500" />
-                                            <span className="text-[10px] text-blue-500 font-semibold">
-                                              {isChinese ? "系统自动认证" : "Auto-Certified"}
-                                            </span>
-                                          </span>
-                                        </div>
-                                      </div>
-                                      <p className="text-[11px] text-muted-foreground leading-relaxed">
-                                        {isChinese
-                                          ? "该域名已被识别为全球知名主流网站，系统自动授予官网认证标识，无需人工审核。"
-                                          : "Recognized as a globally mainstream website and auto-certified without manual review."}
-                                      </p>
-                                    </div>
-                                    <div className="absolute -bottom-[7px] left-1/2 -translate-x-1/2 w-3.5 h-3.5 rotate-45 bg-white dark:bg-zinc-900 border-r border-b border-blue-200/70 dark:border-blue-700/50" />
-                                  </div>
-                                </motion.div>
-                              )}
-                            </AnimatePresence>
-                          </div>
+                          >
+                            <RiGlobalLine className="w-3 h-3" />
+                            {isChinese ? "官网认证" : "Official"}
+                          </button>
                         ) : verifiedStamps.length > 0 ? (
                           <button
                             onClick={() => setStampDetailOpen(true)}
@@ -4615,6 +4535,67 @@ export default function LookupPage({
                           ))
                         )}
                       </motion.div>
+                    )}
+
+                    {officialPopoverOpen && officialPopoverPos && typeof window !== "undefined" && ReactDOM.createPortal(
+                      <>
+                        <div
+                          className="fixed inset-0 z-[9998]"
+                          onClick={() => { setOfficialPopoverOpen(false); setOfficialPopoverPos(null); }}
+                        />
+                        <AnimatePresence>
+                          <motion.div
+                            key="official-popover-portal"
+                            initial={{ opacity: 0, y: 8, scale: 0.94 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: 5, scale: 0.96 }}
+                            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                            style={{
+                              position: "fixed",
+                              bottom: `${officialPopoverPos.bottom}px`,
+                              left: `${officialPopoverPos.centerX}px`,
+                              transform: "translateX(-50%)",
+                              width: "230px",
+                              zIndex: 9999,
+                            }}
+                            onClick={e => e.stopPropagation()}
+                          >
+                            <div className="rounded-2xl border border-blue-200/70 dark:border-blue-700/50 bg-white dark:bg-zinc-900 backdrop-blur-xl shadow-xl shadow-blue-500/12 overflow-hidden relative">
+                              <div className="h-[3px] w-full bg-gradient-to-r from-blue-400 via-sky-400 to-indigo-500" />
+                              <div className="px-4 pt-3.5 pb-4">
+                                <div className="flex items-start gap-2.5 mb-2">
+                                  <div className="relative shrink-0 w-8 h-8 rounded-xl bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900/40 dark:to-indigo-900/40 border border-blue-200/60 dark:border-blue-700/50 flex items-center justify-center">
+                                    <RiGlobalLine className="w-4 h-4 text-blue-500" />
+                                    <motion.span
+                                      className="absolute inset-0 rounded-xl border-2 border-blue-400/50"
+                                      animate={{ scale: [1, 1.5, 1], opacity: [0.6, 0, 0.6] }}
+                                      transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
+                                    />
+                                  </div>
+                                  <div className="pt-0.5 min-w-0">
+                                    <p className="text-[12.5px] font-bold text-foreground leading-tight">
+                                      {isChinese ? "官方网站认证" : "Official Website"}
+                                    </p>
+                                    <span className="inline-flex items-center gap-0.5 mt-0.5">
+                                      <RiCheckLine className="w-2.5 h-2.5 text-blue-500" />
+                                      <span className="text-[10px] text-blue-500 font-semibold">
+                                        {isChinese ? "系统自动认证" : "Auto-Certified"}
+                                      </span>
+                                    </span>
+                                  </div>
+                                </div>
+                                <p className="text-[10.5px] text-muted-foreground leading-relaxed">
+                                  {isChinese
+                                    ? "该域名已被识别为全球知名主流网站，系统自动授予官网认证标识，无需人工审核。"
+                                    : "Recognized as a globally mainstream website and auto-certified without manual review."}
+                                </p>
+                              </div>
+                              <div className="absolute -bottom-[7px] left-1/2 -translate-x-1/2 w-3.5 h-3.5 rotate-45 bg-white dark:bg-zinc-900 border-r border-b border-blue-200/70 dark:border-blue-700/50" />
+                            </div>
+                          </motion.div>
+                        </AnimatePresence>
+                      </>,
+                      document.body
                     )}
 
                     <FeedbackDrawer
