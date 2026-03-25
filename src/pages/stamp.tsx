@@ -870,9 +870,19 @@ export default function StampPage() {
     return <StampLandingPage />;
   }
 
-  // Don't render the claim flow while checking auth or redirecting (domain-specific).
+  // Show a skeleton while session is loading; unauthenticated users will be redirected by useEffect.
   if (authStatus === "loading" || authStatus === "unauthenticated") {
-    return null;
+    return (
+      <div className="min-h-[calc(100vh-64px)] bg-background">
+        <div className="max-w-lg mx-auto px-4 py-5 pb-10 space-y-4 animate-pulse">
+          <div className="h-5 w-32 rounded-lg bg-muted/50" />
+          <div className="h-28 rounded-2xl bg-muted/40" />
+          <div className="h-8 w-2/3 mx-auto rounded-lg bg-muted/30" />
+          <div className="h-48 rounded-2xl bg-muted/40" />
+          <div className="h-12 rounded-xl bg-muted/35" />
+        </div>
+      </div>
+    );
   }
 
   return (
