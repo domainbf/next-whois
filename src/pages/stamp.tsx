@@ -39,6 +39,8 @@ import {
   RiShakeHandsLine,
   RiCodeSLine,
   RiVipCrownLine,
+  RiCloseLine,
+  RiInformationLine,
 } from "@remixicon/react";
 import { toast } from "sonner";
 
@@ -533,6 +535,18 @@ export default function StampPage() {
   const vercelPollRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const vercelCountdownRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // ── Guide tutorial state ──
+  const GUIDE_KEY = "stamp_guide_seen";
+  const [showGuide, setShowGuide] = React.useState(false);
+  React.useEffect(() => {
+    if (!hydrated) return;
+    if (!localStorage.getItem(GUIDE_KEY)) setShowGuide(true);
+  }, [hydrated]);
+  function dismissGuide() {
+    setShowGuide(false);
+    localStorage.setItem(GUIDE_KEY, "1");
+  }
+
   function goToStep(next: Step) {
     setDirection(stepIndex(next) > stepIndex(step) ? 1 : -1);
     setStep(next);
@@ -889,27 +903,27 @@ export default function StampPage() {
 
           {hydrated && (
             <>
-              {/* Hero banner */}
-              <div className="relative rounded-2xl overflow-hidden mb-5 border border-violet-200/40 dark:border-violet-800/30">
-                <div className="absolute inset-0 bg-gradient-to-br from-violet-500/8 via-transparent to-fuchsia-500/5 dark:from-violet-500/15 dark:to-fuchsia-500/8" />
-                <div className="relative px-5 py-4 flex items-center gap-4">
-                  <div className="shrink-0 w-11 h-11 rounded-xl bg-violet-500/10 border border-violet-300/30 dark:border-violet-700/40 flex items-center justify-center">
-                    <RiShieldCheckLine className="w-6 h-6 text-violet-500" />
-                  </div>
-                  <div className="min-w-0">
-                    <h1 className="text-base font-bold text-foreground">{s("title")}</h1>
-                    <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-                      {s("subtitle")}
-                    </p>
-                  </div>
+              {/* Compact header */}
+              <div className="flex items-center justify-between mb-5">
+                <div className="flex items-center gap-2">
+                  <RiShieldCheckLine className="w-4 h-4 text-violet-500 shrink-0" />
+                  <h1 className="text-sm font-bold text-foreground">{s("title")}</h1>
                   {step !== "done" && (
-                    <div className="shrink-0 text-right">
-                      <span className="text-[10px] font-bold text-violet-500/70 uppercase tracking-widest">
-                        {s("step", { current: stepIndex(step) + 1 })}
-                      </span>
-                    </div>
+                    <span className="text-[10px] text-muted-foreground/60 font-medium">
+                      · {s("step", { current: stepIndex(step) + 1 })}
+                    </span>
                   )}
                 </div>
+                {step === "form" && (
+                  <button
+                    type="button"
+                    onClick={() => setShowGuide(true)}
+                    className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-lg hover:bg-muted/60"
+                  >
+                    <RiInformationLine className="w-3.5 h-3.5" />
+                    {isZh ? "使用说明" : "How it works"}
+                  </button>
+                )}
               </div>
 
               {/* Step indicator */}
@@ -960,33 +974,6 @@ export default function StampPage() {
                   {/* ── STEP 1: FORM ── */}
                   {step === "form" && (
                     <div className="space-y-4">
-                      {/* How-to guide */}
-                      <div className="glass-panel border border-border rounded-2xl p-4">
-                        <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-3 flex items-center gap-1.5">
-                          <RiGlobalLine className="w-3.5 h-3.5" />
-                          {s("how_it_works")}
-                        </p>
-                        <div className="space-y-3">
-                          {HOW_TO_STEPS.map((step, i) => {
-                            const Icon = step.icon;
-                            return (
-                            <div key={i} className="flex gap-3 items-start">
-                              <div className={cn("shrink-0 w-7 h-7 rounded-lg flex items-center justify-center", step.bg)}>
-                                <Icon className={cn("w-3.5 h-3.5", step.color)} />
-                              </div>
-                              <div className="min-w-0 pt-0.5">
-                                <p className="text-xs font-semibold text-foreground leading-none mb-1">{s(HOW_STEP_TITLE_KEYS[i])}</p>
-                                <p className="text-[11px] text-muted-foreground leading-relaxed">{s(HOW_STEP_DESC_KEYS[i])}</p>
-                              </div>
-                              {i < HOW_TO_STEPS.length - 1 && (
-                                <RiArrowRightLine className="shrink-0 w-3.5 h-3.5 text-muted-foreground/30 mt-1.5" />
-                              )}
-                            </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-
                       {/* Existing stamps notice */}
                       {existingStamps.length > 0 && (
                         <div className="rounded-2xl border border-amber-200/60 dark:border-amber-800/40 bg-amber-50/60 dark:bg-amber-950/20 p-4">
@@ -2140,6 +2127,79 @@ export default function StampPage() {
                     </div>
                   )}
                 </motion.div>
+              </AnimatePresence>
+
+              {/* Guide modal */}
+              <AnimatePresence>
+                {showGuide && (
+                  <>
+                    <motion.div
+                      className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px]"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      onClick={dismissGuide}
+                    />
+                    <motion.div
+                      className="fixed inset-x-0 bottom-0 z-50 max-w-lg mx-auto px-3 pb-4"
+                      initial={{ y: 80, opacity: 0 }}
+                      animate={{ y: 0, opacity: 1 }}
+                      exit={{ y: 80, opacity: 0 }}
+                      transition={{ type: "spring", damping: 22, stiffness: 280 }}
+                    >
+                      <div className="bg-background border border-border rounded-2xl shadow-2xl overflow-hidden">
+                        {/* Header */}
+                        <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-border/60">
+                          <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-lg bg-violet-500/10 flex items-center justify-center">
+                              <RiShieldCheckLine className="w-4 h-4 text-violet-500" />
+                            </div>
+                            <p className="text-sm font-bold">{s("how_it_works")}</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={dismissGuide}
+                            className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+                          >
+                            <RiCloseLine className="w-4 h-4" />
+                          </button>
+                        </div>
+                        {/* Steps */}
+                        <div className="px-5 py-4 space-y-3.5">
+                          {HOW_TO_STEPS.map((hwStep, i) => {
+                            const Icon = hwStep.icon;
+                            return (
+                              <div key={i} className="flex gap-3 items-start">
+                                <div className={cn("shrink-0 w-7 h-7 rounded-lg flex items-center justify-center", hwStep.bg)}>
+                                  <Icon className={cn("w-3.5 h-3.5", hwStep.color)} />
+                                </div>
+                                <div className="min-w-0 flex-1 pt-0.5">
+                                  <p className="text-xs font-semibold text-foreground leading-none mb-1">{s(HOW_STEP_TITLE_KEYS[i])}</p>
+                                  <p className="text-[11px] text-muted-foreground leading-relaxed">{s(HOW_STEP_DESC_KEYS[i])}</p>
+                                </div>
+                                {i < HOW_TO_STEPS.length - 1 && (
+                                  <div className="shrink-0 flex items-center mt-1.5 text-muted-foreground/30">
+                                    <RiArrowRightLine className="w-3.5 h-3.5" />
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                        {/* Dismiss button */}
+                        <div className="px-5 pb-5">
+                          <button
+                            type="button"
+                            onClick={dismissGuide}
+                            className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity"
+                          >
+                            {isZh ? "知道了，开始填写" : "Got it, let's go"}
+                          </button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  </>
+                )}
               </AnimatePresence>
             </>
           )}
