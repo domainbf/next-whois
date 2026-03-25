@@ -4660,72 +4660,84 @@ export default function LookupPage({
                               onClick={() => { setOfficialPopoverOpen(false); setOfficialPopoverPos(null); }}
                             />
                             <AnimatePresence>
-                              <motion.div
-                                key="official-popover-portal"
-                                initial={isMob ? { opacity: 0, scale: 0.92, y: 20 } : { opacity: 0, y: 8, scale: 0.94 }}
-                                animate={isMob ? { opacity: 1, scale: 1, y: 0 } : { opacity: 1, y: 0, scale: 1 }}
-                                exit={isMob ? { opacity: 0, scale: 0.94, y: 16 } : { opacity: 0, y: 5, scale: 0.96 }}
-                                transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-                                style={isMob ? {
-                                  position: "fixed",
-                                  top: "50%",
-                                  left: "50%",
-                                  transform: "translate(-50%, -50%)",
-                                  width: "calc(100vw - 40px)",
-                                  maxWidth: "320px",
-                                  zIndex: 9999,
-                                } : {
-                                  position: "fixed",
-                                  bottom: `${officialPopoverPos.bottom}px`,
-                                  left: `${officialPopoverPos.centerX}px`,
-                                  transform: "translateX(-50%)",
-                                  width: "260px",
-                                  zIndex: 9999,
-                                }}
-                                onClick={e => e.stopPropagation()}
-                              >
-                                <div className="rounded-2xl border border-blue-200/70 dark:border-blue-700/50 bg-white dark:bg-zinc-900 shadow-2xl shadow-blue-500/15 overflow-hidden relative">
-                                  <div className="h-[3px] w-full bg-gradient-to-r from-blue-400 via-sky-400 to-indigo-500" />
-                                  <div className={cn("px-4 pt-4", isMob ? "pb-5" : "pb-4")}>
-                                    <div className="flex items-center gap-3 mb-3">
-                                      <div className="relative shrink-0 w-10 h-10 rounded-xl bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900/40 dark:to-indigo-900/40 border border-blue-200/60 dark:border-blue-700/50 flex items-center justify-center">
-                                        <RiGlobalLine className="w-5 h-5 text-blue-500" />
-                                        <motion.span
-                                          className="absolute inset-0 rounded-xl border-2 border-blue-400/40"
-                                          animate={{ scale: [1, 1.5, 1], opacity: [0.5, 0, 0.5] }}
-                                          transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
-                                        />
-                                      </div>
-                                      <div className="min-w-0">
-                                        <div className="flex items-center gap-1.5 flex-wrap">
-                                          <p className="text-[13.5px] font-bold text-foreground leading-tight">{domainName}</p>
-                                          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/30 border border-blue-200/60 dark:border-blue-700/40">
-                                            <RiCheckLine className="w-2.5 h-2.5 text-blue-500" />
-                                            <span className="text-[9.5px] text-blue-500 font-semibold leading-none">
-                                              {isChinese ? "官网认证" : "Verified"}
-                                            </span>
-                                          </span>
+                              {isMob ? (
+                                <div
+                                  key="official-popover-mobile-wrapper"
+                                  style={{ position: "fixed", inset: 0, zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none" }}
+                                >
+                                  <motion.div
+                                    initial={{ opacity: 0, scale: 0.92, y: 20 }}
+                                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                                    exit={{ opacity: 0, scale: 0.94, y: 16 }}
+                                    transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+                                    style={{ pointerEvents: "auto", width: "calc(100vw - 40px)", maxWidth: "320px" }}
+                                    onClick={e => e.stopPropagation()}
+                                  >
+                                    <div className="rounded-2xl border border-blue-200/70 dark:border-blue-700/50 bg-white dark:bg-zinc-900 shadow-2xl shadow-blue-500/15 overflow-hidden relative">
+                                      <div className="h-[3px] w-full bg-gradient-to-r from-blue-400 via-sky-400 to-indigo-500" />
+                                      <div className="px-4 pt-4 pb-5">
+                                        <div className="flex items-center gap-3 mb-3">
+                                          <div className="relative shrink-0 w-10 h-10 rounded-xl bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900/40 dark:to-indigo-900/40 border border-blue-200/60 dark:border-blue-700/50 flex items-center justify-center">
+                                            <RiGlobalLine className="w-5 h-5 text-blue-500" />
+                                            <motion.span className="absolute inset-0 rounded-xl border-2 border-blue-400/40" animate={{ scale: [1, 1.5, 1], opacity: [0.5, 0, 0.5] }} transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }} />
+                                          </div>
+                                          <div className="min-w-0">
+                                            <div className="flex items-center gap-1.5 flex-wrap">
+                                              <p className="text-[13.5px] font-bold text-foreground leading-tight">{domainName}</p>
+                                              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/30 border border-blue-200/60 dark:border-blue-700/40">
+                                                <RiCheckLine className="w-2.5 h-2.5 text-blue-500" />
+                                                <span className="text-[9.5px] text-blue-500 font-semibold leading-none">{isChinese ? "官网认证" : "Verified"}</span>
+                                              </span>
+                                            </div>
+                                            <p className="text-[10px] text-muted-foreground mt-0.5">{isChinese ? "系统自动认证 · 无需人工审核" : "Auto-certified · No manual review"}</p>
+                                          </div>
                                         </div>
-                                        <p className="text-[10px] text-muted-foreground mt-0.5">
-                                          {isChinese ? "系统自动认证 · 无需人工审核" : "Auto-certified · No manual review"}
-                                        </p>
+                                        <p className="text-[11px] text-muted-foreground leading-relaxed">{domainDesc}</p>
+                                        <button
+                                          onClick={() => { setOfficialPopoverOpen(false); setOfficialPopoverPos(null); }}
+                                          className="mt-4 w-full py-2 rounded-xl bg-blue-50 dark:bg-blue-900/30 border border-blue-200/50 dark:border-blue-700/40 text-[12px] font-semibold text-blue-600 dark:text-blue-400 active:scale-[0.97] transition-transform"
+                                        >
+                                          {isChinese ? "我知道了" : "Got it"}
+                                        </button>
                                       </div>
                                     </div>
-                                    <p className="text-[11px] text-muted-foreground leading-relaxed">{domainDesc}</p>
-                                    {isMob && (
-                                      <button
-                                        onClick={() => { setOfficialPopoverOpen(false); setOfficialPopoverPos(null); }}
-                                        className="mt-4 w-full py-2 rounded-xl bg-blue-50 dark:bg-blue-900/30 border border-blue-200/50 dark:border-blue-700/40 text-[12px] font-semibold text-blue-600 dark:text-blue-400 active:scale-[0.97] transition-transform"
-                                      >
-                                        {isChinese ? "我知道了" : "Got it"}
-                                      </button>
-                                    )}
-                                  </div>
-                                  {!isMob && (
-                                    <div className="absolute -bottom-[7px] left-1/2 -translate-x-1/2 w-3.5 h-3.5 rotate-45 bg-white dark:bg-zinc-900 border-r border-b border-blue-200/70 dark:border-blue-700/50" />
-                                  )}
+                                  </motion.div>
                                 </div>
-                              </motion.div>
+                              ) : (
+                                <motion.div
+                                  key="official-popover-portal-desktop"
+                                  initial={{ opacity: 0, y: 8, scale: 0.94 }}
+                                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                                  exit={{ opacity: 0, y: 5, scale: 0.96 }}
+                                  transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+                                  style={{ position: "fixed", bottom: `${officialPopoverPos.bottom}px`, left: `${officialPopoverPos.centerX}px`, transform: "translateX(-50%)", width: "260px", zIndex: 9999 }}
+                                  onClick={e => e.stopPropagation()}
+                                >
+                                  <div className="rounded-2xl border border-blue-200/70 dark:border-blue-700/50 bg-white dark:bg-zinc-900 shadow-2xl shadow-blue-500/15 overflow-hidden relative">
+                                    <div className="h-[3px] w-full bg-gradient-to-r from-blue-400 via-sky-400 to-indigo-500" />
+                                    <div className="px-4 pt-4 pb-4">
+                                      <div className="flex items-center gap-3 mb-3">
+                                        <div className="relative shrink-0 w-10 h-10 rounded-xl bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900/40 dark:to-indigo-900/40 border border-blue-200/60 dark:border-blue-700/50 flex items-center justify-center">
+                                          <RiGlobalLine className="w-5 h-5 text-blue-500" />
+                                          <motion.span className="absolute inset-0 rounded-xl border-2 border-blue-400/40" animate={{ scale: [1, 1.5, 1], opacity: [0.5, 0, 0.5] }} transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }} />
+                                        </div>
+                                        <div className="min-w-0">
+                                          <div className="flex items-center gap-1.5 flex-wrap">
+                                            <p className="text-[13.5px] font-bold text-foreground leading-tight">{domainName}</p>
+                                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/30 border border-blue-200/60 dark:border-blue-700/40">
+                                              <RiCheckLine className="w-2.5 h-2.5 text-blue-500" />
+                                              <span className="text-[9.5px] text-blue-500 font-semibold leading-none">{isChinese ? "官网认证" : "Verified"}</span>
+                                            </span>
+                                          </div>
+                                          <p className="text-[10px] text-muted-foreground mt-0.5">{isChinese ? "系统自动认证 · 无需人工审核" : "Auto-certified · No manual review"}</p>
+                                        </div>
+                                      </div>
+                                      <p className="text-[11px] text-muted-foreground leading-relaxed">{domainDesc}</p>
+                                    </div>
+                                    <div className="absolute -bottom-[7px] left-1/2 -translate-x-1/2 w-3.5 h-3.5 rotate-45 bg-white dark:bg-zinc-900 border-r border-b border-blue-200/70 dark:border-blue-700/50" />
+                                  </div>
+                                </motion.div>
+                              )}
                             </AnimatePresence>
                           </>
                         );
