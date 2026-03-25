@@ -12,7 +12,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   RiLoader4Line, RiBankCardLine, RiAlipayLine, RiArrowLeftSLine,
   RiCheckLine, RiShieldCheckLine, RiPriceTag3Line, RiCalendarLine,
-  RiStarLine, RiLockLine, RiExternalLinkLine, RiPaypalLine,
+  RiLockLine, RiExternalLinkLine, RiPaypalLine,
 } from "@remixicon/react";
 
 type Plan = {
@@ -25,19 +25,18 @@ const CURRENCY_SYMBOL: Record<string, string> = {
   CNY: "¥", USD: "$", EUR: "€", HKD: "HK$",
 };
 
-const PROVIDER_INFO = {
-  stripe:    { label: "信用卡 / 借记卡",        icon: RiBankCardLine,  color: "text-indigo-600 dark:text-indigo-400", hint: "Stripe 安全支付，支持 Visa / Mastercard 等国际卡" },
-  xunhupay:  { label: "扫码支付（支付宝/微信）", icon: RiAlipayLine,    color: "text-blue-600 dark:text-blue-400",   hint: "虎皮椒聚合支付，支持国内主流扫码方式" },
-  alipay:    { label: "支付宝",                icon: RiAlipayLine,    color: "text-sky-600 dark:text-sky-400",     hint: "支付宝官方直连支付（个人/个体户/企业均可）" },
-  paypal:    { label: "PayPal",               icon: RiPaypalLine,    color: "text-[#003087] dark:text-blue-400",  hint: "PayPal 国际支付，支持信用卡和 PayPal 余额（CNY 自动换算为 USD）" },
-};
-
 export default function PaymentCheckout() {
   const router = useRouter();
   const { data: session, status: authStatus } = useSession();
   const settings = useSiteSettings();
   const { t } = useTranslation();
-  const isChinese = router.locale !== "en";
+
+  const PROVIDER_INFO = {
+    stripe:   { label: t("payment.provider_stripe_label"),   icon: RiBankCardLine, color: "text-indigo-600 dark:text-indigo-400", hint: t("payment.provider_stripe_hint") },
+    xunhupay: { label: t("payment.provider_xunhupay_label"), icon: RiAlipayLine,   color: "text-blue-600 dark:text-blue-400",   hint: t("payment.provider_xunhupay_hint") },
+    alipay:   { label: t("payment.provider_alipay_label"),   icon: RiAlipayLine,   color: "text-sky-600 dark:text-sky-400",     hint: t("payment.provider_alipay_hint") },
+    paypal:   { label: t("payment.provider_paypal_label"),   icon: RiPaypalLine,   color: "text-[#003087] dark:text-blue-400",  hint: t("payment.provider_paypal_hint") },
+  };
 
   const planFromUrl = typeof router.query.plan === "string" ? router.query.plan : null;
 
@@ -77,7 +76,7 @@ export default function PaymentCheckout() {
 
   async function handlePay() {
     if (!selectedPlan || !selectedProvider) {
-      toast.error("请选择套餐和支付方式");
+      toast.error(t("payment.checkout_err_select"));
       return;
     }
     if (authStatus !== "authenticated") {
@@ -98,9 +97,11 @@ export default function PaymentCheckout() {
         window.location.href = d.url;
       } else if (d.provider === "xunhupay") {
         setXunhupayForm({ params: d.params, endpoint: d.endpoint });
+      } else if (d.provider === "paypal") {
+        window.location.href = d.url;
       }
-    } catch (e: any) {
-      toast.error(e.message || "支付失败，请稍后重试");
+    } catch (e: unknown) {
+      toast.error((e as Error).message || t("payment.checkout_err_failed"));
       setPaying(false);
     }
   }
@@ -125,8 +126,8 @@ export default function PaymentCheckout() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-3 text-center px-4">
         <RiPriceTag3Line className="w-10 h-10 text-muted-foreground/30" />
-        <p className="text-sm text-muted-foreground">暂无可购套餐</p>
-        <Link href="/dashboard" className="text-xs text-primary hover:underline">返回用户中心</Link>
+        <p className="text-sm text-muted-foreground">{t("payment.checkout_no_plans")}</p>
+        <Link href="/dashboard" className="text-xs text-primary hover:underline">{t("payment.checkout_back_dashboard")}</Link>
       </div>
     );
   }
@@ -134,7 +135,7 @@ export default function PaymentCheckout() {
   return (
     <>
       <Head>
-        <title>购买套餐 · {settings.site_title}</title>
+        <title>{t("payment.checkout_title")} · {settings.site_title}</title>
         <meta name="robots" content="noindex" />
       </Head>
 
@@ -153,14 +154,14 @@ export default function PaymentCheckout() {
               <RiArrowLeftSLine className="w-5 h-5" />
             </Link>
             <div>
-              <h1 className="text-base font-bold">{isChinese ? "购买套餐" : "Upgrade Plan"}</h1>
-              <p className="text-[11px] text-muted-foreground">{isChinese ? "选择适合你的方案" : "Choose the right plan for you"}</p>
+              <h1 className="text-base font-bold">{t("payment.checkout_title")}</h1>
+              <p className="text-[11px] text-muted-foreground">{t("payment.checkout_subtitle")}</p>
             </div>
           </div>
 
           <div className="space-y-2">
             <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-              {isChinese ? "选择套餐" : "Select a Plan"}
+              {t("payment.checkout_select_plan")}
             </h2>
             {plans.map(p => {
               const selected = selectedPlan === p.id;
@@ -182,7 +183,7 @@ export default function PaymentCheckout() {
                         <span className="font-semibold text-sm">{p.name}</span>
                         {p.grants_subscription && (
                           <span className="text-[10px] px-1.5 py-0.5 rounded bg-violet-100 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-800 font-medium">
-                            {isChinese ? "含订阅权限" : "Includes Access"}
+                            {t("payment.checkout_includes_access")}
                           </span>
                         )}
                       </div>
@@ -191,8 +192,11 @@ export default function PaymentCheckout() {
                       )}
                       <div className="flex items-center gap-2 mt-1.5 text-[11px] text-muted-foreground">
                         <RiCalendarLine className="w-3 h-3" />
-                        {p.duration_days ? `${p.duration_days} 天` : (isChinese ? "永久" : "Lifetime")}
-                        {p.is_recurring && <span className="text-blue-500">· 周期性</span>}
+                        {p.duration_days
+                          ? t("payment.checkout_days").replace("{{n}}", String(p.duration_days))
+                          : t("payment.checkout_lifetime")
+                        }
+                        {p.is_recurring && <span className="text-blue-500">{t("payment.checkout_recurring")}</span>}
                       </div>
                     </div>
                     <div className="text-right shrink-0">
@@ -203,7 +207,7 @@ export default function PaymentCheckout() {
                   {selected && (
                     <div className="mt-2 flex items-center gap-1 text-[11px] text-primary">
                       <RiCheckLine className="w-3.5 h-3.5" />
-                      {isChinese ? "已选择" : "Selected"}
+                      {t("payment.checkout_selected")}
                     </div>
                   )}
                 </motion.button>
@@ -214,7 +218,7 @@ export default function PaymentCheckout() {
           {enabledProviders.length > 0 && (
             <div className="space-y-2">
               <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                {isChinese ? "选择支付方式" : "Payment Method"}
+                {t("payment.checkout_payment_method")}
               </h2>
               {enabledProviders.map(provider => {
                 const info = PROVIDER_INFO[provider as keyof typeof PROVIDER_INFO];
@@ -244,7 +248,7 @@ export default function PaymentCheckout() {
 
           {enabledProviders.length === 0 && (
             <div className="rounded-xl border border-amber-200/50 dark:border-amber-700/30 bg-amber-50 dark:bg-amber-950/20 p-4 text-sm text-amber-700 dark:text-amber-400">
-              暂未开启支付渠道，请联系管理员。
+              {t("payment.checkout_no_providers")}
             </div>
           )}
 
@@ -255,17 +259,20 @@ export default function PaymentCheckout() {
                 animate={{ opacity: 1, y: 0 }}
                 className="rounded-2xl border border-border bg-card p-4 space-y-2"
               >
-                <h3 className="text-xs font-semibold text-muted-foreground">订单明细</h3>
+                <h3 className="text-xs font-semibold text-muted-foreground">{t("payment.checkout_order_summary")}</h3>
                 <div className="flex justify-between text-sm">
                   <span>{plan.name}</span>
                   <span className="font-bold">{sym}{plan.price.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-[11px] text-muted-foreground">
-                  <span>有效期</span>
-                  <span>{plan.duration_days ? `${plan.duration_days} 天` : "永久"}</span>
+                  <span>{t("payment.checkout_validity")}</span>
+                  <span>{plan.duration_days
+                    ? t("payment.checkout_days").replace("{{n}}", String(plan.duration_days))
+                    : t("payment.checkout_lifetime")
+                  }</span>
                 </div>
                 <div className="border-t border-border/40 pt-2 flex justify-between font-bold">
-                  <span>合计</span>
+                  <span>{t("payment.checkout_total")}</span>
                   <span className="text-primary">{sym}{plan.price.toFixed(2)}</span>
                 </div>
               </motion.div>
@@ -278,17 +285,19 @@ export default function PaymentCheckout() {
             disabled={!selectedPlan || !selectedProvider || paying || enabledProviders.length === 0}
           >
             {paying ? (
-              <><RiLoader4Line className="w-4 h-4 animate-spin mr-2" />正在跳转支付…</>
+              <><RiLoader4Line className="w-4 h-4 animate-spin mr-2" />{t("payment.checkout_paying")}</>
             ) : (
               <><RiLockLine className="w-4 h-4 mr-2" />
-                {plan ? `支付 ${sym}${plan.price.toFixed(2)}` : "立即支付"}
+                {plan
+                  ? t("payment.checkout_pay_amount").replace("{{amount}}", `${sym}${plan.price.toFixed(2)}`)
+                  : t("payment.checkout_pay_now")}
               </>
             )}
           </Button>
 
           <div className="flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground/60">
             <RiShieldCheckLine className="w-3.5 h-3.5" />
-            <span>所有交易均经过加密保护，支付后如有问题请联系客服</span>
+            <span>{t("payment.checkout_secure")}</span>
           </div>
         </div>
       </div>

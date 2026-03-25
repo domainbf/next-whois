@@ -10,14 +10,17 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   RiLoader4Line, RiUserAddLine, RiMailLine,
   RiLockLine, RiEyeLine, RiEyeOffLine, RiUserLine,
-  RiAlertLine, RiCheckLine, RiShieldCheckLine, RiKeyLine,
+  RiAlertLine, RiCheckLine, RiKeyLine,
   RiSendPlaneLine, RiShieldKeyholeLine,
 } from "@remixicon/react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useSiteSettings } from "@/lib/site-settings";
+import { useTranslation } from "@/lib/i18n";
 
-function getStrength(pwd: string): { score: number; label: string; color: string } {
+interface StrengthResult { score: number; label: string; color: string; }
+
+function getStrength(pwd: string, labels: string[]): StrengthResult {
   if (!pwd) return { score: 0, label: "", color: "bg-muted" };
   let s = 0;
   if (pwd.length >= 8) s++;
@@ -25,17 +28,18 @@ function getStrength(pwd: string): { score: number; label: string; color: string
   if (/[A-Z]/.test(pwd)) s++;
   if (/[0-9]/.test(pwd)) s++;
   if (/[^A-Za-z0-9]/.test(pwd)) s++;
-  if (s <= 1) return { score: 1, label: "弱", color: "bg-red-500" };
-  if (s <= 2) return { score: 2, label: "一般", color: "bg-amber-500" };
-  if (s <= 3) return { score: 3, label: "中等", color: "bg-yellow-500" };
-  if (s <= 4) return { score: 4, label: "强", color: "bg-emerald-500" };
-  return { score: 5, label: "很强", color: "bg-emerald-600" };
+  if (s <= 1) return { score: 1, label: labels[0], color: "bg-red-500" };
+  if (s <= 2) return { score: 2, label: labels[1], color: "bg-amber-500" };
+  if (s <= 3) return { score: 3, label: labels[2], color: "bg-yellow-500" };
+  if (s <= 4) return { score: 4, label: labels[3], color: "bg-emerald-500" };
+  return { score: 5, label: labels[4], color: "bg-emerald-600" };
 }
 
 export default function RegisterPage() {
   const router = useRouter();
   const { status } = useSession();
   const settings = useSiteSettings();
+  const { t } = useTranslation();
   const [name, setName] = React.useState("");
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
@@ -58,8 +62,8 @@ export default function RegisterPage() {
 
   React.useEffect(() => {
     if (codeCooldown <= 0) return;
-    const t = setInterval(() => setCodeCooldown(c => c - 1), 1000);
-    return () => clearInterval(t);
+    const timer = setInterval(() => setCodeCooldown(c => c - 1), 1000);
+    return () => clearInterval(timer);
   }, [codeCooldown]);
 
   const captchaProvider = settings.captcha_provider;
@@ -92,7 +96,7 @@ export default function RegisterPage() {
             render: (el: HTMLElement, opts: Record<string, unknown>) => unknown;
           }).render(captchaRef.current, {
             sitekey: captchaSiteKey,
-            callback: (t: string) => setCaptchaToken(t),
+            callback: (tk: string) => setCaptchaToken(tk),
             "expired-callback": () => setCaptchaToken(""),
             "error-callback": () => setCaptchaToken(""),
           });
@@ -101,7 +105,7 @@ export default function RegisterPage() {
             render: (el: HTMLElement, opts: Record<string, unknown>) => unknown;
           }).render(captchaRef.current, {
             sitekey: captchaSiteKey,
-            callback: (t: string) => setCaptchaToken(t),
+            callback: (tk: string) => setCaptchaToken(tk),
             "expired-callback": () => setCaptchaToken(""),
             "error-callback": () => setCaptchaToken(""),
           });
@@ -121,8 +125,8 @@ export default function RegisterPage() {
   }
 
   async function handleSendCode() {
-    if (!email.trim()) { setError("请先填写邮箱地址"); return; }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) { setError("邮箱格式不正确"); return; }
+    if (!email.trim()) { setError(t("auth.register_err_email_required")); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) { setError(t("auth.register_err_email_invalid")); return; }
     setSendingCode(true);
     setError(null);
     try {
@@ -132,30 +136,37 @@ export default function RegisterPage() {
         body: JSON.stringify({ email: email.trim().toLowerCase() }),
       });
       const data = await res.json();
-      if (!res.ok) { setError(data.error || "发送失败，请稍后重试"); return; }
+      if (!res.ok) { setError(data.error || t("auth.register_err_send_failed")); return; }
       setCodeSent(true);
       setCodeCooldown(60);
-      toast.success("验证码已发送，请查收邮件");
+      toast.success(t("auth.register_code_hint").replace("{{email}}", email.trim()));
     } catch {
-      setError("网络错误，请稍后重试");
+      setError(t("auth.register_err_network"));
     } finally {
       setSendingCode(false);
     }
   }
 
-  const strength = getStrength(password);
+  const strengthLabels = [
+    t("auth.register_strength_weak"),
+    t("auth.register_strength_fair"),
+    t("auth.register_strength_medium"),
+    t("auth.register_strength_strong"),
+    t("auth.register_strength_very_strong"),
+  ];
+  const strength = getStrength(password, strengthLabels);
   const passwordsMatch = confirm && password === confirm;
   const passwordsMismatch = confirm && password !== confirm;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    if (!email.trim()) { setError("请输入邮箱地址"); return; }
-    if (!password) { setError("请输入密码"); return; }
-    if (password.length < 8) { setError("密码至少 8 位"); return; }
-    if (password !== confirm) { setError("两次密码输入不一致"); return; }
+    if (!email.trim()) { setError(t("auth.register_err_email_required")); return; }
+    if (!password) { setError(t("auth.register_err_password_required")); return; }
+    if (password.length < 8) { setError(t("auth.register_err_password_min")); return; }
+    if (password !== confirm) { setError(t("auth.register_err_password_mismatch")); return; }
     if (captchaProvider && captchaSiteKey && !captchaToken) {
-      setError("请完成人机验证");
+      setError(t("auth.register_err_captcha"));
       return;
     }
     setLoading(true);
@@ -174,11 +185,11 @@ export default function RegisterPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || "注册失败，请稍后重试");
+        setError(data.error || t("auth.register_err_failed"));
         resetCaptcha();
         return;
       }
-      toast.success("注册成功！正在自动登录…");
+      toast.success(t("auth.register_success"));
       const loginRes = await signIn("credentials", {
         redirect: false,
         email: email.trim().toLowerCase(),
@@ -190,7 +201,7 @@ export default function RegisterPage() {
         router.replace("/login");
       }
     } catch {
-      setError("网络错误，请稍后重试");
+      setError(t("auth.register_err_network"));
       resetCaptcha();
     } finally {
       setLoading(false);
@@ -203,16 +214,16 @@ export default function RegisterPage() {
   if (!registrationOpen) {
     return (
       <>
-        <Head><title key="site-title">{`注册已关闭 · ${settings.site_title || "X.RW · RDAP+WHOIS"}`}</title></Head>
+        <Head><title key="site-title">{`${t("auth.register_closed_page_title")} · ${settings.site_title || "X.RW · RDAP+WHOIS"}`}</title></Head>
         <div className="min-h-screen flex items-center justify-center px-4">
           <div className="text-center space-y-4 max-w-sm">
             <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-amber-100 dark:bg-amber-950/40 border border-amber-200/50 dark:border-amber-700/30 mb-2">
               <RiAlertLine className="w-7 h-7 text-amber-500" />
             </div>
-            <h1 className="text-xl font-bold">注册已暂停</h1>
-            <p className="text-sm text-muted-foreground">当前网站暂停开放注册，请联系管理员。</p>
+            <h1 className="text-xl font-bold">{t("auth.register_closed_title")}</h1>
+            <p className="text-sm text-muted-foreground">{t("auth.register_closed_desc")}</p>
             <Link href="/login" className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline font-semibold">
-              ← 去登录
+              {t("auth.register_closed_back")}
             </Link>
           </div>
         </div>
@@ -222,7 +233,7 @@ export default function RegisterPage() {
 
   return (
     <>
-      <Head><title key="site-title">{`注册 · ${settings.site_title || "X.RW · RDAP+WHOIS"}`}</title></Head>
+      <Head><title key="site-title">{`${t("auth.register_page_title")} · ${settings.site_title || "X.RW · RDAP+WHOIS"}`}</title></Head>
       <div className="min-h-screen flex items-center justify-center px-4 py-16">
         <motion.div
           initial={{ opacity: 0, y: 16 }}
@@ -230,14 +241,13 @@ export default function RegisterPage() {
           transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
           className="w-full max-w-sm"
         >
-          {/* Heading */}
           <div className="text-center mb-8">
             <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-500/20 to-primary/10 border border-primary/20 mb-4">
               <RiUserAddLine className="w-6 h-6 text-primary" />
             </div>
-            <h1 className="text-2xl font-bold tracking-tight">创建账户</h1>
+            <h1 className="text-2xl font-bold tracking-tight">{t("auth.register_title")}</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              注册 <span className="font-semibold text-foreground">{logoText}</span>，管理你的域名
+              {t("auth.register_subtitle").replace("{{name}}", logoText)}
             </p>
           </div>
 
@@ -246,14 +256,14 @@ export default function RegisterPage() {
               {/* Name */}
               <div className="space-y-1.5">
                 <Label htmlFor="name" className="text-xs font-semibold">
-                  昵称 <span className="text-muted-foreground font-normal">（可选）</span>
+                  {t("auth.register_name_label")} <span className="text-muted-foreground font-normal">{t("auth.register_name_optional")}</span>
                 </Label>
                 <div className="relative">
                   <RiUserLine className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/60" />
                   <Input
                     id="name"
                     type="text"
-                    placeholder="你的昵称"
+                    placeholder={t("auth.register_name_placeholder")}
                     value={name}
                     onChange={e => setName(e.target.value)}
                     className="pl-9 h-10 rounded-xl"
@@ -265,7 +275,7 @@ export default function RegisterPage() {
 
               {/* Email */}
               <div className="space-y-1.5">
-                <Label htmlFor="email" className="text-xs font-semibold">邮箱地址</Label>
+                <Label htmlFor="email" className="text-xs font-semibold">{t("auth.register_email_label")}</Label>
                 <div className="flex gap-2">
                   <div className="relative flex-1">
                     <RiMailLine className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/60" />
@@ -298,8 +308,8 @@ export default function RegisterPage() {
                       : codeCooldown > 0
                       ? `${codeCooldown}s`
                       : codeSent
-                      ? "重新发送"
-                      : <><RiSendPlaneLine className="inline w-3 h-3 mr-1" />发送验证码</>
+                      ? t("auth.register_code_sent")
+                      : <><RiSendPlaneLine className="inline w-3 h-3 mr-1" />{t("auth.register_send_code")}</>
                     }
                   </button>
                 </div>
@@ -317,14 +327,14 @@ export default function RegisterPage() {
                     <div className="space-y-1.5">
                       <Label htmlFor="verifyCode" className="text-xs font-semibold flex items-center gap-1.5">
                         <RiShieldKeyholeLine className="w-3.5 h-3.5 text-primary" />
-                        邮箱验证码
+                        {t("auth.register_verify_label")}
                       </Label>
                       <div className="relative">
                         <Input
                           id="verifyCode"
                           type="text"
                           inputMode="numeric"
-                          placeholder="6 位验证码"
+                          placeholder={t("auth.register_verify_placeholder")}
                           value={verifyCode}
                           onChange={e => { setVerifyCode(e.target.value.replace(/\D/g, "").slice(0, 6)); setError(null); }}
                           className="h-10 rounded-xl font-mono text-sm text-center tracking-[0.35em] font-semibold"
@@ -333,7 +343,9 @@ export default function RegisterPage() {
                           maxLength={6}
                         />
                       </div>
-                      <p className="text-[10px] text-muted-foreground px-0.5">验证码已发送至 {email.trim()}，10 分钟内有效</p>
+                      <p className="text-[10px] text-muted-foreground px-0.5">
+                        {t("auth.register_code_hint").replace("{{email}}", email.trim())}
+                      </p>
                     </div>
                   </motion.div>
                 )}
@@ -342,7 +354,7 @@ export default function RegisterPage() {
               {/* Password */}
               <div className="space-y-1.5">
                 <Label htmlFor="password" className="text-xs font-semibold">
-                  密码 <span className="text-muted-foreground font-normal">（至少 8 位）</span>
+                  {t("auth.register_password_label")} <span className="text-muted-foreground font-normal">({t("auth.reset_new_password_min")})</span>
                 </Label>
                 <div className="relative">
                   <RiLockLine className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/60" />
@@ -350,7 +362,7 @@ export default function RegisterPage() {
                     id="password"
                     type={showPwd ? "text" : "password"}
                     autoComplete="new-password"
-                    placeholder="设置密码"
+                    placeholder={t("auth.register_password_placeholder")}
                     value={password}
                     onChange={e => { setPassword(e.target.value); setError(null); }}
                     className="pl-9 pr-10 h-10 rounded-xl"
@@ -388,14 +400,13 @@ export default function RegisterPage() {
                           ))}
                         </div>
                         <p className="text-[11px] text-muted-foreground">
-                          密码强度：<span className={cn(
+                          {t("auth.register_strength")}<span className={cn(
                             "font-semibold",
                             strength.score <= 1 ? "text-red-500" :
                             strength.score <= 2 ? "text-amber-500" :
                             strength.score <= 3 ? "text-yellow-600" :
                             "text-emerald-600"
                           )}>{strength.label}</span>
-                          <span className="ml-2 text-muted-foreground/60">（大小写、数字、符号混合更安全）</span>
                         </p>
                       </div>
                     </motion.div>
@@ -405,14 +416,14 @@ export default function RegisterPage() {
 
               {/* Confirm password */}
               <div className="space-y-1.5">
-                <Label htmlFor="confirm" className="text-xs font-semibold">确认密码</Label>
+                <Label htmlFor="confirm" className="text-xs font-semibold">{t("auth.register_confirm_label")}</Label>
                 <div className="relative">
                   <RiLockLine className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/60" />
                   <Input
                     id="confirm"
                     type={showPwd ? "text" : "password"}
                     autoComplete="new-password"
-                    placeholder="再次输入密码"
+                    placeholder={t("auth.register_confirm_placeholder")}
                     value={confirm}
                     onChange={e => { setConfirm(e.target.value); setError(null); }}
                     className={cn(
@@ -443,7 +454,7 @@ export default function RegisterPage() {
               {/* Invite code */}
               <div className="space-y-1.5">
                 <Label htmlFor="inviteCode" className="text-xs font-semibold">
-                  邀请码 <span className="text-muted-foreground font-normal">（如有）</span>
+                  {t("auth.register_invite_label")}
                 </Label>
                 <div className="relative">
                   <RiKeyLine className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/60" />
@@ -459,7 +470,6 @@ export default function RegisterPage() {
                     autoComplete="off"
                   />
                 </div>
-                <p className="text-[10px] text-muted-foreground px-0.5">填写邀请码可解锁域名到期提醒订阅功能</p>
               </div>
 
               {/* CAPTCHA widget */}
@@ -467,15 +477,15 @@ export default function RegisterPage() {
                 <div className="space-y-1.5">
                   <div className="flex items-center gap-1.5">
                     <RiShieldKeyholeLine className="w-3.5 h-3.5 text-muted-foreground/70" />
-                    <span className="text-xs font-semibold">人机验证</span>
+                    <span className="text-xs font-semibold">{t("auth.register_captcha_label")}</span>
                   </div>
                   <div ref={captchaRef} className="w-full" />
                   {!captchaToken && (
-                    <p className="text-[10px] text-muted-foreground px-0.5">请完成上方的人机验证以继续</p>
+                    <p className="text-[10px] text-muted-foreground px-0.5">{t("auth.register_err_captcha")}</p>
                   )}
                   {captchaToken && (
                     <p className="text-[10px] text-emerald-600 dark:text-emerald-400 px-0.5 flex items-center gap-1">
-                      <RiCheckLine className="w-3 h-3" />验证通过
+                      <RiCheckLine className="w-3 h-3" />{t("auth.register_code_sent")}
                     </p>
                   )}
                 </div>
@@ -504,23 +514,25 @@ export default function RegisterPage() {
                 className="w-full h-10 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-sm gap-2"
               >
                 {loading
-                  ? <><RiLoader4Line className="w-4 h-4 animate-spin" />注册中…</>
-                  : <><RiUserAddLine className="w-4 h-4" />创建账户</>
+                  ? <><RiLoader4Line className="w-4 h-4 animate-spin" />{t("auth.register_submitting")}</>
+                  : <><RiUserAddLine className="w-4 h-4" />{t("auth.register_submit")}</>
                 }
               </Button>
 
               <p className="text-[10px] text-muted-foreground/60 text-center leading-relaxed">
-                注册即表示您同意我们的服务条款和隐私政策
+                {t("auth.register_terms")}
+                <Link href="/docs#terms" className="underline hover:text-primary">
+                  {t("auth.register_terms_link")}
+                </Link>
               </p>
             </div>
           </form>
 
-          {/* Footer */}
           <div className="mt-5 text-center space-y-2">
             <p className="text-xs text-muted-foreground">
-              已有账户？{" "}
+              {t("auth.register_have_account")}{" "}
               <Link href="/login" className="text-primary font-semibold hover:underline">
-                立即登录
+                {t("auth.register_login_link")}
               </Link>
             </p>
           </div>

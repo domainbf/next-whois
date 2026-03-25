@@ -14,11 +14,13 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useSiteSettings } from "@/lib/site-settings";
+import { useTranslation } from "@/lib/i18n";
 
 export default function LoginPage() {
   const router = useRouter();
   const { status } = useSession();
   const settings = useSiteSettings();
+  const { t } = useTranslation();
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [showPwd, setShowPwd] = React.useState(false);
@@ -32,8 +34,8 @@ export default function LoginPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    if (!email.trim()) { setError("请输入邮箱地址"); return; }
-    if (!password) { setError("请输入密码"); return; }
+    if (!email.trim()) { setError(t("auth.login_err_email")); return; }
+    if (!password) { setError(t("auth.login_err_password")); return; }
     setLoading(true);
     try {
       const res = await signIn("credentials", {
@@ -42,25 +44,25 @@ export default function LoginPage() {
         password,
       });
       if (res?.error) {
-        setError("邮箱或密码错误，请检查后重试");
+        setError(t("auth.login_err_invalid"));
       } else {
-        toast.success("登录成功，欢迎回来！");
+        toast.success(t("auth.login_success"));
         const callbackUrl = (router.query.callbackUrl as string) || "/dashboard";
         router.replace(callbackUrl);
       }
     } catch {
-      setError("网络错误，请稍后重试");
+      setError(t("auth.login_err_network"));
     } finally {
       setLoading(false);
     }
   }
 
   const logoText = settings.site_logo_text || "X.RW";
-  const subtitle = settings.site_subtitle || "专业的 WHOIS 查询工具";
+  const subtitle = settings.site_subtitle || "RDAP+WHOIS";
 
   return (
     <>
-      <Head><title key="site-title">{`登录 · ${settings.site_title || "X.RW · RDAP+WHOIS"}`}</title></Head>
+      <Head><title key="site-title">{`${t("auth.login_page_title")} · ${settings.site_title || "X.RW · RDAP+WHOIS"}`}</title></Head>
       <div className="min-h-screen flex items-center justify-center px-4 py-16">
         <motion.div
           initial={{ opacity: 0, y: 16 }}
@@ -68,28 +70,26 @@ export default function LoginPage() {
           transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
           className="w-full max-w-sm"
         >
-          {/* Logo & heading */}
           <div className="text-center mb-8">
             <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 mb-4">
               <RiLockLine className="w-6 h-6 text-primary" />
             </div>
-            <h1 className="text-2xl font-bold tracking-tight">欢迎回来</h1>
+            <h1 className="text-2xl font-bold tracking-tight">{t("auth.login_welcome")}</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              登录你的 <span className="font-semibold text-foreground">{logoText}</span> 账户
+              {t("auth.login_subtitle").replace("{{name}}", logoText)}
             </p>
           </div>
 
           {settings.disable_login === "1" && (
             <div className="mb-4 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 px-4 py-3 text-sm text-amber-800 dark:text-amber-300 text-center">
-              登录功能暂时关闭，仅管理员可登录
+              {t("auth.login_disabled")}
             </div>
           )}
 
           <form onSubmit={handleSubmit} noValidate>
             <div className="glass-panel border border-border rounded-2xl p-6 space-y-4">
-              {/* Email */}
               <div className="space-y-1.5">
-                <Label htmlFor="email" className="text-xs font-semibold">邮箱地址</Label>
+                <Label htmlFor="email" className="text-xs font-semibold">{t("auth.login_email_label")}</Label>
                 <div className="relative">
                   <RiMailLine className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/60" />
                   <Input
@@ -105,12 +105,11 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              {/* Password */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="password" className="text-xs font-semibold">密码</Label>
+                  <Label htmlFor="password" className="text-xs font-semibold">{t("auth.login_password_label")}</Label>
                   <Link href="/forgot-password" className="text-[11px] text-muted-foreground hover:text-primary transition-colors">
-                    忘记密码？
+                    {t("auth.login_forgot")}
                   </Link>
                 </div>
                 <div className="relative">
@@ -119,7 +118,7 @@ export default function LoginPage() {
                     id="password"
                     type={showPwd ? "text" : "password"}
                     autoComplete="current-password"
-                    placeholder="输入密码"
+                    placeholder={t("auth.login_password_placeholder")}
                     value={password}
                     onChange={e => { setPassword(e.target.value); setError(null); }}
                     className="pl-9 pr-10 h-10 rounded-xl"
@@ -136,7 +135,6 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              {/* Error */}
               <AnimatePresence>
                 {error && (
                   <motion.div
@@ -159,19 +157,18 @@ export default function LoginPage() {
                 className="w-full h-10 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-sm gap-2"
               >
                 {loading
-                  ? <><RiLoader4Line className="w-4 h-4 animate-spin" />登录中…</>
-                  : <><RiCheckLine className="w-4 h-4" />登录</>
+                  ? <><RiLoader4Line className="w-4 h-4 animate-spin" />{t("auth.login_submitting")}</>
+                  : <><RiCheckLine className="w-4 h-4" />{t("auth.login_submit")}</>
                 }
               </Button>
             </div>
           </form>
 
-          {/* Footer */}
           <div className="mt-5 text-center space-y-2">
             <p className="text-xs text-muted-foreground">
-              还没有账户？{" "}
+              {t("auth.login_no_account")}{" "}
               <Link href="/register" className="text-primary font-semibold hover:underline">
-                立即注册
+                {t("auth.login_register_link")}
               </Link>
             </p>
             <p className="text-[10px] text-muted-foreground/50">{subtitle}</p>

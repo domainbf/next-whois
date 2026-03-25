@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSiteSettings } from "@/lib/site-settings";
+import { useTranslation } from "@/lib/i18n";
 import {
   RiArrowLeftSLine, RiSearchLine, RiLoader4Line, RiCheckLine,
   RiErrorWarningLine, RiTimeLine, RiRefreshLine, RiFileCopyLine,
@@ -49,13 +50,13 @@ function classifyTxt(val: string): { label: string; color: string } {
   return { label: "TXT", color: "bg-orange-100 dark:bg-orange-950/40 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-800" };
 }
 
-function CopyButton({ text }: { text: string }) {
+function CopyButton({ text, copyLabel }: { text: string; copyLabel: string }) {
   const [copied, setCopied] = React.useState(false);
   return (
     <button
       onClick={() => { navigator.clipboard?.writeText(text).catch(() => {}); setCopied(true); setTimeout(() => setCopied(false), 1500); }}
       className="p-1 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground shrink-0 touch-manipulation"
-      title="复制"
+      title={copyLabel}
     >
       {copied ? <RiCheckLine className="w-3 h-3 text-emerald-500" /> : <RiFileCopyLine className="w-3 h-3" />}
     </button>
@@ -104,18 +105,21 @@ function MxRow({ flat }: { flat: string }) {
   );
 }
 
-function SoaRow({ records }: { records: any[] }) {
+function SoaRow({ records, labels }: {
+  records: any[];
+  labels: { primaryNs: string; adminEmail: string; serial: string; refresh: string; retry: string; expire: string };
+}) {
   const soa = records?.[0];
   if (!soa) return null;
   return (
     <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs py-1">
       {[
-        ["主域名服务器", soa.nsname],
-        ["管理员邮箱", soa.hostmaster],
-        ["序列号", soa.serial],
-        ["刷新间隔", soa.refresh ? `${soa.refresh}s` : "—"],
-        ["重试间隔", soa.retry ? `${soa.retry}s` : "—"],
-        ["过期时间", soa.expire ? `${Math.floor(soa.expire/86400)}天` : "—"],
+        [labels.primaryNs, soa.nsname],
+        [labels.adminEmail, soa.hostmaster],
+        [labels.serial, soa.serial],
+        [labels.refresh, soa.refresh ? `${soa.refresh}s` : "—"],
+        [labels.retry, soa.retry ? `${soa.retry}s` : "—"],
+        [labels.expire, soa.expire ? `${Math.floor(soa.expire / 86400)}d` : "—"],
       ].filter(([, v]) => v).map(([label, value]) => (
         <div key={String(label)} className="flex items-start gap-2">
           <span className="text-muted-foreground shrink-0">{label}</span>
@@ -126,7 +130,15 @@ function SoaRow({ records }: { records: any[] }) {
   );
 }
 
-function ResultCard({ result, index = 0 }: { result: DnsResult; index?: number }) {
+function ResultCard({
+  result, index, noRecordLabel, hasRecordTemplate, copyLabel, soaLabels,
+}: {
+  result: DnsResult; index?: number;
+  noRecordLabel: string;
+  hasRecordTemplate: string;
+  copyLabel: string;
+  soaLabels: { primaryNs: string; adminEmail: string; serial: string; refresh: string; retry: string; expire: string };
+}) {
   if (!result.found) {
     return (
       <motion.div
@@ -137,7 +149,7 @@ function ResultCard({ result, index = 0 }: { result: DnsResult; index?: number }
       >
         <RecordTypeBadge type={result.type} />
         {result._label && <span className="text-xs font-mono text-muted-foreground/60 truncate">{result._label}</span>}
-        <span className="text-xs text-muted-foreground">无记录</span>
+        <span className="text-xs text-muted-foreground">{noRecordLabel}</span>
         <ResolverDots resolvers={result.resolvers} />
         <span className="ml-auto text-[10px] text-muted-foreground shrink-0">{result.latencyMs}ms</span>
       </motion.div>
@@ -158,12 +170,12 @@ function ResultCard({ result, index = 0 }: { result: DnsResult; index?: number }
         )}
         <ResolverDots resolvers={result.resolvers} />
         <span className="ml-auto text-[10px] text-muted-foreground shrink-0">
-          {result.flat.length} 条 · {result.latencyMs}ms
+          {hasRecordTemplate.replace("{{n}}", String(result.flat.length)).replace("{{ms}}", String(result.latencyMs))}
         </span>
       </div>
       {result.type === "SOA" ? (
         <div className="px-4 py-3">
-          <SoaRow records={result.records} />
+          <SoaRow records={result.records} labels={soaLabels} />
         </div>
       ) : (
         <div className="divide-y divide-border/30">
@@ -181,7 +193,7 @@ function ResultCard({ result, index = 0 }: { result: DnsResult; index?: number }
                 {isMx ? <MxRow flat={flat} /> : (
                   <span className="text-sm font-mono break-all flex-1 leading-relaxed">{flat}</span>
                 )}
-                <CopyButton text={flat} />
+                <CopyButton text={flat} copyLabel={copyLabel} />
               </div>
             );
           })}
@@ -205,6 +217,7 @@ const FADE = { duration: 0.18, ease: "easeOut" as const };
 export default function DnsPage() {
   const router = useRouter();
   const settings = useSiteSettings();
+  const { t } = useTranslation();
   const siteLabel = settings.site_logo_text || "X.RW";
   const [domain, setDomain] = React.useState("");
   const [activeTypes, setActiveTypes] = React.useState<RecordType[]>(["A"]);
@@ -220,10 +233,10 @@ export default function DnsPage() {
   React.useEffect(() => {
     if (!router.isReady) return;
     const q = router.query.q as string;
-    const t = router.query.type as string;
+    const tp = router.query.type as string;
     if (q) {
       setDomain(q);
-      const types: RecordType[] = t ? (t.split(",").filter(x => RECORD_TYPES.find(r => r.type === x)) as RecordType[]) : ["A"];
+      const types: RecordType[] = tp ? (tp.split(",").filter(x => RECORD_TYPES.find(r => r.type === x)) as RecordType[]) : ["A"];
       setActiveTypes(types);
       setTimeout(() => doQuery(q, types), 80);
     }
@@ -232,7 +245,7 @@ export default function DnsPage() {
   async function doQuery(d?: string, types?: RecordType[]) {
     const name = (d ?? domain).trim().toLowerCase().replace(/^https?:\/\//, "").split("/")[0];
     const qTypes = types ?? activeTypes;
-    if (!name) { toast.error("请输入域名"); return; }
+    if (!name) { toast.error(t("dns.err_empty")); return; }
 
     const isEmail = qTypes.includes("MX") && qTypes.includes("TXT");
     setLoading(true);
@@ -253,13 +266,13 @@ export default function DnsPage() {
       const all: DnsResult[] = settled.map((s, i) => {
         if (s.status === "fulfilled") return s.value;
         const type = i < qTypes.length ? qTypes[i] : "TXT";
-        return { name: i < qTypes.length ? name : `_dmarc.${name}`, type, found: false, records: [], flat: [], resolvers: [], latencyMs: 0, error: "请求失败" };
+        return { name: i < qTypes.length ? name : `_dmarc.${name}`, type, found: false, records: [], flat: [], resolvers: [], latencyMs: 0, error: t("dns.err_req_failed") };
       });
 
       setResults(all);
       setTotalMs(Date.now() - t0);
-    } catch (e: any) {
-      toast.error(e.message || "查询失败");
+    } catch (e: unknown) {
+      toast.error((e as Error).message || t("dns.err_failed"));
     } finally {
       setLoading(false);
     }
@@ -274,7 +287,7 @@ export default function DnsPage() {
       const result = await fetchDns(dkimName, "TXT", dkimName);
       setDkimResult(result);
     } catch {
-      toast.error("DKIM 查询失败");
+      toast.error(t("dns.dkim_failed"));
     } finally {
       setDkimLoading(false);
     }
@@ -293,18 +306,18 @@ export default function DnsPage() {
         .filter((s): s is PromiseFulfilledResult<DnsResult> => s.status === "fulfilled" && s.value.found)
         .map(s => s.value);
       if (found.length === 0) {
-        toast("未在常见选择器中找到 DKIM 记录");
-        setDkimResult({ name: queried, type: "TXT", found: false, records: [], flat: [], resolvers: [], latencyMs: 0, _label: "auto-detect (无结果)" });
+        toast(t("dns.dkim_not_found"));
+        setDkimResult({ name: queried, type: "TXT", found: false, records: [], flat: [], resolvers: [], latencyMs: 0, _label: "auto-detect" });
       } else {
         setDkimResult(found[0]);
         if (found[0]._label) {
           const sel = found[0]._label.split("._domainkey.")[0];
           setDkimSelector(sel);
         }
-        toast.success(`找到 DKIM: ${found[0]._label}`);
+        toast.success(t("dns.dkim_found").replace("{{label}}", found[0]._label || ""));
       }
     } catch {
-      toast.error("DKIM 自动检测失败");
+      toast.error(t("dns.dkim_auto_failed"));
     } finally {
       setDkimLoading(false);
     }
@@ -313,7 +326,7 @@ export default function DnsPage() {
   function toggleType(type: RecordType) {
     setActiveTypes(prev =>
       prev.includes(type)
-        ? prev.length === 1 ? prev : prev.filter(t => t !== type)
+        ? prev.length === 1 ? prev : prev.filter(tp => tp !== type)
         : [...prev, type]
     );
     setIsEmailPreset(false);
@@ -330,12 +343,33 @@ export default function DnsPage() {
   const hasDKIM  = dkimResult?.found && dkimResult.flat.some(f => /^v=DKIM1/i.test(f) || (/k=rsa/i.test(f) && /p=/.test(f)));
 
   const hasContent = results.length > 0;
-  const isEmpty = !loading && !hasContent && !queried;
-  const animKey = loading ? "loading" : hasContent ? "results" : "empty";
+
+  const copyLabel = t("dns.copy");
+  const soaLabels = {
+    primaryNs: t("dns.soa_primary_ns"),
+    adminEmail: t("dns.soa_admin_email"),
+    serial: t("dns.soa_serial"),
+    refresh: t("dns.soa_refresh"),
+    retry: t("dns.soa_retry"),
+    expire: t("dns.soa_expire"),
+  };
+  const resultCardProps = {
+    noRecordLabel: t("dns.no_record"),
+    hasRecordTemplate: t("dns.has_record"),
+    copyLabel,
+    soaLabels,
+  };
+
+  const PRESETS = [
+    { label: t("dns.preset_basic"), icon: RiGlobalLine, types: ["A", "AAAA", "CNAME"] as RecordType[] },
+    { label: t("dns.preset_email"), icon: RiMailLine,   types: ["MX", "TXT"] as RecordType[], email: true },
+    { label: t("dns.preset_ns"),    icon: RiServerLine, types: ["NS", "SOA"] as RecordType[] },
+    { label: t("dns.preset_caa"),   icon: RiShieldCheckLine, types: ["CAA"] as RecordType[] },
+  ];
 
   return (
     <>
-      <Head><title key="site-title">{`DNS 查询 — ${siteLabel}`}</title></Head>
+      <Head><title key="site-title">{`${t("dns.title")} — ${siteLabel}`}</title></Head>
       <ScrollArea className="w-full h-[calc(100vh-4rem)]">
         <main className="w-full max-w-2xl mx-auto px-4 sm:px-6 py-6 space-y-5">
           <div className="flex items-center gap-3">
@@ -347,8 +381,8 @@ export default function DnsPage() {
                 <RiServerLine className="w-5 h-5" />
               </div>
               <div>
-                <h1 className="text-lg font-bold leading-none">DNS 查询</h1>
-                <p className="text-[11px] text-muted-foreground mt-0.5">4×DoH 并行 · A/AAAA/MX/NS/CNAME/TXT/SOA/CAA · SPF/DMARC/DKIM</p>
+                <h1 className="text-lg font-bold leading-none">{t("dns.title")}</h1>
+                <p className="text-[11px] text-muted-foreground mt-0.5">{t("dns.subtitle")}</p>
               </div>
             </div>
           </div>
@@ -367,22 +401,17 @@ export default function DnsPage() {
               </div>
               <Button type="submit" disabled={loading} className="h-10 px-4 rounded-xl gap-2 shrink-0">
                 {loading ? <RiLoader4Line className="w-4 h-4 animate-spin" /> : <RiSearchLine className="w-4 h-4" />}
-                查询
+                {t("dns.search")}
               </Button>
             </form>
 
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-[11px] text-muted-foreground">快捷：</span>
-              {([
-                { label: "基础解析", icon: RiGlobalLine, types: ["A", "AAAA", "CNAME"] as RecordType[] },
-                { label: "邮件安全", icon: RiMailLine,   types: ["MX", "TXT"] as RecordType[], email: true },
-                { label: "域名服务器",icon: RiServerLine, types: ["NS", "SOA"] as RecordType[] },
-                { label: "证书授权", icon: RiShieldCheckLine, types: ["CAA"] as RecordType[] },
-              ]).map(p => (
+              <span className="text-[11px] text-muted-foreground">{t("dns.shortcuts")}</span>
+              {PRESETS.map(p => (
                 <button
                   key={p.label}
                   type="button"
-                  onClick={() => { setActiveTypes(p.types); setIsEmailPreset(!!p.email); }}
+                  onClick={() => { setActiveTypes(p.types); setIsEmailPreset(!!(p as any).email); }}
                   className={cn(
                     "flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-lg border transition-colors touch-manipulation",
                     JSON.stringify(activeTypes.slice().sort()) === JSON.stringify(p.types.slice().sort())
@@ -396,7 +425,7 @@ export default function DnsPage() {
             </div>
 
             <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-[11px] text-muted-foreground shrink-0">记录类型：</span>
+              <span className="text-[11px] text-muted-foreground shrink-0">{t("dns.record_types")}</span>
               {RECORD_TYPES.map(({ type, color }) => (
                 <button
                   key={type}
@@ -424,7 +453,7 @@ export default function DnsPage() {
                     <RiLoader4Line className="w-6 h-6 animate-spin text-primary absolute inset-0 m-auto" />
                   </div>
                   <div className="text-center">
-                    <p className="text-sm font-medium">4×DoH 并行查询中…</p>
+                    <p className="text-sm font-medium">{t("dns.loading")}</p>
                     <p className="text-xs text-muted-foreground mt-1">Google · Cloudflare · Quad9 · AdGuard</p>
                   </div>
                 </div>
@@ -433,20 +462,20 @@ export default function DnsPage() {
               <motion.div key="results" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={FADE} className="space-y-3">
                 <div className="flex items-center gap-2 flex-wrap">
                   <p className="text-xs font-semibold text-muted-foreground">
-                    {queried} · {results.filter(r => r.found).length}/{results.length} 有记录
+                    {queried} · {results.filter(r => r.found).length}/{results.length} {t("dns.status_ok").toLowerCase()}
                     {totalMs !== null && <span className="ml-1 text-muted-foreground/60">· {totalMs}ms</span>}
                   </p>
                   <button
                     onClick={() => doQuery()}
                     className="p-1 rounded hover:bg-muted transition-colors text-muted-foreground touch-manipulation"
-                    title="刷新"
+                    title={t("dns.refresh")}
                   >
                     <RiRefreshLine className="w-3.5 h-3.5" />
                   </button>
                   <div className="ml-auto flex items-center gap-2 text-[10px] text-muted-foreground">
-                    <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-emerald-400" />正常</div>
-                    <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-muted-foreground/25" />无记录</div>
-                    <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-red-400/70" />错误</div>
+                    <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-emerald-400" />{t("dns.status_ok")}</div>
+                    <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-muted-foreground/25" />{t("dns.status_no_record")}</div>
+                    <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-red-400/70" />{t("dns.status_error")}</div>
                   </div>
                 </div>
 
@@ -466,28 +495,32 @@ export default function DnsPage() {
                   </div>
                 )}
 
-                {mainResults.map((r, i) => <ResultCard key={r.type + r.name} result={r} index={i} />)}
+                {mainResults.map((r, i) => (
+                  <ResultCard key={r.type + r.name} result={r} index={i} {...resultCardProps} />
+                ))}
 
                 {subResults.length > 0 && (
                   <div className="space-y-2">
                     <p className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1.5">
-                      <RiShieldCheckLine className="w-3.5 h-3.5" />自动子域查询
+                      <RiShieldCheckLine className="w-3.5 h-3.5" />{t("dns.sub_query")}
                     </p>
-                    {subResults.map((r, i) => <ResultCard key={r._label} result={r} index={i} />)}
+                    {subResults.map((r, i) => (
+                      <ResultCard key={r._label} result={r} index={i} {...resultCardProps} />
+                    ))}
                   </div>
                 )}
 
                 {isEmailPreset && (
                   <div className="glass-panel border border-border rounded-2xl p-4 space-y-3">
                     <p className="text-xs font-semibold flex items-center gap-1.5">
-                      <RiShieldCheckLine className="w-3.5 h-3.5 text-primary" />邮件安全概览
+                      <RiShieldCheckLine className="w-3.5 h-3.5 text-primary" />{t("dns.email_overview")}
                     </p>
                     <div className="grid grid-cols-2 gap-2">
                       {([
-                        { k: "MX",    found: hasMX,    desc: "邮件服务器" },
-                        { k: "SPF",   found: hasSPF,   desc: "发送授权" },
-                        { k: "DMARC", found: hasDMARC, desc: "_dmarc 子域" },
-                        { k: "DKIM",  found: !!hasDKIM, desc: dkimResult ? dkimSelector || "已检测" : "需检测" },
+                        { k: "MX",    found: hasMX,     desc: t("dns.mx_desc") },
+                        { k: "SPF",   found: hasSPF,    desc: t("dns.spf_desc") },
+                        { k: "DMARC", found: hasDMARC,  desc: t("dns.dmarc_desc") },
+                        { k: "DKIM",  found: !!hasDKIM, desc: dkimResult ? dkimSelector || t("dns.dkim_detected") : t("dns.dkim_pending") },
                       ] as const).map(({ k, found, desc }) => (
                         <div key={k} className={cn(
                           "flex items-center gap-2 px-3 py-2.5 rounded-xl border text-xs font-semibold",
@@ -507,28 +540,28 @@ export default function DnsPage() {
 
                     <div className="space-y-2 pt-1 border-t border-border/40">
                       <p className="text-[11px] text-muted-foreground font-medium flex items-center gap-1">
-                        <RiKeyLine className="w-3 h-3" />DKIM 检测
-                        <span className="text-muted-foreground/50">（需要知道选择器）</span>
+                        <RiKeyLine className="w-3 h-3" />{t("dns.dkim_section")}
+                        <span className="text-muted-foreground/50">{t("dns.dkim_hint")}</span>
                       </p>
                       <div className="flex gap-2">
                         <Input
                           value={dkimSelector}
                           onChange={e => setDkimSelector(e.target.value)}
-                          placeholder="选择器 selector（如 google、k1、dkim）"
+                          placeholder={t("dns.dkim_placeholder")}
                           className="h-8 text-xs rounded-lg font-mono flex-1"
                           onKeyDown={e => e.key === "Enter" && queryDkim()}
                         />
                         <Button size="sm" variant="outline" onClick={() => queryDkim()}
                           disabled={dkimLoading || !dkimSelector.trim()} className="h-8 px-3 text-xs rounded-lg shrink-0">
-                          {dkimLoading ? <RiLoader4Line className="w-3 h-3 animate-spin" /> : "查询"}
+                          {dkimLoading ? <RiLoader4Line className="w-3 h-3 animate-spin" /> : t("dns.dkim_query")}
                         </Button>
                         <Button size="sm" variant="outline" onClick={autoDetectDkim}
                           disabled={dkimLoading} className="h-8 px-3 text-xs rounded-lg shrink-0"
-                          title={`自动尝试: ${COMMON_DKIM_SELECTORS.join(", ")}`}>
-                          {dkimLoading ? <RiLoader4Line className="w-3 h-3 animate-spin" /> : "自动检测"}
+                          title={t("dns.dkim_auto_title").replace("{{selectors}}", COMMON_DKIM_SELECTORS.join(", "))}>
+                          {dkimLoading ? <RiLoader4Line className="w-3 h-3 animate-spin" /> : t("dns.dkim_auto")}
                         </Button>
                       </div>
-                      {dkimResult && <ResultCard result={dkimResult} />}
+                      {dkimResult && <ResultCard result={dkimResult} {...resultCardProps} />}
                     </div>
                   </div>
                 )}
@@ -539,20 +572,20 @@ export default function DnsPage() {
                   <div className="w-14 h-14 rounded-2xl bg-blue-500/8 border border-blue-500/20 flex items-center justify-center mx-auto mb-4">
                     <RiServerLine className="w-7 h-7 text-blue-500/60" />
                   </div>
-                  <p className="text-sm font-medium text-muted-foreground">输入域名，查询任意 DNS 记录</p>
-                  <p className="text-xs text-muted-foreground/60">支持 A · AAAA · MX · NS · CNAME · TXT · SOA · CAA</p>
-                  <p className="text-xs text-muted-foreground/60">TXT 自动识别 SPF / DMARC / DKIM / BIMI</p>
+                  <p className="text-sm font-medium text-muted-foreground">{t("dns.empty_title")}</p>
+                  <p className="text-xs text-muted-foreground/60">{t("dns.empty_subtitle")}</p>
+                  <p className="text-xs text-muted-foreground/60">{t("dns.empty_subtitle2")}</p>
                 </div>
               </motion.div>
             )}
           </AnimatePresence>
 
           <div className="flex items-center gap-3 flex-wrap text-[10px] text-muted-foreground/50 pb-2">
-            <span className="flex items-center gap-1"><RiTimeLine className="w-3 h-3" />数据实时获取，不缓存</span>
+            <span className="flex items-center gap-1"><RiTimeLine className="w-3 h-3" />{t("dns.footer_realtime")}</span>
             <span>|</span>
             <span>DoH: Google · Cloudflare · Quad9 · AdGuard</span>
             <Link href={`/feedback?type=dns${queried ? `&q=${encodeURIComponent(queried)}` : ""}`} className="ml-auto hover:text-foreground transition-colors">
-              意见反馈
+              {t("dns.feedback")}
             </Link>
           </div>
         </main>

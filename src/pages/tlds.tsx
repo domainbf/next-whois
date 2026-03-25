@@ -74,6 +74,7 @@ interface AddEditFormProps {
 }
 
 function AddEditForm({ initial, onSave, onCancel }: AddEditFormProps) {
+  const { t } = useTranslation();
   const [tld, setTld] = React.useState(initial?.tld ?? "");
   const [protocol, setProtocol] = React.useState<Protocol>(() =>
     initial ? getProtocol(initial.entry) : "tcp",
@@ -129,8 +130,8 @@ function AddEditForm({ initial, onSave, onCancel }: AddEditFormProps) {
   };
 
   const isValid = (() => {
-    const t = tld.trim().toLowerCase().replace(/^\./, "");
-    if (!t) return false;
+    const normalizedTldCheck = tld.trim().toLowerCase().replace(/^\./, "");
+    if (!normalizedTldCheck) return false;
     if (protocol === "tcp") return !!host.trim();
     return !!url.trim();
   })();
@@ -138,7 +139,7 @@ function AddEditForm({ initial, onSave, onCancel }: AddEditFormProps) {
   return (
     <div className="space-y-4 p-4 rounded-xl border border-border/60 bg-muted/20">
       <div className="space-y-1.5">
-        <label className="text-xs font-medium text-muted-foreground">TLD / 域名后缀</label>
+        <label className="text-xs font-medium text-muted-foreground">{t("tlds.form_tld_label")}</label>
         <div className="flex items-center gap-1.5">
           <span className="text-sm text-muted-foreground">.</span>
           <Input placeholder="com, com.br, co.uk ..." value={tld} onChange={(e) => setTld(e.target.value)}
@@ -146,7 +147,7 @@ function AddEditForm({ initial, onSave, onCancel }: AddEditFormProps) {
         </div>
       </div>
       <div className="space-y-1.5">
-        <label className="text-xs font-medium text-muted-foreground">协议类型</label>
+        <label className="text-xs font-medium text-muted-foreground">{t("tlds.form_protocol_label")}</label>
         <div className="flex gap-2">
           {(["tcp", "http"] as Protocol[]).map((p) => (
             <button key={p} onClick={() => setProtocol(p)}
@@ -168,12 +169,12 @@ function AddEditForm({ initial, onSave, onCancel }: AddEditFormProps) {
       {protocol === "tcp" && (
         <div className="grid grid-cols-3 gap-2">
           <div className="col-span-2 space-y-1.5">
-            <label className="text-xs font-medium text-muted-foreground">WHOIS 服务器主机名</label>
+            <label className="text-xs font-medium text-muted-foreground">{t("tlds.form_host_label")}</label>
             <Input placeholder="whois.example.com" value={host} onChange={(e) => setHost(e.target.value)}
               className="h-8 text-sm font-mono" />
           </div>
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-muted-foreground">端口（默认 43）</label>
+            <label className="text-xs font-medium text-muted-foreground">{t("tlds.form_port_label")}</label>
             <Input placeholder="43" value={port} onChange={(e) => setPort(e.target.value)}
               className="h-8 text-sm font-mono" type="number" min={1} max={65535} />
           </div>
@@ -183,13 +184,13 @@ function AddEditForm({ initial, onSave, onCancel }: AddEditFormProps) {
         <div className="space-y-3">
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-muted-foreground">
-              URL 模板（用 <code className="bg-muted px-1 py-0.5 rounded text-[10px]">{"{{domain}}"}</code> 代表域名）
+              {t("tlds.form_url_label").split("{{domain}}")[0]}<code className="bg-muted px-1 py-0.5 rounded text-[10px]">{"{{domain}}"}</code>{t("tlds.form_url_label").split("{{domain}}")[1]}
             </label>
             <Input placeholder="https://whois.example.com/query?domain={{domain}}" value={url}
               onChange={(e) => setUrl(e.target.value)} className="h-8 text-sm font-mono" />
           </div>
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-muted-foreground">HTTP 方法</label>
+            <label className="text-xs font-medium text-muted-foreground">{t("tlds.form_method_label")}</label>
             <div className="flex gap-2">
               {(["GET", "POST"] as const).map((m) => (
                 <button key={m} onClick={() => setHttpMethod(m)}
@@ -210,10 +211,10 @@ function AddEditForm({ initial, onSave, onCancel }: AddEditFormProps) {
       <div className="flex gap-2 pt-1">
         <Button size="sm" onClick={handleSave} disabled={!isValid || saving} className="h-7 text-xs">
           <RiCheckLine className="w-3.5 h-3.5 mr-1" />
-          {saving ? "保存中..." : "保存"}
+          {saving ? t("tlds.form_saving") : t("tlds.form_save")}
         </Button>
         <Button size="sm" variant="ghost" onClick={onCancel} className="h-7 text-xs">
-          <RiCloseLine className="w-3.5 h-3.5 mr-1" />取消
+          <RiCloseLine className="w-3.5 h-3.5 mr-1" />{t("tlds.form_cancel")}
         </Button>
       </div>
     </div>
@@ -221,6 +222,7 @@ function AddEditForm({ initial, onSave, onCancel }: AddEditFormProps) {
 }
 
 const TldCard = React.memo(function TldCard({ entry, isChinese }: { entry: TldInfo; isChinese: boolean }) {
+  const { t } = useTranslation();
   const isCc = entry.type === "cctld";
   const countryLabel = isChinese ? entry.country : entry.countryEn;
   return (
@@ -250,7 +252,7 @@ const TldCard = React.memo(function TldCard({ entry, isChinese }: { entry: TldIn
         )}
         {isCc && !entry.hasWhois && !entry.hasRdap && (
           <span className="text-[10px] text-muted-foreground/40">
-            {isChinese ? "暂不支持查询" : "Not supported"}
+            {t("tlds.not_supported")}
           </span>
         )}
       </div>
@@ -259,7 +261,7 @@ const TldCard = React.memo(function TldCard({ entry, isChinese }: { entry: TldIn
 });
 
 export default function TldsPage() {
-  const { locale } = useTranslation();
+  const { locale, t } = useTranslation();
   const settings = useSiteSettings();
   const isChinese = locale === "zh" || locale === "zh-tw";
   const siteName = settings.site_logo_text || "X.RW";
@@ -326,12 +328,12 @@ export default function TldsPage() {
     });
     const d = await res.json();
     if (d.success) {
-      toast.success(d.message || "已保存");
+      toast.success(d.message || t("tlds.toast_saved"));
       setShowAdd(false);
       setEditingTld(null);
       await fetchServers();
     } else {
-      toast.error(d.message || "保存失败");
+      toast.error(d.message || t("tlds.toast_save_failed"));
     }
   };
 
@@ -340,8 +342,8 @@ export default function TldsPage() {
     try {
       const res = await fetch(`/api/whois-servers?tld=${encodeURIComponent(tld)}`, { method: "DELETE" });
       const d = await res.json();
-      if (d.success) { toast.success(d.message || "已删除"); await fetchServers(); }
-      else toast.error(d.message || "删除失败");
+      if (d.success) { toast.success(d.message || t("tlds.toast_deleted")); await fetchServers(); }
+      else toast.error(d.message || t("tlds.toast_delete_failed"));
     } finally {
       setDeleting(null);
     }

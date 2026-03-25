@@ -181,7 +181,8 @@ type SubmitForm = {
 };
 
 function PostPaymentForm({ defaultPlatform, onDone }: { defaultPlatform?: string; onDone: () => void }) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
+  const isChinese = locale === "zh" || locale === "zh-tw";
   const [form, setForm] = React.useState<SubmitForm>({
     name: "", message: "", amount: "", currency: "CNY", platform: defaultPlatform || "", is_anonymous: false,
   });
@@ -294,11 +295,11 @@ function PostPaymentForm({ defaultPlatform, onDone }: { defaultPlatform?: string
             onChange={e => setForm(f => ({ ...f, currency: e.target.value }))}
             className="w-full h-9 rounded-xl border border-input bg-background text-sm px-3 focus:outline-none focus:ring-1 focus:ring-ring"
           >
-            <option value="CNY">CNY 人民币</option>
-            <option value="USD">USD 美元</option>
-            <option value="EUR">EUR 欧元</option>
-            <option value="GBP">GBP 英镑</option>
-            <option value="JPY">JPY 日元</option>
+            <option value="CNY">{isChinese ? "CNY 人民币" : "CNY (Yuan)"}</option>
+            <option value="USD">{isChinese ? "USD 美元" : "USD (Dollar)"}</option>
+            <option value="EUR">{isChinese ? "EUR 欧元" : "EUR (Euro)"}</option>
+            <option value="GBP">{isChinese ? "GBP 英镑" : "GBP (Pound)"}</option>
+            <option value="JPY">{isChinese ? "JPY 日元" : "JPY (Yen)"}</option>
             <option value="USDT">USDT</option>
             <option value="BTC">BTC</option>
             <option value="ETH">ETH</option>
@@ -340,6 +341,7 @@ function PostPaymentForm({ defaultPlatform, onDone }: { defaultPlatform?: string
 
 // Plan card for the checkout section
 function PlanCard({ plan, onClick }: { plan: Plan; onClick: () => void }) {
+  const { t } = useTranslation();
   const sym = CURRENCY_SYMBOL[plan.currency] ?? plan.currency;
   return (
     <motion.button
@@ -352,7 +354,7 @@ function PlanCard({ plan, onClick }: { plan: Plan; onClick: () => void }) {
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-semibold text-sm group-hover:text-primary transition-colors">{plan.name}</span>
             {plan.grants_subscription && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-violet-100 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-800 font-medium">含订阅权限</span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-violet-100 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-800 font-medium">{t("sponsor.subscription_access")}</span>
             )}
           </div>
           {plan.description && (
@@ -360,7 +362,7 @@ function PlanCard({ plan, onClick }: { plan: Plan; onClick: () => void }) {
           )}
           <div className="flex items-center gap-2 mt-1.5 text-[11px] text-muted-foreground">
             <RiCalendarLine className="w-3 h-3" />
-            <span>{plan.duration_days ? `有效期 ${plan.duration_days} 天` : "永久有效"}</span>
+            <span>{plan.duration_days ? t("sponsor.validity_days").replace("{{days}}", String(plan.duration_days)) : t("sponsor.permanent")}</span>
           </div>
         </div>
         <div className="text-right shrink-0">
@@ -374,7 +376,8 @@ function PlanCard({ plan, onClick }: { plan: Plan; onClick: () => void }) {
 
 export default function SponsorPage() {
   const settings = useSiteSettings();
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
+  const isChinese = locale === "zh" || locale === "zh-tw";
   const router = useRouter();
   const { data: session } = useSession();
   const siteName = settings.site_title || "X.RW · RDAP+WHOIS";
@@ -505,7 +508,7 @@ export default function SponsorPage() {
               <div className="flex items-center gap-2 mb-2">
                 <div className="h-px flex-1 bg-border/60" />
                 <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground px-2 flex items-center gap-1.5">
-                  <RiBankCardLine className="w-3.5 h-3.5" />在线支付
+                  <RiBankCardLine className="w-3.5 h-3.5" />{t("sponsor.online_payment")}
                 </p>
                 <div className="h-px flex-1 bg-border/60" />
               </div>
@@ -513,8 +516,8 @@ export default function SponsorPage() {
               <div className="rounded-2xl border border-border bg-gradient-to-br from-violet-50 to-background dark:from-violet-950/10 dark:to-background p-4 space-y-3">
                 <div className="flex items-center gap-2 mb-1">
                   <RiGiftLine className="w-4 h-4 text-violet-500" />
-                  <span className="text-sm font-semibold">选择支持方案</span>
-                  <span className="text-[10px] text-muted-foreground ml-auto">支持 Stripe · PayPal · 支付宝 · 扫码</span>
+                  <span className="text-sm font-semibold">{t("sponsor.choose_plan")}</span>
+                  <span className="text-[10px] text-muted-foreground ml-auto">{t("sponsor.payment_methods_hint")}</span>
                 </div>
 
                 <div className="space-y-2">
@@ -526,18 +529,20 @@ export default function SponsorPage() {
                 {!session && (
                   <p className="text-[11px] text-muted-foreground flex items-center gap-1 pt-1">
                     <RiLockLine className="w-3.5 h-3.5" />
-                    需要<Link href="/login?redirect=/payment/checkout" className="text-primary hover:underline">登录</Link>才能在线支付
+                    {isChinese
+                      ? <>需要<Link href="/login?redirect=/payment/checkout" className="text-primary hover:underline">登录</Link>才能在线支付</>
+                      : <><Link href="/login?redirect=/payment/checkout" className="text-primary hover:underline">Login</Link> required to pay online</>}
                   </p>
                 )}
 
                 <div className="flex items-center gap-1 text-[10px] text-muted-foreground/50 pt-1">
                   <RiShieldCheckLine className="w-3 h-3" />
-                  <span>安全加密支付，付款后权限自动开通</span>
+                  <span>{t("sponsor.secure_payment")}</span>
                 </div>
 
                 <Link href="/payment/checkout" className="block">
                   <Button className="w-full h-10 rounded-xl gap-2 font-semibold text-sm">
-                    <RiBankCardLine className="w-4 h-4" />前往选择套餐并支付
+                    <RiBankCardLine className="w-4 h-4" />{t("sponsor.go_to_checkout")}
                     <RiArrowRightLine className="w-4 h-4" />
                   </Button>
                 </Link>
@@ -551,7 +556,7 @@ export default function SponsorPage() {
               <div className="flex items-center gap-2 mb-4">
                 <div className="h-px flex-1 bg-border/60" />
                 <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground px-2">
-                  {plans.length > 0 && paymentEnabled ? "其他打赏方式" : t("sponsor.methods_section")}
+                  {plans.length > 0 && paymentEnabled ? t("sponsor.other_methods") : t("sponsor.methods_section")}
                 </p>
                 <div className="h-px flex-1 bg-border/60" />
               </div>
@@ -657,7 +662,7 @@ export default function SponsorPage() {
           {!hasAnyPayment && (
             <div className="text-center py-12 text-muted-foreground text-sm space-y-2">
               <RiHeart3Line className="w-8 h-8 mx-auto opacity-30" />
-              <p>暂未配置支付方式，请联系管理员</p>
+              <p>{t("sponsor.no_payment_configured")}</p>
             </div>
           )}
 

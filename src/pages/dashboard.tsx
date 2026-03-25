@@ -89,12 +89,12 @@ function TagBadge({ style, name }: { style: string; name: string }) {
   );
 }
 
-const PHASE_LABEL: Record<string, { label: string; color: string }> = {
-  active: { label: "有效", color: "text-emerald-600 dark:text-emerald-400" },
-  grace: { label: "宽限期", color: "text-amber-600 dark:text-amber-400" },
-  redemption: { label: "赎回期", color: "text-orange-600 dark:text-orange-400" },
-  pendingDelete: { label: "待删除", color: "text-red-600 dark:text-red-400" },
-  dropped: { label: "已删除", color: "text-muted-foreground" },
+const PHASE_LABEL: Record<string, { color: string }> = {
+  active: { color: "text-emerald-600 dark:text-emerald-400" },
+  grace: { color: "text-amber-600 dark:text-amber-400" },
+  redemption: { color: "text-orange-600 dark:text-orange-400" },
+  pendingDelete: { color: "text-red-600 dark:text-red-400" },
+  dropped: { color: "text-muted-foreground" },
 };
 
 function fmt(d: Date) {
@@ -132,7 +132,7 @@ function EditStampModal({ stamp, onClose, onSaved, isMember }: { stamp: Stamp; o
   const [description, setDescription] = React.useState(stamp.description || "");
   const [nickname, setNickname] = React.useState(stamp.nickname);
   const [saving, setSaving] = React.useState(false);
-  const { locale } = useTranslation();
+  const { t, locale } = useTranslation();
   const isZh = locale.startsWith("zh");
 
   async function handleSave() {
@@ -144,11 +144,11 @@ function EditStampModal({ stamp, onClose, onSaved, isMember }: { stamp: Stamp; o
         body: JSON.stringify({ tagName, tagStyle, link, description, nickname }),
       });
       if (!res.ok) throw new Error((await res.json()).error);
-      toast.success("保存成功");
+      toast.success(t("dashboard.save_success"));
       onSaved();
       onClose();
     } catch (e: any) {
-      toast.error(e.message || "保存失败");
+      toast.error(e.message || t("dashboard.save_failed"));
     } finally {
       setSaving(false);
     }
@@ -160,25 +160,25 @@ function EditStampModal({ stamp, onClose, onSaved, isMember }: { stamp: Stamp; o
       <div className="relative w-full max-w-md bg-background border border-border rounded-t-2xl sm:rounded-2xl shadow-2xl p-6 space-y-4 max-h-[88vh] overflow-y-auto">
         <div className="flex items-center justify-between">
           <h2 className="text-base font-bold flex items-center gap-2">
-            <RiPencilLine className="w-4 h-4 text-primary" />编辑品牌认领
+            <RiPencilLine className="w-4 h-4 text-primary" />{t("dashboard.edit_stamp_title")}
           </h2>
           <button onClick={onClose} className="p-1 rounded-lg hover:bg-muted transition-colors">
             <RiCloseLine className="w-5 h-5 text-muted-foreground" />
           </button>
         </div>
-        <p className="text-xs text-muted-foreground">域名：<span className="font-mono text-foreground">{stamp.domain}</span></p>
+        <p className="text-xs text-muted-foreground">{t("dashboard.domain_label")}<span className="font-mono text-foreground">{stamp.domain}</span></p>
         <div className="space-y-3">
           <div className="space-y-1.5">
             <div className="flex items-baseline justify-between">
-              <Label className="text-xs font-semibold">标签文字</Label>
-              {!isMember && <span className="text-[10px] text-amber-500">普通用户限 5 字</span>}
+              <Label className="text-xs font-semibold">{t("dashboard.tag_label")}</Label>
+              {!isMember && <span className="text-[10px] text-amber-500">{t("dashboard.tag_limit_free")}</span>}
             </div>
             <Input value={tagName} onChange={e => setTagName(e.target.value)} maxLength={isMember ? 32 : 5} className="h-9 rounded-xl text-sm" />
           </div>
           <div className="space-y-1.5">
             <div className="flex items-baseline justify-between">
-              <Label className="text-xs font-semibold">标签样式</Label>
-              {!isMember && <span className="text-[10px] text-violet-600 flex items-center gap-0.5"><RiVipCrownLine className="w-3 h-3"/>会员专属</span>}
+              <Label className="text-xs font-semibold">{t("dashboard.tag_style")}</Label>
+              {!isMember && <span className="text-[10px] text-violet-600 flex items-center gap-0.5"><RiVipCrownLine className="w-3 h-3"/>{t("dashboard.member_only")}</span>}
             </div>
             <div className="flex flex-wrap gap-1.5">
               {EDIT_TAG_STYLES.map(ts => {
@@ -187,8 +187,8 @@ function EditStampModal({ stamp, onClose, onSaved, isMember }: { stamp: Stamp; o
                 const locked = !isMember && !isFree;
                 return (
                   <button key={ts.value} type="button"
-                    onClick={() => { if (!locked) setTagStyle(ts.value); else toast.info("升级会员后可使用此样式"); }}
-                    title={locked ? "会员专属样式" : undefined}
+                    onClick={() => { if (!locked) setTagStyle(ts.value); else toast.info(t("dashboard.upgrade_style_toast")); }}
+                    title={locked ? t("dashboard.member_style_tooltip") : undefined}
                     className={cn(
                       "relative flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold border-2 transition-all active:scale-[0.96]",
                       locked ? "opacity-40 cursor-not-allowed border-transparent" : tagStyle === ts.value
@@ -199,7 +199,7 @@ function EditStampModal({ stamp, onClose, onSaved, isMember }: { stamp: Stamp; o
                     {locked ? <RiLockLine className="w-3 h-3 shrink-0" /> : <Icon className="w-3 h-3 shrink-0" />}
                     {isZh ? ts.zhLabel : ts.enLabel}
                     {isFree && !isMember && (
-                      <span className="ml-0.5 text-[7px] font-bold bg-white/30 px-1 py-0.5 rounded-full leading-tight">免费</span>
+                      <span className="ml-0.5 text-[7px] font-bold bg-white/30 px-1 py-0.5 rounded-full leading-tight">{t("dashboard.tag_free")}</span>
                     )}
                   </button>
                 );
@@ -232,7 +232,7 @@ function EditStampModal({ stamp, onClose, onSaved, isMember }: { stamp: Stamp; o
                           {tagName || (isZh ? sel.zhLabel : sel.enLabel)}
                         </span>
                       </div>
-                      <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{nickname || "昵称"}</p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{nickname || t("dashboard.nickname")}</p>
                     </div>
                   </motion.div>
                 </AnimatePresence>
@@ -240,17 +240,17 @@ function EditStampModal({ stamp, onClose, onSaved, isMember }: { stamp: Stamp; o
             })()}
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold">昵称</Label>
+            <Label className="text-xs font-semibold">{t("dashboard.nickname")}</Label>
             <Input value={nickname} onChange={e => setNickname(e.target.value)} maxLength={50} className="h-9 rounded-xl text-sm" />
           </div>
           {isMember ? (
             <>
               <div className="space-y-1.5">
-                <Label className="text-xs font-semibold">链接 <span className="text-muted-foreground font-normal">（可选）</span></Label>
+                <Label className="text-xs font-semibold">{t("dashboard.link")} <span className="text-muted-foreground font-normal">{t("dashboard.optional")}</span></Label>
                 <Input value={link} onChange={e => setLink(e.target.value)} maxLength={200} placeholder="https://" className="h-9 rounded-xl text-sm" />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs font-semibold">描述 <span className="text-muted-foreground font-normal">（可选）</span></Label>
+                <Label className="text-xs font-semibold">{t("dashboard.description")} <span className="text-muted-foreground font-normal">{t("dashboard.optional")}</span></Label>
                 <Input value={description} onChange={e => setDescription(e.target.value)} maxLength={200} className="h-9 rounded-xl text-sm" />
               </div>
             </>
@@ -258,16 +258,16 @@ function EditStampModal({ stamp, onClose, onSaved, isMember }: { stamp: Stamp; o
             <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-violet-50/50 dark:bg-violet-950/10 border border-dashed border-violet-200/60 dark:border-violet-800/40">
               <RiVipCrownLine className="w-4 h-4 text-violet-500 shrink-0" />
               <div className="flex-1 min-w-0">
-                <p className="text-[11px] font-semibold text-violet-700 dark:text-violet-300">链接 & 简介 · 会员专属</p>
-                <p className="text-[10px] text-muted-foreground/70 leading-relaxed">升级会员后可设置品牌官网链接及详细说明</p>
+                <p className="text-[11px] font-semibold text-violet-700 dark:text-violet-300">{t("dashboard.link_member_title")}</p>
+                <p className="text-[10px] text-muted-foreground/70 leading-relaxed">{t("dashboard.link_member_desc")}</p>
               </div>
             </div>
           )}
         </div>
         <div className="flex gap-2 pt-1">
-          <Button onClick={onClose} variant="outline" className="flex-1 h-9 rounded-xl text-sm">取消</Button>
+          <Button onClick={onClose} variant="outline" className="flex-1 h-9 rounded-xl text-sm">{t("dashboard.cancel")}</Button>
           <Button onClick={handleSave} disabled={saving} className="flex-1 h-9 rounded-xl text-sm gap-1.5">
-            {saving ? <><RiLoader4Line className="w-3.5 h-3.5 animate-spin" />保存中…</> : <><RiCheckLine className="w-3.5 h-3.5" />保存</>}
+            {saving ? <><RiLoader4Line className="w-3.5 h-3.5 animate-spin" />{t("dashboard.saving")}</> : <><RiCheckLine className="w-3.5 h-3.5" />{t("dashboard.save")}</>}
           </Button>
         </div>
       </div>
@@ -281,9 +281,10 @@ function EditExpiryModal({ sub, onClose, onSaved }: { sub: Subscription; onClose
     sub.expiration_date ? sub.expiration_date.slice(0, 10) : ""
   );
   const [saving, setSaving] = React.useState(false);
+  const { t } = useTranslation();
 
   async function handleSave() {
-    if (!dateValue) { toast.error("请选择日期"); return; }
+    if (!dateValue) { toast.error(t("dashboard.date_required")); return; }
     setSaving(true);
     try {
       const res = await fetch(`/api/user/subscriptions?id=${sub.id}`, {
@@ -292,11 +293,11 @@ function EditExpiryModal({ sub, onClose, onSaved }: { sub: Subscription; onClose
         body: JSON.stringify({ expiration_date: dateValue }),
       });
       if (!res.ok) throw new Error((await res.json()).error);
-      toast.success("到期日期已更新");
+      toast.success(t("dashboard.expiry_updated"));
       onSaved(new Date(dateValue).toISOString());
       onClose();
     } catch (e: any) {
-      toast.error(e.message || "更新失败");
+      toast.error(e.message || t("dashboard.update_failed"));
     } finally {
       setSaving(false);
     }
@@ -308,21 +309,21 @@ function EditExpiryModal({ sub, onClose, onSaved }: { sub: Subscription; onClose
       <div className="relative w-full max-w-sm bg-background border border-border rounded-t-2xl sm:rounded-2xl shadow-2xl p-6 space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-base font-bold flex items-center gap-2">
-            <RiCalendarLine className="w-4 h-4 text-primary" />编辑到期日期
+            <RiCalendarLine className="w-4 h-4 text-primary" />{t("dashboard.edit_expiry_title")}
           </h2>
           <button onClick={onClose} className="p-1 rounded-lg hover:bg-muted transition-colors">
             <RiCloseLine className="w-5 h-5 text-muted-foreground" />
           </button>
         </div>
-        <p className="text-xs text-muted-foreground">域名：<span className="font-mono text-foreground">{sub.domain}</span></p>
+        <p className="text-xs text-muted-foreground">{t("dashboard.domain_label")}<span className="font-mono text-foreground">{sub.domain}</span></p>
         <div className="space-y-1.5">
-          <Label className="text-xs font-semibold">到期日期</Label>
+          <Label className="text-xs font-semibold">{t("dashboard.expiry_date")}</Label>
           <Input type="date" value={dateValue} onChange={e => setDateValue(e.target.value)} className="h-9 rounded-xl text-sm" />
         </div>
         <div className="flex gap-2 pt-1">
-          <Button onClick={onClose} variant="outline" className="flex-1 h-9 rounded-xl text-sm">取消</Button>
+          <Button onClick={onClose} variant="outline" className="flex-1 h-9 rounded-xl text-sm">{t("dashboard.cancel")}</Button>
           <Button onClick={handleSave} disabled={saving} className="flex-1 h-9 rounded-xl text-sm gap-1.5">
-            {saving ? <><RiLoader4Line className="w-3.5 h-3.5 animate-spin" />保存中…</> : <><RiCheckLine className="w-3.5 h-3.5" />保存</>}
+            {saving ? <><RiLoader4Line className="w-3.5 h-3.5 animate-spin" />{t("dashboard.saving")}</> : <><RiCheckLine className="w-3.5 h-3.5" />{t("dashboard.save")}</>}
           </Button>
         </div>
       </div>
@@ -386,20 +387,20 @@ function GuideModalShell({ onClose, icon, iconBg, title, subtitle, children }: {
 }
 
 function MiniMockup({ highlightClaim }: { highlightClaim: boolean }) {
+  const { t } = useTranslation();
   const claimColor = highlightClaim
     ? "bg-violet-50 dark:bg-violet-950/40 border-violet-400/60 text-violet-500"
     : "bg-muted/40 border-border/50 text-muted-foreground/60";
   const subColor = !highlightClaim
     ? "bg-sky-50 dark:bg-sky-950/40 border-sky-400/60 text-sky-500"
     : "bg-muted/40 border-border/50 text-muted-foreground/60";
-  const label = highlightClaim ? "认领" : "订阅";
 
   return (
     <div className="rounded-xl bg-muted/20 border border-border p-3">
       <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/50 mb-2">
-        实际效果预览
-        <span className="sm:hidden normal-case tracking-normal font-normal">（手机）</span>
-        <span className="hidden sm:inline normal-case tracking-normal font-normal">（桌面）</span>
+        {t("dashboard.preview_title")}
+        <span className="sm:hidden normal-case tracking-normal font-normal">{t("dashboard.preview_mobile")}</span>
+        <span className="hidden sm:inline normal-case tracking-normal font-normal">{t("dashboard.preview_desktop")}</span>
       </p>
       <div className="rounded-lg border border-border bg-background shadow-sm">
         <div className="px-3 pt-2.5 pb-1.5">
@@ -432,12 +433,12 @@ function MiniMockup({ highlightClaim }: { highlightClaim: boolean }) {
               </span>
             )}
           </div>
-          <span className="text-[8px] text-muted-foreground ml-0.5">← 点击{label}按钮</span>
+          <span className="text-[8px] text-muted-foreground ml-0.5">{highlightClaim ? t("dashboard.click_claim_btn") : t("dashboard.click_sub_btn")}</span>
         </div>
         {/* Desktop: text pill buttons */}
         <div className="px-3 pb-2.5 hidden sm:flex items-center gap-1.5">
           <div className={cn("relative flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border", highlightClaim ? "bg-violet-100 dark:bg-violet-950/50 border-violet-400/70 text-violet-600 dark:text-violet-400 ring-1 ring-violet-400/20" : "bg-muted/40 border-border/50 text-muted-foreground/50 font-medium")}>
-            <RiShieldCheckLine className="w-2.5 h-2.5" />品牌认领
+            <RiShieldCheckLine className="w-2.5 h-2.5" />{t("dashboard.brand_claim_btn")}
             {highlightClaim && (
               <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-violet-400 opacity-60" />
@@ -446,7 +447,7 @@ function MiniMockup({ highlightClaim }: { highlightClaim: boolean }) {
             )}
           </div>
           <div className={cn("relative flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border", !highlightClaim ? "bg-sky-100 dark:bg-sky-950/50 border-sky-400/70 text-sky-600 dark:text-sky-400 ring-1 ring-sky-400/20" : "bg-muted/40 border-border/50 text-muted-foreground/50 font-medium")}>
-            <RiTimeLine className="w-2.5 h-2.5" />域名订阅
+            <RiTimeLine className="w-2.5 h-2.5" />{t("dashboard.domain_sub_btn")}
             {!highlightClaim && (
               <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-60" />
@@ -454,7 +455,7 @@ function MiniMockup({ highlightClaim }: { highlightClaim: boolean }) {
               </span>
             )}
           </div>
-          <span className="text-[8px] text-muted-foreground ml-0.5">← 点击{label}按钮</span>
+          <span className="text-[8px] text-muted-foreground ml-0.5">{t("dashboard.click_btn_hint", { label: highlightClaim ? t("dashboard.brand_claim_btn") : t("dashboard.domain_sub_btn") })}</span>
         </div>
       </div>
     </div>
@@ -463,6 +464,7 @@ function MiniMockup({ highlightClaim }: { highlightClaim: boolean }) {
 
 function ClaimGuideModal({ onClose }: { onClose: () => void }) {
   const router = useRouter();
+  const { t } = useTranslation();
   const [domain, setDomain] = React.useState("");
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
@@ -476,23 +478,23 @@ function ClaimGuideModal({ onClose }: { onClose: () => void }) {
       onClose={onClose}
       icon={<RiShieldCheckLine className="w-3.5 h-3.5 text-violet-600 dark:text-violet-400" />}
       iconBg="bg-violet-100 dark:bg-violet-950/40"
-      title="品牌认领"
-      subtitle="声明你对域名的所有权"
+      title={t("dashboard.claim_title")}
+      subtitle={t("dashboard.claim_subtitle")}
     >
       <MiniMockup highlightClaim={true} />
       <div className="space-y-1.5">
         {[
-          { icon: RiSearchLine,      color: "bg-blue-100 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400",    n: "1", title: "搜索你的域名",    desc: "在首页搜索框输入你拥有的域名，进入 WHOIS 详情页" },
-          { icon: RiShieldCheckLine, color: "bg-violet-100 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400", n: "2", title: "点击「认领」图标", desc: "点击详情页按钮栏中的盾牌图标，填写标签名和简介" },
-          { icon: RiWifiLine,        color: "bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400", n: "3", title: "完成 DNS 验证",   desc: "添加 TXT 记录或上传验证文件，证明域名归属权" },
-          { icon: RiCheckLine,       color: "bg-amber-100 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400",    n: "4", title: "获得认证标签",    desc: "验证通过后，WHOIS 页面将显示你的品牌认证信息" },
+          { icon: RiSearchLine,      color: "bg-blue-100 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400",    n: "1", title: t("dashboard.claim_step1_title"), desc: t("dashboard.claim_step1_desc") },
+          { icon: RiShieldCheckLine, color: "bg-violet-100 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400", n: "2", title: t("dashboard.claim_step2_title"), desc: t("dashboard.claim_step2_desc") },
+          { icon: RiWifiLine,        color: "bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400", n: "3", title: t("dashboard.claim_step3_title"), desc: t("dashboard.claim_step3_desc") },
+          { icon: RiCheckLine,       color: "bg-amber-100 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400",    n: "4", title: t("dashboard.claim_step4_title"), desc: t("dashboard.claim_step4_desc") },
         ].map((s) => (
           <div key={s.n} className="flex items-start gap-2.5 px-2.5 py-2 rounded-xl bg-muted/25">
             <div className={cn("w-6 h-6 rounded-lg flex items-center justify-center shrink-0 mt-0.5", s.color)}>
               <s.icon className="w-3 h-3" />
             </div>
             <div className="min-w-0">
-              <p className="text-[9px] font-bold text-muted-foreground/40 uppercase tracking-widest">步骤 {s.n}</p>
+              <p className="text-[9px] font-bold text-muted-foreground/40 uppercase tracking-widest">{t("dashboard.step_n", { n: s.n })}</p>
               <p className="text-xs font-semibold leading-snug">{s.title}</p>
               <p className="text-[10px] text-muted-foreground leading-snug">{s.desc}</p>
             </div>
@@ -502,10 +504,10 @@ function ClaimGuideModal({ onClose }: { onClose: () => void }) {
       <form onSubmit={handleSearch} className="flex gap-2">
         <Input value={domain} onChange={e => setDomain(e.target.value)} placeholder="x.rw" className="h-9 rounded-xl text-sm font-mono flex-1" />
         <Button type="submit" size="sm" className="h-9 rounded-xl px-3 gap-1 shrink-0 touch-manipulation">
-          前往 <RiArrowRightLine className="w-3.5 h-3.5" />
+          {t("dashboard.go_btn")} <RiArrowRightLine className="w-3.5 h-3.5" />
         </Button>
       </form>
-      <p className="text-[10px] text-muted-foreground text-center px-2 pb-1">认领需通过 DNS TXT 或文件验证，确认域名归属权</p>
+      <p className="text-[10px] text-muted-foreground text-center px-2 pb-1">{t("dashboard.claim_note")}</p>
     </GuideModalShell>
   );
 }
@@ -513,6 +515,7 @@ function ClaimGuideModal({ onClose }: { onClose: () => void }) {
 // ── Subscribe Guide Modal ──────────────────────────────────────────────────────
 function SubscribeGuideModal({ onClose }: { onClose: () => void }) {
   const router = useRouter();
+  const { t } = useTranslation();
   const [domain, setDomain] = React.useState("");
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
@@ -526,22 +529,22 @@ function SubscribeGuideModal({ onClose }: { onClose: () => void }) {
       onClose={onClose}
       icon={<RiCalendarLine className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />}
       iconBg="bg-sky-100 dark:bg-sky-950/40"
-      title="域名到期提醒"
-      subtitle="到期前自动发邮件，不再遗漏续费"
+      title={t("dashboard.sub_guide_title")}
+      subtitle={t("dashboard.sub_guide_subtitle")}
     >
       <MiniMockup highlightClaim={false} />
       <div className="space-y-1.5">
         {[
-          { icon: RiSearchLine, color: "bg-blue-100 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400",    n: "1", title: "搜索你的域名",    desc: "在首页搜索框输入域名，查看 WHOIS 到期信息" },
-          { icon: RiBellLine,   color: "bg-sky-100 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400",        n: "2", title: "点击「订阅」图标", desc: "点击详情页按钮栏中的计时器图标，订阅到期提醒" },
-          { icon: RiMailLine,   color: "bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400", n: "3", title: "自动接收邮件",   desc: "到期前 90天、30天、7天、1天自动发送邮件提醒" },
+          { icon: RiSearchLine, color: "bg-blue-100 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400",    n: "1", title: t("dashboard.sub_step1_title"), desc: t("dashboard.sub_step1_desc") },
+          { icon: RiBellLine,   color: "bg-sky-100 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400",        n: "2", title: t("dashboard.sub_step2_title"), desc: t("dashboard.sub_step2_desc") },
+          { icon: RiMailLine,   color: "bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400", n: "3", title: t("dashboard.sub_step3_title"), desc: t("dashboard.sub_step3_desc") },
         ].map((s) => (
           <div key={s.n} className="flex items-start gap-2.5 px-2.5 py-2 rounded-xl bg-muted/25">
             <div className={cn("w-6 h-6 rounded-lg flex items-center justify-center shrink-0 mt-0.5", s.color)}>
               <s.icon className="w-3 h-3" />
             </div>
             <div className="min-w-0">
-              <p className="text-[9px] font-bold text-muted-foreground/40 uppercase tracking-widest">步骤 {s.n}</p>
+              <p className="text-[9px] font-bold text-muted-foreground/40 uppercase tracking-widest">{t("dashboard.step_n", { n: s.n })}</p>
               <p className="text-xs font-semibold leading-snug">{s.title}</p>
               <p className="text-[10px] text-muted-foreground leading-snug">{s.desc}</p>
             </div>
@@ -551,7 +554,7 @@ function SubscribeGuideModal({ onClose }: { onClose: () => void }) {
       <form onSubmit={handleSearch} className="flex gap-2">
         <Input value={domain} onChange={e => setDomain(e.target.value)} placeholder="x.rw" className="h-9 rounded-xl text-sm font-mono flex-1" />
         <Button type="submit" size="sm" className="h-9 rounded-xl px-3 gap-1 shrink-0 touch-manipulation">
-          前往 <RiArrowRightLine className="w-3.5 h-3.5" />
+          {t("dashboard.go_btn")} <RiArrowRightLine className="w-3.5 h-3.5" />
         </Button>
       </form>
       <button
@@ -563,7 +566,7 @@ function SubscribeGuideModal({ onClose }: { onClose: () => void }) {
         }}
         className="w-full h-9 rounded-xl text-xs touch-manipulation flex items-center justify-center border border-border bg-background hover:bg-muted transition-colors font-medium"
       >
-        <RiShieldCheckLine className="w-3.5 h-3.5 mr-1" />前往品牌认领页
+        <RiShieldCheckLine className="w-3.5 h-3.5 mr-1" />{t("dashboard.go_claim_btn")}
       </button>
     </GuideModalShell>
   );
@@ -742,7 +745,7 @@ export default function DashboardPage() {
   async function handleRedeemCode(e: React.FormEvent) {
     e.preventDefault();
     const code = redeemCode.trim().toUpperCase();
-    if (!code) { toast.error("请输入激活码"); return; }
+    if (!code) { toast.error(t("dashboard.enter_code")); return; }
     setRedeeming(true);
     try {
       const res = await fetch("/api/user/redeem-code", {
@@ -752,7 +755,7 @@ export default function DashboardPage() {
       });
       const data = await res.json();
       if (res.ok) {
-        toast.success(data.message || "激活成功");
+        toast.success(data.message || t("dashboard.redeem_success"));
         setRedeemCode("");
         setSubscriptionAccessDB(data.subscriptionAccess ?? subscriptionAccessDB);
         setSubscriptionExpiresAt(data.subscriptionExpiresAt ?? subscriptionExpiresAt);
@@ -760,7 +763,7 @@ export default function DashboardPage() {
         setBalanceCents(data.balanceCents ?? balanceCents);
         if (data.subscriptionAccess) updateSession({ subscriptionAccess: true });
       } else {
-        toast.error(data.error || "激活失败");
+        toast.error(data.error || t("dashboard.redeem_failed"));
       }
     } catch {
       toast.error(t("remind.network_error"));
@@ -780,9 +783,9 @@ export default function DashboardPage() {
       await fetch(`/api/user/subscriptions?id=${id}`, { method: "DELETE" });
       setSubscriptions(prev => prev.map(s => s.id === id ? { ...s, active: false } : s));
       invalidateDashCache();
-      toast.success("已取消订阅");
+      toast.success(t("dashboard.sub_cancelled"));
     } catch {
-      toast.error("操作失败");
+      toast.error(t("dashboard.op_failed"));
     } finally {
       setCancelling(null);
     }
@@ -799,9 +802,9 @@ export default function DashboardPage() {
       if (!res.ok) throw new Error((await res.json()).error);
       setSubscriptions(prev => prev.map(s => s.id === id ? { ...s, days_before: days } : s));
       invalidateDashCache();
-      toast.success(`提前 ${days} 天提醒已更新`);
+      toast.success(t("dashboard.days_before_updated", { days }));
     } catch (e: any) {
-      toast.error(e.message || "更新失败");
+      toast.error(e.message || t("dashboard.update_failed"));
     } finally {
       setSavingDaysBefore(null);
     }
@@ -814,16 +817,16 @@ export default function DashboardPage() {
       if (!res.ok) throw new Error((await res.json()).error);
       setStamps(prev => prev.filter(s => s.id !== id));
       invalidateDashCache();
-      toast.success("已删除品牌认领");
+      toast.success(t("dashboard.stamp_deleted"));
     } catch (e: any) {
-      toast.error(e.message || "删除失败");
+      toast.error(e.message || t("dashboard.delete_failed"));
     } finally {
       setDeletingStamp(null);
     }
   }
 
   async function clearAllHistory() {
-    if (!window.confirm(`确定要清空全部 ${historyTotal} 条搜索记录吗？此操作不可撤销。`)) return;
+    if (!window.confirm(t("dashboard.confirm_clear_history", { count: historyTotal }))) return;
     setClearingHistory(true);
     try {
       await fetch("/api/user/search-history?id=all", { method: "DELETE" });
@@ -831,9 +834,9 @@ export default function DashboardPage() {
       setHistoryTotal(0);
       setHistoryPages(1);
       setHistoryPage(1);
-      toast.success("搜索历史已清空");
+      toast.success(t("dashboard.history_cleared"));
     } catch {
-      toast.error("操作失败");
+      toast.error(t("dashboard.op_failed"));
     } finally {
       setClearingHistory(false);
     }
@@ -841,18 +844,18 @@ export default function DashboardPage() {
 
   function exportSubscriptionsCSV() {
     const activeSubs = subscriptions.filter(s => s.active);
-    if (activeSubs.length === 0) { toast.info("没有有效订阅可导出"); return; }
+    if (activeSubs.length === 0) { toast.info(t("dashboard.csv_empty")); return; }
     const rows = [
-      ["域名", "到期日期", "当前阶段", "距到期天数", "预计释放日", "提前提醒天数", "上次提醒", "订阅时间"],
+      [t("dashboard.csv_domain"), t("dashboard.csv_expiry"), t("dashboard.csv_phase"), t("dashboard.csv_days"), t("dashboard.csv_drop"), t("dashboard.csv_advance"), t("dashboard.csv_last_reminded"), t("dashboard.csv_created")],
       ...activeSubs.map(s => [
         s.domain,
-        s.expiration_date ? new Date(s.expiration_date).toLocaleDateString("zh-CN") : "未知",
-        s.phase ?? "未知",
+        s.expiration_date ? new Date(s.expiration_date).toLocaleDateString() : t("dashboard.unknown"),
+        s.phase ?? t("dashboard.unknown"),
         s.days_to_expiry !== null ? String(s.days_to_expiry) : "—",
-        s.drop_date ? new Date(s.drop_date).toLocaleDateString("zh-CN") : "—",
+        s.drop_date ? new Date(s.drop_date).toLocaleDateString() : "—",
         String(s.days_before ?? 30),
-        s.last_reminded_at ? new Date(s.last_reminded_at).toLocaleDateString("zh-CN") : "从未",
-        new Date(s.created_at).toLocaleDateString("zh-CN"),
+        s.last_reminded_at ? new Date(s.last_reminded_at).toLocaleDateString() : t("dashboard.never"),
+        new Date(s.created_at).toLocaleDateString(),
       ]),
     ];
     const csv = rows.map(r => r.map(c => `"${c}"`).join(",")).join("\n");
@@ -861,22 +864,22 @@ export default function DashboardPage() {
     const a = document.createElement("a");
     a.href = url; a.download = "domain-subscriptions.csv"; a.click();
     URL.revokeObjectURL(url);
-    toast.success(`已导出 ${activeSubs.length} 条订阅记录`);
+    toast.success(t("dashboard.csv_exported", { count: activeSubs.length }));
   }
 
   function daysUntilExpiry(sub: Subscription): number | null {
     return sub.days_to_expiry ?? null;
   }
 
-  const AVATAR_COLORS: { key: string; bg: string; text: string; label: string }[] = [
-    { key: "violet", bg: "bg-violet-500", text: "text-white", label: "紫" },
-    { key: "blue",   bg: "bg-blue-500",   text: "text-white", label: "蓝" },
-    { key: "emerald",bg: "bg-emerald-500",text: "text-white", label: "绿" },
-    { key: "orange", bg: "bg-orange-500", text: "text-white", label: "橙" },
-    { key: "pink",   bg: "bg-pink-500",   text: "text-white", label: "粉" },
-    { key: "red",    bg: "bg-red-500",    text: "text-white", label: "红" },
-    { key: "yellow", bg: "bg-yellow-400", text: "text-black", label: "黄" },
-    { key: "slate",  bg: "bg-slate-600",  text: "text-white", label: "灰" },
+  const AVATAR_COLORS: { key: string; bg: string; text: string }[] = [
+    { key: "violet", bg: "bg-violet-500", text: "text-white" },
+    { key: "blue",   bg: "bg-blue-500",   text: "text-white" },
+    { key: "emerald",bg: "bg-emerald-500",text: "text-white" },
+    { key: "orange", bg: "bg-orange-500", text: "text-white" },
+    { key: "pink",   bg: "bg-pink-500",   text: "text-white" },
+    { key: "red",    bg: "bg-red-500",    text: "text-white" },
+    { key: "yellow", bg: "bg-yellow-400", text: "text-black" },
+    { key: "slate",  bg: "bg-slate-600",  text: "text-white" },
   ];
 
   React.useEffect(() => {
@@ -900,17 +903,17 @@ export default function DashboardPage() {
       });
       if (!res.ok) throw new Error((await res.json()).error);
       await updateSession({ name: nameValue.trim() || null });
-      toast.success("昵称已更新");
+      toast.success(t("dashboard.name_updated"));
       setEditingName(false);
     } catch (e: any) {
-      toast.error(e.message || "更新失败");
+      toast.error(e.message || t("dashboard.update_failed"));
     } finally {
       setSavingName(false);
     }
   }
 
   async function saveEmail() {
-    if (!emailValue.trim()) { toast.error("请输入新邮箱"); return; }
+    if (!emailValue.trim()) { toast.error(t("dashboard.enter_email")); return; }
     setSavingEmail(true);
     try {
       const res = await fetch("/api/user/profile", {
@@ -921,19 +924,19 @@ export default function DashboardPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       await updateSession({ email: emailValue.trim().toLowerCase() });
-      toast.success("邮箱已更新，请重新登录");
+      toast.success(t("dashboard.email_updated"));
       setEditingEmail(false);
     } catch (e: any) {
-      toast.error(e.message || "更新失败");
+      toast.error(e.message || t("dashboard.update_failed"));
     } finally {
       setSavingEmail(false);
     }
   }
 
   async function changePassword() {
-    if (!currentPwd) { toast.error("请输入当前密码"); return; }
-    if (newPwd.length < 8) { toast.error("新密码至少 8 位"); return; }
-    if (newPwd !== confirmPwd) { toast.error("两次密码不一致"); return; }
+    if (!currentPwd) { toast.error(t("dashboard.enter_current_pwd")); return; }
+    if (newPwd.length < 8) { toast.error(t("dashboard.pwd_min_length")); return; }
+    if (newPwd !== confirmPwd) { toast.error(t("dashboard.pwd_mismatch")); return; }
     setSavingPwd(true);
     try {
       const res = await fetch("/api/user/change-password", {
@@ -943,11 +946,11 @@ export default function DashboardPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      toast.success("密码已更新");
+      toast.success(t("dashboard.pwd_updated"));
       setShowPwdSection(false);
       setCurrentPwd(""); setNewPwd(""); setConfirmPwd("");
     } catch (e: any) {
-      toast.error(e.message || "修改失败");
+      toast.error(e.message || t("dashboard.change_failed"));
     } finally {
       setSavingPwd(false);
     }
@@ -964,7 +967,7 @@ export default function DashboardPage() {
       setAvatarColor(color);
       setEditingAvatar(false);
     } catch {
-      toast.error("保存头像失败");
+      toast.error(t("dashboard.avatar_save_failed"));
     } finally {
       setSavingAvatar(false);
     }
@@ -972,7 +975,7 @@ export default function DashboardPage() {
 
   async function handleApplyInviteCode(e: React.FormEvent) {
     e.preventDefault();
-    if (!inviteCodeInput.trim()) { toast.error("请输入邀请码"); return; }
+    if (!inviteCodeInput.trim()) { toast.error(t("dashboard.enter_invite_code")); return; }
     setApplyingCode(true);
     try {
       const res = await fetch("/api/user/apply-invite-code", {
@@ -982,25 +985,25 @@ export default function DashboardPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        const errMsg = data.error || "邀请码验证失败";
+        const errMsg = data.error || t("dashboard.invite_code_invalid");
         if (errMsg === "你已拥有订阅权限") {
           setSubscriptionAccessDB(true);
           await updateSession({ subscriptionAccess: true });
           setInviteCodeInput("");
           setTab("subscriptions");
-          toast.success("订阅权限已就绪，已切换到订阅管理");
+          toast.success(t("dashboard.already_has_access"));
           return;
         }
         toast.error(errMsg);
         return;
       }
-      toast.success("邀请码验证成功，已解锁域名订阅功能！");
+      toast.success(t("dashboard.invite_code_success"));
       setSubscriptionAccessDB(true);
       await updateSession({ subscriptionAccess: true });
       setInviteCodeInput("");
       setTab("subscriptions");
     } catch {
-      toast.error("操作失败，请稍后重试");
+      toast.error(t("dashboard.op_failed_retry"));
     } finally {
       setApplyingCode(false);
     }
@@ -1032,15 +1035,15 @@ export default function DashboardPage() {
   const verifiedStamps = stamps.filter(s => s.verified);
 
   const TABS = [
-    { key: "subscriptions" as const, label: "域名订阅", icon: <RiCalendarLine className="w-3.5 h-3.5" />, count: activeSubs.length || undefined },
-    { key: "stamps" as const, label: "品牌认领", icon: <RiShieldCheckLine className="w-3.5 h-3.5" />, count: stamps.length || undefined },
-    { key: "membership" as const, label: "会员", icon: <RiVipCrownLine className="w-3.5 h-3.5" /> },
-    { key: "history" as const, label: "搜索历史", icon: <RiHistoryLine className="w-3.5 h-3.5" />, count: historyTotal || undefined },
-    { key: "account" as const, label: "账户", icon: <RiUserLine className="w-3.5 h-3.5" /> },
+    { key: "subscriptions" as const, label: t("dashboard.tab_subscriptions"), icon: <RiCalendarLine className="w-3.5 h-3.5" />, count: activeSubs.length || undefined },
+    { key: "stamps" as const, label: t("dashboard.tab_stamps"), icon: <RiShieldCheckLine className="w-3.5 h-3.5" />, count: stamps.length || undefined },
+    { key: "membership" as const, label: t("dashboard.tab_membership"), icon: <RiVipCrownLine className="w-3.5 h-3.5" /> },
+    { key: "history" as const, label: t("dashboard.tab_history"), icon: <RiHistoryLine className="w-3.5 h-3.5" />, count: historyTotal || undefined },
+    { key: "account" as const, label: t("dashboard.tab_account"), icon: <RiUserLine className="w-3.5 h-3.5" /> },
   ];
 
   const QUERY_TYPE_LABEL: Record<string, string> = {
-    domain: "域名", ipv4: "IPv4", ipv6: "IPv6", asn: "ASN", cidr: "CIDR",
+    domain: t("dashboard.qtype_domain"), ipv4: "IPv4", ipv6: "IPv6", asn: "ASN", cidr: "CIDR",
   };
 
   return (
@@ -1103,7 +1106,7 @@ export default function DashboardPage() {
               </div>
               <div>
                 <p className="text-base font-bold leading-none">{activeSubs.length}</p>
-                <p className="text-[10px] text-muted-foreground mt-0.5">有效订阅</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">{t("dashboard.stat_active_subs")}</p>
               </div>
             </div>
             <div className={cn(
@@ -1125,7 +1128,7 @@ export default function DashboardPage() {
                   urgentSubs.length > 0 ? "text-red-600 dark:text-red-400" :
                   expiringSoon.length > 0 ? "text-amber-600 dark:text-amber-400" : ""
                 )}>{expiringSoon.length}</p>
-                <p className="text-[10px] text-muted-foreground mt-0.5">30天内到期</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">{t("dashboard.stat_expiring_30")}</p>
               </div>
             </div>
             <div className="glass-panel border border-border rounded-xl px-3 py-2.5 flex items-center gap-2.5">
@@ -1134,7 +1137,7 @@ export default function DashboardPage() {
               </div>
               <div>
                 <p className="text-base font-bold leading-none">{verifiedStamps.length}</p>
-                <p className="text-[10px] text-muted-foreground mt-0.5">已验证品牌</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">{t("dashboard.stat_verified_brands")}</p>
               </div>
             </div>
             <div className="glass-panel border border-border rounded-xl px-3 py-2.5 flex items-center gap-2.5">
@@ -1143,7 +1146,7 @@ export default function DashboardPage() {
               </div>
               <div>
                 <p className="text-base font-bold leading-none">{historyTotal || searchHistory.length}</p>
-                <p className="text-[10px] text-muted-foreground mt-0.5">历史查询</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">{t("dashboard.stat_history")}</p>
               </div>
             </div>
           </div>
@@ -1182,28 +1185,28 @@ export default function DashboardPage() {
                       <RiLockLine className="w-6 h-6 text-amber-500" />
                     </div>
                     <div className="space-y-1">
-                      <p className="text-sm font-bold">需要邀请码</p>
+                      <p className="text-sm font-bold">{t("dashboard.needs_invite")}</p>
                       <p className="text-xs text-muted-foreground leading-relaxed max-w-[220px] mx-auto">
-                        域名订阅功能需要邀请码才能解锁，输入邀请码立即生效，无需重新注册。
+                        {t("dashboard.needs_invite_desc")}
                       </p>
                     </div>
                   </div>
                   {paymentEnabled && (
                     <Link href="/payment/checkout">
                       <Button className="w-full h-9 rounded-xl gap-1.5 text-xs bg-violet-600 hover:bg-violet-700 text-white">
-                        <RiBankCardLine className="w-3.5 h-3.5" />购买套餐解锁
+                        <RiBankCardLine className="w-3.5 h-3.5" />{t("dashboard.buy_plan_unlock")}
                       </Button>
                     </Link>
                   )}
                   <div className="flex items-center gap-2 text-[11px] text-muted-foreground/50 justify-center select-none">
-                    <span>—— 或使用邀请码 ——</span>
+                    <span>{t("dashboard.or_invite_code")}</span>
                   </div>
                   <form onSubmit={handleApplyInviteCode} className="space-y-2">
                     <div className="relative">
                       <RiKeyLine className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50" />
                       <input
                         type="text"
-                        placeholder="输入邀请码，如 XXXXXX-XXXXXX-XXXXXX"
+                        placeholder={t("dashboard.invite_code_placeholder")}
                         value={inviteCodeInput}
                         onChange={e => setInviteCodeInput(e.target.value.toUpperCase())}
                         disabled={applyingCode}
@@ -1219,8 +1222,8 @@ export default function DashboardPage() {
                       className="w-full h-9 rounded-xl gap-1.5 text-xs"
                     >
                       {applyingCode
-                        ? <><RiLoader4Line className="w-3.5 h-3.5 animate-spin" />验证中…</>
-                        : <><RiKeyLine className="w-3.5 h-3.5" />验证并解锁</>
+                        ? <><RiLoader4Line className="w-3.5 h-3.5 animate-spin" />{t("dashboard.verifying")}</>
+                        : <><RiKeyLine className="w-3.5 h-3.5" />{t("dashboard.verify_unlock")}</>
                       }
                     </Button>
                   </form>
@@ -1229,21 +1232,21 @@ export default function DashboardPage() {
               {(subscriptionAccessDB ?? (user as any).subscriptionAccess) && <>
               {/* Header */}
               <div className="flex items-center justify-between gap-2">
-                <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">域名到期提醒</p>
+                <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{t("dashboard.sub_section_title")}</p>
                 <div className="flex items-center gap-2">
                   {activeSubs.length > 0 && (
                     <button
                       onClick={exportSubscriptionsCSV}
                       className="text-[11px] text-muted-foreground hover:text-foreground flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-muted transition-colors"
                     >
-                      <RiDownloadLine className="w-3 h-3" />导出 CSV
+                      <RiDownloadLine className="w-3 h-3" />{t("dashboard.export_csv")}
                     </button>
                   )}
                   <button
                     onClick={() => setShowSubscribeGuide(true)}
                     className="text-[11px] text-primary hover:underline flex items-center gap-1"
                   >
-                    <RiCalendarLine className="w-3 h-3" />新增订阅
+                    <RiCalendarLine className="w-3 h-3" />{t("dashboard.new_sub")}
                   </button>
                 </div>
               </div>
@@ -1252,7 +1255,7 @@ export default function DashboardPage() {
               {subscriptionExpiresAt && (
                 <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-violet-50 dark:bg-violet-950/20 border border-violet-200/50 dark:border-violet-700/30 text-[11px] text-violet-700 dark:text-violet-400">
                   <RiVipCrownLine className="w-3 h-3 shrink-0" />
-                  <span>会员有效期至 <span className="font-semibold font-mono">{new Date(subscriptionExpiresAt).toLocaleDateString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit" })}</span></span>
+                  <span>{t("dashboard.member_until")} <span className="font-semibold font-mono">{new Date(subscriptionExpiresAt).toLocaleDateString()}</span></span>
                 </div>
               )}
 
@@ -1260,21 +1263,21 @@ export default function DashboardPage() {
               {activeSubs.length > 0 && (
                 <div className="flex flex-wrap gap-1.5">
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 text-[10px] font-semibold border border-emerald-200/50 dark:border-emerald-700/30">
-                    <RiCheckLine className="w-2.5 h-2.5" />{activeSubs.length} 有效
+                    <RiCheckLine className="w-2.5 h-2.5" />{activeSubs.length} {t("dashboard.chip_active")}
                   </span>
                   {expiringSoon.length > 0 && (
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 text-[10px] font-semibold border border-amber-200/50 dark:border-amber-700/30">
-                      <RiTimerLine className="w-2.5 h-2.5" />{expiringSoon.length} 即将到期
+                      <RiTimerLine className="w-2.5 h-2.5" />{expiringSoon.length} {t("dashboard.chip_expiring")}
                     </span>
                   )}
                   {urgentSubs.length > 0 && (
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400 text-[10px] font-semibold border border-red-200/50 dark:border-red-700/30">
-                      <RiFireLine className="w-2.5 h-2.5" />{urgentSubs.length} 紧急
+                      <RiFireLine className="w-2.5 h-2.5" />{urgentSubs.length} {t("dashboard.chip_urgent")}
                     </span>
                   )}
                   {postExpirySubs.length > 0 && (
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-orange-50 dark:bg-orange-950/30 text-orange-700 dark:text-orange-400 text-[10px] font-semibold border border-orange-200/50 dark:border-orange-700/30">
-                      <RiAlertLine className="w-2.5 h-2.5" />{postExpirySubs.length} 已过期
+                      <RiAlertLine className="w-2.5 h-2.5" />{postExpirySubs.length} {t("dashboard.chip_expired")}
                     </span>
                   )}
                 </div>
@@ -1286,10 +1289,10 @@ export default function DashboardPage() {
                   <RiFireLine className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
                   <div>
                     <p className="text-xs text-red-700 dark:text-red-300 font-semibold">
-                      {urgentSubs.length} 个域名即将到期
+                      {t("dashboard.urgent_domains", { count: urgentSubs.length })}
                     </p>
                     <p className="text-[11px] text-red-600/80 dark:text-red-400/80 mt-0.5">
-                      {urgentSubs.map(s => s.domain).join("、")}
+                      {urgentSubs.map(s => s.domain).join(", ")}
                     </p>
                   </div>
                 </div>
@@ -1301,10 +1304,10 @@ export default function DashboardPage() {
                   <RiAlertLine className="w-4 h-4 text-orange-500 shrink-0 mt-0.5" />
                   <div>
                     <p className="text-xs text-orange-700 dark:text-orange-300 font-semibold">
-                      {postExpirySubs.length} 个域名已过到期日，处于保护期内
+                      {t("dashboard.post_expiry_domains", { count: postExpirySubs.length })}
                     </p>
                     <p className="text-[11px] text-orange-600/80 dark:text-orange-400/80 mt-0.5">
-                      {postExpirySubs.map(s => s.domain).join("、")}
+                      {postExpirySubs.map(s => s.domain).join(", ")}
                     </p>
                   </div>
                 </div>
@@ -1315,11 +1318,11 @@ export default function DashboardPage() {
               ) : dashError ? (
                 <div className="flex flex-col items-center py-10 gap-3 text-center">
                   <RiAlertLine className="w-7 h-7 text-destructive/60" />
-                  <p className="text-sm text-muted-foreground">数据加载失败，请重试</p>
+                  <p className="text-sm text-muted-foreground">{t("dashboard.load_failed")}</p>
                   <Button size="sm" variant="outline" className="rounded-xl text-xs gap-1.5" onClick={() => {
                     setDashError(false); setLoadingData(true);
                     fetchDashData().then(applyDashData).catch(() => setDashError(true)).finally(() => setLoadingData(false));
-                  }}>重新加载</Button>
+                  }}>{t("dashboard.reload")}</Button>
                 </div>
               ) : subscriptions.length === 0 ? (
                 <div className="text-center py-12 space-y-4">
@@ -1327,9 +1330,9 @@ export default function DashboardPage() {
                     <RiCalendarLine className="w-7 h-7 text-muted-foreground/40" />
                   </div>
                   <div className="space-y-1.5">
-                    <p className="text-sm font-semibold">还没有订阅</p>
+                    <p className="text-sm font-semibold">{t("dashboard.no_subs")}</p>
                     <p className="text-xs text-muted-foreground leading-relaxed">
-                      订阅你的域名，到期前自动发送邮件提醒<br/>再也不会因忘记续费而丢失域名
+                      {t("dashboard.no_subs_desc")}
                     </p>
                   </div>
                   <div className="flex flex-col gap-2 items-center">
@@ -1339,10 +1342,10 @@ export default function DashboardPage() {
                       className="rounded-xl text-xs gap-1.5"
                       onClick={() => setShowSubscribeGuide(true)}
                     >
-                      <RiBellLine className="w-3.5 h-3.5" />如何订阅
+                      <RiBellLine className="w-3.5 h-3.5" />{t("dashboard.how_to_sub")}
                     </Button>
                     <Link href="/remind" className="text-[11px] text-muted-foreground hover:text-primary underline underline-offset-2">
-                      前往订阅管理页
+                      {t("dashboard.go_sub_mgmt")}
                     </Link>
                   </div>
                 </div>
@@ -1380,10 +1383,10 @@ export default function DashboardPage() {
 
                 // Phase guidance text
                 const phaseGuidance: Record<string, string> = {
-                  grace: "域名已过期仍在宽限期，请尽快联系注册商续费",
-                  redemption: "宽限期已过，需支付赎回费用方可找回",
-                  pendingDelete: "赎回期已过，域名即将删除，等待公开抢注",
-                  dropped: "域名已释放，可直接重新注册",
+                  grace: t("dashboard.phase_guidance_grace"),
+                  redemption: t("dashboard.phase_guidance_redemption"),
+                  pendingDelete: t("dashboard.phase_guidance_pendingDelete"),
+                  dropped: t("dashboard.phase_guidance_dropped"),
                 };
 
                 return (
@@ -1410,20 +1413,20 @@ export default function DashboardPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <p className="text-sm font-semibold truncate">{sub.domain}</p>
-                          {!sub.active && <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">已取消</span>}
+                          {!sub.active && <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{t("dashboard.cancelled")}</span>}
                           {isUrgent && (
                             <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400 font-semibold border border-red-300/50">
-                              {days === 0 ? "今日到期" : `${days}天后到期`}
+                              {days === 0 ? t("dashboard.expires_today") : t("dashboard.expires_in_days", { days })}
                             </span>
                           )}
                           {isWarn && !isUrgent && !isPostExpiry && (
                             <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 font-semibold border border-amber-300/50">
-                              {days}天后到期
+                              {t("dashboard.expires_in_days", { days })}
                             </span>
                           )}
                           {isDropSoon && (
                             <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-purple-100 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 font-semibold border border-purple-300/50">
-                              {daysDropping === 0 ? "今日可抢注" : `${daysDropping}天后可抢注`}
+                              {daysDropping === 0 ? t("dashboard.drop_today") : t("dashboard.drop_in_days", { days: daysDropping })}
                             </span>
                           )}
                           {phaseInfo && phase !== "active" && (
@@ -1432,20 +1435,20 @@ export default function DashboardPage() {
                               phase === "redemption" ? "bg-orange-50 dark:bg-orange-950/30 border-orange-300/50" :
                               phase === "pendingDelete" ? "bg-purple-50 dark:bg-purple-950/30 border-purple-300/50" :
                               "bg-muted border-border/50"
-                            )}>{phaseInfo.label}</span>
+                            )}>{t("dashboard.phase_" + phase)}</span>
                           )}
                         </div>
                         <p className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1">
                           <RiTimeLine className="w-3 h-3 shrink-0" />
                           {sub.expiration_date
-                            ? `到期：${fmt(new Date(sub.expiration_date))}`
-                            : "到期日期未设置"}
+                            ? t("dashboard.expires_on", { date: fmt(new Date(sub.expiration_date)) })
+                            : t("dashboard.expiry_not_set")}
                         </p>
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
                         <button
                           onClick={() => setEditingSubscription(sub)}
-                          title="编辑到期日期"
+                          title={t("dashboard.edit_expiry_title")}
                           className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
                           <RiEdit2Line className="w-3.5 h-3.5" />
                         </button>
@@ -1467,9 +1470,9 @@ export default function DashboardPage() {
                     {sub.active && sub.expiration_date && phase === "active" && (
                       <div className="space-y-1">
                         <div className="flex justify-between items-center">
-                          <span className="text-[10px] text-muted-foreground">剩余有效期</span>
+                          <span className="text-[10px] text-muted-foreground">{t("dashboard.remaining_validity")}</span>
                           <span className="text-[10px] font-semibold text-muted-foreground tabular-nums">
-                            {days !== null && days > 0 ? `${days} 天` : days === 0 ? "今日到期" : "已到期"}
+                            {days !== null && days > 0 ? t("dashboard.n_days", { days }) : days === 0 ? t("dashboard.expires_today") : t("dashboard.expired")}
                           </span>
                         </div>
                         <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
@@ -1499,16 +1502,16 @@ export default function DashboardPage() {
                             <RiCalendarLine className="w-3 h-3 text-muted-foreground shrink-0" />
                             <span className="text-[11px] text-muted-foreground truncate">
                               {nextReminderIsUpcoming
-                                ? <>下次提醒 <span className="font-medium text-foreground">{fmt(nextReminderDate!)}</span></>
+                                ? <>{t("dashboard.next_reminder")} <span className="font-medium text-foreground">{fmt(nextReminderDate!)}</span></>
                                 : phase === "dropped"
-                                  ? "域名已释放，无待发提醒"
-                                  : "暂无待发提醒"
+                                  ? t("dashboard.no_pending_reminder")
+                                  : t("dashboard.no_reminder")
                               }
                             </span>
                           </div>
                           {sub.next_reminder_days !== null && sub.next_reminder_days !== undefined && nextReminderIsUpcoming && (
                             <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/8 text-primary font-semibold shrink-0 tabular-nums">
-                              提前 {sub.next_reminder_days}天
+                              {t("dashboard.advance_days", { days: sub.next_reminder_days })}
                             </span>
                           )}
                         </div>
@@ -1519,15 +1522,15 @@ export default function DashboardPage() {
                           <span className="text-[11px] text-muted-foreground">
                             {daysSinceLastReminder !== null
                               ? daysSinceLastReminder === 0
-                                ? <>上次提醒 <span className="font-medium text-foreground">今天</span></>
-                                : <>上次提醒 <span className="font-medium text-foreground">{daysSinceLastReminder} 天前</span></>
-                              : "尚未发送过提醒"}
+                                ? <>{t("dashboard.last_reminded_today")}</>
+                                : <>{t("dashboard.last_reminded_days_ago", { days: daysSinceLastReminder })}</>
+                              : t("dashboard.never_reminded")}
                           </span>
                         </div>
 
                         {/* days_before inline editor */}
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-[10px] text-muted-foreground">提醒阈值：</span>
+                          <span className="text-[10px] text-muted-foreground">{t("dashboard.reminder_threshold")}</span>
                           {[7, 14, 30, 60, 90].map(d => (
                             <button
                               key={d}
@@ -1542,7 +1545,7 @@ export default function DashboardPage() {
                             >
                               {savingDaysBefore === sub.id && sub.days_before === d
                                 ? "…"
-                                : `${d}天`}
+                                : t("dashboard.n_days_abbr", { days: d })}
                             </button>
                           ))}
                         </div>
@@ -1553,19 +1556,19 @@ export default function DashboardPage() {
                     {sub.drop_date && sub.expiration_date && (
                       <div className="grid grid-cols-3 gap-2 pt-2 border-t border-border/40">
                         <div className="text-center">
-                          <p className="text-[10px] text-muted-foreground mb-0.5">宽限期结束</p>
+                          <p className="text-[10px] text-muted-foreground mb-0.5">{t("dashboard.grace_end")}</p>
                           <p className={cn("text-[11px] font-semibold tabular-nums", phase === "grace" ? "text-amber-600 dark:text-amber-400" : "text-foreground")}>
                             {sub.grace_end ? fmt(new Date(sub.grace_end)) : "—"}
                           </p>
                         </div>
                         <div className="text-center">
-                          <p className="text-[10px] text-muted-foreground mb-0.5">赎回期结束</p>
+                          <p className="text-[10px] text-muted-foreground mb-0.5">{t("dashboard.redemption_end")}</p>
                           <p className={cn("text-[11px] font-semibold tabular-nums", phase === "redemption" ? "text-orange-600 dark:text-orange-400" : "text-foreground")}>
                             {sub.redemption_end ? fmt(new Date(sub.redemption_end)) : "—"}
                           </p>
                         </div>
                         <div className="text-center">
-                          <p className="text-[10px] text-muted-foreground mb-0.5">预计释放</p>
+                          <p className="text-[10px] text-muted-foreground mb-0.5">{t("dashboard.estimated_drop")}</p>
                           <p className={cn("text-[11px] font-semibold tabular-nums", phase === "pendingDelete" || isDropSoon ? "text-purple-600 dark:text-purple-400" : "text-foreground")}>
                             {fmt(new Date(sub.drop_date))}
                           </p>
@@ -1583,12 +1586,12 @@ export default function DashboardPage() {
           {tab === "stamps" && (
             <motion.div key="stamps" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.18 }} className="space-y-3">
               <div className="flex items-center justify-between">
-                <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">品牌认领记录</p>
+                <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{t("dashboard.stamps_section_title")}</p>
                 <button
                   onClick={() => setShowClaimGuide(true)}
                   className="text-xs text-primary hover:underline flex items-center gap-1"
                 >
-                  <RiShieldCheckLine className="w-3 h-3" />认领新域名
+                  <RiShieldCheckLine className="w-3 h-3" />{t("dashboard.claim_new_domain")}
                 </button>
               </div>
               {loadingData ? (
@@ -1596,11 +1599,11 @@ export default function DashboardPage() {
               ) : dashError ? (
                 <div className="flex flex-col items-center py-10 gap-3 text-center">
                   <RiAlertLine className="w-7 h-7 text-destructive/60" />
-                  <p className="text-sm text-muted-foreground">数据加载失败，请重试</p>
+                  <p className="text-sm text-muted-foreground">{t("dashboard.load_failed")}</p>
                   <Button size="sm" variant="outline" className="rounded-xl text-xs gap-1.5" onClick={() => {
                     setDashError(false); setLoadingData(true);
                     fetchDashData().then(applyDashData).catch(() => setDashError(true)).finally(() => setLoadingData(false));
-                  }}>重新加载</Button>
+                  }}>{t("dashboard.reload")}</Button>
                 </div>
               ) : stamps.length === 0 ? (
                 <div className="text-center py-12 space-y-4">
@@ -1608,9 +1611,9 @@ export default function DashboardPage() {
                     <RiShieldCheckLine className="w-7 h-7 text-muted-foreground/40" />
                   </div>
                   <div className="space-y-1.5">
-                    <p className="text-sm font-semibold">还没有品牌认领</p>
+                    <p className="text-sm font-semibold">{t("dashboard.no_stamps")}</p>
                     <p className="text-xs text-muted-foreground leading-relaxed">
-                      认领你拥有的域名，在 WHOIS 查询结果中<br/>显示你的品牌名称和认证标签
+                      {t("dashboard.no_stamps_desc")}
                     </p>
                   </div>
                   <Button
@@ -1619,7 +1622,7 @@ export default function DashboardPage() {
                     className="rounded-xl text-xs gap-1.5"
                     onClick={() => setShowClaimGuide(true)}
                   >
-                    <RiShieldCheckLine className="w-3.5 h-3.5" />如何认领域名
+                    <RiShieldCheckLine className="w-3.5 h-3.5" />{t("dashboard.how_to_claim")}
                   </Button>
                 </div>
               ) : stamps.map(stamp => (
@@ -1631,15 +1634,15 @@ export default function DashboardPage() {
                         <TagBadge style={stamp.tag_style} name={stamp.tag_name} />
                         {stamp.verified
                           ? <span className="flex items-center gap-0.5 text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
-                              <RiCheckLine className="w-3 h-3" />已验证
+                              <RiCheckLine className="w-3 h-3" />{t("dashboard.verified")}
                             </span>
                           : <span className="flex items-center gap-0.5 text-[10px] text-amber-600 dark:text-amber-400 font-semibold">
-                              <RiTimeLine className="w-3 h-3" />待验证
+                              <RiTimeLine className="w-3 h-3" />{t("dashboard.pending_verify")}
                             </span>
                         }
                       </div>
                       <p className="text-[11px] text-muted-foreground mt-1">
-                        昵称：{stamp.nickname}
+                        {t("dashboard.nickname_prefix")}{stamp.nickname}
                         {stamp.link && <> · <a href={stamp.link} target="_blank" rel="noopener noreferrer" className="hover:underline">{stamp.link}</a></>}
                       </p>
                       {stamp.description && (
@@ -1649,7 +1652,7 @@ export default function DashboardPage() {
                     <div className="flex items-center gap-1.5 shrink-0">
                       {!stamp.verified && (
                         <Link href={`/stamp?domain=${stamp.domain}`}>
-                          <button className="p-1.5 rounded-lg hover:bg-violet-50 dark:hover:bg-violet-950/30 text-muted-foreground hover:text-violet-500 transition-colors" title="前往验证">
+                          <button className="p-1.5 rounded-lg hover:bg-violet-50 dark:hover:bg-violet-950/30 text-muted-foreground hover:text-violet-500 transition-colors" title={t("dashboard.go_verify")}>
                             <RiFlashlightLine className="w-3.5 h-3.5" />
                           </button>
                         </Link>
@@ -1664,7 +1667,7 @@ export default function DashboardPage() {
                       <button
                         onClick={() => deleteStamp(stamp.id)}
                         disabled={deletingStamp === stamp.id}
-                        title="删除品牌认领"
+                        title={t("dashboard.delete_stamp_title")}
                         className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 text-muted-foreground hover:text-red-500 transition-colors">
                         {deletingStamp === stamp.id
                           ? <RiLoader4Line className="w-3.5 h-3.5 animate-spin" />
@@ -1675,7 +1678,7 @@ export default function DashboardPage() {
                   {!stamp.verified && (
                     <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/40">
                       <RiAlertLine className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                      <p className="text-[11px] text-muted-foreground">此域名尚未完成验证，前往验证页完成 DNS 或文件验证</p>
+                      <p className="text-[11px] text-muted-foreground">{t("dashboard.stamp_unverified_hint")}</p>
                     </div>
                   )}
                 </div>
@@ -1696,7 +1699,7 @@ export default function DashboardPage() {
               expired: "text-muted-foreground bg-muted border-border",
             };
             const PROVIDER_LABEL: Record<string, string> = {
-              stripe: "信用卡", xunhupay: "扫码支付", alipay: "支付宝", paypal: "PayPal",
+              stripe: t("dashboard.provider_stripe"), xunhupay: t("dashboard.provider_xunhupay"), alipay: t("dashboard.provider_alipay"), paypal: "PayPal",
             };
             return (
               <motion.div key="membership" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.18 }} className="space-y-4">
@@ -1720,22 +1723,22 @@ export default function DashboardPage() {
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-bold">
                         {subscriptionAccessDB
-                          ? (membershipPlan || "会员已激活")
-                          : "普通用户"}
+                          ? (membershipPlan || t("dashboard.member_active_label"))
+                          : t("dashboard.non_member")}
                       </p>
                       {subscriptionAccessDB ? (
                         <p className="text-[10px] text-muted-foreground">
-                          {isLifetime ? "永久会员" : expiresDate
-                            ? `有效期至 ${expiresDate.toLocaleDateString("zh-CN")}（剩余 ${remainingDays} 天）`
-                            : "会员中"}
+                          {isLifetime ? t("dashboard.lifetime_member") : expiresDate
+                            ? t("dashboard.valid_until_details", { date: expiresDate.toLocaleDateString(), days: remainingDays })
+                            : t("dashboard.in_membership")}
                         </p>
                       ) : (
-                        <p className="text-[10px] text-muted-foreground">升级为会员，解锁域名订阅提醒功能</p>
+                        <p className="text-[10px] text-muted-foreground">{t("dashboard.upgrade_sub_desc")}</p>
                       )}
                     </div>
                     {subscriptionAccessDB && (
                       <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300 shrink-0">
-                        {isLifetime ? "永久" : "有效"}
+                        {isLifetime ? t("dashboard.lifetime_badge") : t("dashboard.active_badge")}
                       </span>
                     )}
                   </div>
@@ -1743,7 +1746,7 @@ export default function DashboardPage() {
                   {/* Balance row */}
                   <div className="px-4 py-3 border-t border-border/60 flex items-center justify-between">
                     <span className="text-[11px] text-muted-foreground flex items-center gap-1.5">
-                      <RiWalletLine className="w-3.5 h-3.5" /> 账户余额
+                      <RiWalletLine className="w-3.5 h-3.5" /> {t("dashboard.balance")}
                     </span>
                     <span className="text-sm font-bold font-mono">
                       ¥{(balanceCents / 100).toFixed(2)}
@@ -1756,16 +1759,16 @@ export default function DashboardPage() {
                   <div className="glass-panel border border-violet-200/50 dark:border-violet-800/30 rounded-2xl overflow-hidden">
                     <div className="px-4 pt-3 pb-2 bg-violet-50/50 dark:bg-violet-950/10 flex items-center gap-2 border-b border-violet-100/60 dark:border-violet-800/20">
                       <RiVipCrownLine className="w-3.5 h-3.5 text-violet-500" />
-                      <p className="text-xs font-bold">升级会员，解锁更多权益</p>
+                      <p className="text-xs font-bold">{t("dashboard.upgrade_title")}</p>
                     </div>
                     <div className="px-4 py-3 grid grid-cols-1 gap-1.5">
                       {[
-                        { icon: RiBellLine,         text: "无限域名到期订阅（普通用户限 5 个）" },
-                        { icon: RiShieldCheckLine,  text: "品牌认领高级样式（官方/品牌/认证/合作等）" },
-                        { icon: RiExternalLinkLine, text: "认领页面设置跳转链接与品牌简介（最多 300 字）" },
-                        { icon: RiEdit2Line,        text: "标签标题最多 20 字（普通用户限 5 字）" },
-                        { icon: RiBarChartLine,     text: "WHOIS 查询历史无限记录与导出" },
-                        { icon: RiFlashlightLine,   text: "优先支持与新功能抢先体验" },
+                        { icon: RiBellLine,         text: t("dashboard.benefit_subs") },
+                        { icon: RiShieldCheckLine,  text: t("dashboard.benefit_styles") },
+                        { icon: RiExternalLinkLine, text: t("dashboard.benefit_links") },
+                        { icon: RiEdit2Line,        text: t("dashboard.benefit_tag_len") },
+                        { icon: RiBarChartLine,     text: t("dashboard.benefit_history") },
+                        { icon: RiFlashlightLine,   text: t("dashboard.benefit_priority") },
                       ].map((item, i) => (
                         <div key={i} className="flex items-start gap-2.5">
                           <item.icon className="w-3.5 h-3.5 text-violet-500 mt-0.5 shrink-0" />
@@ -1780,18 +1783,18 @@ export default function DashboardPage() {
                 <div className="glass-panel border border-border rounded-2xl p-4 space-y-3">
                   <div className="flex items-center gap-2">
                     <RiStarLine className="w-3.5 h-3.5 text-violet-500" />
-                    <p className="text-xs font-semibold">购买会员</p>
-                    {!paymentEnabled && <span className="text-[10px] text-muted-foreground/60 ml-auto">联系管理员开通</span>}
+                    <p className="text-xs font-semibold">{t("dashboard.buy_membership")}</p>
+                    {!paymentEnabled && <span className="text-[10px] text-muted-foreground/60 ml-auto">{t("dashboard.contact_admin")}</span>}
                   </div>
                   <div className="grid grid-cols-3 gap-2">
                     {[
-                      { label: "月度会员", sub: "30天", price: "¥XX", badge: null },
-                      { label: "年度会员", sub: "365天", price: "¥XX", badge: "推荐" },
-                      { label: "永久会员", sub: "无限期", price: "¥XX", badge: "最划算" },
+                      { label: t("dashboard.plan_monthly"), sub: t("dashboard.plan_monthly_period"), price: "¥XX", badge: null },
+                      { label: t("dashboard.plan_yearly"), sub: t("dashboard.plan_yearly_period"), price: "¥XX", badge: t("dashboard.plan_badge_recommended") },
+                      { label: t("dashboard.plan_lifetime"), sub: t("dashboard.plan_lifetime_period"), price: "¥XX", badge: t("dashboard.plan_badge_best_value") },
                     ].map(p => (
                       <Link key={p.label} href={paymentEnabled ? "/payment/checkout" : "#"} className={cn(
                         "relative flex flex-col items-center gap-1 px-2 py-3 rounded-xl border text-center transition-all group hover:border-violet-400/60 hover:bg-violet-50/50 dark:hover:bg-violet-950/10",
-                        p.badge === "推荐" ? "border-violet-300/70 dark:border-violet-700/40 bg-violet-50/30 dark:bg-violet-950/10" : "border-border",
+                        p.badge === t("dashboard.plan_badge_recommended") ? "border-violet-300/70 dark:border-violet-700/40 bg-violet-50/30 dark:bg-violet-950/10" : "border-border",
                         !paymentEnabled && "opacity-50 pointer-events-none"
                       )}>
                         {p.badge && (
@@ -1807,10 +1810,10 @@ export default function DashboardPage() {
                   </div>
                   {paymentEnabled ? (
                     <Link href="/payment/checkout" className="flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors py-1">
-                      查看全部套餐及价格 <RiArrowRightLine className="w-3 h-3" />
+                      {t("dashboard.view_all_plans")} <RiArrowRightLine className="w-3 h-3" />
                     </Link>
                   ) : (
-                    <p className="text-[10px] text-muted-foreground/60 text-center py-0.5">支付功能由管理员配置 · 可使用激活码直接兑换</p>
+                    <p className="text-[10px] text-muted-foreground/60 text-center py-0.5">{t("dashboard.payment_note")}</p>
                   )}
                 </div>
 
@@ -1818,20 +1821,20 @@ export default function DashboardPage() {
                 <div className="glass-panel border border-border rounded-2xl p-4 space-y-3">
                   <div className="flex items-center gap-2">
                     <RiCoupon2Line className="w-3.5 h-3.5 text-amber-500" />
-                    <p className="text-xs font-semibold">激活码兑换</p>
+                    <p className="text-xs font-semibold">{t("dashboard.activation_code")}</p>
                   </div>
                   <form onSubmit={handleRedeemCode} className="flex gap-2">
                     <Input
                       value={redeemCode}
                       onChange={e => setRedeemCode(e.target.value.toUpperCase())}
-                      placeholder="输入激活码（如：XXXX-XXXX-XXXX）"
+                      placeholder={t("dashboard.activation_placeholder")}
                       className="h-9 rounded-xl text-sm font-mono flex-1"
                     />
                     <Button type="submit" disabled={redeeming || !redeemCode.trim()} size="sm" className="h-9 rounded-xl px-3 shrink-0">
                       {redeeming ? <RiLoader4Line className="w-4 h-4 animate-spin" /> : <RiGiftLine className="w-4 h-4" />}
                     </Button>
                   </form>
-                  <p className="text-[10px] text-muted-foreground">激活码可兑换会员权益或账户余额，每码限用一次</p>
+                  <p className="text-[10px] text-muted-foreground">{t("dashboard.activation_note")}</p>
                 </div>
 
                 {/* ── 购买记录 ── */}
@@ -1839,7 +1842,7 @@ export default function DashboardPage() {
                   <div className="px-4 py-3 border-b border-border/60 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <RiFileTextLine className="w-3.5 h-3.5 text-muted-foreground" />
-                      <p className="text-xs font-semibold">购买记录</p>
+                      <p className="text-xs font-semibold">{t("dashboard.order_history")}</p>
                     </div>
                     <button
                       onClick={() => {
@@ -1851,7 +1854,7 @@ export default function DashboardPage() {
                       className="text-[10px] text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
                     >
                       <RiRefreshLine className={cn("w-3 h-3", loadingOrders && "animate-spin")} />
-                      刷新
+                      {t("dashboard.refresh")}
                     </button>
                   </div>
 
@@ -1862,7 +1865,7 @@ export default function DashboardPage() {
                   ) : orders.length === 0 ? (
                     <div className="px-4 py-8 text-center text-[11px] text-muted-foreground">
                       <RiCoinLine className="w-7 h-7 mx-auto mb-2 text-muted-foreground/30" />
-                      暂无购买记录
+                      {t("dashboard.no_orders")}
                     </div>
                   ) : (
                     <div className="divide-y divide-border/50">
@@ -1879,7 +1882,7 @@ export default function DashboardPage() {
                           <div className="flex-1 min-w-0">
                             <p className="text-xs font-semibold truncate">{o.plan_name}</p>
                             <p className="text-[10px] text-muted-foreground">
-                              {PROVIDER_LABEL[o.provider] ?? o.provider} · {new Date(o.created_at).toLocaleDateString("zh-CN")}
+                              {PROVIDER_LABEL[o.provider] ?? o.provider} · {new Date(o.created_at).toLocaleDateString()}
                             </p>
                           </div>
                           <div className="text-right shrink-0">
@@ -1888,7 +1891,7 @@ export default function DashboardPage() {
                               "inline-block text-[9px] font-semibold px-1.5 py-0.5 rounded-full border",
                               STATUS_CLS[o.status] ?? STATUS_CLS.expired
                             )}>
-                              {o.status === "paid" ? "已付款" : o.status === "pending" ? "待付款" : o.status === "failed" ? "失败" : "已过期"}
+                              {o.status === "paid" ? t("dashboard.order_paid") : o.status === "pending" ? t("dashboard.order_pending") : o.status === "failed" ? t("dashboard.order_failed") : t("dashboard.order_expired")}
                             </span>
                           </div>
                         </div>
@@ -1979,7 +1982,7 @@ export default function DashboardPage() {
 
                 {/* ── 支付说明 ── */}
                 <div className="px-1 text-[10px] text-muted-foreground/60 text-center leading-relaxed">
-                  支持支付宝、微信扫码、信用卡等方式 · 付款成功后自动激活
+                  {t("dashboard.payment_methods")}
                 </div>
               </motion.div>
             );
@@ -1988,15 +1991,15 @@ export default function DashboardPage() {
           {/* ── Search History ── */}
           {tab === "history" && (() => {
             const STATUS_CFG: Record<string, { label: string; cls: string }> = {
-              registered:   { label: "已注册", cls: "text-emerald-600 bg-emerald-50 border-emerald-300/60 dark:bg-emerald-950/30 dark:border-emerald-700/40" },
-              unregistered: { label: "未注册", cls: "text-sky-600 bg-sky-50 border-sky-300/60 dark:bg-sky-950/30 dark:border-sky-700/40" },
-              reserved:     { label: "保留",   cls: "text-amber-600 bg-amber-50 border-amber-300/60 dark:bg-amber-950/30 dark:border-amber-700/40" },
-              error:        { label: "查询失败", cls: "text-rose-600 bg-rose-50 border-rose-300/60 dark:bg-rose-950/30 dark:border-rose-700/40" },
-              unknown:      { label: "未知",   cls: "text-muted-foreground bg-muted border-border" },
+              registered:   { label: t("dashboard.status_registered"),   cls: "text-emerald-600 bg-emerald-50 border-emerald-300/60 dark:bg-emerald-950/30 dark:border-emerald-700/40" },
+              unregistered: { label: t("dashboard.status_unregistered"), cls: "text-sky-600 bg-sky-50 border-sky-300/60 dark:bg-sky-950/30 dark:border-sky-700/40" },
+              reserved:     { label: t("dashboard.status_reserved"),     cls: "text-amber-600 bg-amber-50 border-amber-300/60 dark:bg-amber-950/30 dark:border-amber-700/40" },
+              error:        { label: t("dashboard.status_error"),        cls: "text-rose-600 bg-rose-50 border-rose-300/60 dark:bg-rose-950/30 dark:border-rose-700/40" },
+              unknown:      { label: t("dashboard.status_unknown"),      cls: "text-muted-foreground bg-muted border-border" },
             };
             const TIER_CFG: Record<string, { label: string; cls: string }> = {
-              high:     { label: "高价值", cls: "text-amber-600 bg-amber-50 border-amber-300/60 dark:bg-amber-950/30 dark:border-amber-700/40" },
-              valuable: { label: "有价值", cls: "text-violet-600 bg-violet-50 border-violet-300/60 dark:bg-violet-950/30 dark:border-violet-700/40" },
+              high:     { label: t("dashboard.tier_high"),     cls: "text-amber-600 bg-amber-50 border-amber-300/60 dark:bg-amber-950/30 dark:border-amber-700/40" },
+              valuable: { label: t("dashboard.tier_valuable"), cls: "text-violet-600 bg-violet-50 border-violet-300/60 dark:bg-violet-950/30 dark:border-violet-700/40" },
             };
             const q = historySearch.trim().toLowerCase();
             const filtered = q ? searchHistory.filter(h => h.query.toLowerCase().includes(q)) : searchHistory;
@@ -2011,9 +2014,9 @@ export default function DashboardPage() {
               <motion.div key="history" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.18 }} className="space-y-3">
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 min-w-0">
-                    <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground shrink-0">搜索历史</p>
+                    <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground shrink-0">{t("dashboard.history_tab_header")}</p>
                     {historyTotal > 0 && (
-                      <span className="text-[10px] text-muted-foreground/60 tabular-nums">共 {historyTotal} 条</span>
+                      <span className="text-[10px] text-muted-foreground/60 tabular-nums">{t("dashboard.history_total", { n: historyTotal })}</span>
                     )}
                   </div>
                   {historyTotal > 0 && (
@@ -2023,7 +2026,7 @@ export default function DashboardPage() {
                       className="text-[11px] text-muted-foreground hover:text-red-500 flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-muted transition-colors shrink-0"
                     >
                       {clearingHistory ? <RiLoader4Line className="w-3 h-3 animate-spin" /> : <RiDeleteBack2Line className="w-3 h-3" />}
-                      全部删除
+                      {t("dashboard.delete_all")}
                     </button>
                   )}
                 </div>
@@ -2036,7 +2039,7 @@ export default function DashboardPage() {
                       type="text"
                       value={historySearch}
                       onChange={e => setHistorySearch(e.target.value)}
-                      placeholder="筛选本页记录…"
+                      placeholder={t("dashboard.filter_placeholder")}
                       className="w-full pl-8 pr-3 py-2 text-sm bg-muted/50 border border-border/60 rounded-xl outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all"
                     />
                     {historySearch && (
@@ -2052,18 +2055,18 @@ export default function DashboardPage() {
                 ) : historyError ? (
                   <div className="flex flex-col items-center py-10 gap-3 text-center">
                     <RiAlertLine className="w-7 h-7 text-destructive/60" />
-                    <p className="text-sm text-muted-foreground">记录加载失败，请重试</p>
+                    <p className="text-sm text-muted-foreground">{t("dashboard.history_load_failed")}</p>
                     <Button size="sm" variant="outline" className="rounded-xl text-xs gap-1.5"
-                      onClick={() => fetchHistory(historyPage)}>重新加载</Button>
+                      onClick={() => fetchHistory(historyPage)}>{t("dashboard.reload")}</Button>
                   </div>
                 ) : searchHistory.length === 0 ? (
                   <div className="text-center py-12 space-y-3">
                     <RiHistoryLine className="w-10 h-10 text-muted-foreground/30 mx-auto" />
-                    <p className="text-sm text-muted-foreground">暂无搜索记录</p>
+                    <p className="text-sm text-muted-foreground">{t("dashboard.no_history")}</p>
                   </div>
                 ) : filtered.length === 0 ? (
                   <div className="text-center py-8">
-                    <p className="text-sm text-muted-foreground">没有匹配「{historySearch}」的记录</p>
+                    <p className="text-sm text-muted-foreground">{t("dashboard.no_match", { q: historySearch })}</p>
                   </div>
                 ) : (
                   <div className="glass-panel border border-border rounded-2xl divide-y divide-border/50">
@@ -2098,7 +2101,7 @@ export default function DashboardPage() {
                               setHistoryTotal(prev => Math.max(0, prev - 1));
                             }}
                             className="p-1 rounded-md text-muted-foreground/40 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors opacity-0 group-hover:opacity-100 shrink-0"
-                            title="删除此条记录"
+                            title={t("dashboard.delete_record")}
                           >
                             <RiDeleteBack2Line className="w-3 h-3" />
                           </button>
@@ -2116,7 +2119,7 @@ export default function DashboardPage() {
                       disabled={historyPage <= 1 || loadingHistory}
                       className="px-3 py-1.5 rounded-lg text-xs font-medium bg-muted hover:bg-muted/80 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                     >
-                      上一页
+                      {t("dashboard.prev_page")}
                     </button>
                     <span className="text-[11px] text-muted-foreground tabular-nums">
                       {historyPage} / {historyPages}
@@ -2126,14 +2129,14 @@ export default function DashboardPage() {
                       disabled={historyPage >= historyPages || loadingHistory}
                       className="px-3 py-1.5 rounded-lg text-xs font-medium bg-muted hover:bg-muted/80 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                     >
-                      下一页
+                      {t("dashboard.next_page")}
                     </button>
                   </div>
                 )}
 
                 {!q && historyTotal > 0 && historyPages <= 1 && (
                   <p className="text-[10px] text-center text-muted-foreground/50">
-                    普通记录保留 10 天 · 有价值 20 天 · 高价值 50 天
+                    {t("dashboard.history_retention")}
                   </p>
                 )}
               </motion.div>
@@ -2161,7 +2164,7 @@ export default function DashboardPage() {
                   </button>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-bold text-base truncate">{(user as any).name || "未设置昵称"}</p>
+                  <p className="font-bold text-base truncate">{(user as any).name || t("dashboard.nickname_not_set")}</p>
                   <p className="text-xs text-muted-foreground truncate">{user.email}</p>
                   {isAdminUser && (
                     <span className="inline-block mt-1 text-[10px] px-2 py-0.5 rounded-full bg-gradient-to-r from-violet-500/20 to-indigo-500/20 text-violet-700 dark:text-violet-300 font-bold border border-violet-200/50 dark:border-violet-700/30 uppercase tracking-wider">
@@ -2174,7 +2177,7 @@ export default function DashboardPage() {
               {/* Color picker */}
               {editingAvatar && (
                 <div className="glass-panel border border-border rounded-2xl p-4 space-y-3">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">选择头像颜色</p>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t("dashboard.select_avatar_color")}</p>
                   <div className="flex gap-2 flex-wrap">
                     {AVATAR_COLORS.map(c => (
                       <button
@@ -2201,7 +2204,7 @@ export default function DashboardPage() {
                 <div className="px-4 py-3 flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2 shrink-0">
                     <RiUserLine className="w-3.5 h-3.5 text-muted-foreground" />
-                    <p className="text-xs text-muted-foreground">昵称</p>
+                    <p className="text-xs text-muted-foreground">{t("dashboard.nickname_field")}</p>
                   </div>
                   {editingName ? (
                     <div className="flex items-center gap-2 flex-1 justify-end">
@@ -2222,7 +2225,7 @@ export default function DashboardPage() {
                     </div>
                   ) : (
                     <div className="flex items-center gap-2">
-                      <p className="text-xs font-semibold">{(user as any).name || "未设置"}</p>
+                      <p className="text-xs font-semibold">{(user as any).name || t("dashboard.not_set")}</p>
                       <button onClick={() => { setNameValue((user as any).name || ""); setEditingName(true); }}
                         className="p-1 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">
                         <RiPencilLine className="w-3.5 h-3.5" />
@@ -2236,7 +2239,7 @@ export default function DashboardPage() {
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2 shrink-0">
                       <RiMailLine className="w-3.5 h-3.5 text-muted-foreground" />
-                      <p className="text-xs text-muted-foreground">邮箱</p>
+                      <p className="text-xs text-muted-foreground">{t("dashboard.email_field")}</p>
                     </div>
                     <div className="flex items-center gap-2">
                       <p className="text-xs font-semibold truncate max-w-[160px]">{user.email}</p>
@@ -2254,17 +2257,17 @@ export default function DashboardPage() {
                         type="email"
                         value={emailValue}
                         onChange={e => setEmailValue(e.target.value)}
-                        placeholder="新邮箱地址"
+                        placeholder={t("dashboard.new_email_placeholder")}
                         className="h-8 rounded-xl text-xs"
                         autoFocus
                       />
-                      <p className="text-[10px] text-amber-600 dark:text-amber-400">更换邮箱后需重新登录</p>
+                      <p className="text-[10px] text-amber-600 dark:text-amber-400">{t("dashboard.email_change_warn")}</p>
                       <div className="flex gap-2">
                         <Button size="sm" onClick={saveEmail} disabled={savingEmail} className="h-7 text-xs rounded-lg gap-1 flex-1">
                           {savingEmail ? <RiLoader4Line className="w-3 h-3 animate-spin" /> : <RiCheckLine className="w-3 h-3" />}
-                          确认更换
+                          {t("dashboard.confirm_change")}
                         </Button>
-                        <Button size="sm" variant="outline" onClick={() => setEditingEmail(false)} className="h-7 text-xs rounded-lg">取消</Button>
+                        <Button size="sm" variant="outline" onClick={() => setEditingEmail(false)} className="h-7 text-xs rounded-lg">{t("dashboard.cancel")}</Button>
                       </div>
                     </div>
                   )}
@@ -2272,8 +2275,8 @@ export default function DashboardPage() {
 
                 {/* Stats */}
                 {[
-                  { label: "域名订阅", value: `${subscriptions.filter(s => s.active).length} 个活跃` },
-                  { label: "品牌认领", value: `${stamps.length} 个（${stamps.filter(s => s.verified).length} 已验证）` },
+                  { label: t("dashboard.domain_sub_count"), value: t("dashboard.active_count", { n: subscriptions.filter(s => s.active).length }) },
+                  { label: t("dashboard.brand_claim_count"), value: t("dashboard.brand_count", { n: stamps.length, v: stamps.filter(s => s.verified).length }) },
                 ].map(row => (
                   <div key={row.label} className="flex items-center justify-between px-4 py-3">
                     <p className="text-xs text-muted-foreground">{row.label}</p>
@@ -2290,16 +2293,16 @@ export default function DashboardPage() {
                 >
                   <div className="flex items-center gap-2">
                     <RiLockLine className="w-3.5 h-3.5 text-muted-foreground" />
-                    <p className="text-xs font-semibold">修改密码</p>
+                    <p className="text-xs font-semibold">{t("dashboard.change_password")}</p>
                   </div>
                   <RiPencilLine className="w-3.5 h-3.5 text-muted-foreground" />
                 </button>
                 {showPwdSection && (
                   <div className="border-t border-border px-4 py-4 space-y-3">
                     {[
-                      { label: "当前密码", value: currentPwd, onChange: setCurrentPwd, show: showCurrent, toggle: () => setShowCurrent(v => !v) },
-                      { label: "新密码（至少 8 位）", value: newPwd, onChange: setNewPwd, show: showNew, toggle: () => setShowNew(v => !v) },
-                      { label: "确认新密码", value: confirmPwd, onChange: setConfirmPwd, show: showNew, toggle: () => {} },
+                      { label: t("dashboard.current_password"), value: currentPwd, onChange: setCurrentPwd, show: showCurrent, toggle: () => setShowCurrent(v => !v) },
+                      { label: t("dashboard.new_password_min"), value: newPwd, onChange: setNewPwd, show: showNew, toggle: () => setShowNew(v => !v) },
+                      { label: t("dashboard.confirm_new_password"), value: confirmPwd, onChange: setConfirmPwd, show: showNew, toggle: () => {} },
                     ].map((f, i) => (
                       <div key={i} className="space-y-1">
                         <Label className="text-[11px] text-muted-foreground">{f.label}</Label>
@@ -2322,9 +2325,9 @@ export default function DashboardPage() {
                     ))}
                     <div className="flex gap-2 pt-1">
                       <Button onClick={changePassword} disabled={savingPwd} className="flex-1 h-9 rounded-xl text-xs gap-1.5">
-                        {savingPwd ? <><RiLoader4Line className="w-3.5 h-3.5 animate-spin" />修改中…</> : <><RiCheckLine className="w-3.5 h-3.5" />确认修改</>}
+                        {savingPwd ? <><RiLoader4Line className="w-3.5 h-3.5 animate-spin" />{t("dashboard.changing")}</> : <><RiCheckLine className="w-3.5 h-3.5" />{t("dashboard.confirm_modify")}</>}
                       </Button>
-                      <Button variant="outline" onClick={() => setShowPwdSection(false)} className="h-9 rounded-xl text-xs">取消</Button>
+                      <Button variant="outline" onClick={() => setShowPwdSection(false)} className="h-9 rounded-xl text-xs">{t("dashboard.cancel")}</Button>
                     </div>
                   </div>
                 )}

@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSiteSettings } from "@/lib/site-settings";
+import { useTranslation } from "@/lib/i18n";
 import {
   RiArrowLeftSLine, RiSearchLine, RiLoader4Line,
   RiGlobalLine, RiMapPinLine, RiWifiLine, RiTimeLine,
@@ -45,20 +46,20 @@ type IpResult = {
   error?: string;
 };
 
-function CopyButton({ text }: { text: string }) {
+function CopyButton({ text, copyLabel }: { text: string; copyLabel: string }) {
   const [copied, setCopied] = React.useState(false);
   return (
     <button
       onClick={() => { navigator.clipboard?.writeText(text).catch(() => {}); setCopied(true); setTimeout(() => setCopied(false), 1500); }}
       className="p-1 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground touch-manipulation"
-      title="复制"
+      title={copyLabel}
     >
       {copied ? <RiCheckLine className="w-3 h-3 text-emerald-500" /> : <RiFileCopyLine className="w-3 h-3" />}
     </button>
   );
 }
 
-function InfoRow({ label, value, mono, badge }: { label: string; value?: string | number | null; mono?: boolean; badge?: React.ReactNode }) {
+function InfoRow({ label, value, mono, badge, copyLabel }: { label: string; value?: string | number | null; mono?: boolean; badge?: React.ReactNode; copyLabel: string }) {
   if (!value && value !== 0) return null;
   const str = String(value);
   return (
@@ -67,7 +68,7 @@ function InfoRow({ label, value, mono, badge }: { label: string; value?: string 
       <div className="flex items-center gap-1.5 flex-1 min-w-0">
         <span className={cn("text-sm break-all flex-1", mono && "font-mono")}>{str}</span>
         {badge}
-        {str && <CopyButton text={str} />}
+        {str && <CopyButton text={str} copyLabel={copyLabel} />}
       </div>
     </div>
   );
@@ -82,7 +83,7 @@ function BoolBadge({ value, trueLabel, falseLabel }: { value: boolean | null; tr
         ? "bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400"
         : "bg-muted text-muted-foreground"
     )}>
-      {value ? trueLabel : (falseLabel || `非${trueLabel}`)}
+      {value ? trueLabel : (falseLabel || trueLabel)}
     </span>
   );
 }
@@ -92,6 +93,7 @@ const FADE = { duration: 0.18, ease: "easeOut" as const };
 export default function IpPage() {
   const router = useRouter();
   const settings = useSiteSettings();
+  const { t } = useTranslation();
   const siteLabel = settings.site_logo_text || "X.RW";
   const [query, setQuery] = React.useState("");
   const [result, setResult] = React.useState<IpResult | null>(null);
@@ -108,7 +110,7 @@ export default function IpPage() {
 
   async function doQuery(q?: string) {
     const input = (q ?? query).trim();
-    if (!input) { toast.error("请输入 IP 地址、主机名或 ASN"); return; }
+    if (!input) { toast.error(t("ip.err_empty")); return; }
 
     setLoading(true);
     setResult(null);
@@ -119,18 +121,19 @@ export default function IpPage() {
       const data: IpResult = await res.json();
       if (data.error) throw new Error(data.error);
       setResult(data);
-    } catch (e: any) {
-      toast.error(e.message || "查询失败");
+    } catch (e: unknown) {
+      toast.error((e as Error).message || t("ip.err_failed"));
     } finally {
       setLoading(false);
     }
   }
 
   const hasResult = !loading && !!result;
+  const copyLabel = t("ip.copy");
 
   return (
     <>
-      <Head><title key="site-title">{`IP / ASN 查询 — ${siteLabel}`}</title></Head>
+      <Head><title key="site-title">{`${t("ip.title")} — ${siteLabel}`}</title></Head>
       <ScrollArea className="w-full h-[calc(100vh-4rem)]">
         <main className="w-full max-w-2xl mx-auto px-4 sm:px-6 py-6 space-y-5">
           <div className="flex items-center gap-3">
@@ -142,8 +145,8 @@ export default function IpPage() {
                 <RiGlobalLine className="w-5 h-5" />
               </div>
               <div>
-                <h1 className="text-lg font-bold leading-none">IP / ASN 查询</h1>
-                <p className="text-[11px] text-muted-foreground mt-0.5">归属地 · ISP · ASN · 代理检测 · RDAP · 时区</p>
+                <h1 className="text-lg font-bold leading-none">{t("ip.title")}</h1>
+                <p className="text-[11px] text-muted-foreground mt-0.5">{t("ip.subtitle")}</p>
               </div>
             </div>
           </div>
@@ -161,12 +164,12 @@ export default function IpPage() {
             </div>
             <Button type="submit" disabled={loading} className="h-10 px-4 rounded-xl gap-2 shrink-0">
               {loading ? <RiLoader4Line className="w-4 h-4 animate-spin" /> : <RiSearchLine className="w-4 h-4" />}
-              查询
+              {t("ip.search")}
             </Button>
           </form>
 
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-[11px] text-muted-foreground">示例：</span>
+            <span className="text-[11px] text-muted-foreground">{t("ip.examples")}</span>
             {["8.8.8.8", "1.1.1.1", "2606:4700:4700::1111", "AS15169", "AS13335"].map(ex => (
               <button
                 key={ex}
@@ -188,7 +191,7 @@ export default function IpPage() {
                     <RiLoader4Line className="w-6 h-6 animate-spin text-violet-500 absolute inset-0 m-auto" />
                   </div>
                   <div className="text-center">
-                    <p className="text-sm font-medium">正在查询归属地和 RDAP 信息…</p>
+                    <p className="text-sm font-medium">{t("ip.loading")}</p>
                     <p className="text-xs text-muted-foreground mt-1">ip-api.com · ARIN / RIPE / APNIC</p>
                   </div>
                 </div>
@@ -211,16 +214,16 @@ export default function IpPage() {
                       <div className="glass-panel border border-border rounded-2xl overflow-hidden">
                         <div className="px-5 py-3 border-b border-border bg-muted/20 flex items-center gap-2">
                           <RiServerLine className="w-3.5 h-3.5 text-muted-foreground" />
-                          <h3 className="text-sm font-bold">RDAP 信息</h3>
+                          <h3 className="text-sm font-bold">{t("ip.rdap_asn_section")}</h3>
                         </div>
                         <div className="px-5">
-                          {result!.rdap.name && <InfoRow label="名称" value={result!.rdap.name} />}
-                          {result!.rdap.handle && <InfoRow label="Handle" value={result!.rdap.handle} mono />}
-                          {result!.rdap.startAutnum && <InfoRow label="ASN 范围" value={result!.rdap.endAutnum ? `${result!.rdap.startAutnum} – ${result!.rdap.endAutnum}` : result!.rdap.startAutnum} mono />}
-                          {result!.rdap.contact_name && <InfoRow label="联系人" value={result!.rdap.contact_name} />}
-                          {result!.rdap.contact_org && <InfoRow label="组织" value={result!.rdap.contact_org} />}
-                          {result!.rdap.contact_email && <InfoRow label="邮箱" value={result!.rdap.contact_email} mono />}
-                          {result!.rdap.description && <InfoRow label="描述" value={result!.rdap.description} />}
+                          {result!.rdap.name && <InfoRow label={t("ip.name_label")} value={result!.rdap.name} copyLabel={copyLabel} />}
+                          {result!.rdap.handle && <InfoRow label="Handle" value={result!.rdap.handle} mono copyLabel={copyLabel} />}
+                          {result!.rdap.startAutnum && <InfoRow label={t("ip.asn_range")} value={result!.rdap.endAutnum ? `${result!.rdap.startAutnum} – ${result!.rdap.endAutnum}` : result!.rdap.startAutnum} mono copyLabel={copyLabel} />}
+                          {result!.rdap.contact_name && <InfoRow label={t("ip.contact")} value={result!.rdap.contact_name} copyLabel={copyLabel} />}
+                          {result!.rdap.contact_org && <InfoRow label={t("ip.org")} value={result!.rdap.contact_org} copyLabel={copyLabel} />}
+                          {result!.rdap.contact_email && <InfoRow label={t("ip.email_label")} value={result!.rdap.contact_email} mono copyLabel={copyLabel} />}
+                          {result!.rdap.description && <InfoRow label={t("ip.description")} value={result!.rdap.description} copyLabel={copyLabel} />}
                         </div>
                       </div>
                     )}
@@ -243,13 +246,13 @@ export default function IpPage() {
                             )}>
                               {result!.type.toUpperCase()}
                             </span>
-                            {result!.proxy && <BoolBadge value={result!.proxy} trueLabel="代理/VPN" />}
-                            {result!.hosting && <BoolBadge value={result!.hosting} trueLabel="数据中心" />}
-                            {result!.mobile && <BoolBadge value={result!.mobile} trueLabel="移动网络" />}
+                            {result!.proxy && <BoolBadge value={result!.proxy} trueLabel={t("ip.proxy")} />}
+                            {result!.hosting && <BoolBadge value={result!.hosting} trueLabel={t("ip.hosting")} />}
+                            {result!.mobile && <BoolBadge value={result!.mobile} trueLabel={t("ip.mobile")} />}
                           </div>
                           {result!.resolvedFrom && (
                             <p className="text-xs text-muted-foreground mt-0.5">
-                              由 <span className="font-mono">{result!.resolvedFrom}</span> 解析
+                              {t("ip.resolved_from")} <span className="font-mono">{result!.resolvedFrom}</span>
                             </p>
                           )}
                           <p className="text-base font-semibold mt-2">
@@ -263,7 +266,7 @@ export default function IpPage() {
                     <div className="glass-panel border border-border rounded-2xl overflow-hidden">
                       <div className="px-5 py-3 border-b border-border bg-muted/20 flex items-center gap-2">
                         <RiMapPinLine className="w-3.5 h-3.5 text-muted-foreground" />
-                        <h3 className="text-sm font-bold">地理位置</h3>
+                        <h3 className="text-sm font-bold">{t("ip.geo_section")}</h3>
                         {result!.lat !== null && result!.lon !== null && (
                           <a
                             href={`https://www.openstreetmap.org/?mlat=${result!.lat}&mlon=${result!.lon}&zoom=10`}
@@ -271,18 +274,18 @@ export default function IpPage() {
                             rel="noopener noreferrer"
                             className="ml-auto flex items-center gap-1 text-[10px] text-primary hover:underline"
                           >
-                            地图 <RiExternalLinkLine className="w-2.5 h-2.5" />
+                            {t("ip.map_link")} <RiExternalLinkLine className="w-2.5 h-2.5" />
                           </a>
                         )}
                       </div>
                       <div className="px-5">
-                        <InfoRow label="国家" value={result!.country ? `${result!.flag || ""} ${result!.country} (${result!.countryCode})` : null} />
-                        <InfoRow label="省/区域" value={result!.region} />
-                        <InfoRow label="城市" value={result!.city} />
-                        <InfoRow label="区县" value={result!.district} />
-                        <InfoRow label="邮编" value={result!.zip} mono />
-                        <InfoRow label="坐标" value={result!.lat !== null ? `${result!.lat}, ${result!.lon}` : null} mono />
-                        <InfoRow label="货币" value={result!.currency} />
+                        <InfoRow label={t("ip.country")} value={result!.country ? `${result!.flag || ""} ${result!.country} (${result!.countryCode})` : null} copyLabel={copyLabel} />
+                        <InfoRow label={t("ip.region")} value={result!.region} copyLabel={copyLabel} />
+                        <InfoRow label={t("ip.city")} value={result!.city} copyLabel={copyLabel} />
+                        <InfoRow label={t("ip.district")} value={result!.district} copyLabel={copyLabel} />
+                        <InfoRow label={t("ip.zip")} value={result!.zip} mono copyLabel={copyLabel} />
+                        <InfoRow label={t("ip.coords")} value={result!.lat !== null ? `${result!.lat}, ${result!.lon}` : null} mono copyLabel={copyLabel} />
+                        <InfoRow label={t("ip.currency")} value={result!.currency} copyLabel={copyLabel} />
                       </div>
                     </div>
 
@@ -297,13 +300,13 @@ export default function IpPage() {
                           <div className="h-36 bg-muted/30 flex items-center justify-center relative group">
                             <img
                               src={`https://static-maps.yandex.ru/1.x/?lang=en_US&ll=${result!.lon},${result!.lat}&z=8&l=map&size=600,200&pt=${result!.lon},${result!.lat},pm2rdm`}
-                              alt="地图预览"
+                              alt={t("ip.geo_section")}
                               className="w-full h-full object-cover"
                               onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
                             />
                             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-end justify-end p-2">
                               <span className="text-[10px] bg-black/50 text-white px-2 py-1 rounded flex items-center gap-1">
-                                在 OpenStreetMap 查看 <RiExternalLinkLine className="w-2.5 h-2.5" />
+                                {t("ip.open_map")} <RiExternalLinkLine className="w-2.5 h-2.5" />
                               </span>
                             </div>
                           </div>
@@ -314,14 +317,14 @@ export default function IpPage() {
                     <div className="glass-panel border border-border rounded-2xl overflow-hidden">
                       <div className="px-5 py-3 border-b border-border bg-muted/20 flex items-center gap-2">
                         <RiWifiLine className="w-3.5 h-3.5 text-muted-foreground" />
-                        <h3 className="text-sm font-bold">网络信息</h3>
+                        <h3 className="text-sm font-bold">{t("ip.net_section")}</h3>
                       </div>
                       <div className="px-5">
-                        <InfoRow label="ISP" value={result!.isp} />
-                        <InfoRow label="组织" value={result!.org} />
-                        <InfoRow label="ASN" value={result!.as} mono />
-                        <InfoRow label="ASN 名称" value={result!.asname} />
-                        <InfoRow label="反向 DNS" value={result!.reverse} mono />
+                        <InfoRow label="ISP" value={result!.isp} copyLabel={copyLabel} />
+                        <InfoRow label={t("ip.org")} value={result!.org} copyLabel={copyLabel} />
+                        <InfoRow label="ASN" value={result!.as} mono copyLabel={copyLabel} />
+                        <InfoRow label={t("ip.asn_name")} value={result!.asname} copyLabel={copyLabel} />
+                        <InfoRow label={t("ip.reverse_dns")} value={result!.reverse} mono copyLabel={copyLabel} />
                       </div>
                     </div>
 
@@ -329,20 +332,20 @@ export default function IpPage() {
                       <div className="glass-panel border border-border rounded-2xl overflow-hidden">
                         <div className="px-5 py-3 border-b border-border bg-muted/20 flex items-center gap-2">
                           <RiTimeLine className="w-3.5 h-3.5 text-muted-foreground" />
-                          <h3 className="text-sm font-bold">时区</h3>
+                          <h3 className="text-sm font-bold">{t("ip.tz_section")}</h3>
                         </div>
                         <div className="px-5">
-                          <InfoRow label="时区" value={result!.timezone} mono />
-                          <InfoRow label="UTC 偏移" value={result!.offset !== null ? `UTC${result!.offset >= 0 ? "+" : ""}${result!.offset / 3600}` : null} mono />
+                          <InfoRow label={t("ip.timezone")} value={result!.timezone} mono copyLabel={copyLabel} />
+                          <InfoRow label={t("ip.utc_offset")} value={result!.offset !== null ? `UTC${result!.offset >= 0 ? "+" : ""}${result!.offset / 3600}` : null} mono copyLabel={copyLabel} />
                         </div>
                       </div>
                     )}
 
                     <div className="glass-panel border border-border rounded-2xl p-4 flex flex-wrap gap-3">
                       {[
-                        { label: "代理/VPN",   value: result!.proxy,   icon: RiShieldLine },
-                        { label: "数据中心/托管", value: result!.hosting, icon: RiServerLine },
-                        { label: "移动网络",    value: result!.mobile,  icon: RiWifiLine },
+                        { label: t("ip.proxy"),   value: result!.proxy,   icon: RiShieldLine },
+                        { label: t("ip.hosting"), value: result!.hosting, icon: RiServerLine },
+                        { label: t("ip.mobile"),  value: result!.mobile,  icon: RiWifiLine },
                       ].map(({ label, value, icon: Icon }) => (
                         <div key={label} className={cn(
                           "flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-medium",
@@ -353,7 +356,7 @@ export default function IpPage() {
                           <Icon className="w-3.5 h-3.5" />
                           {label}
                           <span className={cn("text-[10px] font-bold", value === true ? "text-amber-600" : "text-muted-foreground")}>
-                            {value === true ? "是" : value === false ? "否" : "—"}
+                            {value === true ? t("ip.yes") : value === false ? t("ip.no") : "—"}
                           </span>
                         </div>
                       ))}
@@ -363,25 +366,25 @@ export default function IpPage() {
                       <div className="glass-panel border border-border rounded-2xl overflow-hidden">
                         <div className="px-5 py-3 border-b border-border bg-muted/20 flex items-center gap-2">
                           <RiServerLine className="w-3.5 h-3.5 text-muted-foreground" />
-                          <h3 className="text-sm font-bold">RDAP 网络信息</h3>
+                          <h3 className="text-sm font-bold">{t("ip.rdap_net_section")}</h3>
                         </div>
                         <div className="px-5">
-                          {result!.rdap.name && <InfoRow label="网络名称" value={result!.rdap.name} />}
-                          {result!.rdap.handle && <InfoRow label="Handle" value={result!.rdap.handle} mono />}
-                          {result!.rdap.startAddress && <InfoRow label="网段起始" value={result!.rdap.startAddress} mono />}
-                          {result!.rdap.endAddress && <InfoRow label="网段结束" value={result!.rdap.endAddress} mono />}
-                          {result!.rdap.ipVersion && <InfoRow label="IP 版本" value={result!.rdap.ipVersion} />}
-                          {result!.rdap.contact_org && <InfoRow label="注册机构" value={result!.rdap.contact_org} />}
-                          {result!.rdap.description && <InfoRow label="描述" value={result!.rdap.description} />}
+                          {result!.rdap.name && <InfoRow label={t("ip.net_name")} value={result!.rdap.name} copyLabel={copyLabel} />}
+                          {result!.rdap.handle && <InfoRow label="Handle" value={result!.rdap.handle} mono copyLabel={copyLabel} />}
+                          {result!.rdap.startAddress && <InfoRow label={t("ip.seg_start")} value={result!.rdap.startAddress} mono copyLabel={copyLabel} />}
+                          {result!.rdap.endAddress && <InfoRow label={t("ip.seg_end")} value={result!.rdap.endAddress} mono copyLabel={copyLabel} />}
+                          {result!.rdap.ipVersion && <InfoRow label={t("ip.ip_version")} value={result!.rdap.ipVersion} copyLabel={copyLabel} />}
+                          {result!.rdap.contact_org && <InfoRow label={t("ip.reg_org")} value={result!.rdap.contact_org} copyLabel={copyLabel} />}
+                          {result!.rdap.description && <InfoRow label={t("ip.description")} value={result!.rdap.description} copyLabel={copyLabel} />}
                         </div>
                       </div>
                     )}
 
                     <div className="flex items-start gap-2 text-[10px] text-muted-foreground/60">
                       <RiAlertLine className="w-3 h-3 shrink-0 mt-0.5" />
-                      <span>归属地由 ip-api.com 提供；RDAP 数据来自 ARIN/RIPE/APNIC 官方接口。代理检测仅供参考。</span>
+                      <span>{t("ip.footer")}</span>
                       <Link href={`/feedback?type=ip&q=${encodeURIComponent(result!.query)}`} className="ml-auto shrink-0 hover:text-foreground transition-colors">
-                        意见反馈
+                        {t("ip.feedback")}
                       </Link>
                     </div>
                   </>
@@ -393,8 +396,8 @@ export default function IpPage() {
                   <div className="w-14 h-14 rounded-2xl bg-violet-500/8 border border-violet-500/20 flex items-center justify-center mx-auto mb-4">
                     <RiGlobalLine className="w-7 h-7 text-violet-500/60" />
                   </div>
-                  <p className="text-sm font-medium text-muted-foreground">输入 IP 地址、主机名或 ASN 编号</p>
-                  <p className="text-xs text-muted-foreground/60">支持 IPv4 · IPv6 · 主机名（自动解析）· AS 号</p>
+                  <p className="text-sm font-medium text-muted-foreground">{t("ip.empty_title")}</p>
+                  <p className="text-xs text-muted-foreground/60">{t("ip.empty_subtitle")}</p>
                 </div>
               </motion.div>
             )}

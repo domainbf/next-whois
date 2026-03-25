@@ -10,9 +10,11 @@ import {
   RiCheckLine, RiArrowLeftLine, RiErrorWarningLine,
 } from "@remixicon/react";
 import { toast } from "sonner";
+import { useTranslation } from "@/lib/i18n";
 
 export default function ResetPasswordPage() {
   const router = useRouter();
+  const { t } = useTranslation();
   const { token } = router.query;
   const [password, setPassword] = React.useState("");
   const [confirm, setConfirm] = React.useState("");
@@ -24,9 +26,9 @@ export default function ResetPasswordPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    if (!password || password.length < 8) { setError("密码至少 8 位"); return; }
-    if (password !== confirm) { setError("两次密码输入不一致"); return; }
-    if (!token) { setError("无效的重置链接"); return; }
+    if (!password || password.length < 8) { setError(t("auth.reset_err_password_min")); return; }
+    if (password !== confirm) { setError(t("auth.reset_err_password_mismatch")); return; }
+    if (!token) { setError(t("auth.reset_err_invalid_token")); return; }
     setLoading(true);
     try {
       const res = await fetch("/api/user/reset-password", {
@@ -35,12 +37,12 @@ export default function ResetPasswordPage() {
         body: JSON.stringify({ token, password }),
       });
       const data = await res.json();
-      if (!res.ok) { setError(data.error || "重置失败，请重新申请"); return; }
+      if (!res.ok) { setError(data.error || t("auth.reset_err_failed")); return; }
       setDone(true);
-      toast.success("密码已重置，请重新登录");
+      toast.success(t("auth.reset_success"));
       setTimeout(() => router.replace("/login"), 2500);
     } catch {
-      setError("网络错误，请重试");
+      setError(t("auth.reset_err_network"));
     } finally {
       setLoading(false);
     }
@@ -50,7 +52,7 @@ export default function ResetPasswordPage() {
 
   return (
     <>
-      <Head><title key="site-title">重置密码 · Next WHOIS</title></Head>
+      <Head><title key="site-title">{`${t("auth.reset_page_title")} · Next WHOIS`}</title></Head>
       <div className="min-h-screen flex items-center justify-center px-4 py-16">
         <div className="w-full max-w-sm">
           <div className="text-center mb-8">
@@ -58,20 +60,20 @@ export default function ResetPasswordPage() {
               <RiLockLine className="w-6 h-6 text-primary" />
             </div>
             <h1 className="text-2xl font-bold">
-              {done ? "密码已重置" : "设置新密码"}
+              {done ? t("auth.reset_title_done") : t("auth.reset_title")}
             </h1>
             <p className="text-sm text-muted-foreground mt-1">
-              {done ? "正在跳转到登录页…" : "请输入你的新密码"}
+              {done ? t("auth.reset_subtitle_done") : t("auth.reset_subtitle")}
             </p>
           </div>
 
           {isInvalidToken ? (
             <div className="glass-panel border border-red-300/40 bg-red-50/30 dark:bg-red-950/20 rounded-2xl p-6 text-center space-y-3">
               <RiErrorWarningLine className="w-8 h-8 text-red-500 mx-auto" />
-              <p className="font-semibold text-sm">无效的重置链接</p>
-              <p className="text-xs text-muted-foreground">该链接已失效或已被使用，请重新申请密码重置。</p>
+              <p className="font-semibold text-sm">{t("auth.reset_invalid_title")}</p>
+              <p className="text-xs text-muted-foreground">{t("auth.reset_invalid_desc")}</p>
               <Link href="/forgot-password">
-                <Button size="sm" className="mt-2">重新申请</Button>
+                <Button size="sm" className="mt-2">{t("auth.reset_invalid_button")}</Button>
               </Link>
             </div>
           ) : done ? (
@@ -79,15 +81,15 @@ export default function ResetPasswordPage() {
               <div className="w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-950/40 flex items-center justify-center mx-auto">
                 <RiCheckLine className="w-6 h-6 text-emerald-600" />
               </div>
-              <p className="font-semibold text-sm">密码重置成功</p>
-              <p className="text-xs text-muted-foreground">即将跳转到登录页面…</p>
+              <p className="font-semibold text-sm">{t("auth.reset_done_title")}</p>
+              <p className="text-xs text-muted-foreground">{t("auth.reset_done_desc")}</p>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="glass-panel border border-border rounded-2xl p-6 space-y-4">
                 <div className="space-y-1.5">
                   <Label htmlFor="password" className="text-xs font-semibold">
-                    新密码 <span className="text-muted-foreground font-normal">（至少 8 位）</span>
+                    {t("auth.reset_new_password")} <span className="text-muted-foreground font-normal">{t("auth.reset_new_password_min")}</span>
                   </Label>
                   <div className="relative">
                     <RiLockLine className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/60" />
@@ -95,7 +97,7 @@ export default function ResetPasswordPage() {
                       id="password"
                       type={showPwd ? "text" : "password"}
                       autoComplete="new-password"
-                      placeholder="设置新密码"
+                      placeholder={t("auth.reset_new_password_placeholder")}
                       value={password}
                       onChange={e => setPassword(e.target.value)}
                       className="pl-9 pr-10 h-10 rounded-xl"
@@ -107,14 +109,14 @@ export default function ResetPasswordPage() {
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="confirm" className="text-xs font-semibold">确认新密码</Label>
+                  <Label htmlFor="confirm" className="text-xs font-semibold">{t("auth.reset_confirm_password")}</Label>
                   <div className="relative">
                     <RiLockLine className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/60" />
                     <Input
                       id="confirm"
                       type={showPwd ? "text" : "password"}
                       autoComplete="new-password"
-                      placeholder="再次输入新密码"
+                      placeholder={t("auth.reset_confirm_placeholder")}
                       value={confirm}
                       onChange={e => setConfirm(e.target.value)}
                       className="pl-9 h-10 rounded-xl"
@@ -131,8 +133,8 @@ export default function ResetPasswordPage() {
                 <Button type="submit" disabled={loading || !token}
                   className="w-full h-10 rounded-xl font-semibold text-sm gap-2">
                   {loading
-                    ? <><RiLoader4Line className="w-4 h-4 animate-spin" />重置中…</>
-                    : "确认重置密码"
+                    ? <><RiLoader4Line className="w-4 h-4 animate-spin" />{t("auth.reset_submitting")}</>
+                    : t("auth.reset_submit")
                   }
                 </Button>
               </div>
@@ -141,7 +143,7 @@ export default function ResetPasswordPage() {
 
           <p className="text-center text-xs text-muted-foreground mt-5">
             <Link href="/login" className="inline-flex items-center gap-1 text-primary font-semibold hover:underline">
-              <RiArrowLeftLine className="w-3 h-3" />返回登录
+              <RiArrowLeftLine className="w-3 h-3" />{t("auth.reset_back_login")}
             </Link>
           </p>
         </div>

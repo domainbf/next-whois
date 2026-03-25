@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSiteSettings } from "@/lib/site-settings";
+import { useTranslation } from "@/lib/i18n";
 import {
   RiArrowLeftSLine, RiSearchLine, RiLoader4Line,
   RiLockLine, RiLockUnlockLine, RiShieldCheckLine, RiShieldLine,
@@ -43,26 +44,26 @@ type SslResult = {
   error?: string;
 };
 
-function CopyButton({ text }: { text: string }) {
+function CopyButton({ text, copyLabel }: { text: string; copyLabel: string }) {
   const [copied, setCopied] = React.useState(false);
   return (
     <button
       onClick={() => { navigator.clipboard?.writeText(text).catch(() => {}); setCopied(true); setTimeout(() => setCopied(false), 1500); }}
       className="p-1 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground touch-manipulation"
-      title="复制"
+      title={copyLabel}
     >
       {copied ? <RiCheckLine className="w-3 h-3 text-emerald-500" /> : <RiFileCopyLine className="w-3 h-3" />}
     </button>
   );
 }
 
-function InfoRow({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+function InfoRow({ label, value, mono, copyLabel }: { label: string; value: string; mono?: boolean; copyLabel: string }) {
   return (
     <div className="flex items-start gap-3 py-2.5 border-b border-border/40 last:border-0">
       <span className="text-xs text-muted-foreground w-28 shrink-0 pt-0.5">{label}</span>
       <div className="flex items-start gap-1.5 flex-1 min-w-0">
         <span className={cn("text-sm break-all flex-1", mono && "font-mono")}>{value || "—"}</span>
-        {value && <CopyButton text={value} />}
+        {value && <CopyButton text={value} copyLabel={copyLabel} />}
       </div>
     </div>
   );
@@ -105,6 +106,7 @@ const FADE = { duration: 0.18, ease: "easeOut" as const };
 export default function SslPage() {
   const router = useRouter();
   const settings = useSiteSettings();
+  const { t } = useTranslation();
   const siteLabel = settings.site_logo_text || "X.RW";
   const [hostname, setHostname] = React.useState("");
   const [result, setResult] = React.useState<SslResult | null>(null);
@@ -121,7 +123,7 @@ export default function SslPage() {
 
   async function doQuery(h?: string) {
     const host = (h ?? hostname).trim().toLowerCase().replace(/^https?:\/\//, "").split("/")[0].split(":")[0];
-    if (!host) { toast.error("请输入域名或 IP"); return; }
+    if (!host) { toast.error(t("ssl.err_empty")); return; }
 
     setLoading(true);
     setResult(null);
@@ -131,8 +133,8 @@ export default function SslPage() {
       const res = await fetch(`/api/ssl/cert?hostname=${encodeURIComponent(host)}`);
       const data: SslResult = await res.json();
       setResult(data);
-    } catch (e: any) {
-      toast.error(e.message || "查询失败");
+    } catch (e: unknown) {
+      toast.error((e as Error).message || t("ssl.err_failed"));
     } finally {
       setLoading(false);
     }
@@ -145,11 +147,18 @@ export default function SslPage() {
     "border-emerald-300 dark:border-emerald-800";
 
   const hasResult = !loading && !!result;
-  const isEmpty = !loading && !result;
+  const copyLabel = t("ssl.copy");
+
+  const validityText = !result ? "" :
+    result.is_expired
+      ? t("ssl.expired")
+      : result.is_expiring_soon
+      ? t("ssl.expiring_soon").replace("{{n}}", String(result.days_remaining))
+      : t("ssl.valid").replace("{{n}}", String(result.days_remaining));
 
   return (
     <>
-      <Head><title key="site-title">{`SSL 证书查询 — ${siteLabel}`}</title></Head>
+      <Head><title key="site-title">{`${t("ssl.title")} — ${siteLabel}`}</title></Head>
       <ScrollArea className="w-full h-[calc(100vh-4rem)]">
         <main className="w-full max-w-2xl mx-auto px-4 sm:px-6 py-6 space-y-5">
           <div className="flex items-center gap-3">
@@ -161,8 +170,8 @@ export default function SslPage() {
                 <RiLockLine className="w-5 h-5" />
               </div>
               <div>
-                <h1 className="text-lg font-bold leading-none">SSL 证书查询</h1>
-                <p className="text-[11px] text-muted-foreground mt-0.5">直连检测 · 证书详情 · 有效期 · SAN 列表 · 证书链</p>
+                <h1 className="text-lg font-bold leading-none">{t("ssl.title")}</h1>
+                <p className="text-[11px] text-muted-foreground mt-0.5">{t("ssl.subtitle")}</p>
               </div>
             </div>
           </div>
@@ -173,18 +182,18 @@ export default function SslPage() {
               <Input
                 value={hostname}
                 onChange={e => setHostname(e.target.value)}
-                placeholder="example.com 或 IP 地址"
+                placeholder={t("ssl.placeholder")}
                 className="pl-9 h-10 rounded-xl font-mono text-base sm:text-sm"
                 autoFocus
               />
             </div>
             <Button type="submit" disabled={loading} className="h-10 px-4 rounded-xl gap-2 shrink-0">
               {loading ? <RiLoader4Line className="w-4 h-4 animate-spin" /> : <RiSearchLine className="w-4 h-4" />}
-              检测
+              {t("ssl.search")}
             </Button>
             {result && (
               <Button type="button" variant="outline" onClick={() => doQuery()} disabled={loading}
-                className="h-10 w-10 px-0 rounded-xl shrink-0" title="重新检测">
+                className="h-10 w-10 px-0 rounded-xl shrink-0" title={t("ssl.refresh_title")}>
                 <RiRefreshLine className="w-4 h-4" />
               </Button>
             )}
@@ -199,8 +208,8 @@ export default function SslPage() {
                     <RiLoader4Line className="w-6 h-6 animate-spin text-emerald-500 absolute inset-0 m-auto" />
                   </div>
                   <div className="text-center">
-                    <p className="text-sm font-medium">正在连接并获取证书…</p>
-                    <p className="text-xs text-muted-foreground mt-1">直连目标主机 · TLS 握手检测</p>
+                    <p className="text-sm font-medium">{t("ssl.loading")}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{t("ssl.loading_sub")}</p>
                   </div>
                 </div>
               </motion.div>
@@ -214,11 +223,11 @@ export default function SslPage() {
                         <RiLockUnlockLine className="w-5 h-5 text-red-500" />
                       </div>
                       <div>
-                        <p className="font-semibold text-red-600 dark:text-red-400">连接失败</p>
+                        <p className="font-semibold text-red-600 dark:text-red-400">{t("ssl.failed_title")}</p>
                         <p className="text-sm text-muted-foreground">{result!.error}</p>
                       </div>
                     </div>
-                    <p className="text-xs text-muted-foreground">目标主机可能未启用 HTTPS，或端口 443 不可访问。</p>
+                    <p className="text-xs text-muted-foreground">{t("ssl.failed_note")}</p>
                   </div>
                 ) : (
                   <>
@@ -243,13 +252,11 @@ export default function SslPage() {
                               result!.is_expiring_soon ? "text-amber-600 dark:text-amber-400" :
                               "text-emerald-700 dark:text-emerald-400"
                             )}>
-                              {result!.is_expired ? "证书已过期" :
-                               result!.is_expiring_soon ? `即将到期（剩余 ${result!.days_remaining} 天）` :
-                               `证书有效（剩余 ${result!.days_remaining} 天）`}
+                              {validityText}
                             </p>
                             {result!.authorized
-                              ? <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 font-semibold border border-emerald-200 dark:border-emerald-800">受信任</span>
-                              : <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 font-semibold border border-amber-200 dark:border-amber-800">不受信任</span>
+                              ? <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 font-semibold border border-emerald-200 dark:border-emerald-800">{t("ssl.trusted")}</span>
+                              : <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 font-semibold border border-amber-200 dark:border-amber-800">{t("ssl.untrusted")}</span>
                             }
                           </div>
                           <p className="text-xs text-muted-foreground mt-0.5">
@@ -276,18 +283,18 @@ export default function SslPage() {
                     <div className="glass-panel border border-border rounded-2xl overflow-hidden">
                       <div className="px-5 py-3 border-b border-border bg-muted/20 flex items-center gap-2">
                         <RiLinkM className="w-3.5 h-3.5 text-muted-foreground" />
-                        <h3 className="text-sm font-bold">证书详情</h3>
+                        <h3 className="text-sm font-bold">{t("ssl.cert_section")}</h3>
                       </div>
                       <div className="px-5">
-                        <InfoRow label="颁发给 (CN)" value={result!.subject?.CN || ""} />
-                        <InfoRow label="组织 (O)" value={result!.subject?.O || ""} />
-                        <InfoRow label="地区 (C/L/ST)" value={[result!.subject?.C, result!.subject?.ST, result!.subject?.L].filter(Boolean).join(" / ")} />
-                        <InfoRow label="颁发者 (CN)" value={result!.issuer?.CN || ""} />
-                        <InfoRow label="颁发机构 (O)" value={result!.issuer?.O || ""} />
-                        <InfoRow label="有效期从" value={result!.valid_from} />
-                        <InfoRow label="有效期至" value={result!.valid_to} />
-                        <InfoRow label="序列号" value={result!.serialNumber} mono />
-                        <InfoRow label="SHA256 指纹" value={result!.fingerprint256} mono />
+                        <InfoRow label={t("ssl.issued_to_cn")} value={result!.subject?.CN || ""} copyLabel={copyLabel} />
+                        <InfoRow label={t("ssl.org_o")} value={result!.subject?.O || ""} copyLabel={copyLabel} />
+                        <InfoRow label={t("ssl.region_cst")} value={[result!.subject?.C, result!.subject?.ST, result!.subject?.L].filter(Boolean).join(" / ")} copyLabel={copyLabel} />
+                        <InfoRow label={t("ssl.issuer_cn")} value={result!.issuer?.CN || ""} copyLabel={copyLabel} />
+                        <InfoRow label={t("ssl.issuer_o")} value={result!.issuer?.O || ""} copyLabel={copyLabel} />
+                        <InfoRow label={t("ssl.valid_from")} value={result!.valid_from} copyLabel={copyLabel} />
+                        <InfoRow label={t("ssl.valid_to")} value={result!.valid_to} copyLabel={copyLabel} />
+                        <InfoRow label={t("ssl.serial")} value={result!.serialNumber} mono copyLabel={copyLabel} />
+                        <InfoRow label={t("ssl.fingerprint")} value={result!.fingerprint256} mono copyLabel={copyLabel} />
                       </div>
                     </div>
 
@@ -295,8 +302,8 @@ export default function SslPage() {
                       <div className="glass-panel border border-border rounded-2xl overflow-hidden">
                         <div className="px-5 py-3 border-b border-border bg-muted/20 flex items-center gap-2">
                           <RiServerLine className="w-3.5 h-3.5 text-muted-foreground" />
-                          <h3 className="text-sm font-bold">Subject Alternative Names</h3>
-                          <span className="ml-auto text-xs text-muted-foreground">{result!.sans.length} 条</span>
+                          <h3 className="text-sm font-bold">{t("ssl.san_section")}</h3>
+                          <span className="ml-auto text-xs text-muted-foreground">{t("ssl.san_count").replace("{{n}}", String(result!.sans.length))}</span>
                         </div>
                         <div className="p-4">
                           <div className="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto">
@@ -315,8 +322,8 @@ export default function SslPage() {
                       <div className="glass-panel border border-border rounded-2xl overflow-hidden">
                         <div className="px-5 py-3 border-b border-border bg-muted/20 flex items-center gap-2">
                           <RiShieldCheckLine className="w-3.5 h-3.5 text-muted-foreground" />
-                          <h3 className="text-sm font-bold">证书链</h3>
-                          <span className="ml-auto text-xs text-muted-foreground">{result!.chain.length} 层</span>
+                          <h3 className="text-sm font-bold">{t("ssl.chain_section")}</h3>
+                          <span className="ml-auto text-xs text-muted-foreground">{t("ssl.chain_count").replace("{{n}}", String(result!.chain.length))}</span>
                         </div>
                         <div className="p-4 space-y-2">
                           {result!.chain.map((c, i) => (
@@ -330,7 +337,7 @@ export default function SslPage() {
                               <div className="flex-1 min-w-0 pb-2">
                                 <p className="text-xs font-semibold truncate">{c.subject?.CN || subjectStr(c.subject)}</p>
                                 <p className="text-[11px] text-muted-foreground truncate">
-                                  {i === 0 ? "终端证书" : i === result!.chain.length - 1 ? "根证书" : "中间证书"} · {c.issuer?.O || c.issuer?.CN}
+                                  {i === 0 ? t("ssl.end_cert") : i === result!.chain.length - 1 ? t("ssl.root_cert") : t("ssl.intermediate_cert")} · {c.issuer?.O || c.issuer?.CN}
                                 </p>
                               </div>
                             </div>
@@ -347,8 +354,8 @@ export default function SslPage() {
                   <div className="w-14 h-14 rounded-2xl bg-emerald-500/8 border border-emerald-500/20 flex items-center justify-center mx-auto mb-4">
                     <RiLockLine className="w-7 h-7 text-emerald-500/60" />
                   </div>
-                  <p className="text-sm font-medium text-muted-foreground">输入域名或 IP，检测 HTTPS 证书</p>
-                  <p className="text-xs text-muted-foreground/60">直连目标主机 · 无第三方 API · 实时检测</p>
+                  <p className="text-sm font-medium text-muted-foreground">{t("ssl.empty_title")}</p>
+                  <p className="text-xs text-muted-foreground/60">{t("ssl.empty_subtitle")}</p>
                   <div className="flex justify-center gap-2 mt-4 flex-wrap">
                     {["google.com", "github.com", "cloudflare.com"].map(h => (
                       <button key={h} onClick={() => { setHostname(h); doQuery(h); }}
@@ -363,11 +370,11 @@ export default function SslPage() {
           </AnimatePresence>
 
           <div className="flex items-center gap-3 flex-wrap text-[10px] text-muted-foreground/50 pb-2">
-            <span className="flex items-center gap-1"><RiTimeLine className="w-3 h-3" />直连检测，数据不缓存</span>
+            <span className="flex items-center gap-1"><RiTimeLine className="w-3 h-3" />{t("ssl.footer_realtime")}</span>
             <span>|</span>
-            <span>Node.js TLS · 无第三方依赖</span>
+            <span>{t("ssl.footer_tech")}</span>
             <Link href={`/feedback?type=ssl${result?.hostname ? `&q=${encodeURIComponent(result.hostname)}` : ""}`} className="ml-auto hover:text-foreground transition-colors">
-              意见反馈
+              {t("ssl.feedback")}
             </Link>
           </div>
         </main>

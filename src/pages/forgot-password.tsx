@@ -5,8 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RiLoader4Line, RiMailLine, RiArrowLeftLine, RiCheckLine } from "@remixicon/react";
+import { useTranslation } from "@/lib/i18n";
 
 export default function ForgotPasswordPage() {
+  const { t } = useTranslation();
   const [email, setEmail] = React.useState("");
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -15,7 +17,7 @@ export default function ForgotPasswordPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    if (!email.trim()) { setError("请输入邮箱地址"); return; }
+    if (!email.trim()) { setError(t("auth.forgot_err_email")); return; }
     setLoading(true);
     try {
       const res = await fetch("/api/user/forgot-password", {
@@ -24,10 +26,10 @@ export default function ForgotPasswordPage() {
         body: JSON.stringify({ email: email.trim() }),
       });
       const data = await res.json();
-      if (!res.ok) { setError(data.error || "操作失败，请稍后重试"); return; }
+      if (!res.ok) { setError(data.error || t("auth.forgot_err_failed")); return; }
       setSent(true);
     } catch {
-      setError("网络错误，请重试");
+      setError(t("auth.forgot_err_network"));
     } finally {
       setLoading(false);
     }
@@ -35,16 +37,16 @@ export default function ForgotPasswordPage() {
 
   return (
     <>
-      <Head><title key="site-title">找回密码 · Next WHOIS</title></Head>
+      <Head><title key="site-title">{`${t("auth.forgot_page_title")} · Next WHOIS`}</title></Head>
       <div className="min-h-screen flex items-center justify-center px-4 py-16">
         <div className="w-full max-w-sm">
           <div className="text-center mb-8">
             <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
               <RiMailLine className="w-6 h-6 text-primary" />
             </div>
-            <h1 className="text-2xl font-bold">找回密码</h1>
+            <h1 className="text-2xl font-bold">{t("auth.forgot_title")}</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              {sent ? "重置邮件已发送" : "输入注册邮箱，我们将发送重置链接"}
+              {sent ? t("auth.forgot_subtitle_sent") : t("auth.forgot_subtitle")}
             </p>
           </div>
 
@@ -54,19 +56,18 @@ export default function ForgotPasswordPage() {
                 <RiCheckLine className="w-6 h-6 text-emerald-600" />
               </div>
               <div>
-                <p className="font-semibold text-sm">邮件已发送</p>
+                <p className="font-semibold text-sm">{t("auth.forgot_sent_title")}</p>
                 <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                  如果 <span className="font-mono font-medium text-foreground">{email}</span> 已注册，
-                  你将在几分钟内收到密码重置邮件。请检查垃圾邮件文件夹。
+                  {t("auth.forgot_sent_desc").replace("{{email}}", email)}
                 </p>
               </div>
-              <p className="text-xs text-muted-foreground">链接有效期 60 分钟</p>
+              <p className="text-xs text-muted-foreground">{t("auth.forgot_sent_expire")}</p>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="glass-panel border border-border rounded-2xl p-6 space-y-4">
                 <div className="space-y-1.5">
-                  <Label htmlFor="email" className="text-xs font-semibold">邮箱地址</Label>
+                  <Label htmlFor="email" className="text-xs font-semibold">{t("auth.forgot_email_label")}</Label>
                   <div className="relative">
                     <RiMailLine className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/60" />
                     <Input
@@ -90,8 +91,8 @@ export default function ForgotPasswordPage() {
                 <Button type="submit" disabled={loading}
                   className="w-full h-10 rounded-xl font-semibold text-sm gap-2">
                   {loading
-                    ? <><RiLoader4Line className="w-4 h-4 animate-spin" />发送中…</>
-                    : "发送重置邮件"
+                    ? <><RiLoader4Line className="w-4 h-4 animate-spin" />{t("auth.forgot_submitting")}</>
+                    : t("auth.forgot_submit")
                   }
                 </Button>
               </div>
@@ -100,7 +101,7 @@ export default function ForgotPasswordPage() {
 
           <p className="text-center text-xs text-muted-foreground mt-5">
             <Link href="/login" className="inline-flex items-center gap-1 text-primary font-semibold hover:underline">
-              <RiArrowLeftLine className="w-3 h-3" />返回登录
+              <RiArrowLeftLine className="w-3 h-3" />{t("auth.forgot_back_login")}
             </Link>
           </p>
         </div>

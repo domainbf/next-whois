@@ -260,17 +260,17 @@ export default function DocsPage({ origin }: { origin: string }) {
 
           {/* Quick navigation */}
           <div className="rounded-xl border border-border/50 bg-muted/20 p-3 mb-8">
-            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-widest mb-2.5 px-0.5">快速跳转</p>
+            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-widest mb-2.5 px-0.5">{t("docs.quick_nav")}</p>
             <div className="flex flex-wrap gap-2">
               <NavPill href="#api-key"     color="zinc">    <RiShieldUserLine  className="w-3 h-3" />API Key</NavPill>
-              <NavPill href="#whois"       color="blue">   <RiGlobalLine      className="w-3 h-3" />WHOIS / 查询</NavPill>
-              <NavPill href="#dns-records" color="violet">  <RiSignalWifiLine  className="w-3 h-3" />DNS 记录</NavPill>
-              <NavPill href="#dns-txt"     color="violet">  <RiListCheck2      className="w-3 h-3" />DNS TXT</NavPill>
-              <NavPill href="#ssl"         color="emerald"> <RiShieldCheckLine className="w-3 h-3" />SSL 证书</NavPill>
-              <NavPill href="#ip"          color="orange">  <RiMapPinLine      className="w-3 h-3" />IP / ASN</NavPill>
-              <NavPill href="#og"          color="pink">    <RiImageLine       className="w-3 h-3" />OG 卡片</NavPill>
-              <NavPill href="#icp"         color="rose">    <RiFileList2Line   className="w-3 h-3" />ICP 备案</NavPill>
-              <NavPill href="#rate-limit"  color="zinc">                                             限流规则</NavPill>
+              <NavPill href="#whois"       color="blue">   <RiGlobalLine      className="w-3 h-3" />WHOIS</NavPill>
+              <NavPill href="#dns-records" color="violet">  <RiSignalWifiLine  className="w-3 h-3" />{t("docs.nav_dns_records")}</NavPill>
+              <NavPill href="#dns-txt"     color="violet">  <RiListCheck2      className="w-3 h-3" />{t("docs.nav_dns_txt")}</NavPill>
+              <NavPill href="#ssl"         color="emerald"> <RiShieldCheckLine className="w-3 h-3" />{t("docs.nav_ssl")}</NavPill>
+              <NavPill href="#ip"          color="orange">  <RiMapPinLine      className="w-3 h-3" />{t("docs.nav_ip")}</NavPill>
+              <NavPill href="#og"          color="pink">    <RiImageLine       className="w-3 h-3" />{t("docs.nav_og")}</NavPill>
+              <NavPill href="#icp"         color="rose">    <RiFileList2Line   className="w-3 h-3" />{t("docs.nav_icp")}</NavPill>
+              <NavPill href="#rate-limit"  color="zinc">                                             {t("docs.nav_rate_limit")}</NavPill>
             </div>
           </div>
 
@@ -279,76 +279,75 @@ export default function DocsPage({ origin }: { origin: string }) {
             {/* ══════════════════════════════════════════
                 API Key 鉴权
             ══════════════════════════════════════════ */}
-            <SectionHeader id="api-key" icon={RiShieldUserLine} label="API Key 鉴权" color="bg-zinc-500/10 text-zinc-500" />
+            <SectionHeader id="api-key" icon={RiShieldUserLine} label={t("docs.api_key_section")} color="bg-zinc-500/10 text-zinc-500" />
 
             <Card id="api-key-info">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-semibold">概述</CardTitle>
+                <CardTitle className="text-sm font-semibold">{t("docs.api_key_overview")}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4 text-sm text-muted-foreground">
                 <p>
-                  当管理员开启 <span className="font-mono text-foreground text-xs bg-muted px-1.5 py-0.5 rounded">API Key 验证</span> 后，
-                  所有公开 API（WHOIS、DNS、SSL、IP 查询）均需在请求中携带有效的 API Key，否则返回 <span className="font-mono text-xs">401</span>。
+                  {t("docs.api_key_desc")}
                 </p>
                 <div>
-                  <p className="text-xs font-semibold text-foreground mb-2 uppercase tracking-wider">传递方式</p>
+                  <p className="text-xs font-semibold text-foreground mb-2 uppercase tracking-wider">{t("docs.api_key_pass_method")}</p>
                   <div className="space-y-3">
                     <div>
-                      <p className="text-[11px] font-semibold text-muted-foreground mb-1.5 uppercase tracking-wide">请求头（推荐）</p>
+                      <p className="text-[11px] font-semibold text-muted-foreground mb-1.5 uppercase tracking-wide">{t("docs.api_key_header")}</p>
                       <CodeBlock>{`curl "${origin}/api/lookup?query=example.com" \\
   -H "X-API-Key: rwh_your_key_here"`}</CodeBlock>
                     </div>
                     <div>
-                      <p className="text-[11px] font-semibold text-muted-foreground mb-1.5 uppercase tracking-wide">URL 查询参数（备用）</p>
+                      <p className="text-[11px] font-semibold text-muted-foreground mb-1.5 uppercase tracking-wide">{t("docs.api_key_query")}</p>
                       <CodeBlock>{`curl "${origin}/api/lookup?query=example.com&key=rwh_your_key_here"`}</CodeBlock>
                     </div>
                   </div>
                 </div>
                 <div>
-                  <p className="text-xs font-semibold text-foreground mb-2 uppercase tracking-wider">权限范围</p>
+                  <p className="text-xs font-semibold text-foreground mb-2 uppercase tracking-wider">{t("docs.api_key_scope")}</p>
                   <div className="rounded-lg border border-border overflow-hidden text-xs">
                     <table className="w-full">
                       <thead>
                         <tr className="bg-muted/40 border-b border-border text-muted-foreground">
-                          <th className="text-left px-3 py-2 font-semibold">范围值</th>
-                          <th className="text-left px-3 py-2 font-semibold">覆盖的 API</th>
+                          <th className="text-left px-3 py-2 font-semibold">{t("docs.api_key_scope_value")}</th>
+                          <th className="text-left px-3 py-2 font-semibold">{t("docs.api_key_scope_apis")}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border">
                         <tr>
                           <td className="px-3 py-2 font-mono">api</td>
-                          <td className="px-3 py-2 text-muted-foreground">WHOIS/RDAP、DNS 记录、SSL 证书、IP / ASN 查询</td>
+                          <td className="px-3 py-2 text-muted-foreground">{t("docs.api_key_scope_api")}</td>
                         </tr>
                         <tr>
                           <td className="px-3 py-2 font-mono">subscription</td>
-                          <td className="px-3 py-2 text-muted-foreground">域名到期订阅提醒相关接口</td>
+                          <td className="px-3 py-2 text-muted-foreground">{t("docs.api_key_scope_subscription")}</td>
                         </tr>
                         <tr>
                           <td className="px-3 py-2 font-mono">all</td>
-                          <td className="px-3 py-2 text-muted-foreground">全部 API 功能</td>
+                          <td className="px-3 py-2 text-muted-foreground">{t("docs.api_key_scope_all")}</td>
                         </tr>
                       </tbody>
                     </table>
                   </div>
                 </div>
                 <div>
-                  <p className="text-xs font-semibold text-foreground mb-2 uppercase tracking-wider">错误响应</p>
+                  <p className="text-xs font-semibold text-foreground mb-2 uppercase tracking-wider">{t("docs.api_key_errors")}</p>
                   <div className="rounded-lg border border-border overflow-hidden text-xs">
                     <table className="w-full">
                       <thead>
                         <tr className="bg-muted/40 border-b border-border text-muted-foreground">
-                          <th className="text-left px-3 py-2 font-semibold">HTTP 状态码</th>
-                          <th className="text-left px-3 py-2 font-semibold">原因</th>
+                          <th className="text-left px-3 py-2 font-semibold">{t("docs.api_key_status")}</th>
+                          <th className="text-left px-3 py-2 font-semibold">{t("docs.api_key_reason")}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border">
                         <tr>
                           <td className="px-3 py-2 font-mono">401</td>
-                          <td className="px-3 py-2 text-muted-foreground">未提供 API Key</td>
+                          <td className="px-3 py-2 text-muted-foreground">{t("docs.api_key_401")}</td>
                         </tr>
                         <tr>
                           <td className="px-3 py-2 font-mono">403</td>
-                          <td className="px-3 py-2 text-muted-foreground">Key 无效、已停用、已过期或权限不足</td>
+                          <td className="px-3 py-2 text-muted-foreground">{t("docs.api_key_403")}</td>
                         </tr>
                       </tbody>
                     </table>
@@ -360,13 +359,13 @@ export default function DocsPage({ origin }: { origin: string }) {
             {/* ══════════════════════════════════════════
                 WHOIS & 查询
             ══════════════════════════════════════════ */}
-            <SectionHeader icon={RiGlobalLine} label="WHOIS & 查询" color="bg-blue-500/10 text-blue-500" />
+            <SectionHeader icon={RiGlobalLine} label={t("docs.whois_section")} color="bg-blue-500/10 text-blue-500" />
 
             <Card id="whois">
               <CardHeader className="pb-4">
                 <EndpointTitle method="GET" path="/api/lookup" />
                 <p className="text-sm text-muted-foreground mt-1">
-                  统一查询入口，支持域名 WHOIS/RDAP、IPv4、IPv6、ASN（自治系统）、CIDR 网段五种查询类型，自动识别输入格式并路由到对应协议。
+                  {t("docs.whois_desc")}
                 </p>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -374,39 +373,39 @@ export default function DocsPage({ origin }: { origin: string }) {
                 <div>
                   <SubHead label={t("docs.parameters")} />
                   <ParamsTable t={t} params={[
-                    { name: "query", type: "string", required: true, description: "查询内容：域名 / IPv4 / IPv6 / ASN（如 AS15169）/ CIDR（如 1.1.1.0/24）" },
+                    { name: "query", type: "string", required: true, description: t("docs.whois_query_desc") },
                   ]} />
                 </div>
 
                 {/* Query type examples */}
                 <div>
-                  <SubHead label="查询类型 · 示例请求" />
+                  <SubHead label={t("docs.query_types")} />
                   <div className="space-y-3">
                     <div>
-                      <p className="text-[11px] font-semibold text-muted-foreground mb-1.5 uppercase tracking-wide">域名（WHOIS / RDAP 优先）</p>
+                      <p className="text-[11px] font-semibold text-muted-foreground mb-1.5 uppercase tracking-wide">{t("docs.domain_label")}</p>
                       <CodeBlock>{`curl "${origin}/api/lookup?query=google.com"`}</CodeBlock>
                     </div>
                     <div>
-                      <p className="text-[11px] font-semibold text-muted-foreground mb-1.5 uppercase tracking-wide">IPv4 地址</p>
+                      <p className="text-[11px] font-semibold text-muted-foreground mb-1.5 uppercase tracking-wide">{t("docs.ipv4_label")}</p>
                       <CodeBlock>{`curl "${origin}/api/lookup?query=8.8.8.8"`}</CodeBlock>
                     </div>
                     <div>
-                      <p className="text-[11px] font-semibold text-muted-foreground mb-1.5 uppercase tracking-wide">IPv6 地址</p>
+                      <p className="text-[11px] font-semibold text-muted-foreground mb-1.5 uppercase tracking-wide">{t("docs.ipv6_label")}</p>
                       <CodeBlock>{`curl "${origin}/api/lookup?query=2001:4860:4860::8888"`}</CodeBlock>
                     </div>
                     <div>
-                      <p className="text-[11px] font-semibold text-muted-foreground mb-1.5 uppercase tracking-wide">ASN（自治系统号）</p>
+                      <p className="text-[11px] font-semibold text-muted-foreground mb-1.5 uppercase tracking-wide">{t("docs.asn_label")}</p>
                       <CodeBlock>{`curl "${origin}/api/lookup?query=AS15169"`}</CodeBlock>
                     </div>
                     <div>
-                      <p className="text-[11px] font-semibold text-muted-foreground mb-1.5 uppercase tracking-wide">CIDR 网段</p>
+                      <p className="text-[11px] font-semibold text-muted-foreground mb-1.5 uppercase tracking-wide">{t("docs.cidr_label")}</p>
                       <CodeBlock>{`curl "${origin}/api/lookup?query=1.1.1.0/24"`}</CodeBlock>
                     </div>
                   </div>
                 </div>
 
                 <div>
-                  <SubHead label={`${t("docs.success_response")} — 域名查询`} />
+                  <SubHead label={t("docs.whois_success_domain")} />
                   <CodeBlock>{`{
   "status": true,
   "time": 1.23,
@@ -436,7 +435,7 @@ export default function DocsPage({ origin }: { origin: string }) {
                 </div>
 
                 <div>
-                  <SubHead label={`${t("docs.success_response")} — IP / ASN 查询`} />
+                  <SubHead label={t("docs.whois_success_ip")} />
                   <CodeBlock>{`{
   "status": true,
   "time": 0.87,
@@ -465,12 +464,12 @@ export default function DocsPage({ origin }: { origin: string }) {
                 </div>
 
                 <div>
-                  <SubHead label="注意事项" />
+                  <SubHead label={t("docs.notes")} />
                   <Notes items={[
-                    <>域名查询优先使用 RDAP 协议，失败时自动回退到 WHOIS；<code className="font-mono text-xs">source</code> 字段指示实际使用的协议</>,
-                    <>缓存命中时 <code className="font-mono text-xs">cached: true</code>，<code className="font-mono text-xs">time: 0</code>；缓存 TTL：<code className="font-mono text-xs">s-maxage=3600</code></>,
-                    <>IP / ASN / CIDR 查询通过 IANA RDAP bootstrap 路由到对应地区注册局（ARIN / RIPE / APNIC 等）</>,
-                    <>接口限流：每 IP 每分钟最多 <strong>40 次</strong>请求，超出返回 HTTP 429</>,
+                    t("docs.whois_note1"),
+                    t("docs.whois_note2"),
+                    t("docs.whois_note3"),
+                    t("docs.whois_note4"),
                   ]} />
                 </div>
               </CardContent>
@@ -479,21 +478,21 @@ export default function DocsPage({ origin }: { origin: string }) {
             {/* ══════════════════════════════════════════
                 DNS 工具
             ══════════════════════════════════════════ */}
-            <SectionHeader icon={RiSignalWifiLine} label="DNS 工具" color="bg-violet-500/10 text-violet-500" />
+            <SectionHeader icon={RiSignalWifiLine} label={t("docs.dns_section")} color="bg-violet-500/10 text-violet-500" />
 
             <Card id="dns-records">
               <CardHeader className="pb-4">
                 <EndpointTitle method="GET" path="/api/dns/records" />
                 <p className="text-sm text-muted-foreground mt-1">
-                  通过 Google、Cloudflare、Quad9、AdGuard 四个 DoH（DNS over HTTPS）解析器并行查询任意 DNS 记录，返回去重合并结果及每个解析器的延迟。
+                  {t("docs.dns_records_desc")}
                 </p>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div>
                   <SubHead label={t("docs.parameters")} />
                   <ParamsTable t={t} params={[
-                    { name: "name", type: "string", required: true, description: "要查询的域名，如 google.com 或 _dmarc.google.com" },
-                    { name: "type", type: "string", required: false, default: "A", description: "记录类型：A · AAAA · MX · NS · CNAME · TXT · SOA · CAA · SRV" },
+                    { name: "name", type: "string", required: true, description: t("docs.dns_records_name_desc") },
+                    { name: "type", type: "string", required: false, default: "A", description: t("docs.dns_records_type_desc") },
                   ]} />
                 </div>
                 <div>
@@ -524,12 +523,12 @@ export default function DocsPage({ origin }: { origin: string }) {
 }`}</CodeBlock>
                 </div>
                 <div>
-                  <SubHead label="注意事项" />
+                  <SubHead label={t("docs.notes")} />
                   <Notes items={[
-                    <>请求不缓存（<code className="font-mono text-xs">Cache-Control: no-store</code>），数据实时获取</>,
-                    <>TXT 记录返回原始值，可自行解析 SPF / DMARC / DKIM / BIMI</>,
-                    <>记录不存在时 <code className="font-mono text-xs">found: false</code>，<code className="font-mono text-xs">flat: []</code></>,
-                    "单个解析器超时 7 秒，四个并行执行，整体通常在 1–2 秒内完成",
+                    t("docs.dns_records_note1"),
+                    t("docs.dns_records_note2"),
+                    t("docs.dns_records_note3"),
+                    t("docs.dns_records_note4"),
                   ]} />
                 </div>
               </CardContent>
@@ -539,14 +538,14 @@ export default function DocsPage({ origin }: { origin: string }) {
               <CardHeader className="pb-4">
                 <EndpointTitle method="GET" path="/api/dns/txt" />
                 <p className="text-sm text-muted-foreground mt-1">
-                  专用 TXT 记录查询，通过 Google、Cloudflare、Quad9、OpenDNS 四个标准 DNS 解析器（系统 DNS，非 DoH）并行解析，适合验证 SPF、DMARC、DKIM 等邮件安全配置。
+                  {t("docs.dns_txt_desc")}
                 </p>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div>
                   <SubHead label={t("docs.parameters")} />
                   <ParamsTable t={t} params={[
-                    { name: "name", type: "string", required: true, description: "要查询的域名或子域，如 google.com 或 _dmarc.example.com" },
+                    { name: "name", type: "string", required: true, description: t("docs.dns_txt_name_desc") },
                   ]} />
                 </div>
                 <div>
@@ -585,7 +584,7 @@ curl "${origin}/api/dns/txt?name=google._domainkey.gmail.com"`}</CodeBlock>
 }`}</CodeBlock>
                 </div>
                 <div>
-                  <SubHead label={`${t("docs.error_response")} / 未找到`} />
+                  <SubHead label={`${t("docs.error_response")} / ${t("docs.dns_txt_not_found")}`} />
                   <CodeBlock>{`{
   "name": "_dmarc.example.invalid",
   "found": false,
@@ -597,31 +596,31 @@ curl "${origin}/api/dns/txt?name=google._domainkey.gmail.com"`}</CodeBlock>
 }`}</CodeBlock>
                 </div>
                 <div>
-                  <SubHead label="与 /api/dns/records?type=TXT 的区别" />
+                  <SubHead label={t("docs.dns_txt_diff")} />
                   <div className="rounded-lg border border-border/60 overflow-hidden text-xs">
                     <table className="w-full">
                       <thead className="bg-muted/40 border-b border-border/60">
                         <tr>
-                          <th className="text-left py-2 px-3 font-semibold text-muted-foreground">特性</th>
+                          <th className="text-left py-2 px-3 font-semibold text-muted-foreground">{t("docs.dns_txt_feature")}</th>
                           <th className="text-left py-2 px-3 font-semibold text-violet-600 dark:text-violet-400">/api/dns/txt</th>
                           <th className="text-left py-2 px-3 font-semibold text-muted-foreground">/api/dns/records?type=TXT</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border/40">
                         <tr>
-                          <td className="py-2 px-3 text-muted-foreground">解析协议</td>
-                          <td className="py-2 px-3">标准 DNS（UDP/TCP）</td>
-                          <td className="py-2 px-3">DoH（HTTPS 封装）</td>
+                          <td className="py-2 px-3 text-muted-foreground">{t("docs.dns_txt_diff_protocol")}</td>
+                          <td className="py-2 px-3">{t("docs.dns_txt_diff_standard")}</td>
+                          <td className="py-2 px-3">{t("docs.dns_txt_diff_doh")}</td>
                         </tr>
                         <tr>
-                          <td className="py-2 px-3 text-muted-foreground">解析器</td>
+                          <td className="py-2 px-3 text-muted-foreground">{t("docs.dns_txt_diff_resolvers")}</td>
                           <td className="py-2 px-3">8.8.8.8 / 1.1.1.1 / 9.9.9.9 / 208.67.222.222</td>
                           <td className="py-2 px-3">Google / Cloudflare / Quad9 / AdGuard DoH</td>
                         </tr>
                         <tr>
-                          <td className="py-2 px-3 text-muted-foreground">适用场景</td>
-                          <td className="py-2 px-3">邮件安全验证（SPF/DMARC/DKIM）</td>
-                          <td className="py-2 px-3">通用 DNS 记录查询，支持更多类型</td>
+                          <td className="py-2 px-3 text-muted-foreground">{t("docs.dns_txt_diff_use_case")}</td>
+                          <td className="py-2 px-3">{t("docs.dns_txt_diff_use1")}</td>
+                          <td className="py-2 px-3">{t("docs.dns_txt_diff_use2")}</td>
                         </tr>
                       </tbody>
                     </table>
@@ -633,21 +632,21 @@ curl "${origin}/api/dns/txt?name=google._domainkey.gmail.com"`}</CodeBlock>
             {/* ══════════════════════════════════════════
                 SSL 证书
             ══════════════════════════════════════════ */}
-            <SectionHeader icon={RiShieldCheckLine} label="SSL 证书检测" color="bg-emerald-500/10 text-emerald-500" />
+            <SectionHeader icon={RiShieldCheckLine} label={t("docs.ssl_section")} color="bg-emerald-500/10 text-emerald-500" />
 
             <Card id="ssl">
               <CardHeader className="pb-4">
                 <EndpointTitle method="GET" path="/api/ssl/cert" />
                 <p className="text-sm text-muted-foreground mt-1">
-                  直连目标主机（默认 443 端口），执行 TLS 握手并返回 SSL 证书详情：有效期、颁发机构、SAN 列表、证书链、密码套件、剩余有效天数等。
+                  {t("docs.ssl_desc")}
                 </p>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div>
                   <SubHead label={t("docs.parameters")} />
                   <ParamsTable t={t} params={[
-                    { name: "hostname", type: "string", required: true, description: "目标主机名或 IP，如 google.com、github.com 或 1.1.1.1" },
-                    { name: "port", type: "number", required: false, default: "443", description: "目标 TLS 端口（默认 443，SMTPS 用 465，IMAPS 用 993 等）" },
+                    { name: "hostname", type: "string", required: true, description: t("docs.ssl_hostname_desc") },
+                    { name: "port", type: "number", required: false, default: "443", description: t("docs.ssl_port_desc") },
                   ]} />
                 </div>
                 <div>
@@ -700,12 +699,10 @@ curl "${origin}/api/ssl/cert?hostname=mail.example.com&port=465"`}</CodeBlock>
 }`}</CodeBlock>
                 </div>
                 <div>
-                  <SubHead label="注意事项" />
+                  <SubHead label={t("docs.notes")} />
                   <Notes items={[
-                    <><code className="font-mono text-xs">authorized: false</code> 表示证书验证失败（过期 / 自签名 / 域名不匹配等），<code className="font-mono text-xs">authError</code> 包含具体原因</>,
-                    <><code className="font-mono text-xs">is_expiring_soon</code> 在证书剩余有效期 ≤ 30 天时为 <code className="font-mono text-xs">true</code></>,
-                    "证书链（chain）包含从服务器到根 CA 的完整中间证书信息",
-                    "连接超时 10 秒，对方主机不可达时返回 ok: false + error 字段",
+                    t("docs.ssl_note1"),
+                    t("docs.ssl_note2"),
                   ]} />
                 </div>
               </CardContent>
@@ -714,20 +711,20 @@ curl "${origin}/api/ssl/cert?hostname=mail.example.com&port=465"`}</CodeBlock>
             {/* ══════════════════════════════════════════
                 IP & ASN
             ══════════════════════════════════════════ */}
-            <SectionHeader icon={RiMapPinLine} label="IP & ASN 归属查询" color="bg-orange-500/10 text-orange-500" />
+            <SectionHeader icon={RiMapPinLine} label={t("docs.ip_section")} color="bg-orange-500/10 text-orange-500" />
 
             <Card id="ip">
               <CardHeader className="pb-4">
                 <EndpointTitle method="GET" path="/api/ip/lookup" />
                 <p className="text-sm text-muted-foreground mt-1">
-                  查询 IP 地址、主机名或 ASN 的归属地、ISP、时区、代理检测，并附加 RDAP 注册信息。支持 IPv4、IPv6、ASN 和主机名（自动 DNS 解析）。
+                  {t("docs.ip_desc")}
                 </p>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div>
                   <SubHead label={t("docs.parameters")} />
                   <ParamsTable t={t} params={[
-                    { name: "q", type: "string", required: true, description: "IPv4 地址、IPv6 地址、主机名（自动 DNS 解析），或 ASN（如 AS15169）" },
+                    { name: "q", type: "string", required: true, description: t("docs.ip_input_desc") },
                   ]} />
                 </div>
                 <div>
@@ -777,12 +774,12 @@ curl "${origin}/api/ip/lookup?q=AS15169"`}</CodeBlock>
 }`}</CodeBlock>
                 </div>
                 <div>
-                  <SubHead label="注意事项" />
+                  <SubHead label={t("docs.notes")} />
                   <Notes items={[
-                    <>归属地数据源：<code className="font-mono text-xs">ip-api.com</code>，实时查询</>,
-                    "RDAP 数据来源于 ARIN / RIPE / APNIC 等官方注册局，实时查询",
-                    <>主机名输入时先通过系统 DNS 解析为 IP，<code className="font-mono text-xs">resolvedFrom</code> 字段记录原始主机名</>,
-                    <><code className="font-mono text-xs">mobile</code>、<code className="font-mono text-xs">proxy</code>、<code className="font-mono text-xs">hosting</code> 检测仅供参考，准确率因 IP 数据库而异</>,
+                    t("docs.ip_note1"),
+                    t("docs.ip_note2"),
+                    t("docs.ip_note3"),
+                    t("docs.ip_note4"),
                   ]} />
                 </div>
               </CardContent>
@@ -791,7 +788,7 @@ curl "${origin}/api/ip/lookup?q=AS15169"`}</CodeBlock>
             {/* ══════════════════════════════════════════
                 工具 API
             ══════════════════════════════════════════ */}
-            <SectionHeader icon={RiImageLine} label="工具 API" color="bg-pink-500/10 text-pink-500" />
+            <SectionHeader icon={RiImageLine} label={t("docs.tools_section")} color="bg-pink-500/10 text-pink-500" />
 
             <Card id="og">
               <CardHeader className="pb-4">
@@ -831,13 +828,13 @@ curl "${origin}/api/og?query=example.com&w=1200&h=600" -o card.png`}</CodeBlock>
             {/* ══════════════════════════════════════════
                 ICP 备案查询
             ══════════════════════════════════════════ */}
-            <SectionHeader icon={RiFileList2Line} label="ICP 备案查询" color="bg-rose-500/10 text-rose-500" />
+            <SectionHeader icon={RiFileList2Line} label={t("docs.icp_section")} color="bg-rose-500/10 text-rose-500" />
 
             <Card id="icp">
               <CardHeader className="pb-4">
                 <EndpointTitle method="GET" path="/api/icp/query" />
                 <p className="text-sm text-muted-foreground mt-1">
-                  查询中国工信部 ICP 备案信息，支持网站、APP、小程序、快应用及对应违法违规数据库，可按域名、备案号或企业名称搜索，结果支持分页。
+                  {t("docs.icp_desc")}
                 </p>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -845,43 +842,43 @@ curl "${origin}/api/og?query=example.com&w=1200&h=600" -o card.png`}</CodeBlock>
                 <div>
                   <SubHead label={t("docs.parameters")} />
                   <ParamsTable t={t} params={[
-                    { name: "type", type: "string", required: true, description: "查询类型（见下表）：web · app · mapp · kapp · bweb · bapp · bmapp · bkapp" },
-                    { name: "search", type: "string", required: true, description: "搜索内容：域名（如 baidu.com）、ICP备案号（如 京ICP证030173号）或企业名称" },
-                    { name: "pageNum", type: "number", required: false, default: "1", description: "页码（从 1 开始）" },
-                    { name: "pageSize", type: "number", required: false, default: "10", description: "每页条数（最大 50）" },
+                    { name: "type", type: "string", required: true, description: t("docs.icp_query_type_desc") },
+                    { name: "search", type: "string", required: true, description: t("docs.icp_query_value_desc") },
+                    { name: "pageNum", type: "number", required: false, default: "1", description: t("docs.icp_page_desc") },
+                    { name: "pageSize", type: "number", required: false, default: "10", description: t("docs.icp_page_desc") },
                   ]} />
                 </div>
 
                 <div>
-                  <SubHead label="查询类型说明" />
+                  <SubHead label={t("docs.query_type_notes")} />
                   <div className="rounded-lg border border-border/60 overflow-hidden text-xs">
                     <table className="w-full">
                       <thead className="bg-muted/40 border-b border-border/60">
                         <tr>
                           <th className="text-left py-2 px-3 font-semibold text-muted-foreground">type</th>
-                          <th className="text-left py-2 px-3 font-semibold text-muted-foreground">说明</th>
-                          <th className="text-left py-2 px-3 font-semibold text-muted-foreground">数据库</th>
+                          <th className="text-left py-2 px-3 font-semibold text-muted-foreground">{t("docs.description_col")}</th>
+                          <th className="text-left py-2 px-3 font-semibold text-muted-foreground">{t("docs.parameter")}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border/40">
-                        {[
-                          ["web",   "网站",       "正常备案"],
-                          ["app",   "APP",        "正常备案"],
-                          ["mapp",  "小程序",     "正常备案"],
-                          ["kapp",  "快应用",     "正常备案"],
-                          ["bweb",  "违法违规网站",  "黑名单"],
-                          ["bapp",  "违法违规APP",   "黑名单"],
-                          ["bmapp", "违法违规小程序", "黑名单"],
-                          ["bkapp", "违法违规快应用", "黑名单"],
-                        ].map(([id, label, db]) => (
+                        {([
+                          ["web",   t("docs.icp_type_web"),   false],
+                          ["app",   t("docs.icp_type_app"),   false],
+                          ["mapp",  t("docs.icp_type_mapp"),  false],
+                          ["kapp",  t("docs.icp_type_kapp"),  false],
+                          ["bweb",  t("docs.icp_type_bweb"),  true],
+                          ["bapp",  t("docs.icp_type_bapp"),  true],
+                          ["bmapp", t("docs.icp_type_bmapp"), true],
+                          ["bkapp", t("docs.icp_type_bkapp"), true],
+                        ] as [string, string, boolean][]).map(([id, label, isBlack]) => (
                           <tr key={id}>
                             <td className="py-2 px-3 font-mono text-foreground">{id}</td>
                             <td className="py-2 px-3 text-muted-foreground">{label}</td>
                             <td className="py-2 px-3">
-                              <span className={db === "黑名单"
+                              <span className={isBlack
                                 ? "text-red-500 text-[10px] font-medium"
                                 : "text-emerald-600 dark:text-emerald-400 text-[10px] font-medium"
-                              }>{db}</span>
+                              }>{isBlack ? t("docs.icp_blacklist") : t("docs.icp_normal")}</span>
                             </td>
                           </tr>
                         ))}
@@ -894,19 +891,19 @@ curl "${origin}/api/og?query=example.com&w=1200&h=600" -o card.png`}</CodeBlock>
                   <SubHead label={t("docs.example_request")} />
                   <div className="space-y-2">
                     <div>
-                      <p className="text-[11px] font-semibold text-muted-foreground mb-1.5 uppercase tracking-wide">按域名查询网站备案</p>
+                      <p className="text-[11px] font-semibold text-muted-foreground mb-1.5 uppercase tracking-wide">{t("docs.domain_label")}</p>
                       <CodeBlock>{`curl "${origin}/api/icp/query?type=web&search=baidu.com"`}</CodeBlock>
                     </div>
                     <div>
-                      <p className="text-[11px] font-semibold text-muted-foreground mb-1.5 uppercase tracking-wide">按备案号查询</p>
+                      <p className="text-[11px] font-semibold text-muted-foreground mb-1.5 uppercase tracking-wide">{t("docs.icp_query_value_desc")}</p>
                       <CodeBlock>{`curl "${origin}/api/icp/query?type=web&search=京ICP证030173号"`}</CodeBlock>
                     </div>
                     <div>
-                      <p className="text-[11px] font-semibold text-muted-foreground mb-1.5 uppercase tracking-wide">按企业名称查询（分页）</p>
+                      <p className="text-[11px] font-semibold text-muted-foreground mb-1.5 uppercase tracking-wide">{t("docs.icp_fields_unitName")}</p>
                       <CodeBlock>{`curl "${origin}/api/icp/query?type=web&search=深圳市腾讯计算机系统有限公司&pageNum=2&pageSize=20"`}</CodeBlock>
                     </div>
                     <div>
-                      <p className="text-[11px] font-semibold text-muted-foreground mb-1.5 uppercase tracking-wide">查询违法违规 APP</p>
+                      <p className="text-[11px] font-semibold text-muted-foreground mb-1.5 uppercase tracking-wide">{t("docs.icp_type_bapp")}</p>
                       <CodeBlock>{`curl "${origin}/api/icp/query?type=bapp&search=example"`}</CodeBlock>
                     </div>
                   </div>
@@ -942,32 +939,32 @@ curl "${origin}/api/og?query=example.com&w=1200&h=600" -o card.png`}</CodeBlock>
                 </div>
 
                 <div>
-                  <SubHead label="响应字段说明" />
+                  <SubHead label={t("docs.response_fields")} />
                   <div className="rounded-lg border border-border/60 overflow-hidden text-xs">
                     <table className="w-full">
                       <thead className="bg-muted/40 border-b border-border/60">
                         <tr>
-                          <th className="text-left py-2 px-3 font-semibold text-muted-foreground">字段</th>
-                          <th className="text-left py-2 px-3 font-semibold text-muted-foreground">说明</th>
+                          <th className="text-left py-2 px-3 font-semibold text-muted-foreground">{t("docs.parameter")}</th>
+                          <th className="text-left py-2 px-3 font-semibold text-muted-foreground">{t("docs.description_col")}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border/40">
-                        {[
-                          ["total / pages", "总记录数 / 总页数"],
-                          ["domain", "备案的域名"],
-                          ["domainId", "域名 ID"],
-                          ["limitAccess", "是否限制接入"],
-                          ["mainLicence", "ICP 备案主体许可证号"],
-                          ["serviceLicence", "ICP 备案服务许可证号"],
-                          ["natureName", "主办单位性质（企业 / 事业单位 / 个人等）"],
-                          ["unitName", "主办单位名称"],
-                          ["updateRecordTime", "审核通过日期"],
-                          ["contentTypeName", "服务前置审批项 / 内容类型"],
-                          ["mainUnitAddress", "主体地址"],
-                          ["serviceName", "服务名称（APP、小程序或快应用名称）"],
-                          ["version", "服务版本"],
-                          ["blackListLevel", "威胁等级（仅违规类型返回，值为 2 表示暂无违规信息）"],
-                        ].map(([field, desc]) => (
+                        {([
+                          ["total / pages", t("docs.icp_fields_total")],
+                          ["domain", t("docs.icp_fields_domain")],
+                          ["domainId", t("docs.icp_fields_domainId")],
+                          ["limitAccess", t("docs.icp_fields_limitAccess")],
+                          ["mainLicence", "ICP mainLicence"],
+                          ["serviceLicence", "ICP serviceLicence"],
+                          ["natureName", t("docs.icp_fields_natureName")],
+                          ["unitName", t("docs.icp_fields_unitName")],
+                          ["updateRecordTime", t("docs.icp_fields_updateRecordTime")],
+                          ["contentTypeName", t("docs.icp_fields_contentTypeName")],
+                          ["mainUnitAddress", t("docs.icp_fields_mainUnitAddress")],
+                          ["serviceName", t("docs.icp_fields_serviceName")],
+                          ["version", t("docs.icp_fields_version")],
+                          ["blackListLevel", t("docs.icp_fields_blackListLevel")],
+                        ] as [string, string][]).map(([field, desc]) => (
                           <tr key={field}>
                             <td className="py-2 px-3 font-mono text-foreground">{field}</td>
                             <td className="py-2 px-3 text-muted-foreground">{desc}</td>
@@ -979,12 +976,11 @@ curl "${origin}/api/og?query=example.com&w=1200&h=600" -o card.png`}</CodeBlock>
                 </div>
 
                 <div>
-                  <SubHead label="注意事项" />
+                  <SubHead label={t("docs.notes")} />
                   <Notes items={[
-                    "数据来源：工业和信息化部 ICP/IP 地址/域名信息备案管理系统",
-                    <>违规类型（bweb / bapp 等）返回的 <code className="font-mono text-xs">blackListLevel</code> 字段：值为 2 表示暂无违法违规信息</>,
-                    "接口响应时间约 1–5 秒，请勿频繁轮询",
-                    "支持按域名、备案号（如 京ICP证030173号）或企业全称三种搜索方式",
+                    t("docs.icp_note1"),
+                    t("docs.icp_note2"),
+                    t("docs.icp_note3"),
                   ]} />
                 </div>
 
@@ -1003,59 +999,51 @@ curl "${origin}/api/og?query=example.com&w=1200&h=600" -o card.png`}</CodeBlock>
                   <table className="w-full">
                     <thead className="bg-muted/40 border-b border-border/60">
                       <tr>
-                        <th className="text-left py-2 px-3 font-semibold text-muted-foreground">接口</th>
-                        <th className="text-left py-2 px-3 font-semibold text-muted-foreground">限流规则</th>
-                        <th className="text-left py-2 px-3 font-semibold text-muted-foreground">缓存</th>
+                        <th className="text-left py-2 px-3 font-semibold text-muted-foreground">{t("docs.api_endpoint")}</th>
+                        <th className="text-left py-2 px-3 font-semibold text-muted-foreground">{t("docs.rate_limit_rule")}</th>
+                        <th className="text-left py-2 px-3 font-semibold text-muted-foreground">{t("docs.cache")}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border/40">
                       <tr>
                         <td className="py-2 px-3 font-mono">/api/lookup</td>
-                        <td className="py-2 px-3">每 IP 每分钟 <strong>40 次</strong>（滑动窗口）</td>
+                        <td className="py-2 px-3">{t("docs.rate_40")}</td>
                         <td className="py-2 px-3"><code className="font-mono">s-maxage=3600</code></td>
                       </tr>
                       <tr>
                         <td className="py-2 px-3 font-mono">/api/dns/records</td>
-                        <td className="py-2 px-3">每 IP 每分钟 <strong>60 次</strong></td>
+                        <td className="py-2 px-3">{t("docs.rate_60")}</td>
                         <td className="py-2 px-3"><code className="font-mono">no-store</code></td>
                       </tr>
                       <tr>
                         <td className="py-2 px-3 font-mono">/api/dns/txt</td>
-                        <td className="py-2 px-3">每 IP 每分钟 <strong>60 次</strong></td>
+                        <td className="py-2 px-3">{t("docs.rate_60")}</td>
                         <td className="py-2 px-3"><code className="font-mono">no-store</code></td>
                       </tr>
                       <tr>
                         <td className="py-2 px-3 font-mono">/api/ssl/cert</td>
-                        <td className="py-2 px-3">每 IP 每分钟 <strong>20 次</strong></td>
+                        <td className="py-2 px-3">{t("docs.rate_20")}</td>
                         <td className="py-2 px-3"><code className="font-mono">no-store</code></td>
                       </tr>
                       <tr>
                         <td className="py-2 px-3 font-mono">/api/ip/lookup</td>
-                        <td className="py-2 px-3">每 IP 每分钟 <strong>30 次</strong></td>
+                        <td className="py-2 px-3">{t("docs.rate_30")}</td>
                         <td className="py-2 px-3"><code className="font-mono">no-store</code></td>
                       </tr>
                       <tr>
                         <td className="py-2 px-3 font-mono">/api/icp/query</td>
-                        <td className="py-2 px-3">无限流</td>
+                        <td className="py-2 px-3">{t("docs.no_rate_limit")}</td>
                         <td className="py-2 px-3"><code className="font-mono">no-store</code></td>
                       </tr>
                       <tr>
                         <td className="py-2 px-3 font-mono">/api/og</td>
-                        <td className="py-2 px-3">无限流</td>
+                        <td className="py-2 px-3">{t("docs.no_rate_limit")}</td>
                         <td className="py-2 px-3"><code className="font-mono">s-maxage=86400</code></td>
                       </tr>
                     </tbody>
                   </table>
                 </div>
-                <div className="flex flex-wrap items-center gap-x-1 gap-y-1">
-                  <span>/api/lookup 命中缓存时：</span>
-                  <InlineCodeScroll>{`"cached": true`}</InlineCodeScroll>
-                  <span>且</span>
-                  <InlineCodeScroll>{`"time": 0`}</InlineCodeScroll>
-                  <span>。超出限流返回 HTTP 429，响应头包含</span>
-                  <InlineCodeScroll>X-RateLimit-Limit / Remaining / Reset</InlineCodeScroll>
-                  <span>。</span>
-                </div>
+                <p>{t("docs.rate_limit_note")}</p>
               </CardContent>
             </Card>
 

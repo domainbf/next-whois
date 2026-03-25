@@ -101,10 +101,10 @@ const FEATURES = [
 ];
 
 const TECH_STACK = [
-  { icon: RiCodeSSlashLine, name: "Next.js 14", desc: "Pages Router · App 框架" },
-  { icon: RiServerLine, name: "RDAP + WHOIS", desc: "双协议域名查询" },
-  { icon: RiDatabaseLine, name: "PostgreSQL", desc: "Supabase 托管数据库" },
-  { icon: RiBrainLine, name: "Tailwind + Shadcn", desc: "UI 组件系统" },
+  { icon: RiCodeSSlashLine, name: "Next.js 14", desc: "Pages Router · App 框架", descEn: "Pages Router · App Framework" },
+  { icon: RiServerLine, name: "RDAP + WHOIS", desc: "双协议域名查询", descEn: "Dual Protocol Domain Lookup" },
+  { icon: RiDatabaseLine, name: "PostgreSQL", desc: "Supabase 托管数据库", descEn: "Supabase Hosted Database" },
+  { icon: RiBrainLine, name: "Tailwind + Shadcn", desc: "UI 组件系统", descEn: "UI Component System" },
 ];
 
 const SUB_PAGES = [
@@ -337,14 +337,14 @@ export default function AboutPage() {
                 {isChinese ? "技术栈" : "Tech Stack"}
               </h3>
               <div className="grid grid-cols-2 gap-3">
-                {TECH_STACK.map((t) => (
-                  <div key={t.name} className="flex items-center gap-2.5">
+                {TECH_STACK.map((ts) => (
+                  <div key={ts.name} className="flex items-center gap-2.5">
                     <div className="p-1.5 rounded-lg bg-muted/60 shrink-0">
-                      <t.icon className="w-3.5 h-3.5 text-muted-foreground" />
+                      <ts.icon className="w-3.5 h-3.5 text-muted-foreground" />
                     </div>
                     <div className="min-w-0">
-                      <p className="text-xs font-semibold leading-none">{t.name}</p>
-                      <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{t.desc}</p>
+                      <p className="text-xs font-semibold leading-none">{ts.name}</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{isChinese ? ts.desc : ts.descEn}</p>
                     </div>
                   </div>
                 ))}

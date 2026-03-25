@@ -160,6 +160,8 @@ const HOW_STEP_DESC_KEYS: StampKey[] = ["how_step1_desc", "how_step2_desc", "how
 // ── No-domain landing page ─────────────────────────────────────────────────────
 function StampLandingPage() {
   const router = useRouter();
+  const { t, locale } = useTranslation();
+  const sl = (key: StampKey) => t(`stamp.${key}` as TranslationKey);
   const { data: session, status: authStatus } = useSession();
   const [query, setQuery] = React.useState("");
   const [myStamps, setMyStamps] = React.useState<{
@@ -186,9 +188,9 @@ function StampLandingPage() {
     try {
       await fetch(`/api/user/stamps?id=${id}`, { method: "DELETE" });
       setMyStamps(prev => prev.filter(s => s.id !== id));
-      toast.success("已删除认领记录");
+      toast.success(sl("delete_success"));
     } catch {
-      toast.error("删除失败");
+      toast.error(sl("delete_fail"));
     } finally {
       setDeletingId(null);
     }
@@ -205,26 +207,26 @@ function StampLandingPage() {
     {
       icon: RiSearchLine,
       color: "bg-blue-100 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400",
-      title: "搜索你的域名",
-      desc: "在首页搜索框或下方输入框中输入你拥有的域名",
+      title: sl("landing_step1_title"),
+      desc: sl("landing_step1_desc"),
     },
     {
       icon: RiShieldCheckLine,
       color: "bg-violet-100 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400",
-      title: "点击「品牌认领」按钮",
-      desc: "在域名 WHOIS 详情页顶部，找到紫色盾牌按钮并点击",
+      title: sl("landing_step2_title"),
+      desc: sl("landing_step2_desc"),
     },
     {
       icon: RiWifiLine,
       color: "bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400",
-      title: "完成 DNS / 文件验证",
-      desc: "添加 TXT 记录或上传验证文件，证明你是域名所有者",
+      title: sl("landing_step3_title"),
+      desc: sl("landing_step3_desc"),
     },
     {
       icon: RiCheckboxCircleLine,
       color: "bg-amber-100 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400",
-      title: "获得品牌认证标签",
-      desc: "验证通过后，WHOIS 查询页将显示你的品牌名称和认证标签",
+      title: sl("landing_step4_title"),
+      desc: sl("landing_step4_desc"),
     },
   ];
 
@@ -234,13 +236,13 @@ function StampLandingPage() {
   return (
     <>
       <Head>
-        <title key="site-title">品牌认领 · Next WHOIS</title>
-        <meta name="description" content="认领你拥有的域名，在 WHOIS 查询结果中展示你的品牌信息。" />
+        <title key="site-title">{sl("page_title_main")} · Next WHOIS</title>
+        <meta name="description" content={sl("page_desc_main")} />
       </Head>
       <div className="max-w-lg mx-auto px-4 py-8 pb-10 space-y-6">
         {/* Back */}
         <Link href="/dashboard" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
-          <RiArrowLeftLine className="w-3.5 h-3.5" />返回用户中心
+          <RiArrowLeftLine className="w-3.5 h-3.5" />{sl("back_dashboard")}
         </Link>
 
         {/* Hero */}
@@ -251,9 +253,9 @@ function StampLandingPage() {
               <RiShieldCheckLine className="w-6 h-6 text-violet-500" />
             </div>
             <div>
-              <h1 className="text-lg font-bold">品牌认领</h1>
+              <h1 className="text-lg font-bold">{sl("page_title_main")}</h1>
               <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-                认领你拥有的域名，在 WHOIS 查询结果中<br />展示你的品牌名称和认证标签
+                {sl("page_desc_main")}
               </p>
             </div>
           </div>
@@ -263,17 +265,17 @@ function StampLandingPage() {
         {authStatus === "authenticated" && (
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">我的认领</p>
+              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{sl("my_claims")}</p>
               {myStamps.length > 0 && (
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   {verifiedStamps.length > 0 && (
                     <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
-                      <RiCheckLine className="w-3 h-3" />{verifiedStamps.length} 已认证
+                      <RiCheckLine className="w-3 h-3" />{sl("verified_count").replace("{{n}}", String(verifiedStamps.length))}
                     </span>
                   )}
                   {pendingStamps.length > 0 && (
                     <span className="inline-flex items-center gap-1 text-amber-500">
-                      <RiTimeLine className="w-3 h-3" />{pendingStamps.length} 待验证
+                      <RiTimeLine className="w-3 h-3" />{sl("pending_count").replace("{{n}}", String(pendingStamps.length))}
                     </span>
                   )}
                 </div>
@@ -287,8 +289,8 @@ function StampLandingPage() {
             ) : myStamps.length === 0 ? (
               <div className="glass-panel border border-dashed border-border rounded-2xl p-6 text-center space-y-2">
                 <RiAwardLine className="w-7 h-7 text-muted-foreground/25 mx-auto" />
-                <p className="text-sm text-muted-foreground">暂无认领记录</p>
-                <p className="text-xs text-muted-foreground/60">搜索并认领你的域名，在 WHOIS 结果中展示品牌</p>
+                <p className="text-sm text-muted-foreground">{sl("empty_claims")}</p>
+                <p className="text-xs text-muted-foreground/60">{sl("empty_claims_hint")}</p>
               </div>
             ) : (
               <div className="space-y-2">
@@ -316,8 +318,8 @@ function StampLandingPage() {
                       </div>
                       <p className="text-[11px] mt-0.5 text-muted-foreground">
                         {stamp.verified
-                          ? `已认证 · ${stamp.verified_at ? new Date(stamp.verified_at).toLocaleDateString("zh-CN") : ""}`
-                          : "待验证 · 点击「继续」完成 DNS 验证"
+                          ? sl("verified_at").replace("{{date}}", stamp.verified_at ? new Date(stamp.verified_at).toLocaleDateString(locale) : "")
+                          : sl("pending_status")
                         }
                       </p>
                     </div>
@@ -326,7 +328,7 @@ function StampLandingPage() {
                         <Link
                           href={`/${stamp.domain}`}
                           className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-                          title="查看 WHOIS"
+                          title={sl("view_whois")}
                         >
                           <RiExternalLinkLine className="w-3.5 h-3.5" />
                         </Link>
@@ -335,13 +337,13 @@ function StampLandingPage() {
                           href={`/stamp?domain=${encodeURIComponent(stamp.domain)}`}
                           className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 hover:bg-amber-200 dark:hover:bg-amber-900/40 transition-colors"
                         >
-                          继续验证
+                          {sl("continue_verify")}
                         </Link>
                       )}
                       <button
                         onClick={() => deleteStamp(stamp.id)}
                         disabled={deletingId === stamp.id}
-                        title="删除"
+                        title={sl("delete")}
                         className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 text-muted-foreground hover:text-red-500 transition-colors"
                       >
                         {deletingId === stamp.id
@@ -362,18 +364,18 @@ function StampLandingPage() {
           <div className="glass-panel border border-violet-200/40 dark:border-violet-800/30 rounded-2xl p-5 text-center space-y-3">
             <RiShieldCheckLine className="w-7 h-7 text-violet-500/50 mx-auto" />
             <div>
-              <p className="text-sm font-semibold">登录后管理认领记录</p>
-              <p className="text-xs text-muted-foreground mt-1">登录后可查看所有认领记录并管理验证状态</p>
+              <p className="text-sm font-semibold">{sl("login_manage_title")}</p>
+              <p className="text-xs text-muted-foreground mt-1">{sl("login_manage_desc")}</p>
             </div>
             <div className="flex gap-2 justify-center">
               <Link href="/login?callbackUrl=%2Fstamp">
                 <Button size="sm" className="rounded-xl h-9 gap-1.5 text-xs bg-violet-600 hover:bg-violet-700">
-                  登录
+                  {sl("login_btn")}
                 </Button>
               </Link>
               <Link href="/register?callbackUrl=%2Fstamp">
                 <Button size="sm" variant="outline" className="rounded-xl h-9 gap-1.5 text-xs">
-                  注册账号
+                  {sl("register_btn")}
                 </Button>
               </Link>
             </div>
@@ -382,9 +384,9 @@ function StampLandingPage() {
 
         {/* Visual mockup — shows where to click */}
         <div className="space-y-2">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-1">在这里找到入口</p>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-1">{sl("find_entry")}</p>
           <div className="relative rounded-2xl border border-border bg-muted/10 p-4">
-            <span className="absolute top-3 right-3 text-[9px] font-bold uppercase tracking-widest text-muted-foreground/50 bg-muted/60 px-2 py-0.5 rounded-full">预览</span>
+            <span className="absolute top-3 right-3 text-[9px] font-bold uppercase tracking-widest text-muted-foreground/50 bg-muted/60 px-2 py-0.5 rounded-full">{sl("preview_label")}</span>
             {/* Mini domain card replica */}
             <div className="rounded-xl border border-border bg-background shadow-sm overflow-hidden">
               <div className="px-4 pt-3.5 pb-2 space-y-1.5">
@@ -401,7 +403,7 @@ function StampLandingPage() {
                 {/* Highlighted claim button */}
                 <div className="relative flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold border bg-violet-100 dark:bg-violet-950/50 border-violet-400/70 text-violet-600 dark:text-violet-400 shadow-sm ring-2 ring-violet-400/20">
                   <RiShieldCheckLine className="w-3 h-3" />
-                  品牌认领
+                  {sl("page_title_main")}
                   <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-violet-400 opacity-60" />
                     <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-violet-500" />
@@ -409,11 +411,11 @@ function StampLandingPage() {
                 </div>
                 <div className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium border bg-muted/40 border-border/50 text-muted-foreground/50">
                   <RiTimeLine className="w-3 h-3" />
-                  域名订阅
+                  {t("remind.domain_subscription")}
                 </div>
               </div>
             </div>
-            <p className="text-[10px] text-muted-foreground text-center mt-2.5">↑ 在域名查询结果顶部点击「品牌认领」</p>
+            <p className="text-[10px] text-muted-foreground text-center mt-2.5">{sl("desktop_hint")}</p>
           </div>
         </div>
 
@@ -421,27 +423,27 @@ function StampLandingPage() {
         <div className="border border-border rounded-2xl p-4 space-y-3 bg-muted/10">
           <div className="flex items-center gap-2">
             <RiSearchLine className="w-4 h-4 text-primary" />
-            <p className="text-sm font-bold">直接输入域名开始认领</p>
+            <p className="text-sm font-bold">{sl("search_title")}</p>
           </div>
           <form onSubmit={handleSearch} className="flex gap-2">
             <Input
               value={query}
               onChange={e => setQuery(e.target.value)}
-              placeholder="输入你的域名，如 x.rw"
+              placeholder={sl("search_placeholder")}
               className="h-10 rounded-xl text-sm font-mono flex-1"
               autoComplete="off"
             />
             <Button type="submit" className="h-10 rounded-xl gap-1.5 px-4 shrink-0">
-              认领
+              {sl("claim_btn")}
               <RiArrowRightLine className="w-3.5 h-3.5" />
             </Button>
           </form>
-          <p className="text-xs text-muted-foreground">将跳转到该域名的品牌认领流程</p>
+          <p className="text-xs text-muted-foreground">{sl("search_redirect_hint")}</p>
         </div>
 
         {/* Steps */}
         <div className="space-y-3">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-1">如何使用</p>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-1">{sl("how_it_works_section")}</p>
           <div className="grid gap-2.5">
             {steps.map((step, i) => (
               <div key={i} className="flex items-start gap-3 p-3.5 rounded-xl border border-border bg-muted/10">
@@ -450,7 +452,7 @@ function StampLandingPage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5 mb-0.5">
-                    <span className="text-[9px] font-bold text-muted-foreground/40 uppercase tracking-widest">步骤 {i + 1}</span>
+                    <span className="text-[9px] font-bold text-muted-foreground/40 uppercase tracking-widest">{sl("step_n").replace("{{n}}", String(i + 1))}</span>
                   </div>
                   <p className="text-xs font-semibold">{step.title}</p>
                   <p className="text-[11px] text-muted-foreground mt-0.5">{step.desc}</p>
@@ -464,7 +466,7 @@ function StampLandingPage() {
         <div className="flex items-start gap-2 px-3 py-3 rounded-xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/40">
           <RiAlertLine className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
           <p className="text-[11px] text-muted-foreground">
-            品牌认领需通过 DNS TXT 记录或指定文件路径验证，以确认域名归属权。验证过程通常在几分钟内完成。
+            {sl("info_note")}
           </p>
         </div>
       </div>
@@ -938,7 +940,7 @@ export default function StampPage() {
                     className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-lg hover:bg-muted/60"
                   >
                     <RiInformationLine className="w-3.5 h-3.5" />
-                    {isZh ? "使用说明" : "How it works"}
+                    {s("how_it_works_section")}
                   </button>
                 )}
               </div>
@@ -1040,7 +1042,7 @@ export default function StampPage() {
                               </Label>
                               {!isMember && (
                                 <span className="text-[10px] text-amber-600 dark:text-amber-400">
-                                  普通用户限 5 字 · <Link href="/payment/checkout" className="underline underline-offset-2">升级会员</Link>
+                                  {s("char_limit_hint")} · <Link href="/payment/checkout" className="underline underline-offset-2">{s("upgrade_now")}</Link>
                                 </span>
                               )}
                             </div>
@@ -1052,7 +1054,7 @@ export default function StampPage() {
                             />
                             {!isMember && form.tagName.length >= 5 && (
                               <p className="text-[10px] text-amber-500 mt-1 flex items-center gap-1">
-                                <RiVipCrownLine className="w-3 h-3" /> 会员可设置最多 20 字标题
+                                <RiVipCrownLine className="w-3 h-3" /> {s("member_title_hint")}
                               </p>
                             )}
                           </div>
@@ -1062,8 +1064,8 @@ export default function StampPage() {
                             <div className="flex items-center justify-between mb-2.5">
                               <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">{s("tag_style_label")}</Label>
                               {!isMember
-                                ? <span className="text-[10px] text-violet-600 dark:text-violet-400 flex items-center gap-1"><RiVipCrownLine className="w-3 h-3" />会员解锁更多样式</span>
-                                : <span className="text-[10px] text-muted-foreground/50">{isZh ? "点击预览效果" : "Tap to preview"}</span>
+                                ? <span className="text-[10px] text-violet-600 dark:text-violet-400 flex items-center gap-1"><RiVipCrownLine className="w-3 h-3" />{s("member_only")}</span>
+                                : <span className="text-[10px] text-muted-foreground/50">{s("click_preview")}</span>
                               }
                             </div>
                             <div className="grid grid-cols-4 gap-2">
@@ -1079,7 +1081,7 @@ export default function StampPage() {
                                     type="button"
                                     onClick={() => {
                                       if (locked) {
-                                        toast.info("升级会员后可使用此样式");
+                                        toast.info(s("upgrade_to_unlock"));
                                         return;
                                       }
                                       update("tagStyle", ts.id);
@@ -1146,10 +1148,10 @@ export default function StampPage() {
                             <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-muted/50 border border-dashed border-border">
                               <RiVipCrownLine className="w-4 h-4 text-violet-400 shrink-0" />
                               <div className="flex-1 min-w-0">
-                                <p className="text-[11px] font-semibold text-muted-foreground">跳转链接 <span className="text-violet-500">· 会员专属</span></p>
-                                <p className="text-[10px] text-muted-foreground/60">升级会员后可设置个人主页或品牌官网链接</p>
+                                <p className="text-[11px] font-semibold text-muted-foreground">{s("link_member_only")}</p>
+                                <p className="text-[10px] text-muted-foreground/60">{s("link_upgrade_hint")}</p>
                               </div>
-                              <Link href="/payment/checkout" className="text-[10px] font-semibold text-violet-600 dark:text-violet-400 shrink-0 hover:underline">升级</Link>
+                              <Link href="/payment/checkout" className="text-[10px] font-semibold text-violet-600 dark:text-violet-400 shrink-0 hover:underline">{s("upgrade_now")}</Link>
                             </div>
                           )}
 
@@ -1175,10 +1177,10 @@ export default function StampPage() {
                             <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-muted/50 border border-dashed border-border">
                               <RiVipCrownLine className="w-4 h-4 text-violet-400 shrink-0" />
                               <div className="flex-1 min-w-0">
-                                <p className="text-[11px] font-semibold text-muted-foreground">品牌简介 <span className="text-violet-500">· 会员专属</span></p>
-                                <p className="text-[10px] text-muted-foreground/60">升级会员后可添加品牌介绍或个人说明（最多 300 字）</p>
+                                <p className="text-[11px] font-semibold text-muted-foreground">{s("desc_member_only")}</p>
+                                <p className="text-[10px] text-muted-foreground/60">{s("desc_upgrade_hint")}</p>
                               </div>
-                              <Link href="/payment/checkout" className="text-[10px] font-semibold text-violet-600 dark:text-violet-400 shrink-0 hover:underline">升级</Link>
+                              <Link href="/payment/checkout" className="text-[10px] font-semibold text-violet-600 dark:text-violet-400 shrink-0 hover:underline">{s("upgrade_now")}</Link>
                             </div>
                           )}
 
@@ -1188,12 +1190,7 @@ export default function StampPage() {
                             const curTheme = CARD_THEME_OPTIONS.find(t => t.id === form.cardTheme) || CARD_THEME_OPTIONS[0];
                             const styleObj = TAG_STYLES.find(ts => ts.id === form.tagStyle) || TAG_STYLES[0];
                             const CurIcon = styleObj.icon;
-                            const stampLabels: Record<string, string> = {
-                              personal: "个人认领", official: "官方认证", brand: "品牌认领",
-                              verified: "已认证",   partner: "合作伙伴", dev: "开发者",
-                              warning:  "注意",     premium: "高级认证",
-                            };
-                            const badgeLabel = stampLabels[form.tagStyle] ?? "已认领";
+                            const badgeLabel = s((`badge_${form.tagStyle}`) as StampKey) || s("badge_default");
                             return (
                               <div>
                                 <div className="flex items-center gap-2 mb-2">
@@ -1353,8 +1350,8 @@ export default function StampPage() {
                             )}
                           >
                             <RiFlashlightLine className="w-3.5 h-3.5 text-sky-500 shrink-0" />
-                            <span className="hidden sm:inline">{isZh ? "文件验证" : "File Verify"}</span>
-                            <span className="sm:hidden">{isZh ? "文件" : "File"}</span>
+                            <span className="hidden sm:inline">{s("file_verify")}</span>
+                            <span className="sm:hidden">{s("file_verify_short")}</span>
                           </button>
                           <button
                             type="button"
@@ -1396,14 +1393,12 @@ export default function StampPage() {
                             <div className="rounded-xl border border-border/60 overflow-hidden divide-y divide-border/60">
                               <div className="px-3 py-2 bg-amber-50/60 dark:bg-amber-950/20 border-b border-amber-200/40">
                                 <p className="text-[10px] text-amber-700 dark:text-amber-400 leading-relaxed">
-                                  {isZh
-                                    ? "主机记录只填前缀部分，DNS 面板会自动加上域名后缀。不要填完整域名。"
-                                    : "Enter only the prefix for the host record — your DNS panel adds the domain automatically."}
+                                  {s("host_prefix_note")}
                                 </p>
                               </div>
                               {[
                                 { label: s("dns_field_type"), value: "TXT", mono: false, copyable: false, note: null },
-                                { label: s("dns_field_host"), value: hostPrefix, mono: true, color: "text-violet-600 dark:text-violet-400", copyable: true, note: isZh ? `完整: ${submitResult.txtRecord}` : `Full: ${submitResult.txtRecord}` },
+                                { label: s("dns_field_host"), value: hostPrefix, mono: true, color: "text-violet-600 dark:text-violet-400", copyable: true, note: `${s("full_label")}: ${submitResult.txtRecord}` },
                                 { label: s("dns_field_value"), value: submitResult.txtValue, mono: true, color: "text-emerald-600 dark:text-emerald-400", copyable: true, note: null },
                                 { label: "TTL", value: s("dns_field_ttl_val"), mono: false, copyable: false, note: null },
                               ].map((row) => (
@@ -1438,7 +1433,7 @@ export default function StampPage() {
                                 <div className="flex items-center gap-2">
                                   <RiFlashlightLine className="w-3.5 h-3.5 text-sky-500 shrink-0" />
                                   <p className="text-[11px] font-semibold text-foreground">
-                                    {isZh ? "快速查询 TXT 记录" : "Quick TXT lookup"}
+                                    {s("quick_txt_lookup")}
                                   </p>
                                 </div>
                                 <button
@@ -1448,8 +1443,8 @@ export default function StampPage() {
                                   className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-sky-500 hover:bg-sky-600 text-white text-[11px] font-semibold transition-colors disabled:opacity-60"
                                 >
                                   {quickTxtLoading
-                                    ? <><RiLoader4Line className="w-3 h-3 animate-spin" />{isZh ? "查询中…" : "Querying…"}</>
-                                    : <><RiRefreshLine className="w-3 h-3" />{isZh ? "立即查询" : "Check Now"}</>
+                                    ? <><RiLoader4Line className="w-3 h-3 animate-spin" />{s("querying")}…</>
+                                    : <><RiRefreshLine className="w-3 h-3" />{s("check_now")}</>
                                   }
                                 </button>
                               </div>
@@ -1464,7 +1459,7 @@ export default function StampPage() {
                                 {quickTxtLoading && (
                                   <div className="flex items-center gap-2 py-1">
                                     <RiLoader4Line className="w-3.5 h-3.5 animate-spin text-muted-foreground/60" />
-                                    <p className="text-[11px] text-muted-foreground">{isZh ? "正在查询…" : "Querying…"}</p>
+                                    <p className="text-[11px] text-muted-foreground">{s("querying")}…</p>
                                   </div>
                                 )}
                                 {quickTxtResult && !quickTxtLoading && (
@@ -1474,7 +1469,7 @@ export default function StampPage() {
                                       <div className="flex items-center gap-2 rounded-lg border border-emerald-400/60 bg-emerald-50/60 dark:bg-emerald-950/30 px-3 py-2">
                                         <RiCheckboxCircleLine className="w-4 h-4 text-emerald-500 shrink-0" />
                                         <p className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">
-                                          {isZh ? "检测到验证 Token！正在自动完成所有权确认…" : "Verification token detected! Auto-confirming ownership…"}
+                                          {s("token_detected")}
                                         </p>
                                         <RiLoader4Line className="w-3.5 h-3.5 animate-spin text-emerald-500 shrink-0 ml-auto" />
                                       </div>
@@ -1506,10 +1501,10 @@ export default function StampPage() {
                                               )}>{r.name}</p>
                                               <p className="text-[10px] text-muted-foreground/50 mt-0.5">
                                                 {hasRecords ? `${r.latencyMs}ms · ${recCount} 条`
-                                                  : r.error === "timeout" ? (isZh ? "超时" : "timeout")
-                                                  : r.error === "no_record" ? (isZh ? "无记录" : "no record")
+                                                  : r.error === "timeout" ? s("timeout_label")
+                                                  : r.error === "no_record" ? s("no_record_label")
                                                   : r.error ? r.error
-                                                  : (isZh ? "未找到" : "not found")}
+                                                  : s("not_found_label")}
                                               </p>
                                             </div>
                                           </div>
@@ -1526,7 +1521,7 @@ export default function StampPage() {
                                       )}>
                                         <p className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
                                           <RiCheckLine className="w-3 h-3" />
-                                          {isZh ? `已找到 ${quickTxtResult.flat.length} 条 TXT 记录` : `Found ${quickTxtResult.flat.length} TXT record(s)`}
+                                          {s("txt_records_found", { n: quickTxtResult.flat.length })}
                                         </p>
                                         {quickTxtResult.flat.slice(0, 5).map((record, i) => {
                                           const isToken = record === submitResult?.txtValue || record.includes(submitResult?.txtValue || "");
@@ -1552,7 +1547,7 @@ export default function StampPage() {
                                     )}
                                     {(quickTxtResult.flat || []).length === 0 && (
                                       <p className="text-[11px] text-muted-foreground/70 text-center py-0.5">
-                                        {isZh ? "该主机名下暂无 TXT 记录，请确认已正确添加后稍候再查" : "No TXT records found at this hostname — verify the record was added, then try again"}
+                                        {s("add_txt_first")}
                                       </p>
                                     )}
                                   </div>
@@ -1629,9 +1624,9 @@ export default function StampPage() {
                                             <p className="text-[10px] text-muted-foreground/50 mt-0.5">
                                               {isLoading ? s("checking")
                                                 : r?.found ? `${r.latencyMs}ms ✓`
-                                                : r?.nearMatch ? (isZh ? "记录不匹配" : "wrong token")
+                                                : r?.nearMatch ? s("token_mismatch")
                                                 : r?.error === "timeout" ? s("timeout")
-                                                : r?.error === "servfail" ? (isZh ? "DNS拒绝" : "SERVFAIL")
+                                                : r?.error === "servfail" ? "SERVFAIL"
                                                 : r?.error ? s("not_found_dns")
                                                 : s("waiting")}
                                             </p>
@@ -1652,12 +1647,10 @@ export default function StampPage() {
                             <div>
                               <h2 className="text-sm font-bold flex items-center gap-2 mb-1">
                                 <RiFileTextLine className="w-4 h-4 text-sky-500" />
-                                {isZh ? "文件验证（无需等待 DNS 传播）" : "File Verification (No DNS wait)"}
+                                {s("file_verify")}
                               </h2>
                               <p className="text-xs text-muted-foreground leading-relaxed">
-                                {isZh
-                                  ? "在你的网站根目录放一个文件，系统立即检测，通常几秒内完成验证。"
-                                  : "Place a file on your website's root. Verification completes in seconds — no DNS propagation needed."}
+                                {s("file_verify_desc")}
                               </p>
                             </div>
 
@@ -1668,14 +1661,14 @@ export default function StampPage() {
                                 <div className="px-3 py-2 border-b border-border/40 flex items-center gap-2">
                                   <span className="w-4 h-4 rounded-full bg-sky-500 text-white text-[9px] font-bold flex items-center justify-center shrink-0">1</span>
                                   <p className="text-[11px] font-semibold text-foreground">
-                                    {isZh ? "创建验证文件" : "Create verification file"}
+                                    {s("file_verify_step1")}
                                   </p>
                                 </div>
                                 <div className="px-3 py-2.5 space-y-2">
                                   <div>
                                     <p className="text-[10px] font-bold text-muted-foreground/70 uppercase mb-1 flex items-center gap-1">
                                       <RiLinksLine className="w-2.5 h-2.5" />
-                                      {isZh ? "文件路径" : "File path"}
+                                      {s("file_path_label")}
                                     </p>
                                     <div className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-background border border-border/50">
                                       <code className="text-[11px] font-mono text-violet-600 dark:text-violet-400 flex-1 break-all">
@@ -1692,7 +1685,7 @@ export default function StampPage() {
                                   <div>
                                     <p className="text-[10px] font-bold text-muted-foreground/70 uppercase mb-1 flex items-center gap-1">
                                       <RiFileTextLine className="w-2.5 h-2.5" />
-                                      {isZh ? "文件内容" : "File content"}
+                                      {s("file_content_label")}
                                     </p>
                                     <div className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-background border border-border/50">
                                       <code className="text-[11px] font-mono text-emerald-600 dark:text-emerald-400 flex-1 break-all">
@@ -1714,7 +1707,7 @@ export default function StampPage() {
                                 <div className="px-3 py-2 border-b border-border/40 flex items-center gap-2">
                                   <span className="w-4 h-4 rounded-full bg-sky-500 text-white text-[9px] font-bold flex items-center justify-center shrink-0">2</span>
                                   <p className="text-[11px] font-semibold text-foreground">
-                                    {isZh ? "确认文件可公开访问" : "Confirm the file is publicly accessible"}
+                                    {s("file_verify_step2")}
                                   </p>
                                 </div>
                                 <div className="px-3 py-2.5">
@@ -1767,15 +1760,15 @@ export default function StampPage() {
                                       : "text-muted-foreground"
                                   )}>
                                     {httpCheck.found
-                                      ? (isZh ? "文件已找到，验证成功！" : "File found — verified!")
+                                      ? s("file_found")
                                       : httpCheck.error === "timeout"
-                                      ? (isZh ? "请求超时" : "Request timed out")
+                                      ? s("request_timeout")
                                       : httpCheck.error
-                                      ? (isZh ? `文件未找到 (${httpCheck.error})` : `File not found (${httpCheck.error})`)
-                                      : (isZh ? "文件未找到" : "File not found")}
+                                      ? s("file_not_found_err").replace("{{error}}", httpCheck.error)
+                                      : s("file_not_found")}
                                   </p>
                                   <p className="text-[10px] text-muted-foreground/50 mt-0.5">
-                                    {isZh ? "HTTP 检测" : "HTTP check"} · {httpCheck.latencyMs}ms
+                                    {s("http_check")} · {httpCheck.latencyMs}ms
                                   </p>
                                 </div>
                               </div>
@@ -1783,7 +1776,7 @@ export default function StampPage() {
                             {!httpCheck && verifyState === "loading" && (
                               <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-border/50 bg-muted/20">
                                 <RiLoader4Line className="w-4 h-4 animate-spin text-muted-foreground/60 shrink-0" />
-                                <p className="text-xs text-muted-foreground">{isZh ? "正在检测文件…" : "Checking file…"}</p>
+                                <p className="text-xs text-muted-foreground">{s("checking_file")}</p>
                               </div>
                             )}
                           </>
@@ -1795,12 +1788,10 @@ export default function StampPage() {
                             <div>
                               <h2 className="text-sm font-bold flex items-center gap-2 mb-1">
                                 <span className="text-sm font-black">▲</span>
-                                {isZh ? "Vercel 域名验证" : "Vercel Domain Verification"}
+                                {s("vercel_verify_title")}
                               </h2>
                               <p className="text-xs text-muted-foreground leading-relaxed">
-                                {isZh
-                                  ? "通过在 DNS 添加 Vercel 官方 TXT 记录，完成域名归属认证。"
-                                  : "Verify domain ownership by adding a Vercel-issued DNS TXT record to your domain."}
+                                {s("vercel_verify_desc")}
                               </p>
                             </div>
 
@@ -1808,7 +1799,7 @@ export default function StampPage() {
                             {vercelInitLoading && (
                               <div className="flex items-center gap-2 px-3 py-3 rounded-xl border border-border/50 bg-muted/20">
                                 <RiLoader4Line className="w-4 h-4 animate-spin text-muted-foreground/60 shrink-0" />
-                                <p className="text-xs text-muted-foreground">{isZh ? "正在获取验证记录…" : "Fetching verification record…"}</p>
+                                <p className="text-xs text-muted-foreground">{s("fetching_record")}</p>
                               </div>
                             )}
 
@@ -1817,7 +1808,7 @@ export default function StampPage() {
                               <div className="rounded-xl border border-red-300/50 bg-red-50/40 dark:bg-red-950/20 p-3 space-y-2">
                                 <p className="text-xs font-semibold text-red-700 dark:text-red-400 flex items-center gap-1.5">
                                   <RiAlertLine className="w-3.5 h-3.5 shrink-0" />
-                                  {isZh ? "无法获取 Vercel 验证记录" : "Could not get Vercel verification record"}
+                                  {s("cannot_get_vercel")}
                                 </p>
                                 <p className="text-[10px] text-red-600/70 dark:text-red-400/60 font-mono break-all">{vercelApiError}</p>
                                 <button
@@ -1826,7 +1817,7 @@ export default function StampPage() {
                                   className="text-[11px] font-semibold text-red-700 dark:text-red-400 hover:underline flex items-center gap-1"
                                 >
                                   <RiRefreshLine className="w-3 h-3" />
-                                  {isZh ? "重试" : "Retry"}
+                                  {t("common.retry")}
                                 </button>
                               </div>
                             )}
@@ -1838,14 +1829,14 @@ export default function StampPage() {
                                   <div className="px-3 py-2 border-b border-border/40 flex items-center gap-2">
                                     <span className="w-4 h-4 rounded-full bg-foreground text-background text-[9px] font-bold flex items-center justify-center shrink-0">1</span>
                                     <p className="text-[11px] font-semibold text-foreground">
-                                      {isZh ? "在 DNS 管理面板添加以下 TXT 记录" : "Add this TXT record in your DNS panel"}
+                                      {s("add_txt_record")}
                                     </p>
                                   </div>
                                   <div className="px-3 py-2.5 space-y-2">
                                     <div>
                                       <p className="text-[10px] font-bold text-muted-foreground/70 uppercase mb-1 flex items-center gap-1">
                                         <RiServerLine className="w-2.5 h-2.5" />
-                                        {isZh ? "记录名称（Name）" : "Name"}
+                                        {s("record_name")}
                                       </p>
                                       <div className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-background border border-border/50">
                                         <code className="text-[11px] font-mono text-violet-600 dark:text-violet-400 flex-1 break-all">
@@ -1862,7 +1853,7 @@ export default function StampPage() {
                                     <div>
                                       <p className="text-[10px] font-bold text-muted-foreground/70 uppercase mb-1 flex items-center gap-1">
                                         <RiFileTextLine className="w-2.5 h-2.5" />
-                                        {isZh ? "记录值（Value）" : "Value"}
+                                        {s("record_value")}
                                       </p>
                                       <div className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-background border border-border/50">
                                         <code className="text-[11px] font-mono text-emerald-600 dark:text-emerald-400 flex-1 break-all">
@@ -1877,9 +1868,7 @@ export default function StampPage() {
                                       </div>
                                     </div>
                                     <p className="text-[10px] text-muted-foreground/50 pt-0.5">
-                                      {isZh
-                                        ? "记录类型：TXT · 生效时间因服务商而异，通常几分钟内即可"
-                                        : "Record type: TXT · Propagation time varies by provider, usually within minutes"}
+                                      {s("record_note_txt")}
                                     </p>
                                   </div>
                                 </div>
@@ -1888,7 +1877,7 @@ export default function StampPage() {
                                   <div className="px-3 py-2 border-b border-border/40 flex items-center gap-2">
                                     <span className="w-4 h-4 rounded-full bg-foreground text-background text-[9px] font-bold flex items-center justify-center shrink-0">2</span>
                                     <p className="text-[11px] font-semibold text-foreground">
-                                      {isZh ? "添加完成后，点击下方按钮验证" : "Click verify once the record is added"}
+                                      {s("click_verify_after")}
                                     </p>
                                   </div>
                                   <div className="px-3 py-2.5">
@@ -1907,10 +1896,10 @@ export default function StampPage() {
                                         ? <RiLoader4Line className="w-3.5 h-3.5 animate-spin shrink-0" />
                                         : <RiCheckboxCircleLine className="w-3.5 h-3.5 shrink-0" />}
                                       {vercelCountdown > 0 && !vercelCheckLoading
-                                        ? (isZh ? `${vercelCountdown}s 后自动检测` : `Auto-checking in ${vercelCountdown}s`)
+                                        ? s("auto_checking", { n: vercelCountdown })
                                         : vercelCheckLoading
-                                        ? (isZh ? "检测中…" : "Checking…")
-                                        : (isZh ? "立即验证" : "Verify Now")}
+                                        ? `${s("checking_label")}…`
+                                        : s("verify_now")}
                                     </button>
                                   </div>
                                 </div>
@@ -1924,24 +1913,22 @@ export default function StampPage() {
                           <div className="rounded-xl border border-orange-300/50 bg-orange-50/50 dark:bg-orange-950/20 p-3 space-y-2">
                             <p className="text-[11px] font-semibold text-orange-700 dark:text-orange-400 flex items-center gap-1.5">
                               <RiAlertLine className="w-3.5 h-3.5 shrink-0" />
-                              {isZh ? "找到 TXT 记录但内容不匹配" : "TXT record found but token doesn't match"}
+                              {s("token_mismatch")}
                             </p>
                             {resolvers.filter(r => r.nearMatch && r.records.length > 0).slice(0, 2).flatMap(r => r.records).slice(0, 3).map((record, i) => (
                               <div key={i} className="flex items-start gap-1.5">
-                                <span className="text-[10px] font-bold text-orange-500/70 shrink-0 mt-0.5">找到</span>
+                                <span className="text-[10px] font-bold text-orange-500/70 shrink-0 mt-0.5">{s("found_label")}</span>
                                 <code className="text-[10px] font-mono text-orange-600 dark:text-orange-400 break-all leading-relaxed flex-1 bg-orange-500/5 rounded px-1.5 py-0.5">{record}</code>
                               </div>
                             ))}
                             {expectedVal && (
                               <div className="flex items-start gap-1.5">
-                                <span className="text-[10px] font-bold text-emerald-600/70 shrink-0 mt-0.5">期望</span>
+                                <span className="text-[10px] font-bold text-emerald-600/70 shrink-0 mt-0.5">{s("expected_label")}</span>
                                 <code className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 break-all leading-relaxed flex-1 bg-emerald-500/5 rounded px-1.5 py-0.5">{expectedVal}</code>
                               </div>
                             )}
                             <p className="text-[10px] text-muted-foreground leading-relaxed">
-                              {isZh
-                                ? "请删除旧记录并重新添加上方表格中显示的正确 Token 值，然后等待 DNS 传播后重试。"
-                                : "Please delete the old record and add the correct Token value shown in the table above, then retry after DNS propagates."}
+                              {s("token_mismatch_note")}
                             </p>
                           </div>
                         )}
@@ -1959,9 +1946,7 @@ export default function StampPage() {
                             >
                               <RiAlertLine className="w-4 h-4 text-orange-500 shrink-0 mt-0.5" />
                               <p className="text-[11px] text-muted-foreground leading-relaxed">
-                                {isZh
-                                  ? "DNS 已传播到验证节点，但 Token 值与期望不符，请检查记录内容是否完整复制。"
-                                  : "DNS is propagated but the token value doesn't match — check that you copied the exact value."}
+                                {s("check_content_note")}
                               </p>
                             </motion.div>
                           )}
@@ -2012,14 +1997,10 @@ export default function StampPage() {
                                 </div>
                                 <div className="space-y-1 flex-1 min-w-0">
                                   <p className="text-xs font-semibold text-orange-700 dark:text-orange-400">
-                                    {isZh
-                                      ? `已自动检测 ${POLL_SCHEDULE.length} 次，未检测到 TXT 记录`
-                                      : `Checked ${POLL_SCHEDULE.length} times — TXT record not found`}
+                                    {s("auto_checked_n", { n: POLL_SCHEDULE.length })}
                                   </p>
                                   <p className="text-[11px] text-muted-foreground leading-relaxed">
-                                    {isZh
-                                      ? "你的域名后缀可能不支持标准 DNS TXT 查询，建议改用文件验证，无需等待 DNS 传播，几秒内完成。"
-                                      : "Your TLD may not support standard DNS TXT queries. Try file verification instead — it's instant, no DNS wait required."}
+                                    {s("tld_no_dns_note")}
                                   </p>
                                   <button
                                     type="button"
@@ -2027,7 +2008,7 @@ export default function StampPage() {
                                     className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-orange-600 dark:text-orange-400 hover:underline"
                                   >
                                     <RiFlashlightLine className="w-3.5 h-3.5" />
-                                    {isZh ? "切换到文件验证 →" : "Switch to file verification →"}
+                                    {s("switch_file_verify")} →
                                   </button>
                                 </div>
                               </div>
@@ -2053,13 +2034,13 @@ export default function StampPage() {
                               <div className="flex justify-between items-center text-[10px] text-muted-foreground/60">
                                 <span className="flex items-center gap-1">
                                   <RiTimeLine className="w-3 h-3" />
-                                  {isZh ? `已检测 ${pollAttempt}/${POLL_SCHEDULE.length} 次` : `Attempt ${pollAttempt}/${POLL_SCHEDULE.length}`}
+                                  {s("attempt_n", { current: pollAttempt, total: POLL_SCHEDULE.length })}
                                 </span>
                                 {countdown > 0 && verifyState !== "loading" && (
                                   <span>
                                     {countdown >= 60
-                                      ? (isZh ? `${Math.ceil(countdown / 60)} 分钟后自动检测` : `next check in ${Math.ceil(countdown / 60)}m`)
-                                      : (isZh ? `${countdown} 秒后自动检测` : `next check in ${countdown}s`)}
+                                      ? s("next_check_min", { n: Math.ceil(countdown / 60) })
+                                      : s("next_check_sec", { n: countdown })}
                                   </span>
                                 )}
                               </div>
@@ -2075,9 +2056,7 @@ export default function StampPage() {
                             <div className="rounded-lg bg-sky-50/60 dark:bg-sky-950/20 border border-sky-200/50 px-3 py-2 flex items-center gap-2">
                               <RiTimeLine className="w-3.5 h-3.5 text-sky-500 shrink-0" />
                               <p className="text-[11px] text-sky-700 dark:text-sky-300 flex-1">
-                                {isZh
-                                  ? "请先按上方说明设置 TXT 记录，设置完成后点击【立即验证】或等待自动检测"
-                                  : "Add the TXT record above first, then click Verify Now or wait for the auto-check"}
+                                {s("add_txt_first")}
                               </p>
                               <span className="shrink-0 text-[10px] font-mono text-sky-500 tabular-nums">
                                 {countdown >= 60
@@ -2203,13 +2182,8 @@ export default function StampPage() {
                   const ts = TAG_STYLES.find(t => t.id === previewStyleId) || TAG_STYLES[0];
                   const cardTheme = CARD_THEME_OPTIONS.find(t => t.id === ts.theme) || CARD_THEME_OPTIONS[0];
                   const Icon = ts.icon;
-                  const stampLabels: Record<string, string> = {
-                    personal: "个人认领", official: "官方认证", brand: "品牌认领",
-                    verified: "已认证",   partner: "合作伙伴", dev: "开发者",
-                    warning:  "警示",     premium: "高级认证",
-                  };
-                  const badgeLabel = stampLabels[previewStyleId] ?? "已认领";
-                  const previewName = form.tagName.trim() || (isZh ? "品牌名称" : "Brand Name");
+                  const badgeLabel = s((`badge_${previewStyleId}`) as StampKey) || s("badge_default");
+                  const previewName = form.tagName.trim() || t("stamp.brand_name_placeholder" as TranslationKey);
                   const isSelected = form.tagStyle === previewStyleId;
                   return (
                     <>
@@ -2283,14 +2257,14 @@ export default function StampPage() {
                                   return (
                                     <div className={cn("flex items-center justify-between w-full px-3 py-2 rounded-xl", cardTheme.btn)}>
                                       <div className="flex flex-col gap-0.5">
-                                        <span className="text-[10px] font-bold leading-none">{isZh ? "访问主页" : "Visit"}</span>
+                                        <span className="text-[10px] font-bold leading-none">{s("visit_homepage")}</span>
                                         <span className="text-[8px] font-normal opacity-55 leading-none">{h}</span>
                                       </div>
                                       <RiArrowRightSLine className="w-3 h-3 opacity-70 shrink-0" />
                                     </div>
                                   );
                                 })() : (
-                                  <p className="text-[9px] text-muted-foreground/40 font-mono text-center py-0.5">{isZh ? "未设置主页链接" : "No link set"}</p>
+                                  <p className="text-[9px] text-muted-foreground/40 font-mono text-center py-0.5">{s("no_link_set")}</p>
                                 )}
                               </div>
                             </div>
@@ -2304,7 +2278,7 @@ export default function StampPage() {
                                 className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity flex items-center justify-center gap-1.5"
                               >
                                 <RiCheckLine className="w-4 h-4" />
-                                {isZh ? "已选择" : "Selected"}
+                                {s("selected")}
                               </button>
                             ) : (
                               <>
@@ -2313,14 +2287,14 @@ export default function StampPage() {
                                   onClick={() => setPreviewStyleId(null)}
                                   className="px-4 py-2.5 rounded-xl border border-border text-sm font-medium text-muted-foreground hover:bg-muted/50 transition-colors"
                                 >
-                                  {isZh ? "取消" : "Cancel"}
+                                  {t("common.cancel")}
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => { update("tagStyle", previewStyleId); setPreviewStyleId(null); }}
                                   className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity"
                                 >
-                                  {isZh ? "使用此样式" : "Use this style"}
+                                  {s("use_this_style")}
                                 </button>
                               </>
                             )}
@@ -2396,7 +2370,7 @@ export default function StampPage() {
                             onClick={dismissGuide}
                             className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity"
                           >
-                            {isZh ? "知道了，开始填写" : "Got it, let's go"}
+                            {s("got_it")}
                           </button>
                         </div>
                       </div>
