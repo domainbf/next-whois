@@ -1,6 +1,7 @@
 import { cn, toSearchURI, isSearchRoute } from "@/lib/utils";
 import React, { useEffect, useCallback } from "react";
 import { useRouter } from "next/router";
+import Head from "next/head";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { SearchBox } from "@/components/search_box";
 import {
@@ -26,7 +27,7 @@ function XRWDisplay() {
   );
 }
 
-export default function HomePage() {
+export default function HomePage({ origin }: { origin: string }) {
   const { t } = useTranslation();
   const router = useRouter();
   const [loading, setLoading] = React.useState(false);
@@ -53,7 +54,54 @@ export default function HomePage() {
     [router],
   );
 
+  const siteUrl = origin || "";
+  const homeDescription = "免费在线 WHOIS / RDAP 域名查询工具，支持查询域名注册信息、注册商、注册日期、到期时间、DNS、状态等，支持国际域名和 IP 地址查询。";
+
   return (
+    <>
+    <Head>
+      <title>RDAP+WHOIS 域名查询 · 免费在线域名信息查询工具</title>
+      <meta name="description" content={homeDescription} />
+      <meta name="keywords" content="whois查询, rdap, 域名查询, 域名注册信息, 域名到期, whois工具, 域名信息, ip查询, 域名状态" />
+      <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large" />
+      <link rel="canonical" href={siteUrl + "/"} />
+
+      <meta property="og:type" content="website" />
+      <meta property="og:url" content={siteUrl + "/"} />
+      <meta property="og:title" content="RDAP+WHOIS 域名查询 · 免费在线域名信息查询工具" />
+      <meta property="og:description" content={homeDescription} />
+      <meta property="og:image" content={`${siteUrl}/api/og?theme=dark`} />
+      <meta property="og:image:width" content="1200" />
+      <meta property="og:image:height" content="630" />
+      <meta property="og:locale" content="zh_CN" />
+
+      <meta name="twitter:card" content="summary_large_image" />
+      <meta name="twitter:title" content="RDAP+WHOIS 域名查询" />
+      <meta name="twitter:description" content={homeDescription} />
+      <meta name="twitter:image" content={`${siteUrl}/api/og?theme=dark`} />
+
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "WebSite",
+            "name": "RDAP+WHOIS 域名查询",
+            "url": siteUrl,
+            "description": homeDescription,
+            "inLanguage": "zh-CN",
+            "potentialAction": {
+              "@type": "SearchAction",
+              "target": {
+                "@type": "EntryPoint",
+                "urlTemplate": `${siteUrl}/{search_term_string}`,
+              },
+              "query-input": "required name=search_term_string",
+            },
+          }),
+        }}
+      />
+    </Head>
     <ScrollArea className="w-full h-[calc(100vh-4rem)]">
       <main className="w-full max-w-5xl mx-auto px-4 sm:px-6 py-6 min-h-[calc(100vh-4rem)]">
         <div className="mb-4">
@@ -122,6 +170,7 @@ export default function HomePage() {
         )}
       </main>
     </ScrollArea>
+    </>
   );
 }
 

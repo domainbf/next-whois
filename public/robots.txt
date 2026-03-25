@@ -2,3 +2,8 @@ User-agent: *
 Allow: /
 
 Disallow: /api/
+Disallow: /dashboard
+Disallow: /payment/
+Disallow: /admin/
+
+Sitemap: /sitemap.xml

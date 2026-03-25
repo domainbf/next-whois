@@ -4378,27 +4378,94 @@ export default function LookupPage({
   return (
     <>
       <Head>
-        <title key="site-title">{`${displayTarget} - WHOIS Lookup`}</title>
-        <meta
-          key="og:title"
-          property="og:title"
-          content={`${displayTarget} - WHOIS Lookup`}
-        />
-        <meta
-          key="og:image"
-          property="og:image"
-          content={`${origin}/api/og?query=${encodeURIComponent(target)}&theme=dark`}
-        />
-        <meta
-          key="twitter:title"
-          name="twitter:title"
-          content={`${displayTarget} - WHOIS Lookup`}
-        />
-        <meta
-          key="twitter:image"
-          name="twitter:image"
-          content={`${origin}/api/og?query=${encodeURIComponent(target)}&theme=dark`}
-        />
+        {(() => {
+          const r = result;
+          const isRegistered = status && r;
+          const registrar = isRegistered && r.registrar && r.registrar !== "Unknown" ? r.registrar : null;
+          const creation = isRegistered && r.creationDate && r.creationDate !== "Unknown" ? r.creationDate : null;
+          const expiry = isRegistered && r.expirationDate && r.expirationDate !== "Unknown" ? r.expirationDate : null;
+          const ns = isRegistered && Array.isArray(r.nameServers) && r.nameServers.length > 0 ? r.nameServers[0] : null;
+          const domainAge = isRegistered && typeof r.domainAge === "number" ? r.domainAge : null;
+          const regStatus = !status
+            ? "unknown"
+            : r?.status?.some(s => s.status?.toLowerCase().includes("reserved")) ? "reserved"
+            : r ? "registered" : "unknown";
+
+          const descParts: string[] = [`${displayTarget} 的 WHOIS / RDAP 查询结果`];
+          if (regStatus === "registered") descParts.push("已注册");
+          if (registrar) descParts.push(`注册商：${registrar}`);
+          if (creation) descParts.push(`注册：${creation.slice(0, 10)}`);
+          if (expiry) descParts.push(`到期：${expiry.slice(0, 10)}`);
+          if (domainAge) descParts.push(`域龄 ${domainAge} 天`);
+          if (ns) descParts.push(`NS：${ns.toLowerCase()}`);
+          const description = descParts.join(" · ");
+
+          const keywords = [
+            displayTarget, `${displayTarget} whois`, `${displayTarget} 域名查询`,
+            `${displayTarget} 注册信息`, `${displayTarget} 到期时间`,
+            ...(registrar ? [`${registrar} 域名`] : []),
+            "域名查询", "whois查询", "rdap", "域名信息",
+          ].join(", ");
+
+          const canonicalUrl = `${origin}/${target}`;
+          const ogImage = `${origin}/api/og?query=${encodeURIComponent(target)}&theme=dark`;
+
+          const jsonLd = JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "WebPage",
+            "name": `${displayTarget} WHOIS 查询`,
+            "description": description,
+            "url": canonicalUrl,
+            "inLanguage": "zh-CN",
+            "isPartOf": { "@type": "WebSite", "url": origin, "name": "RDAP+WHOIS 域名查询" },
+            "about": {
+              "@type": "Dataset",
+              "name": `${displayTarget} 域名注册信息`,
+              "description": description,
+              "keywords": `${displayTarget}, whois, rdap, 域名注册, 域名查询`,
+              ...(isRegistered && r ? {
+                "temporalCoverage": creation && expiry ? `${creation.slice(0,10)}/${expiry.slice(0,10)}` : undefined,
+              } : {}),
+            },
+            "breadcrumb": {
+              "@type": "BreadcrumbList",
+              "itemListElement": [
+                { "@type": "ListItem", "position": 1, "name": "首页", "item": origin },
+                { "@type": "ListItem", "position": 2, "name": "域名查询", "item": `${origin}/` },
+                { "@type": "ListItem", "position": 3, "name": displayTarget, "item": canonicalUrl },
+              ],
+            },
+          });
+
+          return (
+            <>
+              <title key="page-title">{`${displayTarget} WHOIS 查询 · 注册信息 · 到期时间`}</title>
+              <meta name="description" content={description} />
+              <meta name="keywords" content={keywords} />
+              <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
+              <link rel="canonical" href={canonicalUrl} />
+
+              <meta property="og:type" content="website" />
+              <meta property="og:url" content={canonicalUrl} />
+              <meta property="og:title" content={`${displayTarget} WHOIS 查询 · 注册信息`} />
+              <meta property="og:description" content={description} />
+              <meta property="og:image" content={ogImage} />
+              <meta property="og:image:width" content="1200" />
+              <meta property="og:image:height" content="630" />
+              <meta property="og:locale" content="zh_CN" />
+
+              <meta name="twitter:card" content="summary_large_image" />
+              <meta name="twitter:title" content={`${displayTarget} WHOIS 查询`} />
+              <meta name="twitter:description" content={description} />
+              <meta name="twitter:image" content={ogImage} />
+
+              <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{ __html: jsonLd }}
+              />
+            </>
+          );
+        })()}
       </Head>
       <ScrollArea className="w-full h-[calc(100vh-4rem)]">
         <main className="w-full max-w-5xl mx-auto px-4 sm:px-6 py-6 min-h-[calc(100vh-4rem)]">
