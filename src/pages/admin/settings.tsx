@@ -587,7 +587,7 @@ export default function AdminSettingsPage() {
       const data = await res.json();
       if (res.ok && data.ok) {
         setEmailOk(true);
-        toast.success(`测试邮件已发送至 ${data.to}`);
+        toast.success(`测试邮件已发送至 ${data.to}${data.provider ? `（通道：${data.provider}）` : ""}`);
       } else {
         setEmailOk(false);
         toast.error(data.error || "发送失败");
@@ -850,46 +850,171 @@ export default function AdminSettingsPage() {
 
               {/* Email section */}
               {activeSection === "email" && (
-                <div className="glass-panel border border-border rounded-2xl overflow-hidden">
-                  <div className="px-5 py-3 flex items-center gap-2.5 border-b border-border bg-muted/30">
-                    <div className="w-6 h-6 rounded-lg flex items-center justify-center bg-sky-100 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400">
-                      <RiMailSendLine className="w-3.5 h-3.5" />
+                <div className="space-y-4">
+                  {/* SMTP Config */}
+                  <div className="glass-panel border border-border rounded-2xl overflow-hidden">
+                    <div className="px-5 py-3 flex items-center gap-2.5 border-b border-border bg-muted/30">
+                      <div className="w-6 h-6 rounded-lg flex items-center justify-center bg-sky-100 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400">
+                        <RiMailSendLine className="w-3.5 h-3.5" />
+                      </div>
+                      <h3 className="text-sm font-bold">SMTP 自定义邮件服务</h3>
+                      <span className="ml-auto text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 font-semibold">推荐</span>
                     </div>
-                    <h3 className="text-sm font-bold">邮件系统</h3>
+                    <div className="p-5 space-y-4">
+                      {/* Enable toggle */}
+                      <div className="flex items-center justify-between gap-4">
+                        <div>
+                          <p className="text-sm font-semibold">启用 SMTP 发送</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">开启后所有系统邮件将通过 SMTP 发送，优先级高于 Resend</p>
+                        </div>
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={!!form.smtp_enabled}
+                          onClick={() => set("smtp_enabled", form.smtp_enabled ? "" : "1")}
+                          className={[
+                            "relative w-10 h-6 rounded-full transition-colors shrink-0",
+                            form.smtp_enabled ? "bg-emerald-500" : "bg-muted-foreground/25",
+                          ].join(" ")}
+                        >
+                          <span className={[
+                            "absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform",
+                            form.smtp_enabled ? "translate-x-5" : "translate-x-1",
+                          ].join(" ")} />
+                        </button>
+                      </div>
+
+                      {/* SMTP fields */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold">SMTP 服务器地址</Label>
+                          <Input
+                            value={form.smtp_host}
+                            onChange={e => set("smtp_host", e.target.value)}
+                            placeholder="smtp.qq.com / smtp.163.com / smtp.gmail.com"
+                            className="h-9 rounded-xl text-sm font-mono"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold">端口</Label>
+                          <Input
+                            value={form.smtp_port}
+                            onChange={e => set("smtp_port", e.target.value)}
+                            placeholder="465（SSL）/ 587（STARTTLS）/ 25"
+                            className="h-9 rounded-xl text-sm font-mono"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold">加密方式</Label>
+                          <select
+                            value={form.smtp_secure}
+                            onChange={e => set("smtp_secure", e.target.value)}
+                            className="w-full h-9 px-3 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition"
+                          >
+                            <option value="ssl">SSL/TLS（端口 465，推荐）</option>
+                            <option value="starttls">STARTTLS（端口 587）</option>
+                            <option value="none">无加密（端口 25，不推荐）</option>
+                          </select>
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold">发件人显示地址（From）</Label>
+                          <Input
+                            type="email"
+                            value={form.smtp_from}
+                            onChange={e => set("smtp_from", e.target.value)}
+                            placeholder="noreply@yourdomain.com（留空使用用户名）"
+                            className="h-9 rounded-xl text-sm font-mono"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold">SMTP 用户名（账号）</Label>
+                          <Input
+                            value={form.smtp_user}
+                            onChange={e => set("smtp_user", e.target.value)}
+                            placeholder="your@email.com"
+                            autoComplete="off"
+                            className="h-9 rounded-xl text-sm font-mono"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold">SMTP 密码 / 授权码</Label>
+                          <Input
+                            type="password"
+                            value={form.smtp_pass}
+                            onChange={e => set("smtp_pass", e.target.value)}
+                            placeholder="密码或应用专用授权码"
+                            autoComplete="new-password"
+                            className="h-9 rounded-xl text-sm font-mono"
+                          />
+                          <p className="text-[10px] text-muted-foreground">密码加密保存，GET 接口不返回此字段</p>
+                        </div>
+                      </div>
+
+                      <div className="p-3 rounded-xl bg-sky-50 dark:bg-sky-950/20 border border-sky-200/50 dark:border-sky-800/30 text-[11px] text-sky-700 dark:text-sky-400 space-y-1">
+                        <p className="font-semibold">常见 SMTP 配置参考</p>
+                        <p>QQ 邮箱：smtp.qq.com · 端口 465 · SSL · 需开启 SMTP 服务并获取授权码</p>
+                        <p>163 邮箱：smtp.163.com · 端口 465 · SSL · 需在邮箱设置中开启并获取授权码</p>
+                        <p>Gmail：smtp.gmail.com · 端口 587 · STARTTLS · 需开启两步验证后生成应用密码</p>
+                        <p>阿里云邮：smtp.aliyun.com · 端口 465 · SSL</p>
+                      </div>
+                    </div>
                   </div>
-                  <div className="p-5 space-y-4">
-                    <div>
-                      <p className="text-sm font-semibold">测试邮件发送</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        向管理员邮箱发送一封测试邮件，验证 Resend API 和发件域名配置是否正常工作。
+
+                  {/* Resend fallback info */}
+                  <div className="glass-panel border border-border rounded-2xl overflow-hidden">
+                    <div className="px-5 py-3 flex items-center gap-2.5 border-b border-border bg-muted/30">
+                      <div className="w-6 h-6 rounded-lg flex items-center justify-center bg-violet-100 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400">
+                        <RiShieldLine className="w-3.5 h-3.5" />
+                      </div>
+                      <h3 className="text-sm font-bold">Resend（备用 / 兜底）</h3>
+                    </div>
+                    <div className="p-5 space-y-3">
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        当 SMTP 未启用时，系统自动回退到 Resend 发送邮件。配置方式：在 Secrets 中设置以下环境变量。
+                      </p>
+                      <div className="p-3 rounded-xl bg-muted/40 border border-border/60 text-[11px] text-muted-foreground space-y-1">
+                        <p><code className="font-mono">RESEND_API_KEY</code> — Resend API 密钥（必填）</p>
+                        <p><code className="font-mono">RESEND_FROM_EMAIL</code> — 发件人地址（如 noreply@yourdomain.com）</p>
+                      </div>
+                      <p className="text-[11px] text-amber-600 dark:text-amber-400">
+                        注意：Resend 免费版每月限 3,000 封，建议配置 SMTP 作为主要发送渠道。
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Test email */}
+                  <div className="glass-panel border border-border rounded-2xl overflow-hidden">
+                    <div className="px-5 py-3 flex items-center gap-2.5 border-b border-border bg-muted/30">
+                      <div className="w-6 h-6 rounded-lg flex items-center justify-center bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400">
+                        <RiCheckLine className="w-3.5 h-3.5" />
+                      </div>
+                      <h3 className="text-sm font-bold">测试邮件发送</h3>
+                    </div>
+                    <div className="p-5 space-y-3">
+                      <p className="text-xs text-muted-foreground">
+                        向管理员账号邮箱发送一封测试邮件，验证当前配置是否正常。SMTP 已启用时使用 SMTP，否则使用 Resend。
+                        <br />请先保存设置后再测试。
                       </p>
                       {emailOk === true && (
-                        <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-2 flex items-center gap-1">
-                          <RiCheckLine className="w-3.5 h-3.5" />邮件发送成功，请检查收件箱
+                        <p className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                          <RiCheckLine className="w-3.5 h-3.5" />测试邮件发送成功，请检查收件箱
                         </p>
                       )}
                       {emailOk === false && (
-                        <p className="text-xs text-destructive mt-2">发送失败，请检查 RESEND_API_KEY 和发件域名配置</p>
+                        <p className="text-xs text-destructive flex items-center gap-1">
+                          <RiAlertLine className="w-3.5 h-3.5" />发送失败，请检查 SMTP 配置或 RESEND_API_KEY
+                        </p>
                       )}
-                    </div>
-                    <Button
-                      variant="outline"
-                      onClick={handleTestEmail}
-                      disabled={testingEmail}
-                      className="rounded-xl h-9 gap-2"
-                    >
-                      {testingEmail
-                        ? <><RiLoader4Line className="w-4 h-4 animate-spin" />发送中…</>
-                        : <><RiMailSendLine className="w-4 h-4" />发送测试邮件</>}
-                    </Button>
-                    <div className="mt-2 p-3 rounded-xl bg-muted/40 border border-border/60">
-                      <p className="text-xs font-medium mb-1">邮件系统环境变量</p>
-                      <p className="text-[11px] text-muted-foreground">
-                        邮件发送功能依赖以下环境变量：<br />
-                        <code className="font-mono">RESEND_API_KEY</code> — Resend API 密钥<br />
-                        <code className="font-mono">RESEND_FROM</code> — 发件人地址（如 noreply@yourdomain.com）<br />
-                        <code className="font-mono">ADMIN_EMAIL</code> — 管理员邮箱（接收通知和测试邮件）
-                      </p>
+                      <Button
+                        variant="outline"
+                        onClick={handleTestEmail}
+                        disabled={testingEmail}
+                        className="rounded-xl h-9 gap-2"
+                      >
+                        {testingEmail
+                          ? <><RiLoader4Line className="w-4 h-4 animate-spin" />发送中…</>
+                          : <><RiMailSendLine className="w-4 h-4" />发送测试邮件</>}
+                      </Button>
                     </div>
                   </div>
                 </div>

@@ -651,19 +651,63 @@ export function highValueAlertHtml(p: HighValueAlertParams & { siteName?: string
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// Sending helper
+// Sending helper — supports SMTP (db-configured) or Resend (env var)
 // ──────────────────────────────────────────────────────────────────────────────
 const RESEND_FALLBACK_FROM = "onboarding@resend.dev";
 
-export async function sendEmail({
-  to, subject, html,
-}: { to: string; subject: string; html: string }) {
+type SmtpConfig = {
+  host: string;
+  port: number;
+  user: string;
+  pass: string;
+  from: string;
+  secure: string; // "ssl" | "starttls" | "none"
+};
+
+async function getSmtpConfig(): Promise<SmtpConfig | null> {
+  try {
+    const rows = await import("@/lib/db-query").then(m =>
+      m.many<{ key: string; value: string }>(
+        `SELECT key, value FROM site_settings WHERE key IN
+         ('smtp_enabled','smtp_host','smtp_port','smtp_user','smtp_pass','smtp_from','smtp_secure')`
+      )
+    );
+    const map: Record<string, string> = {};
+    for (const r of rows) map[r.key] = r.value;
+    if (!map.smtp_enabled || map.smtp_enabled === "") return null;
+    if (!map.smtp_host || !map.smtp_user || !map.smtp_pass) return null;
+    return {
+      host: map.smtp_host,
+      port: parseInt(map.smtp_port || "465"),
+      user: map.smtp_user,
+      pass: map.smtp_pass,
+      from: map.smtp_from || map.smtp_user,
+      secure: map.smtp_secure || "ssl",
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function sendViaSMTP(smtp: SmtpConfig, to: string, subject: string, html: string) {
+  const nodemailer = await import("nodemailer");
+  const transporter = nodemailer.default.createTransport({
+    host: smtp.host,
+    port: smtp.port,
+    secure: smtp.secure === "ssl",
+    requireTLS: smtp.secure === "starttls",
+    auth: { user: smtp.user, pass: smtp.pass },
+    tls: { rejectUnauthorized: false },
+  });
+  await transporter.sendMail({ from: smtp.from, to, subject, html });
+}
+
+async function sendViaResend(to: string, subject: string, html: string) {
   const resendKey = process.env.RESEND_API_KEY;
   if (!resendKey) {
     console.warn("[sendEmail] RESEND_API_KEY not set — email skipped");
     return;
   }
-
   const configuredFrom = process.env.RESEND_FROM_EMAIL || "";
   const fromAddresses = configuredFrom
     ? [configuredFrom, RESEND_FALLBACK_FROM]
@@ -685,10 +729,26 @@ export async function sendEmail({
       console.error("[sendEmail] Resend error:", resp.status, body);
       return;
     } catch (err: any) {
-      console.error("[sendEmail] fetch error:", err.message);
+      console.error("[sendEmail] Resend fetch error:", err.message);
       return;
     }
   }
+}
+
+export async function sendEmail({
+  to, subject, html,
+}: { to: string; subject: string; html: string }) {
+  try {
+    const smtp = await getSmtpConfig();
+    if (smtp) {
+      await sendViaSMTP(smtp, to, subject, html);
+      return;
+    }
+  } catch (err: any) {
+    console.error("[sendEmail] SMTP error:", err.message);
+    return;
+  }
+  await sendViaResend(to, subject, html);
 }
 
 // ──────────────────────────────────────────────────────────────────────────────

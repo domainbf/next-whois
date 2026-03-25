@@ -7,7 +7,7 @@ import { isAdminEmail } from "@/lib/admin-server";
 import { DEFAULT_SETTINGS, type SiteSettings } from "@/lib/site-settings";
 
 const ALLOWED_KEYS = new Set(Object.keys(DEFAULT_SETTINGS));
-const SERVER_ONLY_KEYS = new Set(["captcha_secret_key"]);
+const SERVER_ONLY_KEYS = new Set(["captcha_secret_key", "smtp_pass"]);
 
 async function isAdmin(req: NextApiRequest, res: NextApiResponse): Promise<boolean> {
   try {

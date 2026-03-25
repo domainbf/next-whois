@@ -86,6 +86,14 @@ export interface SiteSettings {
   captcha_secret_key: string;
   // OG image styles
   og_enabled_styles: string;
+  // SMTP email config
+  smtp_enabled: string;
+  smtp_host: string;
+  smtp_port: string;
+  smtp_user: string;
+  smtp_pass: string;
+  smtp_from: string;
+  smtp_secure: string;
   // Payment gateway config
   payment_stripe_enabled: string;
   payment_stripe_pk: string;
@@ -172,6 +180,13 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   captcha_site_key: "",
   captcha_secret_key: "",
   og_enabled_styles: "0,1,2,3,4,5,6,7",
+  smtp_enabled: "",
+  smtp_host: "",
+  smtp_port: "465",
+  smtp_user: "",
+  smtp_pass: "",
+  smtp_from: "",
+  smtp_secure: "ssl",
   payment_stripe_enabled: "",
   payment_stripe_pk: "",
   payment_xunhupay_enabled: "",
