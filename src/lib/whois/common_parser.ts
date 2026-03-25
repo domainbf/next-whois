@@ -6,8 +6,7 @@ import {
 import { includeArgs } from "@/lib/utils";
 import moment from "moment";
 import { domainToUnicode } from "url";
-import { getMozMetrics } from "@/lib/moz/client";
-import { getDomainPricing } from "@/lib/pricing/client";
+import { getDomainPricing, getDomainTransferNegotiable } from "@/lib/pricing/client";
 
 function convertIdnToUnicode(domain: string): {
   unicode: string;
@@ -247,16 +246,14 @@ export async function applyParams(result: WhoisAnalyzeResult) {
       ? null
       : calculateRemainingDays(result.expirationDate);
 
-  // Get pricing information
-  result.registerPrice = await getDomainPricing(result.domain, "new");
-  result.renewPrice = await getDomainPricing(result.domain, "renew");
-  result.transferPrice = await getDomainPricing(result.domain, "transfer");
-
-  // Get Moz metrics
-  const mozMetrics = await getMozMetrics(result.domain);
-  result.mozDomainAuthority = mozMetrics.domainAuthority;
-  result.mozPageAuthority = mozMetrics.pageAuthority;
-  result.mozSpamScore = mozMetrics.spamScore;
+  const [registerPrice, renewPrice, negotiable] = await Promise.all([
+    getDomainPricing(result.domain, "new"),
+    getDomainPricing(result.domain, "renew"),
+    getDomainTransferNegotiable(result.domain),
+  ]);
+  result.registerPrice = registerPrice;
+  result.renewPrice = renewPrice;
+  result.negotiable = negotiable;
 
   return result;
 }
@@ -585,6 +582,7 @@ export async function analyzeWhois(data: string): Promise<WhoisAnalyzeResult> {
       result.domain = value;
     } else if (
       includeArgs(key, "registrar") &&
+      !includeArgs(key, "expir", "date", "phone", "email", "url", "whois", "iana", "server", "abuse", "registration") &&
       result.registrar === "Unknown"
     ) {
       result.registrar = value;
@@ -646,6 +644,348 @@ export async function analyzeWhois(data: string): Promise<WhoisAnalyzeResult> {
     newStatus.push(status);
   }
   result.status = newStatus;
+
+  // ── Synthetic status injection from raw WHOIS text ──────────────────────────
+  // Many ccTLD WHOIS servers express domain state as free-form text rather than
+  // structured EPP status codes. Detect these patterns and inject synthetic
+  // status entries so downstream status detection works correctly.
+  {
+    const rawLow = data.toLowerCase();
+    const hasStatusCode = (code: string) =>
+      result.status.some((s) => s.status.toLowerCase().includes(code));
+
+    // ── RESERVED ─────────────────────────────────────────────────────────────
+    // Domain is held by the registry and not available for public registration.
+    // Sources (non-exhaustive):
+    //   TELE-INFO (.yun/.wang/.中文) → "in the reserved list, please contact the registry"
+    //   TWNIC (.tw/.com.tw)          → standalone "Reserved" line
+    //   NZRS (.nz/.co.nz)            → standalone "reserved" line
+    //   DENIC (.de)                  → "% Status: reserviert" (German)
+    //   EURID (.eu)                  → "Status: RESERVED"
+    //   IIS (.se/.nu)                → "state: reserved"
+    //   CZ.NIC (.cz/.sk)             → "rezervovan: ano" (Czech/Slovak)
+    //   NIC.AT (.at)                 → "% Domain [x] is reserved."
+    //   Donuts / Identity Digital    → "Status: reserved" (EPP field in WHOIS text)
+    //   CentralNic / LogicBoxes      → "Status: reserved"
+    //   CIRA (.ca)                   → "Status: Reserved"
+    //   FICORA (.fi)                 → "Status: Reserved"
+    //   CNNIC / Chinese TLD WHOIS    → "保留域名" / "已被保留" / "注册局保留"
+    //   Generic ccTLD/new gTLD       → "Reserved for future use" / "reserved for official use"
+    //   New gTLD sunrise periods     → "sunrise reserved" / "reserved for sunrise"
+    const syntheticReserved =
+      !hasStatusCode("reserved") &&
+      (// ── English free-text phrases ──────────────────────────────────────
+        rawLow.includes("reserved name") ||
+        rawLow.includes("this name is reserved") ||
+        rawLow.includes("is a reserved name") ||
+        rawLow.includes("domain is reserved") ||
+        rawLow.includes("this domain is reserved") ||
+        rawLow.includes("domain name is reserved") ||
+        rawLow.includes("reserved by the registry") ||
+        rawLow.includes("registry reserved") ||
+        rawLow.includes("reserved-name") ||
+        rawLow.includes("reserved domain") ||
+        rawLow.includes("in the reserved list") ||
+        rawLow.includes("on the reserved list") ||
+        rawLow.includes("is in the reserved list") ||
+        rawLow.includes("is on the reserved list") ||
+        rawLow.includes("has been reserved") ||
+        rawLow.includes("name is reserved") ||
+        rawLow.includes("is reserved for") ||
+        rawLow.includes("is reserved by") ||
+        rawLow.includes("reserved for registry") ||
+        rawLow.includes("reserved for the registry") ||
+        rawLow.includes("registry has reserved") ||
+        rawLow.includes("registry hold") ||
+        rawLow.includes("held by the registry") ||
+        rawLow.includes("domain is held") ||
+        rawLow.includes("being held by") ||
+        rawLow.includes("reserved for future use") ||
+        rawLow.includes("reserved for official use") ||
+        rawLow.includes("reserved for this registry") ||
+        rawLow.includes("reserved at the registry") ||
+        rawLow.includes("sunrise reserved") ||
+        rawLow.includes("reserved for sunrise") ||
+        rawLow.includes("reserved for landrush") ||
+        rawLow.includes("landrush reserved") ||
+        // ── Structured field: "status: reserved" / "state: reserved" ────
+        // Covers EURID (.eu), IIS (.se/.nu), CIRA (.ca), FICORA (.fi),
+        // DNS Polska (.pl), and many new gTLD operators.
+        /\bstatus\s*:\s*reserved\b/.test(rawLow) ||
+        /\bstate\s*:\s*reserved\b/.test(rawLow) ||
+        /\bdomainstatus\s*:\s*reserved\b/.test(rawLow) ||
+        // ── German (DENIC .de): "% Status: reserviert" ──────────────────
+        rawLow.includes("reserviert") ||
+        /\bstatus\s*:\s*reserviert\b/.test(rawLow) ||
+        // ── Czech / Slovak (CZ.NIC .cz .sk): "rezervovan: ano" ──────────
+        rawLow.includes("rezervovan") ||
+        // ── French ccTLD (AFNIC .fr .re .pm .tf .wf .yt) ────────────────
+        rawLow.includes("réservé") ||
+        rawLow.includes("domaine réservé") ||
+        rawLow.includes("domaine reserve") ||
+        /\bstatus\s*:\s*r[eé]serv[eé]\b/.test(rawLow) ||
+        // ── Spanish ccTLD (.es, .ar, .mx, .co, .cl, .pe, .uy, etc.) ─────
+        rawLow.includes("reservado") ||
+        rawLow.includes("dominio reservado") ||
+        /\bestado\s*:\s*reservado\b/.test(rawLow) ||
+        // ── Portuguese (.pt / .br) ────────────────────────────────────────
+        rawLow.includes("reservado") ||          // same spelling as Spanish
+        rawLow.includes("domínio reservado") ||
+        // ── Italian (NIC.it .it): status RISERVATO, SOSPESO ─────────────
+        /\bstatus\s*:\s*riservato\b/.test(rawLow) ||
+        rawLow.includes("dominio riservato") ||
+        // ── Swedish (IIS .se .nu): "state: reserverad" ───────────────────
+        /\bstate\s*:\s*reserverad\b/.test(rawLow) ||
+        /\bstatus\s*:\s*reserverad\b/.test(rawLow) ||
+        rawLow.includes("domännamnet är reserverat") ||  // "domain name is reserved" in Swedish
+        // ── Norwegian (Norid .no): "reservert" ───────────────────────────
+        /\bstatus\s*:\s*reservert\b/.test(rawLow) ||
+        rawLow.includes("domenet er reservert") ||      // "domain is reserved" in Norwegian
+        // ── Danish (DK Hostmaster .dk): "reserveret" ─────────────────────
+        /\bstatus\s*:\s*reserveret\b/.test(rawLow) ||
+        rawLow.includes("domænet er reserveret") ||     // "domain is reserved" in Danish
+        // ── Polish (DNS Polska / NASK .pl): "zarezerwowany" ──────────────
+        /\bstatus\s*:\s*zarezerwowany\b/.test(rawLow) ||
+        rawLow.includes("domena zarezerwowana") ||      // "reserved domain" in Polish
+        // ── Dutch (SIDN .nl): "gereserveerd" ─────────────────────────────
+        /\bstatus\s*:\s*gereserveerd\b/.test(rawLow) ||
+        rawLow.includes("domein is gereserveerd") ||    // "domain is reserved" in Dutch
+        // ── Finnish (Traficom .fi): "varattu" ────────────────────────────
+        /\bstatus\s*:\s*varattu\b/.test(rawLow) ||
+        rawLow.includes("verkkotunnus varattu") ||      // "domain reserved" in Finnish
+        rawLow.includes("on varattu") ||                // "is reserved" in Finnish
+        // ── Hungarian (.hu): "fenntartott" ───────────────────────────────
+        /\bstatus\s*:\s*fenntartott\b/.test(rawLow) ||
+        rawLow.includes("fenntartott tartomány") ||     // "reserved domain" in Hungarian
+        // ── Romanian (RoTLD .ro): "rezervat" ─────────────────────────────
+        /\bstatus\s*:\s*rezervat\b/.test(rawLow) ||
+        rawLow.includes("domeniu rezervat") ||          // "reserved domain" in Romanian
+        // ── Turkish (NIC.TR .tr): "rezerve" ─────────────────────────────
+        /\bstatus\s*:\s*rezerve\b/.test(rawLow) ||
+        rawLow.includes("alan adı rezerve") ||          // "domain name reserved" in Turkish
+        // ── Greek (ICS.FORTH .gr) ─────────────────────────────────────────
+        rawLow.includes("δεσμευμένο") ||               // "reserved" in Greek
+        // ── Russian (.ru / .рф — RU-CENTER / Coordination Center for TLD RU)
+        // Non-Latin: safe to use includes() — domain names appear as punycode
+        rawLow.includes("зарезервирован") ||           // reserved (masculine)
+        rawLow.includes("зарезервировано") ||          // reserved (neuter)
+        rawLow.includes("зарезервирована") ||          // reserved (feminine)
+        rawLow.includes("домен зарезервирован") ||     // "domain is reserved" in Russian
+        rawLow.includes("заблокирован") ||             // blocked/prohibited (Russian)
+        // ── Ukrainian (.ua — Hostmaster.UA) ──────────────────────────────
+        rawLow.includes("зарезервовано") ||            // reserved (Ukrainian)
+        rawLow.includes("домен зарезервовано") ||      // "domain is reserved" in Ukrainian
+        // ── Japanese (.jp — JPRS): bilingual, may contain Japanese ───────
+        rawLow.includes("予約済み") ||                  // "reserved" in Japanese
+        rawLow.includes("利用停止") ||                  // "service suspended" in Japanese
+        rawLow.includes("登録停止") ||                  // "registration suspended" in Japanese
+        // ── Korean (.kr — KRNIC): WHOIS can respond in Korean ────────────
+        rawLow.includes("예약됨") ||                    // "reserved" in Korean
+        rawLow.includes("예약된") ||                    // "reserved" (attributive) in Korean
+        rawLow.includes("예약된 도메인") ||             // "reserved domain" in Korean
+        // ── Arabic ccTLDs (.sa / .ae / .eg / .iq / .ly) ─────────────────
+        rawLow.includes("محجوز") ||                    // "reserved/booked" in Arabic
+        rawLow.includes("النطاق محجوز") ||             // "domain is reserved" in Arabic
+        // ── Hebrew (.il — ISOC-IL) ───────────────────────────────────────
+        rawLow.includes("שמור") ||                     // "reserved/saved" in Hebrew
+        rawLow.includes("הדומיין שמור") ||             // "domain is reserved" in Hebrew
+        // ── Traditional Chinese (.tw / .hk) ──────────────────────────────
+        // Simplified already covered above; Traditional characters:
+        rawLow.includes("保留網域") ||                  // "reserved domain" in Traditional Chinese
+        rawLow.includes("已保留") ||                    // "already reserved" in Traditional/Simplified
+        // ── Simplified Chinese WHOIS (CNNIC, TELE-INFO, ZDNS) ────────────
+        rawLow.includes("保留域名") ||
+        rawLow.includes("已被保留") ||
+        rawLow.includes("注册局保留") ||
+        rawLow.includes("保留中") ||
+        rawLow.includes("该域名已保留") ||
+        // ── standalone "reserved" on its own line (TWNIC / NZRS) ─────────
+        /(?:^|\n)\s*reserved\s*(?:\n|$)/.test(rawLow));
+
+    if (syntheticReserved) {
+      result.status.push({ status: "registry-reserved", url: "" });
+    }
+
+    // ── PREMIUM RESERVED ─────────────────────────────────────────────────────
+    // Registry is holding this name for sale at a premium price or via special
+    // application / auction.  These get an additional "registry-premium" tag so
+    // the UI can show a different, purchase-oriented description.
+    // Sources:
+    //   Many new gTLD operators    → "Premium" tier during EAP / launch periods
+    //   TELE-INFO (.yun/.wang)     → "please contact the registry"
+    //   Aftermarket platforms      → "available for purchase" / "make an offer"
+    //   Sedo / GoDaddy Auctions    → "this name is available for purchase"
+    const syntheticPremiumReserved =
+      !hasStatusCode("registry-premium") &&
+      (rawLow.includes("premium domain") ||
+        rawLow.includes("premium name") ||
+        rawLow.includes("premium price") ||
+        rawLow.includes("premium pricing") ||
+        rawLow.includes("premium listing") ||
+        rawLow.includes("registry premium") ||
+        rawLow.includes("available at a premium") ||
+        rawLow.includes("this is a premium") ||
+        rawLow.includes("premium registration") ||
+        rawLow.includes("early access program") ||
+        rawLow.includes("early access pricing") ||
+        rawLow.includes("early access period") ||
+        rawLow.includes("available for purchase") ||
+        rawLow.includes("available for sale") ||
+        rawLow.includes("this name is for sale") ||
+        rawLow.includes("domain is for sale") ||
+        rawLow.includes("make an offer") ||
+        rawLow.includes("aftermarket") ||
+        rawLow.includes("reserve price") ||
+        rawLow.includes("starting bid") ||
+        rawLow.includes("minimum bid") ||
+        // "contact the registry/registrar" as purchase call-to-action
+        rawLow.includes("please contact the registry") ||
+        rawLow.includes("contact the registry to") ||
+        rawLow.includes("contact the registry for") ||
+        rawLow.includes("contact your registrar to") ||
+        rawLow.includes("contact your registrar for") ||
+        rawLow.includes("enquire about this domain") ||
+        rawLow.includes("inquire about this domain") ||
+        rawLow.includes("may be available for purchase") ||
+        rawLow.includes("can be acquired") ||
+        rawLow.includes("reach out to the registry"));
+
+    if (syntheticPremiumReserved) {
+      result.status.push({ status: "registry-premium", url: "" });
+    }
+
+    // ── PROHIBITED / BLOCKED ─────────────────────────────────────────────────
+    // Domain string is policy-blocked and cannot be registered by anyone.
+    // Sources:
+    //   ICANN policy       → prohibited strings, brand protection
+    //   Registry policy    → sensitive keywords, govt-reserved terms
+    //   ccTLD policy       → national policy blocks
+    //   DNS abuse lists    → malware / phishing holds
+    const syntheticProhibited =
+      !hasStatusCode("prohibited") &&
+      !hasStatusCode("blocked") &&
+      (rawLow.includes("registration is prohibited") ||
+        rawLow.includes("registration prohibited") ||
+        rawLow.includes("cannot be registered") ||
+        rawLow.includes("registration not possible") ||
+        rawLow.includes("registration not available") ||
+        rawLow.includes("not available for registration") ||
+        rawLow.includes("not eligible for registration") ||
+        rawLow.includes("not open for registration") ||
+        rawLow.includes("not open for general registration") ||
+        rawLow.includes("not open to general registrations") ||
+        rawLow.includes("not currently open for registration") ||
+        rawLow.includes("not available for public registration") ||
+        rawLow.includes("not permitted to register") ||
+        rawLow.includes("registration is not permitted") ||
+        rawLow.includes("registrations are not permitted") ||
+        rawLow.includes("registrations not permitted") ||
+        rawLow.includes("not accepting registrations") ||
+        rawLow.includes("registrations not accepted") ||
+        rawLow.includes("no registrations are accepted") ||
+        rawLow.includes("does not accept registrations") ||
+        rawLow.includes("cannot be publicly registered") ||
+        rawLow.includes("prohibited string") ||
+        rawLow.includes("prohibited by policy") ||
+        rawLow.includes("policy prohibited") ||
+        rawLow.includes("not available for public use") ||
+        rawLow.includes("registrar banned") ||
+        rawLow.includes("registry banned") ||
+        rawLow.includes("blacklisted") ||
+        rawLow.includes("禁止注册") ||         // Chinese: registration prohibited
+        rawLow.includes("不开放注册") ||       // Chinese: not open for registration
+        rawLow.includes("不可注册") ||         // Chinese: cannot register
+        rawLow.includes("禁止使用") ||         // Chinese: prohibited from use
+        // ── Russian / Ukrainian ──────────────────────────────────────────
+        rawLow.includes("запрещена регистрация") ||  // "registration is prohibited" (Russian)
+        rawLow.includes("регистрация запрещена") ||  // "registration prohibited" (Russian)
+        rawLow.includes("реєстрація заборонена") ||  // "registration prohibited" (Ukrainian)
+        // ── Italian (NIC.it .it) ─────────────────────────────────────────
+        /\bstatus\s*:\s*vietato\b/.test(rawLow) ||    // "prohibited" in Italian
+        rawLow.includes("registrazione vietata") ||   // "registration prohibited" in Italian
+        // ── Japanese (.jp — JPRS) ────────────────────────────────────────
+        rawLow.includes("登録不可") ||        // "cannot register" in Japanese
+        rawLow.includes("登録制限") ||        // "registration restricted" in Japanese
+        // ── Korean (.kr — KRNIC) ─────────────────────────────────────────
+        rawLow.includes("등록불가") ||        // "cannot register" in Korean
+        rawLow.includes("등록 금지") ||       // "registration prohibited" in Korean
+        // ── Arabic ccTLDs ────────────────────────────────────────────────
+        rawLow.includes("محظور") ||           // "prohibited/forbidden" in Arabic
+        rawLow.includes("التسجيل محظور") ||   // "registration is prohibited" in Arabic
+        /\bblocked\s+by\s+(?:registry|registrar)\b/.test(rawLow) ||
+        /\bregistration\s+blocked\b/.test(rawLow));
+
+    if (syntheticProhibited) {
+      result.status.push({ status: "registrationProhibited", url: "" });
+    }
+
+    // ── SUSPENDED / HOLD ─────────────────────────────────────────────────────
+    // Domain was registered but has been suspended by the registry or registrar.
+    // Sources:
+    //   Registrar action   → non-payment, policy violation, abuse report
+    //   Registry action    → ICANN compliance, court orders, fraud holds
+    //   ccTLD policies     → national law enforcement, consumer protection
+    const syntheticSuspended =
+      !hasStatusCode("suspended") &&
+      !hasStatusCode("hold") &&
+      (rawLow.includes("suspended by registry") ||
+        rawLow.includes("suspended by registrar") ||
+        rawLow.includes("registry-suspended") ||
+        rawLow.includes("domain is suspended") ||
+        rawLow.includes("domain suspended") ||
+        rawLow.includes("domain has been suspended") ||
+        rawLow.includes("account suspended") ||
+        rawLow.includes("abuse suspension") ||
+        rawLow.includes("abuse hold") ||
+        rawLow.includes("fraud hold") ||
+        rawLow.includes("compliance hold") ||
+        rawLow.includes("billing suspension") ||
+        rawLow.includes("domain is on hold") ||
+        rawLow.includes("registrar hold") ||
+        rawLow.includes("gesperrt") ||          // German: locked/blocked (DENIC .de)
+        rawLow.includes("suspendido") ||        // Spanish: suspended
+        rawLow.includes("suspendu") ||          // French: suspended (AFNIC .fr)
+        // ── Portuguese (.pt / .br) ────────────────────────────────────────
+        rawLow.includes("suspenso") ||          // Portuguese: suspended
+        rawLow.includes("domínio suspenso") ||  // "suspended domain" in Portuguese
+        // ── Italian (NIC.it .it) ─────────────────────────────────────────
+        /\bstatus\s*:\s*sospeso\b/.test(rawLow) ||  // "suspended" in Italian
+        rawLow.includes("dominio sospeso") ||   // "suspended domain" in Italian
+        // ── Dutch (.nl) ───────────────────────────────────────────────────
+        rawLow.includes("opgeschort") ||        // "suspended" in Dutch
+        rawLow.includes("domein opgeschort") || // "domain suspended" in Dutch
+        // ── Polish (DNS Polska .pl) ───────────────────────────────────────
+        rawLow.includes("zawieszony") ||        // "suspended" in Polish
+        rawLow.includes("domena zawieszona") || // "suspended domain" in Polish
+        // ── Finnish (Traficom .fi) ────────────────────────────────────────
+        rawLow.includes("keskeytetty") ||       // "suspended" in Finnish
+        // ── Russian (.ru / .рф) ───────────────────────────────────────────
+        rawLow.includes("приостановлен") ||     // "suspended" (masc.) in Russian
+        rawLow.includes("приостановлено") ||    // "suspended" (neut.) in Russian
+        rawLow.includes("домен заблокирован") || // "domain is blocked" in Russian
+        // ── Ukrainian (.ua) ───────────────────────────────────────────────
+        rawLow.includes("призупинено") ||       // "suspended" in Ukrainian
+        // ── Japanese (.jp — JPRS) ────────────────────────────────────────
+        rawLow.includes("停止中") ||            // "in suspension" in Japanese
+        rawLow.includes("利用停止") ||          // "service suspended" in Japanese
+        // ── Korean (.kr — KRNIC) ─────────────────────────────────────────
+        rawLow.includes("정지됨") ||            // "suspended" in Korean
+        rawLow.includes("사용 정지") ||         // "service suspended" in Korean
+        // ── Arabic ccTLDs ────────────────────────────────────────────────
+        rawLow.includes("موقوف") ||            // "suspended/on hold" in Arabic
+        rawLow.includes("معلق") ||             // "suspended/pending" in Arabic
+        // ── Chinese WHOIS ─────────────────────────────────────────────────
+        rawLow.includes("已暂停") ||            // "already suspended" (Simplified)
+        rawLow.includes("域名暂停") ||          // "domain suspended" (Simplified)
+        rawLow.includes("已停用") ||            // "already disabled" (Simplified)
+        rawLow.includes("暫停使用") ||          // "suspended from use" (Traditional)
+        // standalone "suspended" on its own line
+        /(?:^|\n)\s*suspended\s*(?:\n|$)/.test(rawLow));
+
+    if (syntheticSuspended) {
+      result.status.push({ status: "suspended", url: "" });
+    }
+  }
 
   const seenNS = new Set<string>();
   result.nameServers = result.nameServers.filter((ns) => {

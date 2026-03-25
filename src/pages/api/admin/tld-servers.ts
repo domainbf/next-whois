@@ -6,18 +6,11 @@ import {
   deleteCustomServer,
   CustomServerEntry,
 } from "@/lib/whois/custom-servers";
+import { requireAdmin } from "@/lib/admin";
 
 export const config = {
   maxDuration: 10,
 };
-
-const ADMIN_SECRET = process.env.ADMIN_SECRET;
-
-function isAuthorized(req: NextApiRequest): boolean {
-  if (!ADMIN_SECRET) return false;
-  const auth = req.headers["x-admin-secret"] || req.query.secret;
-  return auth === ADMIN_SECRET;
-}
 
 type ResponseData = {
   success: boolean;
@@ -30,11 +23,8 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse<ResponseData>,
 ) {
-  if (!isAuthorized(req)) {
-    return res
-      .status(401)
-      .json({ success: false, message: "Unauthorized. Provide ADMIN_SECRET via x-admin-secret header." });
-  }
+  const session = await requireAdmin(req, res);
+  if (!session) return;
 
   if (req.method === "GET") {
     const servers = await getAllCustomServers();

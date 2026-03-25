@@ -1,5 +1,6 @@
 import dns from "dns/promises";
 import https from "https";
+import { domainToASCII } from "url";
 import { extractDomain } from "@/lib/utils";
 
 export type DnsProbeResult = {
@@ -52,8 +53,18 @@ async function checkSsl(domain: string): Promise<boolean> {
   });
 }
 
+function toAsciiForDns(input: string): string {
+  if (!/[^\x00-\x7F]/.test(input)) return input;
+  try {
+    const ascii = domainToASCII(input.toLowerCase());
+    if (ascii && !ascii.includes("\u0000")) return ascii;
+  } catch {}
+  return input;
+}
+
 export async function probeDomain(input: string): Promise<DnsProbeResult> {
-  const domain = extractDomain(input) || input;
+  const extracted = extractDomain(input) || input;
+  const domain = toAsciiForDns(extracted);
 
   const [nsResult, aResult, aaaaResult, mxResult] = await Promise.all([
     withDnsTimeout(dns.resolveNs(domain)),

@@ -10,10 +10,22 @@ import {
   RiCloseLine,
   RiGlobalLine,
   RiServerLine,
+  RiHistoryLine,
+  RiDeleteBinLine,
+  RiToolsLine,
+  RiUserLine,
+  RiLogoutBoxLine,
+  RiDashboardLine,
+  RiShieldUserLine,
+  RiLockLine,
+  RiMapPinLine,
+  RiInformationLine,
+  RiHeart3Line,
+  RiFileList2Line,
 } from "@remixicon/react";
 import { useTheme } from "next-themes";
 import { motion, AnimatePresence } from "framer-motion";
-import { cn } from "@/lib/utils";
+import { cn, toSearchURI } from "@/lib/utils";
 import { VERSION } from "@/lib/env";
 import Link from "next/link";
 import { useScrollDirection } from "@/hooks/useScrollDirection";
@@ -23,7 +35,203 @@ import {
   DrawerContent,
   DrawerTrigger,
   DrawerClose,
+  DrawerTitle,
 } from "@/components/ui/drawer";
+import { listHistory, removeHistory, syncLocalHistoryToServer } from "@/lib/history";
+import { Badge } from "@/components/ui/badge";
+import { format } from "date-fns";
+import { useSession, signOut } from "next-auth/react";
+import { useSiteSettings } from "@/lib/site-settings";
+import { ADMIN_EMAIL } from "@/lib/admin-shared";
+import { useTranslation, TranslationKey } from "@/lib/i18n";
+
+const TAP = { whileTap: { scale: 0.88 }, transition: { type: "spring" as const, stiffness: 500, damping: 22 } };
+
+function HistoryTypeIcon({ type }: { type: string }) {
+  const config: Record<string, { label: string; color: string }> = {
+    domain: { label: "🌐", color: "text-blue-500" },
+    ipv4: { label: "4", color: "text-emerald-600" },
+    ipv6: { label: "6", color: "text-purple-500" },
+    asn: { label: "AS", color: "text-orange-500" },
+    cidr: { label: "/", color: "text-pink-500" },
+  };
+  const c = config[type] || { label: "?", color: "text-gray-500" };
+  if (type === "domain") {
+    return <RiGlobalLine className={cn("w-3.5 h-3.5", c.color)} />;
+  }
+  return <span className={cn("text-[9px] font-bold", c.color)}>{c.label}</span>;
+}
+
+function HistoryDrawer() {
+  const [open, setOpen] = React.useState(false);
+  const [mounted, setMounted] = React.useState(false);
+  const [refreshTick, setRefreshTick] = React.useState(0);
+  const { t, locale } = useTranslation();
+  const isChinese = locale === "zh" || locale === "zh-tw";
+  const { data: sessionData } = useSession();
+  const histSettings = useSiteSettings();
+  const queryOnlyMode = histSettings.query_only_mode === "1";
+  const isHistAdmin = (sessionData?.user as any)?.email?.toLowerCase?.()?.trim?.() === ADMIN_EMAIL;
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const allHistory = React.useMemo(() => {
+    if (!mounted) return [];
+    return listHistory().sort((a, b) => b.timestamp - a.timestamp);
+  }, [mounted, refreshTick, open]);
+
+  const grouped = React.useMemo(() => {
+    const groups: { label: string; items: typeof allHistory }[] = [];
+    if (!allHistory.length) return groups;
+    let curLabel = "";
+    let curItems: typeof allHistory = [];
+    for (const item of allHistory) {
+      const date = new Date(item.timestamp);
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const yesterday = new Date(today.getTime() - 86400000);
+      const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+      let label: string;
+      if (d.getTime() === today.getTime()) {
+        label = t("today");
+      } else if (d.getTime() === yesterday.getTime()) {
+        label = t("yesterday");
+      } else if (isChinese) {
+        label = date.getFullYear() === now.getFullYear()
+          ? format(date, "M月d日")
+          : format(date, "yyyy年M月d日");
+      } else {
+        label = date.getFullYear() === now.getFullYear()
+          ? format(date, "MMM d")
+          : format(date, "MMM d, yyyy");
+      }
+      if (label !== curLabel) {
+        if (curItems.length) groups.push({ label: curLabel, items: curItems });
+        curLabel = label;
+        curItems = [item];
+      } else {
+        curItems.push(item);
+      }
+    }
+    if (curItems.length) groups.push({ label: curLabel, items: curItems });
+    return groups;
+  }, [allHistory, isChinese, t]);
+
+  const handleDelete = React.useCallback(
+    (e: React.MouseEvent, query: string) => {
+      e.preventDefault();
+      e.stopPropagation();
+      removeHistory(query);
+      setRefreshTick((t) => t + 1);
+    },
+    [],
+  );
+
+  if (queryOnlyMode && !isHistAdmin) return null;
+
+  return (
+    <Drawer open={open} onOpenChange={setOpen}>
+      <DrawerTrigger asChild>
+        <motion.button
+          type="button"
+          className="p-2 pr-0 inline-flex items-center justify-center touch-manipulation"
+          {...TAP}
+          aria-label={t("nav_search_history")}
+        >
+          <RiHistoryLine className="h-[1rem] w-[1rem]" />
+        </motion.button>
+      </DrawerTrigger>
+
+      <DrawerContent className="max-h-[82vh]">
+        <div className="flex items-center justify-between px-4 pt-4 pb-2">
+          <DrawerTitle className="text-sm font-semibold">{t("nav_search_history")}</DrawerTitle>
+          <DrawerClose asChild>
+            <button className="p-1.5 rounded-lg hover:bg-muted/50 transition-colors touch-manipulation">
+              <RiCloseLine className="w-4 h-4 text-muted-foreground" />
+            </button>
+          </DrawerClose>
+        </div>
+        <div className="overflow-y-auto px-2 pb-8">
+          {allHistory.length > 0 ? (
+            <div className="space-y-1">
+              {grouped.map((group) => (
+                <div key={group.label}>
+                  <div className="flex items-center gap-3 py-2 px-1">
+                    <div className="h-px flex-1 bg-border" />
+                    <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider shrink-0">
+                      {group.label}
+                    </span>
+                    <div className="h-px flex-1 bg-border" />
+                  </div>
+                  {group.items.map((item) => {
+                    const rs = item.regStatus ?? "unknown";
+                    const statusCfg: Record<string, { label: string; cls: string }> = {
+                      registered:   { label: t("history_registered"),   cls: "text-emerald-600 border-emerald-300/70 bg-emerald-50 dark:bg-emerald-950/30 dark:border-emerald-700/40" },
+                      unregistered: { label: t("history_unregistered"), cls: "text-sky-600 border-sky-300/70 bg-sky-50 dark:bg-sky-950/30 dark:border-sky-700/40" },
+                      reserved:     { label: t("history_reserved"),     cls: "text-amber-600 border-amber-300/70 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700/40" },
+                      error:        { label: t("history_error"),        cls: "text-rose-600 border-rose-300/70 bg-rose-50 dark:bg-rose-950/30 dark:border-rose-700/40" },
+                      unknown:      { label: t("history_unknown"),      cls: "text-muted-foreground border-border bg-muted/50" },
+                    };
+                    const cfg = statusCfg[rs] ?? statusCfg.unknown;
+                    return (
+                    <DrawerClose
+                      asChild
+                      key={`${item.query}-${item.timestamp}`}
+                    >
+                      <Link
+                        href={toSearchURI(item.query)}
+                        className="group flex items-center gap-2.5 px-3 py-2.5 rounded-lg hover:bg-muted/50 active:bg-muted transition-colors touch-manipulation"
+                      >
+                        <div className="w-7 h-7 rounded-md grid place-items-center border border-border bg-muted/20 shrink-0">
+                          <HistoryTypeIcon type={item.queryType} />
+                        </div>
+                        <span className="text-sm font-medium truncate flex-1 min-w-0 uppercase">
+                          {item.query}
+                        </span>
+                        {item.queryType === "domain" ? (
+                          <span className={`shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-md border ${cfg.cls}`}>
+                            {cfg.label}
+                          </span>
+                        ) : (
+                          <Badge
+                            variant="outline"
+                            className="text-[8px] px-1.5 py-0 uppercase tracking-wider shrink-0"
+                          >
+                            {item.queryType}
+                          </Badge>
+                        )}
+                        <span className="text-[11px] text-muted-foreground tabular-nums shrink-0">
+                          {format(item.timestamp, "h:mm a")}
+                        </span>
+                        <button
+                          className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-destructive/10 shrink-0 touch-manipulation"
+                          onClick={(e) => handleDelete(e, item.query)}
+                        >
+                          <RiDeleteBinLine className="w-3.5 h-3.5 text-muted-foreground hover:text-destructive" />
+                        </button>
+                      </Link>
+                    </DrawerClose>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <RiHistoryLine className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
+              <p className="text-sm text-muted-foreground">{t("no_history_title")}</p>
+              <p className="text-xs text-muted-foreground/60 mt-1">
+                {t("no_history_description")}
+              </p>
+            </div>
+          )}
+        </div>
+      </DrawerContent>
+    </Drawer>
+  );
+}
 
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme();
@@ -49,11 +257,10 @@ export function ThemeToggle() {
 
   return (
     <motion.button
-      className={`p-2 pr-0`}
+      type="button"
+      className="p-2 pr-0 touch-manipulation"
       onClick={toggleTheme}
-      whileHover={{ scale: 1.1 }}
-      whileTap={{ scale: 0.95 }}
-      transition={{ type: "spring", stiffness: 400, damping: 17 }}
+      {...TAP}
     >
       <AnimatePresence mode="wait">
         <motion.div
@@ -76,49 +283,42 @@ export function ThemeToggle() {
 }
 
 interface NavItem {
-  label: string;
-  labelEn: string;
+  labelKey: TranslationKey;
+  descKey: TranslationKey;
   href: string;
   icon: React.ReactNode;
   external?: boolean;
-  description: string;
+  settingKey?: string;
 }
 
 const navItems: NavItem[] = [
-  {
-    label: "API 文档",
-    labelEn: "API Docs",
-    href: "/docs",
-    icon: <RiCodeSSlashLine className="h-6 w-6" />,
-    description: "查看接口文档与使用示例",
-  },
-  {
-    label: "WHOIS 服务器",
-    labelEn: "WHOIS Servers",
-    href: "/whois-servers",
-    icon: <RiServerLine className="h-6 w-6" />,
-    description: "管理与查看 WHOIS 服务器配置",
-  },
-  {
-    label: "域名查询",
-    labelEn: "Domain Lookup",
-    href: "/",
-    icon: <RiGlobalLine className="h-6 w-6" />,
-    description: "查询域名、IP、ASN 等信息",
-  },
+  { labelKey: "nav_api_docs",      descKey: "nav_api_docs_desc",      href: "/docs",    icon: <RiCodeSSlashLine className="h-6 w-6" />, settingKey: "enable_docs" },
+  { labelKey: "nav_tlds",          descKey: "nav_tlds_desc",          href: "/tlds",    icon: <RiServerLine className="h-6 w-6" /> },
+  { labelKey: "nav_domain_lookup", descKey: "nav_domain_lookup_desc", href: "/",        icon: <RiGlobalLine className="h-6 w-6" /> },
+  { labelKey: "nav_dns",           descKey: "nav_dns_desc",           href: "/dns",     icon: <RiServerLine className="h-6 w-6" />, settingKey: "enable_dns" },
+  { labelKey: "nav_ssl",           descKey: "nav_ssl_desc",           href: "/ssl",     icon: <RiLockLine className="h-6 w-6" />, settingKey: "enable_ssl" },
+  { labelKey: "nav_ip",            descKey: "nav_ip_desc",            href: "/ip",      icon: <RiMapPinLine className="h-6 w-6" />, settingKey: "enable_ip" },
+  { labelKey: "nav_icp",           descKey: "nav_icp_desc",           href: "/icp",     icon: <RiFileList2Line className="h-6 w-6" /> },
+  { labelKey: "nav_about",         descKey: "nav_about_desc",         href: "/about",   icon: <RiInformationLine className="h-6 w-6" />, settingKey: "enable_about" },
+  { labelKey: "nav_sponsor",       descKey: "nav_sponsor_desc",       href: "/sponsor", icon: <RiHeart3Line className="h-6 w-6" />, settingKey: "enable_sponsor" },
 ];
 
 export function NavDrawer() {
   const [open, setOpen] = React.useState(false);
+  const settings = useSiteSettings();
+  const { t } = useTranslation();
+  const logoText = settings.site_logo_text || "X.RW";
+  const visibleNavItems = navItems.filter(item =>
+    !item.settingKey || !!(settings as unknown as Record<string, string>)[item.settingKey]
+  );
 
   return (
     <Drawer open={open} onOpenChange={setOpen}>
       <DrawerTrigger asChild>
         <motion.button
-          className="p-2 pr-0 inline-flex items-center justify-center"
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.95 }}
-          transition={{ type: "spring", stiffness: 400, damping: 17 }}
+          type="button"
+          className="p-2 pr-0 inline-flex items-center justify-center touch-manipulation"
+          {...TAP}
         >
           <AnimatePresence mode="wait">
             <motion.div
@@ -144,23 +344,23 @@ export function NavDrawer() {
           <div className="flex items-center justify-between mb-5">
             <div>
               <p className="text-base font-semibold tracking-tight">
-                NEXT WHOIS
+                {logoText}
               </p>
               <p className="text-xs text-muted-foreground mt-0.5">
-                版本 {VERSION} · 导航菜单
+                {t("nav_version_menu", { version: VERSION })}
               </p>
             </div>
             <DrawerClose asChild>
-              <button className="rounded-full p-1.5 hover:bg-muted transition-colors">
+              <button className="rounded-full p-1.5 hover:bg-muted transition-colors touch-manipulation">
                 <RiCloseLine className="h-4 w-4 text-muted-foreground" />
               </button>
             </DrawerClose>
           </div>
 
           <div className="grid grid-cols-3 gap-3">
-            {navItems.map((item) => (
+            {visibleNavItems.map((item) => (
               <DrawerClose key={item.href} asChild>
-                <Link href={item.href}>
+                <Link href={item.href} className="touch-manipulation">
                   <motion.div
                     className={cn(
                       "flex flex-col items-center gap-2.5 p-4 rounded-2xl",
@@ -176,10 +376,10 @@ export function NavDrawer() {
                     </div>
                     <div>
                       <p className="text-xs font-medium leading-tight">
-                        {item.label}
+                        {t(item.labelKey)}
                       </p>
                       <p className="text-[10px] text-muted-foreground mt-0.5 leading-tight hidden sm:block">
-                        {item.description}
+                        {t(item.descKey)}
                       </p>
                     </div>
                   </motion.div>
@@ -190,7 +390,7 @@ export function NavDrawer() {
 
           <div className="mt-5 pt-4 border-t border-border/40">
             <p className="text-[11px] text-muted-foreground text-center">
-              域名 · IPv4 · IPv6 · ASN · CIDR 全能查询工具
+              {t("nav_tagline")}
             </p>
           </div>
         </div>
@@ -199,11 +399,124 @@ export function NavDrawer() {
   );
 }
 
-export function Navbar() {
-  const isVisible = useScrollDirection();
+function UserButton() {
+  const { data: session, status } = useSession();
+  const { t } = useTranslation();
+  const settings = useSiteSettings();
+  const [open, setOpen] = React.useState(false);
+  const ref = React.useRef<HTMLDivElement>(null);
+  const email = (session?.user as any)?.email as string | undefined;
+  const userId = (session?.user as any)?.id as string | undefined;
+  const isAdminUser = !!email && email.toLowerCase().trim() === ADMIN_EMAIL;
+
+  const loginDisabled  = settings.disable_login   === "1";
+  const queryOnlyMode  = settings.query_only_mode  === "1";
+
+  React.useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  React.useEffect(() => {
+    if (status === "authenticated" && userId) {
+      syncLocalHistoryToServer(userId).catch(() => {});
+    }
+  }, [status, userId]);
+
+  if (status === "loading") return null;
+
+  // Hide login button when login is disabled or in query-only mode (unless admin)
+  if (status === "unauthenticated") {
+    if (loginDisabled || queryOnlyMode) return null;
+    return (
+      <motion.div {...TAP} style={{ display: "inline-flex" }}>
+        <Link
+          href="/login"
+          className="p-2 inline-flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors touch-manipulation"
+          aria-label={t("nav_login")}
+        >
+          <RiUserLine className="h-[1rem] w-[1rem]" />
+        </Link>
+      </motion.div>
+    );
+  }
+
+  // In query-only mode, hide the avatar/dashboard for non-admin logged-in users too
+  if (queryOnlyMode && !isAdminUser) return null;
+
+  const name = session?.user?.name || email || "U";
+  const initials = name.slice(0, 1).toUpperCase();
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-50 flex justify-center">
+    <div ref={ref} className="relative inline-flex">
+      <motion.button
+        {...TAP}
+        onClick={() => setOpen(v => !v)}
+        className={cn(
+          "w-6 h-6 rounded-full text-[10px] font-bold flex items-center justify-center touch-manipulation",
+          isAdminUser
+            ? "bg-gradient-to-br from-violet-500 to-indigo-600 text-white"
+            : "bg-primary text-primary-foreground"
+        )}
+        aria-label={t("nav_dashboard")}
+      >
+        {initials}
+      </motion.button>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.92, y: -4 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.92, y: -4 }}
+            transition={{ duration: 0.14 }}
+            className="absolute right-0 top-8 w-48 bg-background border border-border rounded-xl shadow-lg overflow-hidden z-50"
+          >
+            <div className="px-3 py-2 border-b border-border/50">
+              <p className="text-[10px] text-muted-foreground truncate">{email}</p>
+              {isAdminUser && (
+                <p className="text-[9px] font-bold text-violet-600 dark:text-violet-400 mt-0.5 uppercase tracking-wider">{t("founder")} · {t("nav_admin")}</p>
+              )}
+            </div>
+            <Link
+              href="/dashboard"
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-muted active:bg-muted/70 transition-colors touch-manipulation"
+            >
+              <RiDashboardLine className="w-3.5 h-3.5 text-muted-foreground" />{t("nav_dashboard")}
+            </Link>
+            {isAdminUser && (
+              <Link
+                href="/admin"
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-violet-50 dark:hover:bg-violet-950/30 transition-colors text-violet-600 dark:text-violet-400 touch-manipulation"
+              >
+                <RiShieldUserLine className="w-3.5 h-3.5" />{t("nav_admin")}
+              </Link>
+            )}
+            <button
+              onClick={() => { setOpen(false); signOut({ callbackUrl: "/" }); }}
+              className="w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-muted active:bg-muted/70 transition-colors text-red-500 touch-manipulation"
+            >
+              <RiLogoutBoxLine className="w-3.5 h-3.5" />{t("sign_out")}
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+export function Navbar() {
+  const isVisible = useScrollDirection();
+  const settings = useSiteSettings();
+  const logoText = settings.site_logo_text || "X.RW";
+  const { t } = useTranslation();
+
+  return (
+    <div className="fixed left-0 right-0 z-50 flex justify-center" style={{ top: "var(--ann-h, 0px)", transition: "top 0.2s ease" }}>
       <nav
         className={cn(
           "mt-4 px-2 h-10 rounded-full",
@@ -214,19 +527,34 @@ export function Navbar() {
           isVisible ? "translate-y-0 opacity-100" : "-translate-y-4 opacity-0",
         )}
       >
-        <Link
-          href="/"
-          className="text-xs ml-2 font-medium tracking-wide hover:text-primary/80 transition-colors flex items-center"
-        >
-          NEXT WHOIS
-          <p className="text-xs text-muted-foreground ml-1.5">{VERSION}</p>
-        </Link>
+        <motion.div {...TAP}>
+          <Link
+            href="/"
+            className="text-xs ml-2 font-medium tracking-wide hover:text-primary/80 transition-colors flex items-center touch-manipulation select-none"
+          >
+            {logoText}
+            <p className="text-xs text-muted-foreground ml-1.5">{VERSION}</p>
+          </Link>
+        </motion.div>
 
         <div className="h-4 w-[1px] bg-primary/10" />
 
         <div className="flex items-center gap-3">
           <ThemeToggle />
           <LanguageSwitcher />
+          {settings.enable_tools && (
+            <motion.div {...TAP} style={{ display: "inline-flex" }}>
+              <Link
+                href="/tools"
+                className="p-2 pr-0 inline-flex items-center justify-center touch-manipulation"
+                aria-label={t("nav_toolbox")}
+              >
+                <RiToolsLine className="h-[1rem] w-[1rem]" />
+              </Link>
+            </motion.div>
+          )}
+          <UserButton />
+          <HistoryDrawer />
           <NavDrawer />
         </div>
       </nav>

@@ -3,6 +3,8 @@ import {
   cleanDomain,
   cn,
   getWindowHref,
+  isValidDomainTld,
+  isSearchRoute,
   toSearchURI,
   useClipboard,
   useSaver,
@@ -19,7 +21,6 @@ import {
   RiFileCopyLine,
   RiExternalLinkLine,
   RiLinkM,
-  RiBarChartBoxAiFill,
   RiShareLine,
   RiTwitterXLine,
   RiFacebookFill,
@@ -40,13 +41,38 @@ import {
   RiDeleteBin2Line,
   RiCheckLine,
   RiShoppingCartLine,
+  RiBookmarkLine,
+  RiBookmarkFill,
+  RiCalendar2Line,
+  RiStickyNoteLine,
+  RiTimerLine,
+  RiCalendarEventLine,
+  RiShieldCheckLine,
+  RiLoader4Line,
+  RiErrorWarningLine,
+  RiSearchLine,
+  RiCheckboxCircleLine,
+  RiCheckboxBlankCircleLine,
+  RiIdCardLine,
+  RiBuildingLine,
+  RiAwardLine,
+  RiShakeHandsLine,
+  RiCodeSLine,
+  RiVipCrownLine,
+  RiAlertLine,
+  RiArrowRightSLine,
 } from "@remixicon/react";
 import { getTopRegistrars, DomainPricing } from "@/lib/pricing/client";
+import { FeedbackDrawer } from "@/components/feedback-drawer";
+import { useSiteSettings } from "@/lib/site-settings";
+import { computeLifecycle, fmtDate, fmtDateTime, fmtCountdown } from "@/lib/lifecycle";
 import React, { useEffect, useMemo } from "react";
 import { addHistory, detectQueryType } from "@/lib/history";
+import { useSession } from "next-auth/react";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { WhoisAnalyzeResult, WhoisResult } from "@/lib/whois/types";
+import { WhoisAnalyzeResult, WhoisResult, initialWhoisAnalyzeResult } from "@/lib/whois/types";
+import { getCnReservedSldInfo } from "@/lib/whois/cn-reserved-sld";
 import {
   getEppStatusInfo,
   getEppStatusColor,
@@ -61,7 +87,7 @@ import {
 } from "@/components/search_shortcuts";
 import { useTranslation, TranslationKey } from "@/lib/i18n";
 import { toast } from "sonner";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { useTheme } from "next-themes";
 import {
   DropdownMenu,
@@ -86,6 +112,23 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { useSearchHotkeys } from "@/hooks/useSearchHotkeys";
+
+const CARD_CONTAINER_VARIANTS = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.09, delayChildren: 0 },
+  },
+};
+
+const CARD_ITEM_VARIANTS = {
+  hidden: { opacity: 0, y: 10 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.32, ease: [0.22, 1, 0.36, 1] },
+  },
+};
 
 const REGISTRAR_ICONS: Record<string, { slug: string | null; color: string }> =
   {
@@ -813,13 +856,44 @@ function getRegistrarFallbackColor(registrar: string): string {
   return `hsl(${hue}, 65%, 50%)`;
 }
 
+/**
+ * Robustly parse a WHOIS date string into a Date object.
+ * Handles formats like:
+ *   "1996-07-01T02:00:00Z"
+ *   "1996-07-01 02:00:00 U"    ← .ba / some ccTLDs append a TZ letter
+ *   "1996-07-01 02:00:00 UTC"
+ *   "1996-07-01 02:00:00+08:00"
+ *   "2022-11-08 12:31:01"
+ */
+function parseWhoisDate(dateStr: string): Date | null {
+  if (!dateStr || dateStr === "Unknown") return null;
+  // 1. Try as-is first (covers ISO 8601 with Z or offset)
+  let d = new Date(dateStr);
+  if (!isNaN(d.getTime())) return d;
+  // 2. Strip trailing timezone code: single letters (U, Z) or abbreviations (UTC, EST, CET…)
+  //    and numeric offsets (+08:00, -05:00) then retry
+  const stripped = dateStr
+    .replace(/\s+[+-]\d{2}:?\d{2}$/, "")   // remove " +08:00" / " -0500"
+    .replace(/\s+[A-Z]{1,5}$/, "")          // remove " U" / " UTC" / " EST"
+    .replace(/\.\d+$/, "")                  // remove fractional seconds
+    .trim();
+  d = new Date(stripped);
+  if (!isNaN(d.getTime())) return d;
+  // 3. Replace space separator with T for strict ISO parsing
+  const isoLike = stripped.replace(" ", "T") + "Z";
+  d = new Date(isoLike);
+  if (!isNaN(d.getTime())) return d;
+  return null;
+}
+
 function getRelativeTime(
   dateStr: string,
   t: (key: TranslationKey, values?: Record<string, string | number>) => string,
 ): string {
   if (!dateStr || dateStr === "Unknown") return "";
   try {
-    const date = new Date(dateStr);
+    const date = parseWhoisDate(dateStr);
+    if (!date) return "";
     const now = new Date();
     const diffDays = Math.floor(
       (now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24),
@@ -845,11 +919,64 @@ function getRelativeTime(
 
 function formatDate(dateStr: string): string {
   if (!dateStr || dateStr === "Unknown") return "—";
-  try {
-    return dateStr.split("T")[0];
-  } catch {
-    return dateStr;
+  const d = parseWhoisDate(dateStr);
+  if (!d) return dateStr.slice(0, 10) || dateStr; // best-effort: first 10 chars
+  return d.toISOString().slice(0, 10); // always YYYY-MM-DD
+}
+
+/**
+ * Translate DNSSEC field values and embedded technical terms.
+ * For zh/zh-tw locales, known DNSSEC terms are replaced with Chinese equivalents.
+ * For all other locales the original value is returned unchanged.
+ */
+function translateDnssecValue(value: string, locale: string): string {
+  if (!locale.startsWith("zh")) return value;
+  const isTraditional = locale === "zh-tw";
+
+  // Simple whole-value mapping for common RDAP/WHOIS values
+  const WHOLE: Record<string, string> = {
+    unsigned: "未签名",
+    signed: "已签名",
+    signeddelegation: "已签名",
+    yes: "已签名",
+    no: "未签名",
+  };
+  const key = value.toLowerCase().replace(/[\s\-_]/g, "");
+  if (WHOLE[key]) {
+    const v = WHOLE[key];
+    return isTraditional ? v.replace("签", "簽") : v;
   }
+
+  // Substring replacement for values that contain multiple terms
+  const SUBS: [RegExp, string, string][] = [
+    // [pattern, simplified, traditional]
+    [/\bZone Signing Key\b/gi, "区域签名密钥", "區域簽名金鑰"],
+    [/\bZSK\b/g, "ZSK", "ZSK"],
+    [/\bKey Signing Key\b/gi, "密钥签名密钥", "金鑰簽名金鑰"],
+    [/\bKSK\b/g, "KSK", "KSK"],
+    [/\bDS Record\b/gi, "委托签名记录", "委託簽名記錄"],
+    [/\bRRSIG\b/g, "资源记录签名", "資源記錄簽名"],
+    [/\bDNSKEY\b/g, "DNS 密钥记录", "DNS 金鑰記錄"],
+    [/\bNSEC3\b/g, "下一安全记录3", "下一安全記錄3"],
+    [/\bNSEC\b/g, "下一安全记录", "下一安全記錄"],
+    [/\bValidating Resolver\b/gi, "验证解析器", "驗證解析器"],
+    [/\bValidation\b/gi, "验证", "驗證"],
+    [/\bTrust Anchor\b/gi, "信任锚", "信任錨"],
+    [/\bChain of Trust\b/gi, "信任链", "信任鏈"],
+    [/\bKey Rollover\b/gi, "密钥滚动", "金鑰滾動"],
+    [/\bDenial of Existence\b/gi, "存在否定", "存在否定"],
+    [/\bAlgorithm\b/gi, "算法", "演算法"],
+    [/\bsignedDelegation\b/gi, "已签名", "已簽名"],
+    [/\bsigned\b/gi, "已签名", "已簽名"],
+    [/\bunsigned\b/gi, "未签名", "未簽名"],
+    [/\bDNSSEC\b/g, "DNS 安全扩展", "DNS 安全延伸"],
+  ];
+
+  let result = value;
+  for (const [pattern, simplified, traditional] of SUBS) {
+    result = result.replace(pattern, isTraditional ? traditional : simplified);
+  }
+  return result;
 }
 
 function buildOgUrl(
@@ -1149,14 +1276,23 @@ function ResponsePanel({
         </div>
       </div>
       <ScrollArea className="flex-1">
-        <div className="p-4 font-mono text-[11px] leading-relaxed">
-          {activeTab === "whois" && whoisContent && (
-            <WhoisHighlight content={whoisContent} />
-          )}
-          {activeTab === "rdap" && rdapContent && (
-            <RdapJsonHighlight content={rdapContent} />
-          )}
-        </div>
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15, ease: "easeInOut" }}
+            className="p-4 font-mono text-[11px] leading-relaxed"
+          >
+            {activeTab === "whois" && whoisContent && (
+              <WhoisHighlight content={whoisContent} />
+            )}
+            {activeTab === "rdap" && rdapContent && (
+              <RdapJsonHighlight content={rdapContent} />
+            )}
+          </motion.div>
+        </AnimatePresence>
         <ScrollBar orientation="horizontal" />
       </ScrollArea>
     </div>
@@ -1181,8 +1317,66 @@ function targetToDisplayName(target: string): string {
 export async function getServerSideProps(context: GetServerSidePropsContext) {
   const querySegments: string[] = (context.params?.query as string[]) ?? [];
   const origin = getOrigin(context.req);
+
+  // ── CN Reserved SLD early-return (before cleanDomain rewrites the query) ──
+  // Some .cn functional SLDs (gov.cn, edu.cn, etc.) are mapped by the WHOIS
+  // lib to their www.* equivalents so the lookup works.  We must intercept
+  // BEFORE that mapping so the user sees "保留域名" instead of www.gov.cn data.
+  const rawQuery = querySegments.join("/").toLowerCase().trim();
+  const cnReservedSsr = getCnReservedSldInfo(rawQuery);
+  if (cnReservedSsr) {
+    const syntheticData: WhoisResult = {
+      time: 0,
+      status: true,
+      cached: false,
+      source: "whois",
+      result: {
+        ...initialWhoisAnalyzeResult,
+        domain: rawQuery,
+        status: [{ status: "registry-reserved", url: "" }],
+        rawWhoisContent: `[CN Reserved] ${cnReservedSsr.descZh}`,
+      },
+    };
+    return {
+      props: {
+        data: JSON.parse(JSON.stringify(syntheticData)),
+        target: rawQuery,
+        displayTarget: targetToDisplayName(rawQuery),
+        origin,
+      },
+    };
+  }
+
   const target = cleanDomain(querySegments.join("/"));
   const displayTarget = targetToDisplayName(target);
+
+  // If the path is a single bare word (no dots, not an IP/ASN/CIDR), it's a
+  // navigation path that doesn't match any page — show the real 404 page.
+  const looksLikeQuery =
+    target.includes(".") ||
+    /^AS\d+$/i.test(target) ||
+    /^([0-9a-fA-F]{0,4}:){1,7}[0-9a-fA-F]{0,4}/.test(target);
+  if (!looksLikeQuery) {
+    return { notFound: true };
+  }
+
+  // Server-side TLD validation — reject clearly invalid domains before lookup
+  if (!isValidDomainTld(target)) {
+    return {
+      props: {
+        data: {
+          time: 0,
+          status: false,
+          cached: false,
+          error: "INVALID_DOMAIN_TLD",
+        } as WhoisResult,
+        target,
+        displayTarget,
+        origin,
+      },
+    };
+  }
+
   try {
     const data = await lookupWhoisWithCache(target);
     return {
@@ -1236,7 +1430,7 @@ function CssGlobe() {
       <style>{`
         @keyframes nw-world-scroll {
           from { margin-left: -2.75em; }
-          to   { margin-left: -1.35em; }
+          to   { margin-left: -0.75em; }
         }
         .nw-globe-wrap {
           width: 120px;
@@ -1296,41 +1490,380 @@ function getDomainRegistrationStatus(
   label: string;
   color: string;
   dotColor: string;
+  isPremiumReserved: boolean;
 } {
   const isZh = locale.startsWith("zh");
-  const allStatusText = result.status
-    .map((s) => s.status.toLowerCase())
+
+  // EPP lock statuses that contain "prohibited" in their name but are NOT
+  // about registration prohibition — they protect already-registered domains.
+  const EPP_PROHIBITED_LOCK_STATUSES = new Set([
+    "clientdeleteprohibited",
+    "clienttransferprohibited",
+    "clientrenewprohibited",
+    "clientupdateprohibited",
+    "serverdeleteprohibited",
+    "servertransferprohibited",
+    "serverrenewprohibited",
+    "serverupdateprohibited",
+    // hyphenated / space variants used by some ccTLDs
+    "client-delete-prohibited",
+    "client-transfer-prohibited",
+    "client-renew-prohibited",
+    "client-update-prohibited",
+    "server-delete-prohibited",
+    "server-transfer-prohibited",
+    "server-renew-prohibited",
+    "server-update-prohibited",
+  ]);
+
+  const allStatusCodes = result.status.map((s) => s.status.toLowerCase().trim());
+  const allStatusText = allStatusCodes.join(" ");
+
+  // Build a separate text excluding EPP lock statuses for the prohibit check
+  // so that "clientTransferProhibited" / "client transfer prohibited" /
+  // "client-transfer-prohibited" do not trigger "禁止注册".
+  // We check THREE forms of each code: the raw first-word, the full hyphenated
+  // string (some ccTLDs emit "client-delete-prohibited"), and the concatenated
+  // no-separator form (TWNIC WHOIS emits "client delete prohibited" with spaces).
+  const prohibitCheckText = allStatusCodes
+    .filter((s) => {
+      const firstWord = s.split(/\s+/)[0];            // "client" from "client delete prohibited"
+      const noSep = s.replace(/[\s_\-]/g, "");        // "clientdeleteprohibited"
+      return (
+        !EPP_PROHIBITED_LOCK_STATUSES.has(firstWord) &&
+        !EPP_PROHIBITED_LOCK_STATUSES.has(noSep)
+      );
+    })
     .join(" ");
 
+  // ── Raw content scan (safety net for RDAP and exotic ccTLD WHOIS formats) ───
+  // Some registries embed state as free text in WHOIS/RDAP rather than EPP
+  // codes. Scan the raw content with specific phrases to capture these signals.
+  const rawContent = [
+    typeof result.rawWhoisContent === "string" ? result.rawWhoisContent : "",
+    result.rawRdapContent
+      ? typeof result.rawRdapContent === "string"
+        ? result.rawRdapContent
+        : JSON.stringify(result.rawRdapContent)
+      : "",
+  ]
+    .join("\n")
+    .toLowerCase();
+
+  // ── RESERVED — mirrors common_parser.ts syntheticReserved exactly ───────────
+  const rawHasReserved =
+    // English free-text phrases
+    rawContent.includes("reserved name") ||
+    rawContent.includes("this name is reserved") ||
+    rawContent.includes("is a reserved name") ||
+    rawContent.includes("domain is reserved") ||
+    rawContent.includes("this domain is reserved") ||
+    rawContent.includes("domain name is reserved") ||
+    rawContent.includes("reserved by the registry") ||
+    rawContent.includes("registry reserved") ||
+    rawContent.includes("reserved-name") ||
+    rawContent.includes("reserved domain") ||
+    rawContent.includes("in the reserved list") ||
+    rawContent.includes("on the reserved list") ||
+    rawContent.includes("is in the reserved list") ||
+    rawContent.includes("is on the reserved list") ||
+    rawContent.includes("has been reserved") ||
+    rawContent.includes("name is reserved") ||
+    rawContent.includes("is reserved for") ||
+    rawContent.includes("is reserved by") ||
+    rawContent.includes("reserved for registry") ||
+    rawContent.includes("reserved for the registry") ||
+    rawContent.includes("registry has reserved") ||
+    rawContent.includes("registry hold") ||
+    rawContent.includes("held by the registry") ||
+    rawContent.includes("domain is held") ||
+    rawContent.includes("being held by") ||
+    rawContent.includes("reserved for future use") ||
+    rawContent.includes("reserved for official use") ||
+    rawContent.includes("reserved for this registry") ||
+    rawContent.includes("reserved at the registry") ||
+    rawContent.includes("sunrise reserved") ||
+    rawContent.includes("reserved for sunrise") ||
+    rawContent.includes("reserved for landrush") ||
+    rawContent.includes("landrush reserved") ||
+    // Structured field patterns (EURID .eu, IIS .se/.nu, Donuts, CentralNic, CIRA, etc.)
+    /\bstatus\s*:\s*reserved\b/.test(rawContent) ||
+    /\bstate\s*:\s*reserved\b/.test(rawContent) ||
+    /\bdomainstatus\s*:\s*reserved\b/.test(rawContent) ||
+    // German (DENIC .de): "% Status: reserviert"
+    rawContent.includes("reserviert") ||
+    /\bstatus\s*:\s*reserviert\b/.test(rawContent) ||
+    // Czech/Slovak (CZ.NIC .cz .sk): "rezervovan: ano"
+    rawContent.includes("rezervovan") ||
+    // French ccTLD (AFNIC .fr .re .pm .tf .wf .yt)
+    rawContent.includes("réservé") ||
+    rawContent.includes("domaine réservé") ||
+    rawContent.includes("domaine reserve") ||
+    /\bstatus\s*:\s*r[eé]serv[eé]\b/.test(rawContent) ||
+    // Spanish ccTLD (.es, .ar, .mx, .co, .cl, .pe, .uy, etc.)
+    rawContent.includes("reservado") ||
+    rawContent.includes("dominio reservado") ||
+    /\bestado\s*:\s*reservado\b/.test(rawContent) ||
+    // Portuguese (.pt / .br)
+    rawContent.includes("domínio reservado") ||
+    // Italian (NIC.it .it): RISERVATO
+    /\bstatus\s*:\s*riservato\b/.test(rawContent) ||
+    rawContent.includes("dominio riservato") ||
+    // Swedish (IIS .se .nu): "state: reserverad"
+    /\bstate\s*:\s*reserverad\b/.test(rawContent) ||
+    /\bstatus\s*:\s*reserverad\b/.test(rawContent) ||
+    rawContent.includes("domännamnet är reserverat") ||
+    // Norwegian (Norid .no)
+    /\bstatus\s*:\s*reservert\b/.test(rawContent) ||
+    rawContent.includes("domenet er reservert") ||
+    // Danish (DK Hostmaster .dk)
+    /\bstatus\s*:\s*reserveret\b/.test(rawContent) ||
+    rawContent.includes("domænet er reserveret") ||
+    // Polish (DNS Polska / NASK .pl)
+    /\bstatus\s*:\s*zarezerwowany\b/.test(rawContent) ||
+    rawContent.includes("domena zarezerwowana") ||
+    // Dutch (SIDN .nl)
+    /\bstatus\s*:\s*gereserveerd\b/.test(rawContent) ||
+    rawContent.includes("domein is gereserveerd") ||
+    // Finnish (Traficom .fi): "varattu"
+    /\bstatus\s*:\s*varattu\b/.test(rawContent) ||
+    rawContent.includes("verkkotunnus varattu") ||
+    rawContent.includes("on varattu") ||
+    // Hungarian (.hu): "fenntartott"
+    /\bstatus\s*:\s*fenntartott\b/.test(rawContent) ||
+    rawContent.includes("fenntartott tartomány") ||
+    // Romanian (RoTLD .ro): "rezervat"
+    /\bstatus\s*:\s*rezervat\b/.test(rawContent) ||
+    rawContent.includes("domeniu rezervat") ||
+    // Turkish (NIC.TR .tr): "rezerve"
+    /\bstatus\s*:\s*rezerve\b/.test(rawContent) ||
+    rawContent.includes("alan adı rezerve") ||
+    // Greek (ICS.FORTH .gr)
+    rawContent.includes("δεσμευμένο") ||
+    // Russian (.ru / .рф) — non-Latin, safe direct includes
+    rawContent.includes("зарезервирован") ||
+    rawContent.includes("зарезервировано") ||
+    rawContent.includes("зарезервирована") ||
+    rawContent.includes("домен зарезервирован") ||
+    rawContent.includes("заблокирован") ||
+    // Ukrainian (.ua)
+    rawContent.includes("зарезервовано") ||
+    rawContent.includes("домен зарезервовано") ||
+    // Japanese (.jp — JPRS): bilingual WHOIS
+    rawContent.includes("予約済み") ||
+    rawContent.includes("利用停止") ||
+    rawContent.includes("登録停止") ||
+    // Korean (.kr — KRNIC)
+    rawContent.includes("예약됨") ||
+    rawContent.includes("예약된") ||
+    rawContent.includes("예약된 도메인") ||
+    // Arabic ccTLDs (.sa / .ae / .eg / .iq / .ly)
+    rawContent.includes("محجوز") ||
+    rawContent.includes("النطاق محجوز") ||
+    // Hebrew (.il — ISOC-IL)
+    rawContent.includes("שמור") ||
+    rawContent.includes("הדומיין שמור") ||
+    // Traditional Chinese (.tw / .hk)
+    rawContent.includes("保留網域") ||
+    rawContent.includes("已保留") ||
+    // Simplified Chinese (CNNIC, TELE-INFO, ZDNS)
+    rawContent.includes("保留域名") ||
+    rawContent.includes("已被保留") ||
+    rawContent.includes("注册局保留") ||
+    rawContent.includes("保留中") ||
+    rawContent.includes("该域名已保留") ||
+    // Standalone "reserved" on its own line (TWNIC / NZRS)
+    /(?:^|\n)\s*reserved\s*(?:\n|$)/.test(rawContent);
+
+  // ── PREMIUM RESERVED — mirrors common_parser.ts syntheticPremiumReserved ────
+  const rawHasPremiumReserved =
+    rawContent.includes("premium domain") ||
+    rawContent.includes("premium name") ||
+    rawContent.includes("premium price") ||
+    rawContent.includes("premium pricing") ||
+    rawContent.includes("premium listing") ||
+    rawContent.includes("registry premium") ||
+    rawContent.includes("available at a premium") ||
+    rawContent.includes("this is a premium") ||
+    rawContent.includes("premium registration") ||
+    rawContent.includes("early access program") ||
+    rawContent.includes("early access pricing") ||
+    rawContent.includes("early access period") ||
+    rawContent.includes("available for purchase") ||
+    rawContent.includes("available for sale") ||
+    rawContent.includes("this name is for sale") ||
+    rawContent.includes("domain is for sale") ||
+    rawContent.includes("make an offer") ||
+    rawContent.includes("aftermarket") ||
+    rawContent.includes("reserve price") ||
+    rawContent.includes("starting bid") ||
+    rawContent.includes("minimum bid") ||
+    rawContent.includes("please contact the registry") ||
+    rawContent.includes("contact the registry to") ||
+    rawContent.includes("contact the registry for") ||
+    rawContent.includes("contact your registrar to") ||
+    rawContent.includes("contact your registrar for") ||
+    rawContent.includes("enquire about this domain") ||
+    rawContent.includes("inquire about this domain") ||
+    rawContent.includes("may be available for purchase") ||
+    rawContent.includes("can be acquired") ||
+    rawContent.includes("reach out to the registry");
+
+  // ── PROHIBITED — mirrors common_parser.ts syntheticProhibited ────────────
+  const rawHasProhibited =
+    rawContent.includes("registration is prohibited") ||
+    rawContent.includes("registration prohibited") ||
+    rawContent.includes("cannot be registered") ||
+    rawContent.includes("registration not possible") ||
+    rawContent.includes("registration not available") ||
+    rawContent.includes("not available for registration") ||
+    rawContent.includes("not eligible for registration") ||
+    rawContent.includes("not open for registration") ||
+    rawContent.includes("not open for general registration") ||
+    rawContent.includes("not open to general registrations") ||
+    rawContent.includes("not currently open for registration") ||
+    rawContent.includes("not available for public registration") ||
+    rawContent.includes("not permitted to register") ||
+    rawContent.includes("registration is not permitted") ||
+    rawContent.includes("registrations are not permitted") ||
+    rawContent.includes("registrations not permitted") ||
+    rawContent.includes("not accepting registrations") ||
+    rawContent.includes("registrations not accepted") ||
+    rawContent.includes("no registrations are accepted") ||
+    rawContent.includes("does not accept registrations") ||
+    rawContent.includes("cannot be publicly registered") ||
+    rawContent.includes("prohibited string") ||
+    rawContent.includes("prohibited by policy") ||
+    rawContent.includes("policy prohibited") ||
+    rawContent.includes("not available for public use") ||
+    rawContent.includes("registrar banned") ||
+    rawContent.includes("registry banned") ||
+    rawContent.includes("blacklisted") ||
+    rawContent.includes("禁止注册") ||
+    rawContent.includes("不开放注册") ||
+    rawContent.includes("不可注册") ||
+    rawContent.includes("禁止使用") ||
+    // Russian / Ukrainian
+    rawContent.includes("запрещена регистрация") ||
+    rawContent.includes("регистрация запрещена") ||
+    rawContent.includes("реєстрація заборонена") ||
+    // Italian
+    /\bstatus\s*:\s*vietato\b/.test(rawContent) ||
+    rawContent.includes("registrazione vietata") ||
+    // Japanese
+    rawContent.includes("登録不可") ||
+    rawContent.includes("登録制限") ||
+    // Korean
+    rawContent.includes("등록불가") ||
+    rawContent.includes("등록 금지") ||
+    // Arabic
+    rawContent.includes("محظور") ||
+    rawContent.includes("التسجيل محظور") ||
+    /\bblocked\s+by\s+(?:registry|registrar)\b/.test(rawContent) ||
+    /\bregistration\s+blocked\b/.test(rawContent);
+
+  // ── SUSPENDED — mirrors common_parser.ts syntheticSuspended ─────────────
+  const rawHasSuspended =
+    rawContent.includes("suspended by registry") ||
+    rawContent.includes("suspended by registrar") ||
+    rawContent.includes("registry-suspended") ||
+    rawContent.includes("domain is suspended") ||
+    rawContent.includes("domain suspended") ||
+    rawContent.includes("domain has been suspended") ||
+    rawContent.includes("account suspended") ||
+    rawContent.includes("abuse suspension") ||
+    rawContent.includes("abuse hold") ||
+    rawContent.includes("fraud hold") ||
+    rawContent.includes("compliance hold") ||
+    rawContent.includes("billing suspension") ||
+    rawContent.includes("domain is on hold") ||
+    rawContent.includes("registrar hold") ||
+    rawContent.includes("gesperrt") ||
+    rawContent.includes("suspendido") ||
+    rawContent.includes("suspendu") ||
+    // Portuguese (.pt / .br)
+    rawContent.includes("suspenso") ||
+    rawContent.includes("domínio suspenso") ||
+    // Italian (NIC.it .it)
+    /\bstatus\s*:\s*sospeso\b/.test(rawContent) ||
+    rawContent.includes("dominio sospeso") ||
+    // Dutch (.nl)
+    rawContent.includes("opgeschort") ||
+    rawContent.includes("domein opgeschort") ||
+    // Polish (.pl)
+    rawContent.includes("zawieszony") ||
+    rawContent.includes("domena zawieszona") ||
+    // Finnish (.fi)
+    rawContent.includes("keskeytetty") ||
+    // Russian (.ru / .рф)
+    rawContent.includes("приостановлен") ||
+    rawContent.includes("приостановлено") ||
+    rawContent.includes("домен заблокирован") ||
+    // Ukrainian (.ua)
+    rawContent.includes("призупинено") ||
+    // Japanese (.jp)
+    rawContent.includes("停止中") ||
+    rawContent.includes("利用停止") ||
+    // Korean (.kr)
+    rawContent.includes("정지됨") ||
+    rawContent.includes("사용 정지") ||
+    // Arabic
+    rawContent.includes("موقوف") ||
+    rawContent.includes("معلق") ||
+    // Chinese
+    rawContent.includes("已暂停") ||
+    rawContent.includes("域名暂停") ||
+    rawContent.includes("已停用") ||
+    rawContent.includes("暂停使用") ||
+    /(?:^|\n)\s*suspended\s*(?:\n|$)/.test(rawContent);
+
   const isProhibited =
-    allStatusText.includes("prohibited") ||
-    allStatusText.includes("cannot be registered") ||
-    allStatusText.includes("not available for registration") ||
-    allStatusText.includes("not-available") ||
-    allStatusText.includes("ineligible");
+    prohibitCheckText.includes("prohibited") ||
+    prohibitCheckText.includes("registrationprohibited") ||
+    prohibitCheckText.includes("cannot be registered") ||
+    prohibitCheckText.includes("not available for registration") ||
+    prohibitCheckText.includes("not-available") ||
+    prohibitCheckText.includes("ineligible") ||
+    prohibitCheckText.includes("forbidden") ||
+    prohibitCheckText.includes("registry-prohibited") ||
+    prohibitCheckText.includes("registrybanned") ||
+    rawHasProhibited;
 
   function makeStatus(
     type: RegistrationStatusType,
     color: string,
     dotColor: string,
+    isPremiumReserved = false,
   ) {
-    return { type, label: isZh ? STATUS_LABELS[type].zh : STATUS_LABELS[type].en, color, dotColor };
+    return { type, label: isZh ? STATUS_LABELS[type].zh : STATUS_LABELS[type].en, color, dotColor, isPremiumReserved };
   }
 
   if (isProhibited)
     return makeStatus("prohibited", "text-red-600 border-red-400/50 bg-red-50 dark:bg-red-950/20", "bg-red-500");
 
+  // "reserved" should not be triggered by "registry-hold" (that is a hold, not a reserve)
   const isReserved =
-    allStatusText.includes("reserved") ||
+    prohibitCheckText.includes("reserved") ||
     allStatusText.includes("reserved-delegated") ||
-    allStatusText.includes("registry-hold");
+    allStatusText.includes("registryreserved") ||
+    allStatusText.includes("registry-reserved") ||
+    allStatusText.includes("registry-premium") ||
+    rawHasReserved;
+
+  // A "premium reserved" domain is held by the registry for sale — different
+  // from an "official use" reserved domain.  Both display as "reserved" but
+  // carry different descriptions in the info card.
+  const isPremiumReserved =
+    allStatusText.includes("registry-premium") ||
+    rawHasPremiumReserved;
 
   if (isReserved)
-    return makeStatus("reserved", "text-amber-600 border-amber-400/50 bg-amber-50 dark:bg-amber-950/20", "bg-amber-500");
+    return makeStatus("reserved", "text-amber-600 border-amber-400/50 bg-amber-50 dark:bg-amber-950/20", "bg-amber-500", isPremiumReserved);
 
   const isRedemption =
     allStatusText.includes("redemptionperiod") ||
-    allStatusText.includes("redemption period");
+    allStatusText.includes("redemption period") ||
+    allStatusText.includes("redemption-period");
 
   if (isRedemption)
     return makeStatus("redemption", "text-purple-600 border-purple-400/50 bg-purple-50 dark:bg-purple-950/20", "bg-purple-500");
@@ -1343,10 +1876,29 @@ function getDomainRegistrationStatus(
   if (isPendingDelete)
     return makeStatus("pending-delete", "text-slate-600 border-slate-400/50 bg-slate-50 dark:bg-slate-950/20", "bg-slate-500");
 
-  const isHold =
-    (allStatusText.includes("server-hold") ||
-      allStatusText.includes("client-hold")) &&
-    !allStatusText.includes("ok");
+  // Match both camelCase EPP codes ("serverhold") and hyphenated variants ("server-hold")
+  const hasServerHold =
+    allStatusText.includes("serverhold") ||
+    allStatusText.includes("server-hold") ||
+    allStatusText.includes("server hold") ||
+    allStatusText.includes("registry-hold") ||
+    allStatusText.includes("registryhold");
+
+  const hasClientHold =
+    allStatusText.includes("clienthold") ||
+    allStatusText.includes("client-hold") ||
+    allStatusText.includes("client hold");
+
+  const hasOk =
+    allStatusText.includes(" ok ") ||
+    allStatusText === "ok" ||
+    allStatusText.includes("active");
+
+  const hasSuspended =
+    allStatusText.includes("suspended") ||
+    rawHasSuspended;
+
+  const isHold = (hasServerHold || hasClientHold || hasSuspended) && !hasOk;
 
   if (isHold)
     return makeStatus("hold", "text-orange-600 border-orange-400/50 bg-orange-50 dark:bg-orange-950/20", "bg-orange-500");
@@ -1364,6 +1916,7 @@ function getDomainRegistrationStatus(
     label: isZh ? STATUS_LABELS.registered.zh : STATUS_LABELS.registered.en,
     color: "text-emerald-600 border-emerald-400/50 bg-emerald-50 dark:bg-emerald-950/20",
     dotColor: "bg-emerald-500",
+    isPremiumReserved: false,
   };
 }
 
@@ -1492,13 +2045,18 @@ const STATUS_INFO: Record<
 function DomainStatusInfoCard({
   type,
   locale,
+  customDesc,
 }: {
   type: RegistrationStatusType;
   locale: string;
+  customDesc?: { zh: string; en: string };
 }) {
   if (type === "registered") return null;
   const info = STATUS_INFO[type];
   const isZh = locale.startsWith("zh");
+  const desc = customDesc
+    ? (isZh ? customDesc.zh : customDesc.en)
+    : (isZh ? info.descZh : info.descEn);
   return (
     <div
       className={cn(
@@ -1522,7 +2080,7 @@ function DomainStatusInfoCard({
           {isZh ? info.titleZh : info.titleEn}
         </p>
         <p className={cn("text-xs mt-1 leading-relaxed", info.descText)}>
-          {isZh ? info.descZh : info.descEn}
+          {desc}
         </p>
       </div>
     </div>
@@ -1532,48 +2090,63 @@ function DomainStatusInfoCard({
 const CONFETTI_COLORS = [
   "#f59e0b", "#10b981", "#3b82f6", "#8b5cf6",
   "#ef4444", "#ec4899", "#06b6d4", "#84cc16",
+  "#f97316", "#a855f7", "#14b8a6", "#facc15",
 ];
+
+type ConfettiShape = "circle" | "rect" | "ribbon";
 
 function ConfettiPieces() {
   const pieces = React.useMemo(
     () =>
-      Array.from({ length: 36 }, (_, i) => ({
-        id: i,
-        left: `${(i * 2.78 + (i % 3) * 7) % 100}%`,
-        delay: (i * 0.07) % 1.8,
-        duration: 1.6 + (i * 0.09) % 1.0,
-        color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
-        size: 5 + (i % 4) * 2,
-        isCircle: i % 3 === 0,
-        rotateDir: i % 2 === 0 ? 360 : -360,
-      })),
+      Array.from({ length: 52 }, (_, i) => {
+        const shape: ConfettiShape =
+          i % 5 === 0 ? "ribbon" : i % 3 === 0 ? "circle" : "rect";
+        const baseLeft = (i * 1.97 + (i % 7) * 5.3) % 100;
+        return {
+          id: i,
+          left: `${baseLeft}%`,
+          delay: (i * 0.06 + (i % 4) * 0.15) % 2.2,
+          duration: 1.4 + (i * 0.07) % 1.4,
+          color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+          width: shape === "ribbon" ? 3 : 5 + (i % 5) * 2,
+          height: shape === "ribbon" ? 10 + (i % 4) * 3 : 5 + (i % 5) * 2,
+          shape,
+          rotateDir: i % 2 === 0 ? 540 : -540,
+          xDrift: ((i % 9) - 4) * 12,
+          repeatDelay: 0.3 + (i % 5) * 0.2,
+        };
+      }),
     [],
   );
 
   return (
-    <div className="absolute inset-x-0 top-0 h-28 overflow-hidden pointer-events-none">
+    <div className="absolute inset-x-0 top-0 h-36 overflow-hidden pointer-events-none">
       {pieces.map((p) => (
         <motion.div
           key={p.id}
           style={{
             position: "absolute",
             left: p.left,
-            top: -12,
-            width: p.size,
-            height: p.size,
+            top: -16,
+            width: p.width,
+            height: p.height,
             backgroundColor: p.color,
-            borderRadius: p.isCircle ? "50%" : 2,
+            borderRadius:
+              p.shape === "circle" ? "50%" : p.shape === "ribbon" ? 1 : 2,
+            opacity: 0.9,
           }}
           animate={{
-            y: [0, 110, 110],
+            y: [0, 140, 140],
+            x: [0, p.xDrift, p.xDrift * 1.4],
             opacity: [0, 1, 0],
             rotate: [0, p.rotateDir],
+            scaleX: p.shape === "ribbon" ? [1, 0.3, 1, 0.3] : 1,
           }}
           transition={{
             duration: p.duration,
             delay: p.delay,
             repeat: Infinity,
-            repeatDelay: 0.6,
+            repeatDelay: p.repeatDelay,
             ease: "easeIn",
           }}
         />
@@ -1582,140 +2155,797 @@ function ConfettiPieces() {
   );
 }
 
+const ALL_REMINDER_THRESHOLDS = [60, 30, 10, 5, 1];
+const DEFAULT_REMINDER_THRESHOLDS = [60, 30, 1];
+
+function DomainReminderDialog({
+  domain,
+  expirationDate,
+  remainingDays,
+  open,
+  onOpenChange,
+  isZh,
+  userEmail,
+  registerPriceFmt,
+  renewPriceFmt,
+  isPremium,
+  eppStatuses,
+}: {
+  domain: string;
+  expirationDate: string | null | undefined;
+  remainingDays: number | null;
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  isZh: boolean;
+  userEmail?: string;
+  registerPriceFmt?: string;
+  renewPriceFmt?: string;
+  isPremium?: boolean;
+  eppStatuses?: string[];
+}) {
+  const hasExpiry = !!(expirationDate && expirationDate !== "Unknown");
+  const [email, setEmail] = React.useState("");
+  const [submitting, setSubmitting] = React.useState(false);
+  const [done, setDone] = React.useState(false);
+  const [selectedThresholds, setSelectedThresholds] = React.useState<number[]>(DEFAULT_REMINDER_THRESHOLDS);
+
+  function toggleThreshold(d: number) {
+    setSelectedThresholds(prev =>
+      prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d]
+    );
+  }
+
+  React.useEffect(() => {
+    if (open) { setEmail(userEmail || ""); setDone(false); setSelectedThresholds(DEFAULT_REMINDER_THRESHOLDS); }
+  }, [open, userEmail]);
+
+  async function handleSubmit() {
+    if (!email || !email.includes("@")) {
+      toast.error(isZh ? "请输入有效邮箱" : "Please enter a valid email");
+      return;
+    }
+    if (selectedThresholds.length === 0) {
+      toast.error(isZh ? "请至少选择一个到期前提醒时间" : "Please select at least one pre-expiry reminder");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/remind/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ domain, email, expirationDate, phaseAlerts, thresholds: selectedThresholds }),
+      });
+      if (res.ok) {
+        setDone(true);
+      } else {
+        toast.error(isZh ? "提交失败，请重试" : "Submission failed");
+      }
+    } catch {
+      toast.error(isZh ? "网络错误" : "Network error");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  const lc = React.useMemo(
+    () => computeLifecycle(domain, expirationDate ?? null, eppStatuses),
+    [domain, expirationDate, eppStatuses]
+  );
+  const tldUpper = domain.split(".").pop()?.toUpperCase() ?? "";
+  const hasPricing = !!(registerPriceFmt || renewPriceFmt);
+
+  const PHASE_UI = {
+    active:        { label: isZh ? "正常有效" : "Active",        colorClass: "text-emerald-600 dark:text-emerald-400", bgClass: "bg-emerald-50/70 dark:bg-emerald-950/25", borderClass: "border-emerald-200/60 dark:border-emerald-800/40", dotClass: "bg-emerald-500" },
+    grace:         { label: isZh ? "宽限期"   : "Grace Period",  colorClass: "text-amber-600 dark:text-amber-400",    bgClass: "bg-amber-50/70 dark:bg-amber-950/25",    borderClass: "border-amber-200/60 dark:border-amber-800/40",    dotClass: "bg-amber-500" },
+    redemption:    { label: isZh ? "赎回期"   : "Redemption",    colorClass: "text-orange-600 dark:text-orange-400",  bgClass: "bg-orange-50/70 dark:bg-orange-950/25",  borderClass: "border-orange-200/60 dark:border-orange-800/40",  dotClass: "bg-orange-500" },
+    pendingDelete: { label: isZh ? "待删除"   : "Pending Delete", colorClass: "text-red-600 dark:text-red-400",        bgClass: "bg-red-50/70 dark:bg-red-950/25",        borderClass: "border-red-200/60 dark:border-red-800/40",        dotClass: "bg-red-500" },
+    dropped:       { label: isZh ? "已释放"   : "Available",     colorClass: "text-sky-600 dark:text-sky-400",        bgClass: "bg-sky-50/70 dark:bg-sky-950/25",        borderClass: "border-sky-200/60 dark:border-sky-800/40",        dotClass: "bg-sky-400" },
+  };
+
+  const PHASE_ADVICE: Record<string, { zh: string; en: string }> = {
+    active:        { zh: "域名状态正常，我们将在到期前自动发送提醒邮件。", en: "Domain is active. We'll alert you before expiry." },
+    grace:         { zh: "域名已过期，仍处于宽限期内，可按正常价格续费，请尽快操作！", en: "Expired but renewable at normal price during grace — act now!" },
+    redemption:    { zh: "已进入赎回期，续费费用大幅增加，请立即联系注册商赎回。", en: "In redemption. Recovery fees are much higher — contact your registrar." },
+    pendingDelete: { zh: "即将被注册局删除，通常无法再续期，请提前做好准备。", en: "Pending deletion. Usually cannot be renewed anymore." },
+    dropped:       { zh: "域名已被删除，即将或已可重新注册。", en: "Domain has been deleted and may be available for re-registration." },
+  };
+
+  const urgencyNum =
+    remainingDays === null ? "text-muted-foreground" :
+    remainingDays <= 0  ? "text-red-500 dark:text-red-400" :
+    remainingDays <= 30 ? "text-orange-500 dark:text-orange-400" :
+    remainingDays <= 90 ? "text-amber-500 dark:text-amber-400" :
+    "text-emerald-500 dark:text-emerald-400";
+
+  const phaseUI = lc ? PHASE_UI[lc.phase] : null;
+
+  type PhaseAlerts = { grace: boolean; redemption: boolean; pendingDelete: boolean; dropSoon: boolean; dropped: boolean };
+  const [phaseAlerts, setPhaseAlerts] = React.useState<PhaseAlerts>({
+    grace: true, redemption: true, pendingDelete: true, dropSoon: true, dropped: true,
+  });
+  function togglePhase(key: keyof PhaseAlerts) {
+    setPhaseAlerts((prev) => ({ ...prev, [key]: !prev[key] }));
+  }
+
+  type PhaseChip = {
+    key: keyof PhaseAlerts;
+    label: string;
+    icon: React.ReactNode;
+    activeCls: string;
+    inactiveCls: string;
+    always?: boolean;
+  };
+  const phaseChips: PhaseChip[] = lc ? [
+    lc.cfg.grace > 0         && { key: "grace"       as const, label: isZh ? "进入宽限期"   : "Grace",         icon: <RiTimeLine className="w-2.5 h-2.5" />,            activeCls: "bg-amber-500/15 border-amber-400/40 text-amber-600 dark:text-amber-400",   inactiveCls: "bg-muted/20 border-border/30 text-muted-foreground/40 line-through" },
+    lc.cfg.redemption > 0    && { key: "redemption"  as const, label: isZh ? "进入赎回期"   : "Redemption",    icon: <RiExchangeDollarFill className="w-2.5 h-2.5" />,  activeCls: "bg-orange-500/15 border-orange-400/40 text-orange-600 dark:text-orange-400", inactiveCls: "bg-muted/20 border-border/30 text-muted-foreground/40 line-through" },
+    lc.cfg.pendingDelete > 0 && { key: "pendingDelete" as const, label: isZh ? "进入待删除期" : "Pending del.", icon: <RiDeleteBin2Line className="w-2.5 h-2.5" />,     activeCls: "bg-red-500/15 border-red-400/40 text-red-600 dark:text-red-400",          inactiveCls: "bg-muted/20 border-border/30 text-muted-foreground/40 line-through" },
+    (lc.cfg.pendingDelete > 0 || lc.cfg.redemption > 0 || lc.cfg.grace > 0) && { key: "dropSoon" as const, always: true, label: isZh ? "即将可注册" : "Drop soon",     icon: <RiAlertLine className="w-2.5 h-2.5" />,           activeCls: "bg-sky-500/15 border-sky-400/40 text-sky-600 dark:text-sky-400",          inactiveCls: "bg-muted/20 border-border/30 text-muted-foreground/40 line-through" },
+    (lc.cfg.pendingDelete > 0 || lc.cfg.redemption > 0 || lc.cfg.grace > 0) && { key: "dropped"  as const, always: true, label: isZh ? "域名可注册"  : "Available",    icon: <RiShoppingCartLine className="w-2.5 h-2.5" />,    activeCls: "bg-emerald-500/15 border-emerald-400/40 text-emerald-600 dark:text-emerald-400", inactiveCls: "bg-muted/20 border-border/30 text-muted-foreground/40 line-through" },
+  ].filter(Boolean) as PhaseChip[] : [];
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-[420px] p-0 overflow-hidden gap-0">
+
+        {/* ── Header ── */}
+        <div className="px-5 pt-5 pb-4 border-b border-border/50 bg-gradient-to-br from-sky-500/5 via-transparent to-blue-500/5">
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-xl bg-sky-500/10 border border-sky-400/20 flex items-center justify-center shrink-0 mt-0.5">
+              <RiTimerLine className="w-[18px] h-[18px] text-sky-500" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h2 className="text-sm font-bold text-foreground leading-none">
+                {isZh ? "域名监控订阅" : "Domain Monitoring"}
+              </h2>
+              <p className="text-[12px] text-sky-600 dark:text-sky-400 font-mono font-semibold mt-1 truncate">{domain}</p>
+              {lc?.cfg.registry && (
+                <p className="text-[10px] text-muted-foreground/55 mt-0.5">{lc.cfg.registry}</p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* ── Body ── */}
+        <div className="px-5 pb-5 overflow-y-auto max-h-[72vh]">
+          <AnimatePresence mode="wait" initial={false}>
+
+            {/* ── Success ── */}
+            {done ? (
+              <motion.div
+                key="done"
+                initial={{ opacity: 0, scale: 0.96 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.96 }}
+                transition={{ duration: 0.2, ease: [0.32, 0.72, 0, 1] }}
+                className="py-7 text-center space-y-4"
+              >
+                <div className="relative w-16 h-16 mx-auto">
+                  <div className="absolute inset-0 rounded-full bg-sky-500/15 animate-ping" style={{ animationDuration: "1.6s" }} />
+                  <div className="relative w-16 h-16 bg-sky-500/10 border-2 border-sky-400/30 rounded-full flex items-center justify-center">
+                    <RiCheckLine className="w-7 h-7 text-sky-500" />
+                  </div>
+                </div>
+                <div>
+                  <p className="font-bold text-[15px] text-foreground">{isZh ? "订阅成功！" : "Subscribed!"}</p>
+                  <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                    {isZh ? "将向" : "We'll notify"}{" "}
+                    <strong className="text-foreground font-mono text-[11px]">{email}</strong>{" "}
+                    {isZh ? "发送以下提醒" : "with the alerts below"}
+                  </p>
+                </div>
+                <div className="text-left rounded-xl border border-border/50 bg-muted/20 p-3 space-y-2.5">
+                  <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
+                    {isZh ? "已订阅的提醒类型" : "Subscribed alerts"}
+                  </p>
+                  <div>
+                    <p className="text-[10px] text-muted-foreground/60 mb-1.5">{isZh ? "到期前提醒" : "Pre-expiry"}</p>
+                    <div className="flex flex-wrap gap-1">
+                      {[...selectedThresholds].sort((a, b) => b - a).map((d) => (
+                        <span key={d} className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-sky-500/10 border border-sky-400/20 text-sky-600 dark:text-sky-400 text-[10px] font-semibold">
+                          <RiTimerLine className="w-2.5 h-2.5" />{isZh ? `提前${d}天` : `${d}d`}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  {phaseChips.filter((c) => phaseAlerts[c.key]).length > 0 && (
+                    <div>
+                      <p className="text-[10px] text-muted-foreground/60 mb-1.5">{isZh ? "阶段提醒" : "Phase alerts"}</p>
+                      <div className="flex flex-wrap gap-1">
+                        {phaseChips.filter((c) => phaseAlerts[c.key]).map((chip) => (
+                          <span key={chip.key} className={cn("inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md border text-[10px] font-semibold", chip.activeCls)}>
+                            <RiCheckboxCircleLine className="w-2.5 h-2.5" />{chip.label}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <p className="text-[10px] text-muted-foreground/55">{isZh ? "确认邮件已发送，请查收" : "Check your inbox for confirmation"}</p>
+              </motion.div>
+
+            ) : (
+              /* ── Form ── */
+              <motion.div
+                key="form"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
+                className="space-y-3 pt-4"
+              >
+                {/* ── Pricing + premium row ────────────────────────────── */}
+                {hasPricing && (
+                  <div className="grid grid-cols-3 gap-1.5 rounded-xl border border-border/50 bg-muted/15 overflow-hidden">
+                    {/* Register price */}
+                    <div className="flex flex-col items-center justify-center px-2 py-2.5 gap-0.5">
+                      <p className="text-[9px] font-bold text-muted-foreground/70 uppercase tracking-widest">
+                        {isZh ? "注册" : "Register"}
+                      </p>
+                      <p className={cn("text-[13px] font-black tabular-nums leading-none", isPremium ? "text-amber-500" : "text-foreground")}>
+                        {registerPriceFmt ?? "—"}
+                      </p>
+                    </div>
+                    {/* Renew price */}
+                    <div className="flex flex-col items-center justify-center px-2 py-2.5 gap-0.5 border-x border-border/40">
+                      <p className="text-[9px] font-bold text-muted-foreground/70 uppercase tracking-widest">
+                        {isZh ? "续费" : "Renew"}
+                      </p>
+                      <p className={cn("text-[13px] font-black tabular-nums leading-none", isPremium ? "text-amber-500" : "text-foreground")}>
+                        {renewPriceFmt ?? "—"}
+                      </p>
+                    </div>
+                    {/* Premium badge */}
+                    <div className={cn(
+                      "flex flex-col items-center justify-center px-2 py-2.5 gap-0.5",
+                      isPremium ? "bg-amber-500/8 dark:bg-amber-500/12" : ""
+                    )}>
+                      <p className="text-[9px] font-bold text-muted-foreground/70 uppercase tracking-widest">
+                        {isZh ? "溢价" : "Premium"}
+                      </p>
+                      <p className={cn(
+                        "text-[12px] font-black leading-none",
+                        isPremium
+                          ? "text-amber-500"
+                          : "text-emerald-600 dark:text-emerald-400"
+                      )}>
+                        {isPremium
+                          ? (isZh ? "是" : "Yes")
+                          : (isZh ? "否" : "No")}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Lifecycle card */}
+                {hasExpiry && lc && phaseUI ? (
+                  <div className={cn("rounded-xl border overflow-hidden", phaseUI.borderClass)}>
+                    {/* Expiry row */}
+                    <div className={cn("flex items-center justify-between px-3.5 py-3", phaseUI.bgClass)}>
+                      <div className="min-w-0">
+                        <p className="text-[9px] text-muted-foreground/80 uppercase tracking-wider font-bold mb-1">
+                          {isZh ? "过期日期" : "Expiry date"}
+                        </p>
+                        <p className="text-[12px] font-mono font-bold text-foreground leading-none">{fmtDate(lc.expiry)}</p>
+                        <p className="text-[10px] font-mono text-muted-foreground/70 mt-0.5 tabular-nums">
+                          {`${String(lc.expiry.getUTCHours()).padStart(2,"0")}:${String(lc.expiry.getUTCMinutes()).padStart(2,"0")}:${String(lc.expiry.getUTCSeconds()).padStart(2,"0")} UTC`}
+                        </p>
+                      </div>
+                      <div className="text-right shrink-0 pl-2">
+                        {remainingDays !== null && remainingDays >= 0 && remainingDays <= 7 ? (
+                          <>
+                            <p className={cn("text-[20px] font-black tabular-nums leading-none", urgencyNum)}>
+                              {fmtCountdown(lc.expiry, isZh)}
+                            </p>
+                            <p className="text-[10px] text-muted-foreground mt-0.5">{isZh ? "后到期" : "remaining"}</p>
+                          </>
+                        ) : (
+                          <>
+                            <p className={cn("text-[30px] font-black tabular-nums leading-none", urgencyNum)}>
+                              {remainingDays !== null ? Math.max(0, remainingDays) : "—"}
+                            </p>
+                            <p className="text-[10px] text-muted-foreground mt-0.5">{isZh ? "天后到期" : "days left"}</p>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    {/* Phase badge */}
+                    <div className="px-3.5 py-2.5 bg-background/70 border-t border-border/30">
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", phaseUI.dotClass)} />
+                        <span className={cn("text-[10px] font-bold uppercase tracking-wider", phaseUI.colorClass)}>{phaseUI.label}</span>
+                        {lc.phaseSource === "epp" && (
+                          <span className="ml-auto inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-400/20 text-[9px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wide">
+                            <RiShieldCheckLine className="w-2.5 h-2.5" />
+                            {isZh ? "EPP实时" : "EPP live"}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-muted-foreground leading-relaxed">
+                        {isZh ? PHASE_ADVICE[lc.phase]?.zh : PHASE_ADVICE[lc.phase]?.en}
+                      </p>
+                    </div>
+                    {/* Timeline */}
+                    <div className="px-3.5 py-2.5 border-t border-border/30 bg-muted/20">
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-[9px] font-bold text-muted-foreground/70 uppercase tracking-widest">
+                          {isZh ? "生命周期时间表" : "Lifecycle timeline"}
+                        </p>
+                        {/* Confidence badge */}
+                        <span className={cn(
+                          "inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[8.5px] font-bold uppercase tracking-wide border",
+                          lc.cfg.confidence === "high"
+                            ? "bg-emerald-500/10 border-emerald-400/20 text-emerald-600 dark:text-emerald-400"
+                            : "bg-yellow-500/10 border-yellow-400/20 text-yellow-600 dark:text-yellow-400"
+                        )}>
+                          {lc.cfg.confidence === "high"
+                            ? (isZh ? "✓ 高可信度" : "✓ Verified")
+                            : (isZh ? "~ 预估数据" : "~ Estimated")}
+                        </span>
+                      </div>
+                      <div className="space-y-2">
+                        {([
+                          lc.cfg.grace > 0 &&
+                            { key: "grace",   label: isZh ? "宽限期结束" : "Grace ends",      date: lc.graceEnd,      color: "text-amber-600 dark:text-amber-400",  dotColor: "bg-amber-400" },
+                          lc.cfg.redemption > 0 &&
+                            { key: "redemp",  label: isZh ? "赎回期结束" : "Redemption ends",  date: lc.redemptionEnd, color: "text-orange-600 dark:text-orange-400", dotColor: "bg-orange-400" },
+                          (lc.cfg.pendingDelete > 0 || (lc.cfg.grace > 0 || lc.cfg.redemption > 0)) &&
+                            { key: "drop",    label: isZh ? "预计删除"   : "Est. deletion",    date: lc.dropDate,      color: "text-red-600 dark:text-red-400",       dotColor: "bg-red-400" },
+                        ] as (false | { key: string; label: string; date: Date; color: string; dotColor: string })[])
+                          .filter(Boolean)
+                          .map((row) => {
+                            if (!row) return null;
+                            const isPast = new Date() > row.date;
+                            return (
+                              <div key={row.key}>
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="flex items-center gap-1.5 min-w-0">
+                                    <span className={cn("w-1.5 h-1.5 rounded-full shrink-0 mt-0.5", isPast ? "bg-muted-foreground/30" : row.dotColor)} />
+                                    <span className={cn("text-[10px]", isPast ? "line-through text-muted-foreground/40" : "text-muted-foreground")}>{row.label}</span>
+                                  </div>
+                                  <span className={cn("text-[10px] font-mono font-semibold tabular-nums text-right shrink-0", isPast ? "text-muted-foreground/40" : row.color)}>
+                                    {fmtDateTime(row.date, false)}
+                                  </span>
+                                </div>
+                                {!isPast && (
+                                  <p className="text-[9px] text-muted-foreground/50 pl-3 mt-0.5 tabular-nums font-mono">
+                                    UTC · {fmtCountdown(row.date, isZh)}{isZh ? "后" : " from now"}
+                                  </p>
+                                )}
+                              </div>
+                            );
+                          })}
+
+                        {/* 预期可注册时间 — prominently highlighted */}
+                        {(lc.cfg.pendingDelete > 0 || lc.cfg.grace > 0 || lc.cfg.redemption > 0) && (() => {
+                          const dropIsPast = new Date() > lc.dropDate;
+                          return (
+                            <div className={cn(
+                              "rounded-lg border px-2.5 py-2 mt-1",
+                              dropIsPast
+                                ? "border-emerald-400/50 bg-emerald-500/10"
+                                : "border-sky-400/35 bg-sky-500/8"
+                            )}>
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex items-center gap-1.5">
+                                  <RiShoppingCartLine className={cn("w-3 h-3 shrink-0", dropIsPast ? "text-emerald-500" : "text-sky-500")} />
+                                  <span className={cn("text-[11px] font-bold", dropIsPast ? "text-emerald-600 dark:text-emerald-400" : "text-sky-600 dark:text-sky-400")}>
+                                    {isZh ? "预计可注册" : "Est. available"}
+                                  </span>
+                                  {dropIsPast && (
+                                    <span className="inline-flex items-center px-1 py-0 rounded text-[8px] font-bold bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-400/30 uppercase tracking-wide">
+                                      {isZh ? "现在" : "NOW"}
+                                    </span>
+                                  )}
+                                </div>
+                                <span className={cn(
+                                  "text-[11px] font-mono font-bold tabular-nums text-right",
+                                  dropIsPast ? "text-emerald-600 dark:text-emerald-400" : "text-sky-600 dark:text-sky-400"
+                                )}>
+                                  {fmtDateTime(lc.dropDate, false)}
+                                </span>
+                              </div>
+                              <p className={cn("text-[9px] pl-4 mt-0.5 leading-relaxed font-mono tabular-nums", dropIsPast ? "text-emerald-600/60" : "text-sky-500/60")}>
+                                {dropIsPast
+                                  ? (isZh ? "UTC · 域名现已可注册，请尽快抢注" : "UTC · Domain may be available for registration now")
+                                  : `UTC · ${fmtCountdown(lc.dropDate, isZh)}${isZh ? "后可抢注" : " until available"}`}
+                              </p>
+                            </div>
+                          );
+                        })()}
+
+                        {lc.cfg.grace === 0 && lc.cfg.redemption === 0 && lc.cfg.pendingDelete === 0 && (
+                          <p className="text-[10px] text-muted-foreground/60 italic">
+                            {isZh
+                              ? `.${tldUpper} 域名到期后通常立即删除，无宽限期`
+                              : `.${tldUpper} domains are typically deleted immediately on expiry`}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ) : !hasExpiry ? (
+                  <div className="px-3 py-3 rounded-xl border border-border/50 bg-muted/20">
+                    <p className="text-xs text-muted-foreground text-center">
+                      {isZh ? "暂无到期日期，仍可订阅提醒" : "No expiry info yet, but you can still subscribe"}
+                    </p>
+                  </div>
+                ) : null}
+
+                {/* Reminder plan */}
+                <div className="rounded-xl border border-border/50 bg-muted/20 p-3.5 space-y-3">
+                  <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
+                    {isZh ? "提醒计划" : "Reminder plan"}
+                  </p>
+                  {/* Pre-expiry day alerts — interactive */}
+                  <div>
+                    <p className="text-[10px] text-muted-foreground/70 mb-1.5 flex items-center gap-1 font-medium">
+                      <RiTimerLine className="w-3 h-3" />
+                      {isZh ? "到期前提醒" : "Pre-expiry alerts"}
+                      <span className="ml-auto text-[9px] text-muted-foreground/40 font-normal normal-case">
+                        {isZh ? "点击选择" : "click to toggle"}
+                      </span>
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {ALL_REMINDER_THRESHOLDS.map((d) => {
+                        const on = selectedThresholds.includes(d);
+                        return (
+                          <button
+                            key={d}
+                            type="button"
+                            onClick={() => toggleThreshold(d)}
+                            className={cn(
+                              "inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md border text-[11px] font-semibold transition-all cursor-pointer select-none",
+                              on
+                                ? "bg-sky-500/12 border-sky-400/30 text-sky-600 dark:text-sky-400"
+                                : "bg-muted/20 border-border/30 text-muted-foreground/40 line-through"
+                            )}
+                          >
+                            {on
+                              ? <RiCheckboxCircleLine className="w-2.5 h-2.5 shrink-0" />
+                              : <RiCheckboxBlankCircleLine className="w-2.5 h-2.5 shrink-0" />}
+                            {isZh ? `提前 ${d} 天` : `${d}d before`}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  {/* Phase event alerts */}
+                  {phaseChips.length > 0 ? (
+                    <div>
+                      <p className="text-[10px] text-muted-foreground/70 mb-1.5 flex items-center gap-1 font-medium">
+                        <RiCalendarEventLine className="w-3 h-3" />
+                        {isZh ? `阶段提醒（.${tldUpper}）` : `Phase alerts (.${tldUpper})`}
+                        <span className="ml-auto text-[9px] text-muted-foreground/40 font-normal normal-case">
+                          {isZh ? "点击选择" : "click to toggle"}
+                        </span>
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {phaseChips.map((chip) => {
+                          const on = phaseAlerts[chip.key];
+                          return (
+                            <button
+                              key={chip.key}
+                              type="button"
+                              onClick={() => togglePhase(chip.key)}
+                              className={cn(
+                                "inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md border text-[11px] font-semibold transition-all cursor-pointer select-none",
+                                on ? chip.activeCls : chip.inactiveCls
+                              )}
+                            >
+                              {on
+                                ? <RiCheckboxCircleLine className="w-2.5 h-2.5 shrink-0" />
+                                : <RiCheckboxBlankCircleLine className="w-2.5 h-2.5 shrink-0" />}
+                              {chip.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : lc ? (
+                    <p className="text-[10px] text-muted-foreground/55 italic">
+                      {isZh
+                        ? `.${tldUpper} 注册局不设宽限期，仅发送到期前提醒`
+                        : `.${tldUpper} has no grace/redemption — pre-expiry alerts only`}
+                    </p>
+                  ) : null}
+                  <p className="text-[10px] text-muted-foreground/50 border-t border-border/30 pt-2.5 leading-relaxed">
+                    {isZh
+                      ? "域名释放后自动停止 · 续费时提醒保留直至到期 · 可随时取消"
+                      : "Auto-stops on drop · Reminders continue after renewal until new expiry · Unsubscribe anytime"}
+                  </p>
+                </div>
+
+                {/* Email input */}
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground mb-1.5">
+                    {isZh ? "接收邮箱" : "Email address"} <span className="text-red-500">*</span>
+                  </p>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+                    placeholder="your@email.com"
+                    className="w-full text-sm rounded-xl border border-border bg-background px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-sky-400/40 transition-shadow font-mono"
+                  />
+                  {userEmail && email === userEmail && (
+                    <p className="text-[10px] text-muted-foreground/60 mt-1 flex items-center gap-1">
+                      <RiShieldCheckLine className="w-3 h-3 text-emerald-500" />
+                      {isZh ? "已自动填入您的账户邮箱" : "Pre-filled from your account"}
+                    </p>
+                  )}
+                </div>
+
+                {/* Submit */}
+                <Button
+                  onClick={handleSubmit}
+                  disabled={submitting}
+                  className="w-full gap-2 h-10 bg-sky-500 hover:bg-sky-600 active:bg-sky-700 text-white border-0 rounded-xl font-semibold text-sm shadow-sm shadow-sky-500/20 transition-all"
+                >
+                  {submitting
+                    ? <><RiLoader4Line className="w-4 h-4 animate-spin" />{isZh ? "订阅中…" : "Subscribing…"}</>
+                    : <><RiCalendarEventLine className="w-4 h-4" />{isZh ? "订阅域名监控" : "Subscribe"}</>
+                  }
+                </Button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function RegistrarIcon({ faviconDomain, name }: { faviconDomain: string | null; name: string }) {
+  const [imgFailed, setImgFailed] = React.useState(false);
+  return (
+    <div className="shrink-0 w-9 h-9 rounded-xl flex items-center justify-center overflow-hidden bg-muted/40 border border-border/30">
+      {faviconDomain && !imgFailed ? (
+        <img
+          src={`https://www.google.com/s2/favicons?domain=${faviconDomain}&sz=64`}
+          alt={name}
+          className="w-6 h-6 object-contain"
+          onError={() => setImgFailed(true)}
+        />
+      ) : (
+        <span className="text-xs font-bold text-muted-foreground select-none">
+          {name.charAt(0).toUpperCase()}
+        </span>
+      )}
+    </div>
+  );
+}
+
 function AvailableDomainCard({ domain, locale }: { domain: string; locale: string }) {
+  const [rawPrices, setRawPrices] = React.useState<DomainPricing[]>([]);
   const [registrars, setRegistrars] = React.useState<DomainPricing[]>([]);
   const [loadingPrices, setLoadingPrices] = React.useState(true);
-  const [eurRates, setEurRates] = React.useState<Record<string, number> | null>(null);
+  const CARD_FALLBACK_RATES: Record<string, number> = {
+    AUD: 1.65, CAD: 1.49, CHF: 0.94, CNY: 7.82, DKK: 7.46,
+    GBP: 0.85, HKD: 8.50, JPY: 162, KRW: 1520, NOK: 11.7,
+    NZD: 1.80, SEK: 11.3, SGD: 1.46, TWD: 34.8, USD: 1.09,
+  };
+  const [eurRates, setEurRates] = React.useState<Record<string, number>>(CARD_FALLBACK_RATES);
   const isZh = locale.startsWith("zh");
 
   React.useEffect(() => {
     const tld = domain.substring(domain.lastIndexOf(".") + 1).toLowerCase();
-    fetch(`/api/pricing?tld=${encodeURIComponent(tld)}&type=new`)
+    const ctrl = new AbortController();
+    fetch(`/api/pricing?tld=${encodeURIComponent(tld)}&type=new`, { signal: ctrl.signal })
       .then((r) => r.json())
       .then((data) => {
         const prices: DomainPricing[] = (data.price || [])
           .filter((r: any) => typeof r.new === "number")
-          .sort((a: any, b: any) => (a.new as number) - (b.new as number))
-          .slice(0, 5)
           .map((r: any) => ({
             ...r,
             isPremium:
-              typeof r.new === "number" &&
-              r.new > 100 &&
-              ["usd", "eur", "cad"].includes((r.currency || "").toLowerCase()),
+              (r.currencytype && r.currencytype.toLowerCase().includes("premium")) ||
+              (typeof r.new === "number" &&
+                r.new > 100 &&
+                ["usd", "eur", "cad"].includes((r.currency || "").toLowerCase())),
             externalLink: `https://www.nazhumi.com/domain/${tld}/new`,
           }));
-        setRegistrars(prices);
+        setRawPrices(prices);
       })
       .catch(() => {})
       .finally(() => setLoadingPrices(false));
+    return () => ctrl.abort();
   }, [domain]);
 
   React.useEffect(() => {
     fetch("https://api.frankfurter.app/latest")
       .then((r) => r.json())
-      .then((data) => setEurRates(data.rates))
+      .then((data) => { if (data?.rates) setEurRates(data.rates); })
       .catch(() => {});
   }, []);
 
+  React.useEffect(() => {
+    if (rawPrices.length === 0) return;
+    const toEur = (amount: number, currency: string) => {
+      const cur = currency.toUpperCase();
+      if (cur === "EUR") return amount;
+      return amount / (eurRates[cur] ?? 1);
+    };
+    const sorted = [...rawPrices]
+      .sort((a, b) => toEur(a.new as number, a.currency) - toEur(b.new as number, b.currency))
+      .slice(0, 5);
+    setRegistrars(sorted);
+  }, [rawPrices, eurRates]);
+
   function formatPrice(amount: number, currency: string): string {
     const cur = currency.toUpperCase();
-    if (isZh && eurRates) {
-      const cnyRate = eurRates["CNY"] ?? 7.8;
+    if (isZh) {
+      const cnyRate = eurRates["CNY"] ?? 7.82;
       const eurAmount = cur === "EUR" ? amount : amount / (eurRates[cur] ?? 1);
-      return `¥${(eurAmount * cnyRate).toFixed(2)}`;
+      return `CNY ${(eurAmount * cnyRate).toFixed(2)}`;
     }
-    return `${cur} ${amount.toFixed(2)}`;
+    if (cur === "USD") return `USD ${amount.toFixed(2)}`;
+    const usdRate = eurRates["USD"] ?? 1.09;
+    const eurAmount = cur === "EUR" ? amount : amount / (eurRates[cur] ?? 1);
+    return `USD ${(eurAmount * usdRate).toFixed(2)}`;
   }
+
+  const tldForDisplay = domain.substring(domain.lastIndexOf(".")).toLowerCase();
+  const sldForDisplay = domain.substring(0, domain.lastIndexOf("."));
+  const bestRegistrar = registrars[0] ?? null;
 
   return (
     <div className="glass-panel border border-emerald-300/50 dark:border-emerald-700/40 rounded-xl overflow-hidden">
-      <div className="relative pt-8 pb-6 px-6 sm:px-8 text-center">
+      {/* Hero header */}
+      <div className="relative pt-10 pb-8 px-6 sm:px-10 text-center bg-gradient-to-b from-emerald-50/60 via-emerald-50/20 to-transparent dark:from-emerald-950/30 dark:via-emerald-950/10 dark:to-transparent">
         <ConfettiPieces />
-        <div className="relative z-10">
-          <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-900/40 rounded-full flex items-center justify-center mx-auto mb-4 border-2 border-emerald-300/60 dark:border-emerald-600/40">
-            <RiCheckLine className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
+        <div className="relative z-10 flex flex-col items-center">
+          {/* Animated ring + check */}
+          <div className="relative mb-5">
+            <motion.div
+              className="w-20 h-20 rounded-full border-2 border-emerald-400/40 dark:border-emerald-500/30 absolute -inset-2"
+              animate={{ scale: [1, 1.12, 1], opacity: [0.5, 0.2, 0.5] }}
+              transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
+            />
+            <motion.div
+              className="w-20 h-20 rounded-full border border-emerald-300/30 dark:border-emerald-600/20 absolute -inset-4"
+              animate={{ scale: [1, 1.18, 1], opacity: [0.3, 0.08, 0.3] }}
+              transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut", delay: 0.3 }}
+            />
+            <div className="w-20 h-20 bg-gradient-to-br from-emerald-400 to-emerald-600 dark:from-emerald-500 dark:to-emerald-700 rounded-full flex items-center justify-center shadow-lg shadow-emerald-500/30">
+              <RiCheckLine className="w-10 h-10 text-white" />
+            </div>
           </div>
-          <h2 className="text-2xl font-bold text-emerald-800 dark:text-emerald-300 mb-1">
-            {isZh ? "恭喜！这个域名可用！" : "Congratulations! Domain Available!"}
-          </h2>
-          <p className="text-sm text-emerald-700/70 dark:text-emerald-400/60 max-w-xs mx-auto">
+
+          {/* Status badge */}
+          <div className="mb-4">
+            <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/50 border border-emerald-300/60 dark:border-emerald-600/40 rounded-full px-3 py-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              {isZh ? "可注册" : "Available"}
+            </span>
+          </div>
+
+          {/* Domain name display */}
+          <div className="mb-3">
+            <div className="flex items-baseline justify-center flex-wrap gap-0">
+              <span className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground break-all">
+                {sldForDisplay}
+              </span>
+              <span className="text-3xl sm:text-4xl font-bold tracking-tight text-emerald-500 dark:text-emerald-400">
+                {tldForDisplay}
+              </span>
+            </div>
+          </div>
+
+          <p className="text-sm text-muted-foreground max-w-sm">
             {isZh
-              ? `${domain} 尚未被注册，抢先注册属于你的域名！`
-              : `${domain} is unregistered. Grab it before someone else does!`}
+              ? "该域名尚未被注册，抢先注册属于你的域名！"
+              : "This domain is unregistered. Grab it before someone else does!"}
           </p>
+
+          {/* Quick register CTA */}
+          {!loadingPrices && bestRegistrar && (
+            <a
+              href={bestRegistrar.registrarweb}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-5 inline-flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white font-semibold text-sm px-6 py-2.5 rounded-lg shadow-md shadow-emerald-500/25 transition-colors duration-150"
+            >
+              <RiShoppingCartLine className="w-4 h-4" />
+              {isZh
+                ? `立即注册 · ${formatPrice(bestRegistrar.new as number, bestRegistrar.currency)}/${isZh ? "首年" : "yr"}`
+                : `Register Now · ${formatPrice(bestRegistrar.new as number, bestRegistrar.currency)}/yr`}
+            </a>
+          )}
         </div>
       </div>
 
-      <div className="px-4 sm:px-6 pb-6 border-t border-emerald-200/50 dark:border-emerald-700/30 pt-4">
-        <p className="text-xs text-muted-foreground mb-3 flex items-center gap-1.5 font-medium">
-          <RiShoppingCartLine className="w-3.5 h-3.5" />
-          {isZh ? "注册渠道价格对比" : "Registrar price comparison"}
-        </p>
+      {/* Pricing section */}
+      <div className="border-t border-emerald-200/50 dark:border-emerald-700/30">
+        <div className="px-4 sm:px-6 pt-4 pb-1 flex items-center justify-between">
+          <p className="text-xs text-muted-foreground flex items-center gap-1.5 font-semibold uppercase tracking-wide">
+            <RiShoppingCartLine className="w-3.5 h-3.5" />
+            {isZh ? "注册商价格对比" : "Registrar Price Comparison"}
+          </p>
+          {registrars.length > 0 && (
+            <span className="text-[10px] text-muted-foreground/50">
+              {isZh ? "以官网为准" : "Reference only"}
+            </span>
+          )}
+        </div>
 
         {loadingPrices ? (
-          <div className="space-y-2">
+          <div className="px-4 sm:px-6 pb-5 pt-3 space-y-2.5">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-14 rounded-xl bg-muted/40 animate-pulse" />
+              <div key={i} className="flex items-center gap-3 py-1">
+                <div className="w-8 h-8 rounded-lg bg-muted/50 animate-pulse shrink-0" />
+                <div className="flex-1 h-3.5 rounded bg-muted/40 animate-pulse" />
+                <div className="w-20 h-4 rounded bg-muted/40 animate-pulse shrink-0" />
+              </div>
             ))}
           </div>
         ) : registrars.length > 0 ? (
-          <div className="space-y-2">
-            {registrars.map((r, idx) => (
-              <a
-                key={r.registrar}
-                href={r.registrarweb}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block group"
-              >
-                <div
+          <div className="pb-3">
+            {registrars.map((r, idx) => {
+              const faviconDomain = (() => {
+                try { return new URL(r.registrarweb).hostname; } catch { return null; }
+              })();
+              return (
+                <a
+                  key={r.registrar}
+                  href={r.registrarweb}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className={cn(
-                    "border rounded-xl px-4 py-3 flex items-center justify-between transition-all duration-150",
-                    "hover:bg-emerald-50/60 dark:hover:bg-emerald-950/30 hover:border-emerald-300/60",
-                    "border-border/60 bg-background/60",
-                    idx === 0 &&
-                      "border-emerald-300/70 dark:border-emerald-600/40 bg-emerald-50/40 dark:bg-emerald-950/20",
+                    "flex items-center gap-3 px-4 sm:px-6 py-3 transition-colors duration-150 group",
+                    "hover:bg-emerald-50/60 dark:hover:bg-emerald-950/30",
+                    idx === 0 && "bg-emerald-50/40 dark:bg-emerald-950/20",
                   )}
                 >
-                  <div className="flex items-center gap-2 min-w-0">
-                    {idx === 0 && (
-                      <span className="shrink-0 text-[9px] font-bold text-white bg-emerald-500 dark:bg-emerald-600 px-1.5 py-0.5 rounded uppercase tracking-wide">
-                        {isZh ? "最低价" : "Best"}
-                      </span>
-                    )}
-                    {idx > 0 && (
-                      <span className="shrink-0 w-5 h-5 flex items-center justify-center text-[10px] font-semibold text-muted-foreground/60 bg-muted/40 rounded-full">
-                        {idx + 1}
-                      </span>
-                    )}
-                    <p className="text-sm font-medium text-foreground/80 truncate">
+                  <RegistrarIcon faviconDomain={faviconDomain} name={r.registrarname} />
+
+                  <div className="flex-1 min-w-0 flex items-center gap-2">
+                    <span className="shrink-0 text-[11px] font-bold text-muted-foreground/30 w-4 text-right tabular-nums">
+                      {idx + 1}
+                    </span>
+                    <p className={cn(
+                      "text-sm truncate",
+                      idx === 0 ? "font-semibold text-foreground" : "font-medium text-foreground/75",
+                    )}>
                       {r.registrarname}
                     </p>
+                    {idx === 0 && (
+                      <span className="shrink-0 text-[9px] font-bold text-white bg-emerald-500 dark:bg-emerald-600 px-1.5 py-0.5 rounded uppercase tracking-wide">
+                        {isZh ? "最低价" : "BEST"}
+                      </span>
+                    )}
                   </div>
-                  <div className="flex items-baseline gap-1.5 shrink-0 ml-3">
-                    <span className="text-base font-bold text-emerald-600 dark:text-emerald-400">
-                      {typeof r.new === "number" ? formatPrice(r.new, r.currency) : "N/A"}
-                    </span>
-                    <span className="text-[10px] text-muted-foreground">
-                      /{isZh ? "首年" : "yr"}
-                    </span>
+
+                  <div className="shrink-0 text-right flex items-center gap-1.5">
+                    <div className="flex items-baseline gap-0.5">
+                      <span className={cn(
+                        "font-bold tabular-nums",
+                        idx === 0
+                          ? "text-base text-emerald-600 dark:text-emerald-400"
+                          : "text-sm text-foreground/75",
+                      )}>
+                        {typeof r.new === "number" ? formatPrice(r.new, r.currency) : "N/A"}
+                      </span>
+                      <span className="text-xs text-muted-foreground/50">
+                        /{isZh ? "年" : "yr"}
+                      </span>
+                    </div>
+                    <svg className="w-3.5 h-3.5 text-muted-foreground/30 group-hover:text-muted-foreground/60 transition-colors shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                    </svg>
                   </div>
-                </div>
-              </a>
-            ))}
+                </a>
+              );
+            })}
+            <p className="text-[10px] text-muted-foreground/35 px-4 sm:px-6 pt-2.5 pb-2">
+              {isZh
+                ? "数据来源：nazhumi.com & miqingju.com · 最低价优先 · 价格仅供参考"
+                : "Source: nazhumi.com & miqingju.com · Sorted by lowest price · For reference only"}
+            </p>
           </div>
         ) : (
-          <p className="text-xs text-muted-foreground text-center py-3">
-            {isZh ? "暂无价格数据" : "No pricing data available"}
-          </p>
-        )}
-
-        {registrars.length > 0 && (
-          <p className="text-[10px] text-muted-foreground/60 mt-3 text-center">
-            {isZh
-              ? "价格来源：nazhumi.com · 仅供参考，以官网为准"
-              : "Prices from nazhumi.com · For reference only"}
+          <p className="text-xs text-muted-foreground/60 text-center py-6">
+            {isZh ? "暂无价格数据" : "No pricing data available for this TLD"}
           </p>
         )}
       </div>
@@ -1723,12 +2953,26 @@ function AvailableDomainCard({ domain, locale }: { domain: string; locale: strin
   );
 }
 
+function QueryingDots() {
+  const [dots, setDots] = React.useState(".");
+  React.useEffect(() => {
+    const id = setInterval(() => setDots(d => d.length >= 3 ? "." : d + "."), 500);
+    return () => clearInterval(id);
+  }, []);
+  return <span className="inline-block w-5 text-left">{dots}</span>;
+}
+
 function ResultSkeleton() {
+  const { t } = useTranslation();
   return (
     <div className="space-y-6 mt-6">
-      <div className="text-center py-4">
-        <p className="text-sm text-muted-foreground font-medium animate-pulse">
-          我知道你很急，但请你先别急
+      <div className="text-center py-6 space-y-2">
+        <span className="text-shimmer text-base font-semibold tracking-wide select-none">
+          {t("loading_text")}
+        </span>
+        <p className="text-[13px] text-muted-foreground font-mono flex items-center justify-center gap-0.5 select-none">
+          <span>{t("loading_querying")}</span>
+          <QueryingDots />
         </p>
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -1782,11 +3026,11 @@ function ResultSkeleton() {
           <div className="glass-panel border border-border rounded-xl p-6 h-64 flex flex-col gap-3">
             <div className="h-4 w-24 rounded bg-muted/70 animate-pulse" />
             <div className="flex-1 space-y-2">
-              {[1, 2, 3, 4, 5, 6].map((i) => (
+              {[85, 72, 90, 65, 80, 70].map((w, i) => (
                 <div
                   key={i}
                   className="h-3 rounded bg-muted/50 animate-pulse"
-                  style={{ width: `${60 + Math.random() * 35}%` }}
+                  style={{ width: `${w}%` }}
                 />
               ))}
             </div>
@@ -1810,11 +3054,21 @@ export default function LookupPage({
 }) {
   const { t, locale } = useTranslation();
   const router = useRouter();
+  const settings = useSiteSettings();
+  const hideRawWhois = settings.hide_raw_whois === "1";
   const [loading, setLoading] = React.useState(false);
   const [expandStatus, setExpandStatus] = React.useState(false);
+  const [feedbackOpen, setFeedbackOpen] = React.useState(false);
+  const suppressNextLoad = React.useRef(false);
 
   useEffect(() => {
-    const handleStart = () => setLoading(true);
+    const handleStart = (url: string) => {
+      if (suppressNextLoad.current) {
+        suppressNextLoad.current = false;
+        return;
+      }
+      if (isSearchRoute(url)) setLoading(true);
+    };
     const handleComplete = () => setLoading(false);
     router.events.on("routeChangeStart", handleStart);
     router.events.on("routeChangeComplete", handleComplete);
@@ -1829,6 +3083,7 @@ export default function LookupPage({
   const [imgWidth, setImgWidth] = React.useState(1200);
   const [imgHeight, setImgHeight] = React.useState(630);
   const [imgTheme, setImgTheme] = React.useState<"light" | "dark">("light");
+  const [imgActing, setImgActing] = React.useState<"download" | "copy" | null>(null);
   const copy = useClipboard();
   const save = useSaver();
   useSearchHotkeys({});
@@ -1840,37 +3095,192 @@ export default function LookupPage({
   }, []);
 
   const isChinese = locale === "zh" || locale === "zh-tw";
-  const [eurRates, setEurRates] = React.useState<Record<string, number> | null>(null);
+  const isZh = isChinese;
+
+  const [reminderDialogOpen, setReminderDialogOpen] = React.useState(false);
+  const [stampDetailOpen, setStampDetailOpen] = React.useState(false);
+
+  const [verifiedStamps, setVerifiedStamps] = React.useState<
+    { id: string; tagName: string; tagStyle: string; cardTheme: string; link: string; nickname: string; description?: string }[]
+  >([]);
+
+  type CardThemeDef = {
+    hero: string;       shimmer: string;
+    badge: string;      btn: string;
+    cardBg: string;     cardBorder: string; cardText: string;
+  };
+  const CARD_THEMES: Record<string, CardThemeDef> = {
+    app: {
+      hero:       "bg-gradient-to-br from-zinc-700 to-zinc-900",
+      shimmer:    "text-shimmer",           // dark text → visible on light card
+      badge:      "bg-white/15 text-white border border-white/25",
+      btn:        "bg-zinc-800 text-white hover:bg-zinc-700",
+      cardBg:     "bg-background",   cardBorder: "border-border/50",   cardText: "text-foreground",
+    },
+    glow: {
+      hero:       "bg-gradient-to-br from-teal-400 to-teal-600",
+      shimmer:    "text-shimmer",           // dark text → visible on light card
+      badge:      "bg-teal-500 text-white border-0",
+      btn:        "bg-teal-500 text-white hover:bg-teal-600",
+      cardBg:     "bg-background",   cardBorder: "border-teal-200/60 dark:border-teal-800/40",  cardText: "text-foreground",
+    },
+    midnight: {
+      hero:       "bg-gradient-to-br from-slate-700 via-blue-900 to-slate-900",
+      shimmer:    "text-shimmer-white",     // white text → visible on dark card
+      badge:      "bg-blue-500 text-white border-0",
+      btn:        "bg-blue-600 text-white hover:bg-blue-700",
+      cardBg:     "bg-slate-900",    cardBorder: "border-slate-700",   cardText: "text-white",
+    },
+    aurora: {
+      hero:       "bg-gradient-to-br from-violet-500 via-fuchsia-500 to-pink-400",
+      shimmer:    "text-shimmer",           // dark text → visible on light card
+      badge:      "bg-fuchsia-500 text-white border-0",
+      btn:        "bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white",
+      cardBg:     "bg-background",   cardBorder: "border-violet-200/60 dark:border-violet-800/40", cardText: "text-foreground",
+    },
+    solar: {
+      hero:       "bg-gradient-to-br from-amber-400 to-orange-600",
+      shimmer:    "text-shimmer",           // dark text → visible on light card
+      badge:      "bg-orange-500 text-white border-0",
+      btn:        "bg-orange-500 text-white hover:bg-orange-600",
+      cardBg:     "bg-background",   cardBorder: "border-amber-200/60 dark:border-amber-800/40",  cardText: "text-foreground",
+    },
+    ink: {
+      hero:       "bg-gradient-to-br from-zinc-800 via-zinc-900 to-black",
+      shimmer:    "text-shimmer-white",     // white text → visible on dark card
+      badge:      "bg-zinc-600 text-white border-0",
+      btn:        "bg-zinc-700 text-white hover:bg-zinc-600",
+      cardBg:     "bg-zinc-950",     cardBorder: "border-zinc-800",    cardText: "text-white",
+    },
+  };
+
+  const STAMP_STYLE_MAP: Record<string, string> = {
+    personal: "bg-teal-500 text-white border-0",
+    default:  "bg-teal-500 text-white border-0",
+    official: "bg-blue-500 text-white border-0",
+    brand:    "bg-violet-500 text-white border-0",
+    verified: "bg-emerald-500 text-white border-0",
+    partner:  "bg-orange-500 text-white border-0",
+    dev:      "bg-sky-500 text-white border-0",
+    warning:  "bg-amber-400 text-white border-0",
+    premium:  "bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white border-0",
+  };
+
+  const STAMP_ICON_MAP: Record<string, React.ElementType> = {
+    personal: RiIdCardLine,
+    official: RiBuildingLine,
+    brand:    RiAwardLine,
+    verified: RiShieldCheckLine,
+    partner:  RiShakeHandsLine,
+    dev:      RiCodeSLine,
+    warning:  RiAlertLine,
+    premium:  RiVipCrownLine,
+    default:  RiShieldCheckLine,
+  };
+
+  const STAMP_CARD_MAP: Record<string, { border: string; bg: string; iconColor: string }> = {
+    personal: { border: "border-l-teal-500",    bg: "bg-teal-50   dark:bg-teal-900/20",     iconColor: "text-teal-500" },
+    official: { border: "border-l-blue-500",    bg: "bg-blue-50   dark:bg-blue-900/20",     iconColor: "text-blue-500" },
+    brand:    { border: "border-l-violet-500",  bg: "bg-violet-50 dark:bg-violet-900/20",   iconColor: "text-violet-500" },
+    verified: { border: "border-l-emerald-500", bg: "bg-emerald-50 dark:bg-emerald-900/20", iconColor: "text-emerald-500" },
+    partner:  { border: "border-l-orange-500",  bg: "bg-orange-50 dark:bg-orange-900/20",   iconColor: "text-orange-500" },
+    dev:      { border: "border-l-sky-500",     bg: "bg-sky-50    dark:bg-sky-900/20",      iconColor: "text-sky-500" },
+    warning:  { border: "border-l-amber-400",   bg: "bg-amber-50  dark:bg-amber-900/20",    iconColor: "text-amber-500" },
+    premium:  { border: "border-l-fuchsia-500", bg: "bg-fuchsia-50 dark:bg-fuchsia-900/20", iconColor: "text-fuchsia-500" },
+    default:  { border: "border-l-teal-500",    bg: "bg-teal-50   dark:bg-teal-900/20",     iconColor: "text-teal-500" },
+  };
+
+  useEffect(() => {
+    const domainKey = data.result?.domain || target;
+    if (!domainKey) return;
+    const ctrl = new AbortController();
+    fetch(`/api/stamp/check?domain=${encodeURIComponent(domainKey)}`, { signal: ctrl.signal })
+      .then((r) => r.json())
+      .then((d) => setVerifiedStamps(d.stamps || []))
+      .catch(() => {});
+    return () => ctrl.abort();
+  }, [data.result?.domain, target]);
+
+  const FALLBACK_EUR_RATES: Record<string, number> = {
+    AUD: 1.65, CAD: 1.49, CHF: 0.94, CNY: 7.82, DKK: 7.46,
+    GBP: 0.85, HKD: 8.50, JPY: 162, KRW: 1520, NOK: 11.7,
+    NZD: 1.80, SEK: 11.3, SGD: 1.46, TWD: 34.8, USD: 1.09,
+  };
+  const [eurRates, setEurRates] = React.useState<Record<string, number>>(FALLBACK_EUR_RATES);
   useEffect(() => {
     if (!isChinese) return;
     fetch("https://api.frankfurter.app/latest")
       .then((r) => r.json())
-      .then((data) => setEurRates(data.rates))
+      .then((d) => { if (d?.rates) setEurRates(d.rates); })
       .catch(() => {});
   }, [isChinese]);
 
   function toCNY(amount: number, currency: string): string {
     const cur = currency.toUpperCase();
-    if (eurRates) {
-      const cnyRate = eurRates["CNY"] ?? 7.8;
-      const eurAmount =
-        cur === "EUR" ? amount : amount / (eurRates[cur] ?? 1);
-      return `¥${(eurAmount * cnyRate).toFixed(2)}`;
-    }
-    return `${amount} ${cur}`;
+    const cnyRate = eurRates["CNY"] ?? 7.82;
+    const eurAmount = cur === "EUR" ? amount : amount / (eurRates[cur] ?? 1);
+    return `¥${(eurAmount * cnyRate).toFixed(2)}`;
   }
+
+  function toUSD(amount: number, currency: string): string {
+    const cur = currency.toUpperCase();
+    if (cur === "USD") return `$${amount.toFixed(2)}`;
+    const usdRate = eurRates["USD"] ?? 1.09;
+    const eurAmount = cur === "EUR" ? amount : amount / (eurRates[cur] ?? 1);
+    return `$${(eurAmount * usdRate).toFixed(2)}`;
+  }
+
+  type TianhuTranslation = { src: string; dst: string | null; parts: { part_name: string; means: string[] }[] } | null;
+  const [tianhuTranslation, setTianhuTranslation] = React.useState<TianhuTranslation>(null);
+
+  useEffect(() => {
+    setTianhuTranslation(null);
+    const isIp = /^(\d{1,3}\.){3}\d{1,3}$/.test(target) || /^([0-9a-fA-F]{0,4}:){1,7}[0-9a-fA-F]{0,4}$/.test(target);
+    if (!target || isIp) return;
+    const timer = setTimeout(() => {
+      fetch(`/api/tianhu/translate?domain=${encodeURIComponent(target)}`)
+        .then((r) => r.json())
+        .then((d) => { if (d.dst) setTianhuTranslation(d); })
+        .catch(() => {});
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [target]);
 
   const current = getWindowHref();
   const queryType = detectQueryType(target);
-  const { status, result, error, time, dnsProbe } = data;
+  const { status, result, error, time, dnsProbe, registryUrl, cached, cachedAt, cacheTtl } = data as typeof data & { registryUrl?: string };
+
+  const { data: session } = useSession();
 
   const handleSearch = (query: string) => {
     router.push(toSearchURI(query));
   };
 
   useEffect(() => {
-    if (status) addHistory(target);
-  }, []);
+    if (!status) return;
+    const regStatus =
+      status && result ? "registered" :
+      dnsProbe?.registrationStatus === "unregistered" ? "unregistered" :
+      dnsProbe?.registrationStatus === "registered" ? "registered" :
+      "unknown";
+
+    addHistory(target, regStatus as any);
+
+    if (session?.user) {
+      fetch("/api/user/search-history", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          query: target,
+          queryType,
+          regStatus,
+          expirationDate: data.result?.expirationDate && data.result.expirationDate !== "Unknown" ? data.result.expirationDate : null,
+          remainingDays: typeof data.result?.remainingDays === "number" ? data.result.remainingDays : null,
+        }),
+      }).catch(() => {});
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status, target]);
 
   const registrarIcon = result
     ? getRegistrarIcon(result.registrar, result.registrarURL)
@@ -1898,19 +3308,26 @@ export default function LookupPage({
       (result.inetNum && result.inetNum !== "Unknown") ||
       (result.inet6Num && result.inet6Num !== "Unknown"));
 
+  const INVALID_FIELD_VALUES = new Set([
+    "unknown", "n/a", "na", "none", "null", "undefined", "-", "--",
+  ]);
+  const isValidField = (v: string | null | undefined): boolean => {
+    if (!v || !v.trim()) return false;
+    return !INVALID_FIELD_VALUES.has(v.trim().toLowerCase());
+  };
+
   const hasRegistrant =
     result &&
-    ((result.registrantOrganization &&
-      result.registrantOrganization !== "Unknown") ||
-      (result.registrantCountry && result.registrantCountry !== "Unknown") ||
-      (result.registrantProvince && result.registrantProvince !== "Unknown") ||
-      (result.registrantEmail && result.registrantEmail !== "Unknown") ||
-      (result.registrantPhone && result.registrantPhone !== "Unknown"));
+    (isValidField(result.registrantOrganization) ||
+      isValidField(result.registrantCountry) ||
+      isValidField(result.registrantProvince) ||
+      isValidField(result.registrantEmail) ||
+      isValidField(result.registrantPhone));
 
   return (
     <>
       <Head>
-        <title>{`${displayTarget} - WHOIS Lookup`}</title>
+        <title key="site-title">{`${displayTarget} - WHOIS Lookup`}</title>
         <meta
           key="og:title"
           property="og:title"
@@ -1945,17 +3362,29 @@ export default function LookupPage({
                 <KeyboardShortcut k="/" />
               </div>
             </div>
-            <SearchHotkeysText className="mt-2 px-1 justify-end" />
+            <SearchHotkeysText className="hidden sm:flex mt-2 px-1 justify-end" />
           </div>
 
-          {loading && <ResultSkeleton />}
+          <AnimatePresence mode="wait" initial={false}>
+            {loading && (
+              <motion.div
+                key="skeleton"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
+              >
+                <ResultSkeleton />
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {!loading && result && (
             <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: 0.1 }}
-              className="flex items-center flex-wrap gap-2 mb-6"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.25 }}
+              className="flex items-center flex-wrap gap-2 mb-4 sm:mb-6"
             >
               {result.registerPrice &&
                 result.registerPrice.new !== -1 &&
@@ -1963,19 +3392,19 @@ export default function LookupPage({
                   <Link
                     target="_blank"
                     href={result.registerPrice.externalLink}
-                    className="px-2 py-0.5 rounded-md border bg-background flex items-center space-x-1 cursor-pointer hover:border-muted-foreground/50 transition-colors"
+                    className="hidden sm:flex px-2 py-0.5 rounded-md border bg-background items-center space-x-1 cursor-pointer hover:border-muted-foreground/50 transition-colors"
                   >
-                    <RiBillLine className="w-3 h-3 text-muted-foreground shrink-0" />
+                    <RiBillLine className={cn("w-3 h-3 shrink-0", result.registerPrice.isPremium ? "text-amber-500" : "text-muted-foreground")} />
                     <span
                       className={cn(
-                        "text-[11px] sm:text-xs font-normal text-muted-foreground",
-                        result.registerPrice.isPremium && "text-red-500",
+                        "text-[11px] sm:text-xs font-normal",
+                        result.registerPrice.isPremium ? "text-amber-500" : "text-muted-foreground",
                       )}
                     >
                       {t("register_price")}
                       {isChinese
                         ? toCNY(result.registerPrice.new as number, result.registerPrice.currency)
-                        : `${result.registerPrice.new} ${result.registerPrice.currency.toUpperCase()}`}
+                        : toUSD(result.registerPrice.new as number, result.registerPrice.currency)}
                     </span>
                   </Link>
                 )}
@@ -1985,149 +3414,29 @@ export default function LookupPage({
                   <Link
                     href={result.renewPrice.externalLink}
                     target="_blank"
-                    className="px-2 py-0.5 rounded-md border bg-background flex items-center space-x-1 cursor-pointer hover:border-muted-foreground/50 transition-colors"
+                    className="hidden sm:flex px-2 py-0.5 rounded-md border bg-background items-center space-x-1 cursor-pointer hover:border-muted-foreground/50 transition-colors"
                   >
-                    <RiExchangeDollarFill className="w-3 h-3 text-muted-foreground shrink-0" />
-                    <span className="text-[11px] sm:text-xs font-normal text-muted-foreground">
+                    <RiExchangeDollarFill className={cn("w-3 h-3 shrink-0", result.renewPrice.isPremium ? "text-amber-500" : "text-muted-foreground")} />
+                    <span className={cn("text-[11px] sm:text-xs font-normal", result.renewPrice.isPremium ? "text-amber-500" : "text-muted-foreground")}>
                       {t("renew_price")}
                       {isChinese
                         ? toCNY(result.renewPrice.renew as number, result.renewPrice.currency)
-                        : `${result.renewPrice.renew} ${result.renewPrice.currency.toUpperCase()}`}
+                        : toUSD(result.renewPrice.renew as number, result.renewPrice.currency)}
                     </span>
                   </Link>
                 )}
-              {result.transferPrice &&
-                result.transferPrice.transfer !== -1 &&
-                result.transferPrice.currency !== "Unknown" && (
-                  <Link
-                    href={result.transferPrice.externalLink}
-                    target="_blank"
-                    className="px-2 py-0.5 rounded-md border bg-background flex items-center space-x-1 cursor-pointer hover:border-muted-foreground/50 transition-colors"
-                  >
-                    <RiExchangeDollarFill className="w-3 h-3 text-muted-foreground shrink-0" />
-                    <span className="text-[11px] sm:text-xs font-normal text-muted-foreground">
-                      {t("transfer_price")}
-                      {isChinese
-                        ? toCNY(result.transferPrice.transfer as number, result.transferPrice.currency)
-                        : `${result.transferPrice.transfer} ${result.transferPrice.currency.toUpperCase()}`}
+              {result.negotiable !== null && (
+                <div className="hidden sm:flex px-2 py-0.5 rounded-md border bg-background items-center space-x-1">
+                  <RiExchangeDollarFill className="w-3 h-3 text-muted-foreground shrink-0" />
+                  <span className="text-[11px] sm:text-xs font-normal text-muted-foreground">
+                    {t("negotiable")}
+                    <span className={result.negotiable ? "text-amber-500" : "text-emerald-600 dark:text-emerald-400"}>
+                      {result.negotiable ? t("negotiable_yes") : t("negotiable_no")}
                     </span>
-                  </Link>
-                )}
+                  </span>
+                </div>
+              )}
               <div className="flex-grow" />
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="icon-sm"
-                    className="transition hover:border-muted-foreground shadow-sm"
-                    tapEnabled
-                  >
-                    <RiShareLine className="w-4 h-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="min-w-[200px]">
-                  <DropdownMenuLabel className="text-xs text-muted-foreground">
-                    {t("share")}
-                  </DropdownMenuLabel>
-                  <DropdownMenuItem asChild>
-                    <Link
-                      href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`Whois Lookup: ${target}`)}&url=${encodeURIComponent(current)}`}
-                      target="_blank"
-                    >
-                      <RiTwitterXLine className="w-4 h-4 mr-2" />
-                      Twitter / X
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link
-                      href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(current)}`}
-                      target="_blank"
-                    >
-                      <RiFacebookFill className="w-4 h-4 mr-2" />
-                      Facebook
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link
-                      href={`https://reddit.com/submit?url=${encodeURIComponent(current)}`}
-                      target="_blank"
-                    >
-                      <RiRedditLine className="w-4 h-4 mr-2" />
-                      Reddit
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link
-                      href={`https://api.whatsapp.com/send?text=${encodeURIComponent(current)}`}
-                      target="_blank"
-                    >
-                      <RiWhatsappLine className="w-4 h-4 mr-2" />
-                      WhatsApp
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link
-                      href={`https://t.me/share/url?url=${encodeURIComponent(current)}`}
-                      target="_blank"
-                    >
-                      <RiTelegramLine className="w-4 h-4 mr-2" />
-                      Telegram
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => copy(current)}>
-                    <RiLinkM className="w-4 h-4 mr-2" />
-                    {t("copy_url")}
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuLabel className="text-xs text-muted-foreground">
-                    {t("image")}
-                  </DropdownMenuLabel>
-                  <DropdownMenuItem
-                    onClick={async () => {
-                      const ogUrl = buildOgUrl(target, result);
-                      try {
-                        const res = await fetch(ogUrl);
-                        const blob = await res.blob();
-                        const url = URL.createObjectURL(blob);
-                        const a = document.createElement("a");
-                        a.href = url;
-                        a.download = `whois-${target}.png`;
-                        a.click();
-                        URL.revokeObjectURL(url);
-                        toast.success(t("toast.downloaded"));
-                      } catch {
-                        toast.error(t("toast.download_failed"));
-                      }
-                    }}
-                  >
-                    <RiDownloadLine className="w-4 h-4 mr-2" />
-                    {t("download_png")}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={async () => {
-                      const ogUrl = buildOgUrl(target, result);
-                      try {
-                        const res = await fetch(ogUrl);
-                        const blob = await res.blob();
-                        await navigator.clipboard.write([
-                          new ClipboardItem({ "image/png": blob }),
-                        ]);
-                        toast.success(t("toast.copied_to_clipboard"));
-                      } catch {
-                        toast.error(t("toast.copy_to_clipboard_failed"));
-                      }
-                    }}
-                  >
-                    <RiFileCopyLine className="w-4 h-4 mr-2" />
-                    {t("copy_image")}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setShowImagePreview(true)}>
-                    <RiCameraLine className="w-4 h-4 mr-2" />
-                    {t("preview_customize")}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
             </motion.div>
           )}
 
@@ -2135,13 +3444,43 @@ export default function LookupPage({
             const hasErrorRaw = !!(result && (result.rawWhoisContent || result.rawRdapContent));
             return (
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.3 }}
               className="grid grid-cols-1 lg:grid-cols-12 gap-6"
             >
               <div className={cn(hasErrorRaw ? "lg:col-span-8" : "lg:col-span-12", "space-y-6")}>
-                {dnsProbe?.registrationStatus === "registered" ? (
+                {error === "INVALID_DOMAIN_TLD" ? (
+                  <div className="glass-panel border border-amber-300/50 dark:border-amber-700/40 rounded-xl p-8 sm:p-12 text-center">
+                    <div className="w-16 h-16 bg-amber-50 dark:bg-amber-950/30 rounded-full flex items-center justify-center mx-auto mb-5">
+                      <RiErrorWarningLine className="w-8 h-8 text-amber-500" />
+                    </div>
+                    <Badge variant="outline" className="mb-4 font-mono text-[10px] font-bold uppercase tracking-wider text-amber-600 border-amber-400/50">
+                      INVALID TLD
+                    </Badge>
+                    <h2 className="text-2xl font-bold mb-2">
+                      {isChinese ? `".${target.split(".").pop()}" 不是真实的域名后缀` : `".${target.split(".").pop()}" isn't a real TLD`}
+                    </h2>
+                    <p className="text-muted-foreground max-w-md mx-auto text-sm leading-relaxed mb-2">
+                      {isChinese
+                        ? `我们查遍了 ICANN 的所有顶级域名列表，没找到 `
+                        : `We searched the entire ICANN TLD registry and couldn't find `}
+                      <span className="font-mono font-semibold text-foreground">{`.${target.split(".").pop()}`}</span>
+                      {isChinese ? `。请检查拼写，常见的有 .com .net .org .io .cn` : `. Check for typos — try .com .net .org .io`}
+                    </p>
+                    <p className="text-xs text-muted-foreground/60 mb-8">
+                      {isChinese ? "WHOIS 查询不支持不存在的后缀，这不是 bug，是常识。" : "WHOIS doesn't work for non-existent TLDs. Not a bug — just how the internet works."}
+                    </p>
+                    <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                      <Link href="/">
+                        <Button className="gap-2">
+                          <RiSearchLine className="w-4 h-4" />
+                          {isChinese ? "重新搜索" : "Search Again"}
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
+                ) : dnsProbe?.registrationStatus === "registered" ? (
                   <>
                     <div className="glass-panel border border-emerald-400/40 bg-emerald-50/30 dark:bg-emerald-950/20 rounded-xl p-6 sm:p-8 relative overflow-hidden">
                       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
@@ -2154,11 +3493,11 @@ export default function LookupPage({
                               {queryType}
                             </Badge>
                           </div>
-                          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight mb-1">
+                          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight mb-1 uppercase">
                             {displayTarget}
                           </h2>
                           <p className="text-muted-foreground text-sm mt-2 max-w-sm leading-relaxed">
-                            该域名已注册，但注册机构未提供公开的 WHOIS/RDAP 查询服务，无法获取详细注册信息。
+                            {t("registered_no_whois_desc")}
                           </p>
                         </div>
                         <div className="flex flex-col items-start sm:items-end gap-2 shrink-0">
@@ -2167,7 +3506,7 @@ export default function LookupPage({
                             className="text-emerald-600 border-emerald-400/50 bg-emerald-50 dark:bg-emerald-950/30 font-medium"
                           >
                             <div className="w-2 h-2 rounded-full bg-emerald-500 mr-1.5" />
-                            已注册
+                            {t("registered_no_whois")}
                           </Badge>
                           <span className="text-[10px] text-muted-foreground font-mono">
                             {time.toFixed(2)}s
@@ -2176,10 +3515,18 @@ export default function LookupPage({
                       </div>
                     </div>
 
-                    <div className="flex gap-3">
+                    <div className="flex flex-wrap gap-3">
                       <Button variant="outline" size="sm" onClick={() => handleSearch(target)}>
-                        重新查询
+                        {t("re_query")}
                       </Button>
+                      {registryUrl && (
+                        <a href={registryUrl} target="_blank" rel="noopener noreferrer">
+                          <Button variant="outline" size="sm" className="gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                            {t("registry_lookup")}
+                          </Button>
+                        </a>
+                      )}
                       <Link href="/">
                         <Button variant="outline" size="sm">{t("new_search")}</Button>
                       </Link>
@@ -2220,10 +3567,18 @@ export default function LookupPage({
                         {". "}
                         {error || t("lookup_failed_fallback")}
                       </p>
-                      <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                      <div className="flex flex-col sm:flex-row items-center justify-center gap-3 flex-wrap">
                         <Button onClick={() => handleSearch(target)}>
                           {t("try_again")}
                         </Button>
+                        {registryUrl && (
+                          <a href={registryUrl} target="_blank" rel="noopener noreferrer">
+                            <Button variant="outline" className="gap-2">
+                              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                              {isChinese ? "在注册局查询" : "Look up at Registry"}
+                            </Button>
+                          </a>
+                        )}
                         <Link href="/">
                           <Button variant="outline">{t("new_search")}</Button>
                         </Link>
@@ -2316,7 +3671,7 @@ export default function LookupPage({
                 )}
               </div>
 
-              {hasErrorRaw && (
+              {hasErrorRaw && !hideRawWhois && (
                 <div className="lg:col-span-4">
                   <ResponsePanel
                     whoisContent={result!.rawWhoisContent || ""}
@@ -2334,32 +3689,68 @@ export default function LookupPage({
           {!loading && status && result && (
             <>
               <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.2 }}
+                variants={CARD_CONTAINER_VARIANTS}
+                initial="hidden"
+                animate="visible"
                 className="grid grid-cols-1 lg:grid-cols-12 gap-6"
               >
                 {" "}
-                <div className="lg:col-span-8 space-y-6">
+                <motion.div variants={CARD_ITEM_VARIANTS} className="lg:col-span-8 space-y-6">
                   <div className="glass-panel border border-border rounded-xl p-6 sm:p-8 relative overflow-hidden">
-                    <div className="absolute top-3 right-2 opacity-60 pointer-events-none select-none">
+                    <div className="absolute top-3 right-2 opacity-60 pointer-events-none select-none w-[120px] h-[120px] overflow-hidden">
                       <CssGlobe />
                     </div>
                     <div className="relative z-10">
-                      <div className="flex items-center gap-3 mb-2">
+                      <div className="flex items-center gap-2 mb-2">
                         <Badge
                           variant="outline"
                           className="text-[10px] font-bold uppercase tracking-wider font-mono"
                         >
                           {queryType}
                         </Badge>
+                        <button
+                          onClick={() => {
+                            if (!session) {
+                              toast.info(isChinese ? "请先登录再订阅域名提醒" : "Please log in to subscribe for reminders");
+                              router.push(`/login?callbackUrl=${encodeURIComponent(`/${result.domain || target}`)}`);
+                              return;
+                            }
+                            if (!(session?.user as any)?.subscriptionAccess) {
+                              toast.info(isChinese ? "需要开通会员才能使用域名订阅提醒" : "Subscription required to use domain reminders.", {
+                                action: { label: isChinese ? "去开通" : "Upgrade", onClick: () => router.push("/payment/checkout") },
+                              });
+                              return;
+                            }
+                            setReminderDialogOpen(true);
+                          }}
+                          title={isChinese ? "域名订阅" : "Subscribe"}
+                          className={cn(
+                            "sm:hidden flex items-center justify-center w-6 h-6 rounded-full text-xs border transition-all active:scale-[0.93]",
+                            (result.remainingDays !== null && result.remainingDays <= 30)
+                              ? "bg-red-100 dark:bg-red-900/30 border-red-400/60 text-red-500"
+                              : "bg-muted/50 border-border/50 text-muted-foreground hover:border-sky-400/50 hover:text-sky-500",
+                          )}
+                        >
+                          <RiTimerLine className="w-3 h-3" />
+                        </button>
+                        {verifiedStamps.length > 0 && (
+                          <button
+                            onClick={() => setStampDetailOpen(true)}
+                            className="sm:hidden flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border transition-all active:scale-[0.93] bg-teal-50 dark:bg-teal-900/20 border-teal-400/50 text-teal-600 dark:text-teal-400"
+                          >
+                            <RiShieldCheckLine className="w-3 h-3" />
+                            {isChinese ? "已认领" : "Claimed"}
+                          </button>
+                        )}
                       </div>
-                      <h2
-                        className="text-3xl sm:text-4xl font-bold tracking-tight mb-1 cursor-pointer hover:opacity-80 transition-opacity"
+                      <motion.h2
+                        className="text-3xl sm:text-4xl font-bold tracking-tight mb-1 cursor-pointer hover:opacity-80 transition-opacity uppercase select-none"
                         onClick={() => copy(result.domain || target)}
+                        whileTap={{ scale: 0.97 }}
+                        transition={{ type: "spring", stiffness: 500, damping: 30 }}
                       >
                         {result.domain || displayTarget}
-                      </h2>
+                      </motion.h2>
                       {result.domainPunycode && (
                         <p
                           className="text-xs text-muted-foreground font-mono mb-3 cursor-pointer hover:opacity-70 transition-opacity"
@@ -2411,18 +3802,294 @@ export default function LookupPage({
                           </div>
                         )}
                       </div>
-                      <span className="text-[10px] text-muted-foreground font-mono mt-2 block">
-                        {time.toFixed(2)}s{data.cached && ` · ${t("cached")}`}
-                        {data.source && ` · ${data.source}`}
-                      </span>
+                      <div className="flex items-center gap-2 mt-3 flex-wrap">
+                        {/* Mobile-only price tags (moved from above on mobile) */}
+                        {result.registerPrice &&
+                          result.registerPrice.new !== -1 &&
+                          result.registerPrice.currency !== "Unknown" && (
+                            <Link
+                              target="_blank"
+                              href={result.registerPrice.externalLink}
+                              className="sm:hidden px-2 py-0.5 rounded-md border bg-background flex items-center space-x-1 cursor-pointer hover:border-muted-foreground/50 transition-colors"
+                            >
+                              <RiBillLine className={cn("w-3 h-3 shrink-0", result.registerPrice.isPremium ? "text-amber-500" : "text-muted-foreground")} />
+                              <span className={cn("text-[11px] font-normal", result.registerPrice.isPremium ? "text-amber-500" : "text-muted-foreground")}>
+                                {t("register_price")}
+                                {isChinese
+                                  ? toCNY(result.registerPrice.new as number, result.registerPrice.currency)
+                                  : toUSD(result.registerPrice.new as number, result.registerPrice.currency)}
+                              </span>
+                            </Link>
+                          )}
+                        {result.renewPrice &&
+                          result.renewPrice.renew !== -1 &&
+                          result.renewPrice.currency !== "Unknown" && (
+                            <Link
+                              href={result.renewPrice.externalLink}
+                              target="_blank"
+                              className="sm:hidden px-2 py-0.5 rounded-md border bg-background flex items-center space-x-1 cursor-pointer hover:border-muted-foreground/50 transition-colors"
+                            >
+                              <RiExchangeDollarFill className={cn("w-3 h-3 shrink-0", result.renewPrice.isPremium ? "text-amber-500" : "text-muted-foreground")} />
+                              <span className={cn("text-[11px] font-normal", result.renewPrice.isPremium ? "text-amber-500" : "text-muted-foreground")}>
+                                {t("renew_price")}
+                                {isChinese
+                                  ? toCNY(result.renewPrice.renew as number, result.renewPrice.currency)
+                                  : toUSD(result.renewPrice.renew as number, result.renewPrice.currency)}
+                              </span>
+                            </Link>
+                          )}
+                        {result.negotiable !== null && (
+                          <div className="sm:hidden px-2 py-0.5 rounded-md border bg-background flex items-center space-x-1">
+                            <RiExchangeDollarFill className="w-3 h-3 text-muted-foreground shrink-0" />
+                            <span className="text-[11px] font-normal text-muted-foreground">
+                              {t("negotiable")}
+                              <span className={result.negotiable ? "text-amber-500" : "text-emerald-600 dark:text-emerald-400"}>
+                                {result.negotiable ? t("negotiable_yes") : t("negotiable_no")}
+                              </span>
+                            </span>
+                          </div>
+                        )}
+                        {/* Desktop-only Subscribe text button */}
+                        <button
+                          onClick={() => {
+                            if (!session) {
+                              toast.info(isChinese ? "请先登录再订阅域名提醒" : "Please log in to subscribe for reminders");
+                              router.push(`/login?callbackUrl=${encodeURIComponent(`/${result.domain || target}`)}`);
+                              return;
+                            }
+                            if (!(session?.user as any)?.subscriptionAccess) {
+                              toast.info(isChinese ? "需要开通会员才能使用域名订阅提醒" : "Subscription required to use domain reminders.", {
+                                action: { label: isChinese ? "去开通" : "Upgrade", onClick: () => router.push("/payment/checkout") },
+                              });
+                              return;
+                            }
+                            setReminderDialogOpen(true);
+                          }}
+                          className={cn(
+                            "hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-all active:scale-[0.93]",
+                            (result.remainingDays !== null && result.remainingDays <= 30)
+                              ? "bg-red-100 dark:bg-red-900/30 border-red-400/60 text-red-500"
+                              : "bg-muted/50 border-border/50 text-muted-foreground hover:border-sky-400/50 hover:text-sky-500",
+                          )}
+                        >
+                          <RiTimerLine className="w-3 h-3" />
+                          {isChinese ? "域名订阅" : "Subscribe"}
+                        </button>
+                        {verifiedStamps.length > 0 && (
+                          <button
+                            onClick={() => setStampDetailOpen(true)}
+                            className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border transition-all active:scale-[0.93] bg-teal-50 dark:bg-teal-900/20 border-teal-400/50 text-teal-600 dark:text-teal-400 hover:bg-teal-100 dark:hover:bg-teal-900/40"
+                          >
+                            <RiShieldCheckLine className="w-3 h-3" />
+                            {isChinese ? "已认领" : "Claimed"}
+                          </button>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 mt-2">
+                        <span className="text-[10px] text-muted-foreground font-mono">
+                          {time.toFixed(2)}s
+                          {cached && (
+                            <>
+                              {" · "}{t("cached")}
+                              {cacheTtl && cacheTtl > 0 && (
+                                <span className="opacity-60">
+                                  {" "}({cacheTtl >= 3600
+                                    ? `${Math.round(cacheTtl / 3600)}h`
+                                    : cacheTtl >= 60
+                                      ? `${Math.round(cacheTtl / 60)}m`
+                                      : `${cacheTtl}s`})
+                                </span>
+                              )}
+                            </>
+                          )}
+                          {data.source && ` · ${data.source}`}
+                        </span>
+                        <div className="ml-auto flex items-center gap-1">
+                          <button
+                            onClick={() => setFeedbackOpen(true)}
+                            title={t("feedback.issue_title")}
+                            className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] text-muted-foreground hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-950/30 border border-transparent hover:border-amber-300/50 transition-all"
+                          >
+                            <RiErrorWarningLine className="w-3.5 h-3.5" />
+                            {t("feedback.title")}
+                          </button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button
+                                title={t("share")}
+                                className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] text-muted-foreground hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/30 border border-transparent hover:border-blue-300/50 transition-all"
+                              >
+                                <RiShareLine className="w-3.5 h-3.5" />
+                                {t("share")}
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="min-w-[200px]">
+                              <DropdownMenuLabel className="text-xs text-muted-foreground">
+                                {t("share")}
+                              </DropdownMenuLabel>
+                              <DropdownMenuItem asChild>
+                                <Link href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`Whois Lookup: ${target}`)}&url=${encodeURIComponent(current)}`} target="_blank">
+                                  <RiTwitterXLine className="w-4 h-4 mr-2" />Twitter / X
+                                </Link>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem asChild>
+                                <Link href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(current)}`} target="_blank">
+                                  <RiFacebookFill className="w-4 h-4 mr-2" />Facebook
+                                </Link>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem asChild>
+                                <Link href={`https://reddit.com/submit?url=${encodeURIComponent(current)}`} target="_blank">
+                                  <RiRedditLine className="w-4 h-4 mr-2" />Reddit
+                                </Link>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem asChild>
+                                <Link href={`https://api.whatsapp.com/send?text=${encodeURIComponent(current)}`} target="_blank">
+                                  <RiWhatsappLine className="w-4 h-4 mr-2" />WhatsApp
+                                </Link>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem asChild>
+                                <Link href={`https://t.me/share/url?url=${encodeURIComponent(current)}`} target="_blank">
+                                  <RiTelegramLine className="w-4 h-4 mr-2" />Telegram
+                                </Link>
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={() => copy(current)}>
+                                <RiLinkM className="w-4 h-4 mr-2" />{t("copy_url")}
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuLabel className="text-xs text-muted-foreground">
+                                {t("image")}
+                              </DropdownMenuLabel>
+                              <DropdownMenuItem
+                                onClick={async () => {
+                                  const ogUrl = buildOgUrl(target, result);
+                                  const tid = toast.loading(isZh ? "正在生成图片…" : "Generating image…");
+                                  try {
+                                    const res = await fetch(ogUrl);
+                                    const blob = await res.blob();
+                                    const url = URL.createObjectURL(blob);
+                                    const a = document.createElement("a");
+                                    a.href = url;
+                                    a.download = `whois-${target}.png`;
+                                    a.click();
+                                    URL.revokeObjectURL(url);
+                                    toast.success(t("toast.downloaded"), { id: tid });
+                                  } catch {
+                                    toast.error(t("toast.download_failed"), { id: tid });
+                                  }
+                                }}
+                              >
+                                <RiDownloadLine className="w-4 h-4 mr-2" />{t("download_png")}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={async () => {
+                                  const ogUrl = buildOgUrl(target, result);
+                                  const tid = toast.loading(isZh ? "正在生成图片…" : "Generating image…");
+                                  try {
+                                    const res = await fetch(ogUrl);
+                                    const blob = await res.blob();
+                                    await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+                                    toast.success(t("toast.copied_to_clipboard"), { id: tid });
+                                  } catch {
+                                    toast.error(t("toast.copy_to_clipboard_failed"), { id: tid });
+                                  }
+                                }}
+                              >
+                                <RiFileCopyLine className="w-4 h-4 mr-2" />{t("copy_image")}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => setShowImagePreview(true)}>
+                                <RiCameraLine className="w-4 h-4 mr-2" />{t("preview_customize")}
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </div>
                     </div>
+
+                    {tianhuTranslation && tianhuTranslation.dst && (
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ duration: 0.2 }}
+                        className="flex flex-wrap items-center gap-x-3 gap-y-1.5 mt-3 px-3 py-2 rounded-lg bg-violet-50/60 dark:bg-violet-950/20 border border-violet-200/50 dark:border-violet-800/30"
+                      >
+                        <span className="text-[11px] font-mono text-muted-foreground/60 shrink-0">
+                          {isChinese ? "含义" : "Meaning"}
+                        </span>
+                        <span className="text-[13px] font-semibold text-violet-700 dark:text-violet-300">
+                          {tianhuTranslation.dst}
+                        </span>
+                        {tianhuTranslation.parts.flatMap((p, pi) =>
+                          p.means.slice(0, 3).map((m, i) => (
+                            <span key={`${pi}-${i}`} className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+                              {i === 0 && p.part_name && (
+                                <span className="text-[10px] font-medium text-muted-foreground/50 border border-border/40 rounded px-1 py-px">
+                                  {p.part_name}
+                                </span>
+                              )}
+                              {m}
+                            </span>
+                          ))
+                        )}
+                      </motion.div>
+                    )}
+
+                    <FeedbackDrawer
+                      open={feedbackOpen}
+                      onOpenChange={setFeedbackOpen}
+                      query={result.domain || target}
+                      queryType={queryType}
+                    />
+
+                    <DomainReminderDialog
+                      domain={result.domain || target}
+                      expirationDate={result.expirationDate}
+                      remainingDays={result.remainingDays}
+                      open={reminderDialogOpen}
+                      onOpenChange={setReminderDialogOpen}
+                      isZh={isChinese}
+                      userEmail={session?.user?.email ?? ""}
+                      registerPriceFmt={
+                        result.registerPrice && result.registerPrice.new !== -1 && result.registerPrice.currency !== "Unknown"
+                          ? isChinese
+                            ? toCNY(result.registerPrice.new as number, result.registerPrice.currency)
+                            : toUSD(result.registerPrice.new as number, result.registerPrice.currency)
+                          : undefined
+                      }
+                      renewPriceFmt={
+                        result.renewPrice && result.renewPrice.renew !== -1 && result.renewPrice.currency !== "Unknown"
+                          ? isChinese
+                            ? toCNY(result.renewPrice.renew as number, result.renewPrice.currency)
+                            : toUSD(result.renewPrice.renew as number, result.renewPrice.currency)
+                          : undefined
+                      }
+                      isPremium={result.registerPrice?.isPremium ?? false}
+                      eppStatuses={result.status?.map((s) => s.status) ?? []}
+                    />
 
                     {result.remainingDays === null &&
                       (() => {
                         const regStatus = getDomainRegistrationStatus(result, locale);
-                        return regStatus.type !== "registered" ? (
-                          <DomainStatusInfoCard type={regStatus.type} locale={locale} />
-                        ) : null;
+                        if (regStatus.type === "registered") return null;
+                        const cnInfo = getCnReservedSldInfo(result.domain);
+                        const premiumCustomDesc =
+                          regStatus.type === "reserved" && regStatus.isPremiumReserved
+                            ? {
+                                zh: "该域名已被注册局列入高价值保留名单，目前正等待有缘人上门购买。如有意向，请直接联系该 TLD 注册局咨询报价与购买流程。",
+                                en: "This domain is held in the registry's reserved list as a high-value premium name. It may be available for purchase at a premium price — contact the registry directly to inquire about pricing and the acquisition process.",
+                              }
+                            : undefined;
+                        return (
+                          <DomainStatusInfoCard
+                            type={regStatus.type}
+                            locale={locale}
+                            customDesc={
+                              cnInfo && regStatus.type === "reserved"
+                                ? { zh: cnInfo.descZh, en: cnInfo.descEn }
+                                : premiumCustomDesc
+                            }
+                          />
+                        );
                       })()}
 
                     {(result.creationDate !== "Unknown" ||
@@ -2491,6 +4158,127 @@ export default function LookupPage({
                       </div>
                     )}
 
+                    {/* Stamp detail dialog — triggered by "已认领" badge */}
+                    <Dialog open={stampDetailOpen} onOpenChange={setStampDetailOpen}>
+                      <DialogContent hideClose className="max-w-[360px] p-0 overflow-hidden gap-0 rounded-[22px]">
+                        <DialogHeader className="sr-only">
+                          <DialogTitle>{isChinese ? "品牌认领信息" : "Claimed Brand"}</DialogTitle>
+                        </DialogHeader>
+                        <div className="divide-y divide-border/30">
+                          {verifiedStamps.map((stamp) => {
+                            const theme     = CARD_THEMES[stamp.cardTheme] || CARD_THEMES.app;
+                            const StampIcon = STAMP_ICON_MAP[stamp.tagStyle] || STAMP_ICON_MAP.default;
+                            const labelMap: Record<string, { zh: string; en: string }> = {
+                              personal: { zh: "个人认领", en: "Personal"  },
+                              official: { zh: "官方认证", en: "Official"  },
+                              brand:    { zh: "品牌认领", en: "Brand"     },
+                              verified: { zh: "已认证",   en: "Verified"  },
+                              partner:  { zh: "合作伙伴", en: "Partner"   },
+                              dev:      { zh: "开发者",   en: "Developer" },
+                              warning:  { zh: "注意",     en: "Warning"   },
+                              premium:  { zh: "高级认证", en: "Premium"   },
+                            };
+                            const lbl = labelMap[stamp.tagStyle] ?? { zh: "已认领", en: "Claimed" };
+                            let linkHostname = "";
+                            if (stamp.link) {
+                              try { linkHostname = new URL(stamp.link).hostname; } catch { linkHostname = stamp.link; }
+                            }
+                            return (
+                              <div key={stamp.id}>
+                                {/* ── Gradient hero strip ── */}
+                                <div className={cn("relative px-5 pt-7 pb-9 text-center select-none overflow-hidden", theme.hero)}>
+                                  {/* dot grid */}
+                                  <div className="absolute inset-0 opacity-[0.06]"
+                                    style={{ backgroundImage: "radial-gradient(circle, white 1px, transparent 1px)", backgroundSize: "18px 18px" }} />
+                                  {/* bottom fade */}
+                                  <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-black/30 to-transparent" />
+
+                                  {/* custom glass close button — always white on gradient, always visible */}
+                                  <button
+                                    onClick={() => setStampDetailOpen(false)}
+                                    className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-xl bg-black/25 hover:bg-black/40 backdrop-blur-sm border border-white/20 text-white transition-all active:scale-95 z-10"
+                                    aria-label="Close"
+                                  >
+                                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                                      <path d="M1 1l10 10M11 1L1 11" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+                                    </svg>
+                                  </button>
+
+                                  <div className="relative flex flex-col items-center gap-2.5">
+                                    {/* icon with glow ring */}
+                                    <div className="relative flex items-center justify-center">
+                                      <div className="absolute w-[72px] h-[72px] rounded-3xl bg-white/10 blur-md" />
+                                      <div className="relative w-[58px] h-[58px] rounded-[18px] bg-white/20 backdrop-blur-sm border border-white/30 flex items-center justify-center shadow-xl">
+                                        <StampIcon className="w-7 h-7 text-white drop-shadow" />
+                                      </div>
+                                    </div>
+                                    <p className="text-shimmer-white text-[10px] font-mono tracking-[0.2em] uppercase">
+                                      {result.domain || target}
+                                    </p>
+                                  </div>
+                                </div>
+
+                                {/* ── Floating name card (info only) ── */}
+                                <div className={cn(
+                                  "relative -mt-6 mx-3.5 rounded-[18px] border shadow-xl px-4 pt-3.5 pb-3.5",
+                                  theme.cardBg, theme.cardBorder,
+                                )}>
+                                  <div className="flex items-start justify-between gap-2">
+                                    <span className={cn("text-xl font-black leading-tight tracking-tight", theme.shimmer)}>
+                                      {stamp.tagName}
+                                    </span>
+                                    <span className={cn(
+                                      "inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-full shrink-0 whitespace-nowrap mt-0.5",
+                                      theme.badge,
+                                    )}>
+                                      <RiShieldCheckLine className="w-2.5 h-2.5" />
+                                      {isChinese ? lbl.zh : lbl.en}
+                                    </span>
+                                  </div>
+                                  {stamp.description && (
+                                    <p className="text-[12.5px] text-muted-foreground leading-relaxed mt-2">
+                                      {stamp.description}
+                                    </p>
+                                  )}
+                                </div>
+
+                                {/* ── Primary CTA — outside the card, clear hierarchy ── */}
+                                <div className="px-3.5 pt-3 pb-5">
+                                  {stamp.link ? (
+                                    <a
+                                      href={stamp.link}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className={cn(
+                                        "flex items-center justify-between w-full px-4 py-3 rounded-2xl shadow-md transition-all hover:opacity-90 active:scale-[0.98]",
+                                        theme.btn,
+                                      )}
+                                    >
+                                      <div className="flex flex-col items-start gap-0.5">
+                                        <span className="text-[14px] font-bold leading-none">
+                                          {isChinese ? "访问主页" : "Visit Profile"}
+                                        </span>
+                                        {linkHostname && (
+                                          <span className="text-[10px] font-normal opacity-55 leading-none">
+                                            {linkHostname}
+                                          </span>
+                                        )}
+                                      </div>
+                                      <RiArrowRightSLine className="w-5 h-5 opacity-70 shrink-0" />
+                                    </a>
+                                  ) : (
+                                    <p className="text-[11px] text-muted-foreground/40 text-center font-mono py-1">
+                                      {isChinese ? "该认领未设置主页链接" : "No profile link set"}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+
                     {hasRegistrant && (
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-6 pt-6 border-t border-border/50">
                         {[
@@ -2516,7 +4304,7 @@ export default function LookupPage({
                             value: result.registrantPhone,
                           },
                         ]
-                          .filter((f) => f.value && f.value !== "Unknown")
+                          .filter((f) => isValidField(f.value))
                           .map((f, i) => (
                             <div key={i} className="min-w-0">
                               <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">
@@ -2582,11 +4370,13 @@ export default function LookupPage({
                                   >
                                     {displayName}
                                   </a>
-                                  {info && (
-                                    <p className="text-[10px] text-muted-foreground leading-snug mt-0.5">
-                                      {getEppStatusDescription(s.status, locale)}
-                                    </p>
-                                  )}
+                                  <p className="text-[10px] text-muted-foreground leading-snug mt-0.5">
+                                    {info
+                                      ? getEppStatusDescription(s.status, locale)
+                                      : locale === "zh" || locale === "zh-tw"
+                                        ? "注册局特定状态码，暂无标准释义。请参阅对应注册局文档了解详情。"
+                                        : "Registry-specific status code with no standard description. Refer to the registry's documentation for details."}
+                                  </p>
                                 </div>
                               </div>
                             );
@@ -2617,10 +4407,13 @@ export default function LookupPage({
                           {result.nameServers.map((ns, i) => {
                             const nsBrand = getNsBrand(ns);
                             return (
-                              <div
+                              <motion.div
                                 key={i}
                                 className="flex items-center gap-3 p-2 bg-muted/30 border border-border/50 rounded-md cursor-pointer hover:bg-muted/50 transition-colors"
                                 onClick={() => copy(ns)}
+                                whileTap={{ scale: 0.97 }}
+                                whileHover={{ x: 2 }}
+                                transition={{ type: "spring", stiffness: 500, damping: 30 }}
                               >
                                 {nsBrand ? (
                                   nsBrand.slug ? (
@@ -2673,22 +4466,23 @@ export default function LookupPage({
                                     {nsBrand.brand}
                                   </span>
                                 )}
-                              </div>
+                              </motion.div>
                             );
                           })}
                         </div>
                         {result.dnssec && (
                           <div className="mt-auto pt-4 border-t border-border/50 flex justify-between items-center">
                             <span className="text-[10px] text-muted-foreground font-medium uppercase">
-                              DNSSEC
+                              {t("whois_fields.dnssec")}
                             </span>
                             <span className="text-xs font-mono text-muted-foreground">
-                              {result.dnssec}
+                              {translateDnssecValue(result.dnssec, locale)}
                             </span>
                           </div>
                         )}
                       </div>
                     )}
+
 
                     {hasIpFields && (
                       <div className="glass-panel border border-border rounded-xl p-5">
@@ -2727,7 +4521,7 @@ export default function LookupPage({
                               value: result.inet6Num,
                             },
                           ]
-                            .filter((f) => f.value && f.value !== "Unknown")
+                            .filter((f) => isValidField(f.value))
                             .map((f, i) => (
                               <div key={i}>
                                 <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">
@@ -2741,97 +4535,16 @@ export default function LookupPage({
                     )}
                   </div>
 
-                  {result.mozDomainAuthority !== -1 && (
-                    <div className="glass-panel border border-border rounded-xl p-5">
-                      <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
-                        <RiBarChartBoxAiFill className="w-4 h-4 text-muted-foreground" />
-                        <span>{t("whois_fields.moz_stats")}</span>
-                        <Link
-                          href="https://moz.com/learn/seo/domain-authority"
-                          target="_blank"
-                          className="ml-auto text-muted-foreground hover:text-primary transition-colors"
-                        >
-                          <RiExternalLinkLine className="w-3.5 h-3.5" />
-                        </Link>
-                      </h3>
-                      <div className="grid grid-cols-3 gap-3">
-                        <div
-                          className={cn(
-                            "flex flex-col items-center rounded-lg p-3 border",
-                            result.mozDomainAuthority > 50
-                              ? "bg-green-50/50 dark:bg-green-950/20 border-green-200 dark:border-green-800"
-                              : "bg-muted/30",
-                          )}
-                        >
-                          <span className="text-xs text-muted-foreground mb-1">
-                            DA
-                          </span>
-                          <span
-                            className={cn(
-                              "text-lg font-semibold",
-                              result.mozDomainAuthority > 50 &&
-                                "text-green-600 dark:text-green-400",
-                            )}
-                          >
-                            {result.mozDomainAuthority}
-                          </span>
-                        </div>
-                        <div
-                          className={cn(
-                            "flex flex-col items-center rounded-lg p-3 border",
-                            result.mozPageAuthority > 50
-                              ? "bg-green-50/50 dark:bg-green-950/20 border-green-200 dark:border-green-800"
-                              : "bg-muted/30",
-                          )}
-                        >
-                          <span className="text-xs text-muted-foreground mb-1">
-                            PA
-                          </span>
-                          <span
-                            className={cn(
-                              "text-lg font-semibold",
-                              result.mozPageAuthority > 50 &&
-                                "text-green-600 dark:text-green-400",
-                            )}
-                          >
-                            {result.mozPageAuthority}
-                          </span>
-                        </div>
-                        <div
-                          className={cn(
-                            "flex flex-col items-center rounded-lg p-3 border",
-                            result.mozSpamScore > 5
-                              ? "bg-red-50/50 dark:bg-red-950/20 border-red-200 dark:border-red-800"
-                              : "bg-muted/30",
-                          )}
-                        >
-                          <span className="text-xs text-muted-foreground mb-1">
-                            Spam
-                          </span>
-                          <span
-                            className={cn(
-                              "text-lg font-semibold",
-                              result.mozSpamScore > 5
-                                ? "text-red-600 dark:text-red-400"
-                                : "text-green-600 dark:text-green-400",
-                            )}
-                          >
-                            {result.mozSpamScore}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-                <div className="lg:col-span-4 relative overflow-hidden">
+                </motion.div>
+                <motion.div variants={CARD_ITEM_VARIANTS} className="lg:col-span-4 relative overflow-hidden">
                   <div className="flex flex-col gap-6 lg:absolute lg:inset-0 lg:overflow-y-auto">
-                    {result.registrar && result.registrar !== "Unknown" && (
+                    {isValidField(result.registrar) && (
                       <div className="glass-panel border border-border rounded-xl p-5 shrink-0 overflow-hidden">
                         <div className="flex items-center justify-between mb-4">
                           <h3 className="text-sm font-semibold">
                             {t("whois_fields.registrar")}
                           </h3>
-                          {result.ianaId && result.ianaId !== "N/A" && (
+                          {isValidField(result.ianaId) && (
                             <Link
                               href={`https://www.internic.net/registrars/registrar-${result.ianaId}.html`}
                               target="_blank"
@@ -2889,8 +4602,7 @@ export default function LookupPage({
                             <p className="font-medium text-sm truncate">
                               {result.registrar}
                             </p>
-                            {result.registrarURL &&
-                              result.registrarURL !== "Unknown" && (
+                            {isValidField(result.registrarURL) && (
                                 <a
                                   href={
                                     result.registrarURL.startsWith("http")
@@ -2906,8 +4618,7 @@ export default function LookupPage({
                               )}
                           </div>
                         </div>
-                        {result.whoisServer &&
-                          result.whoisServer !== "Unknown" && (
+                        {isValidField(result.whoisServer) && (
                             <div className="mb-3">
                               <p className="text-[10px] uppercase text-muted-foreground font-medium mb-1">
                                 {t("whois_fields.whois_server")}
@@ -2917,8 +4628,7 @@ export default function LookupPage({
                               </p>
                             </div>
                           )}
-                        {result.registrantEmail &&
-                          result.registrantEmail !== "Unknown" && (
+                        {isValidField(result.registrantEmail) && (
                             <div className="mb-3">
                               <p className="text-[10px] uppercase text-muted-foreground font-medium mb-1">
                                 {t("whois_fields.contact_email")}
@@ -2928,8 +4638,7 @@ export default function LookupPage({
                               </p>
                             </div>
                           )}
-                        {result.registrantPhone &&
-                          result.registrantPhone !== "Unknown" && (
+                        {isValidField(result.registrantPhone) && (
                             <div>
                               <p className="text-[10px] uppercase text-muted-foreground font-medium mb-1">
                                 {t("whois_fields.contact_phone")}
@@ -2942,7 +4651,7 @@ export default function LookupPage({
                       </div>
                     )}
 
-                    {(result.rawWhoisContent || result.rawRdapContent) && (
+                    {(result.rawWhoisContent || result.rawRdapContent) && !hideRawWhois && (
                       <div className="flex-1 min-h-[250px]">
                         <ResponsePanel
                           whoisContent={result.rawWhoisContent}
@@ -2954,7 +4663,7 @@ export default function LookupPage({
                       </div>
                     )}
                   </div>
-                </div>
+                </motion.div>
               </motion.div>
             </>
           )}
@@ -3029,12 +4738,14 @@ export default function LookupPage({
             <div className="flex items-center gap-2">
               <Button
                 size="sm"
+                disabled={imgActing !== null}
                 onClick={async () => {
                   const ogUrl = buildOgUrl(target, result, {
                     w: imgWidth,
                     h: imgHeight,
                     theme: imgTheme,
                   });
+                  setImgActing("download");
                   try {
                     const res = await fetch(ogUrl);
                     const blob = await res.blob();
@@ -3047,21 +4758,27 @@ export default function LookupPage({
                     toast.success(t("toast.downloaded"));
                   } catch {
                     toast.error(t("toast.download_failed"));
+                  } finally {
+                    setImgActing(null);
                   }
                 }}
               >
-                <RiDownloadLine className="w-3.5 h-3.5 mr-1.5" />
-                {t("download")}
+                {imgActing === "download"
+                  ? <><RiLoader4Line className="w-3.5 h-3.5 mr-1.5 animate-spin" />{isZh ? "生成中…" : "Generating…"}</>
+                  : <><RiDownloadLine className="w-3.5 h-3.5 mr-1.5" />{t("download")}</>
+                }
               </Button>
               <Button
                 variant="outline"
                 size="sm"
+                disabled={imgActing !== null}
                 onClick={async () => {
                   const ogUrl = buildOgUrl(target, result, {
                     w: imgWidth,
                     h: imgHeight,
                     theme: imgTheme,
                   });
+                  setImgActing("copy");
                   try {
                     const res = await fetch(ogUrl);
                     const blob = await res.blob();
@@ -3071,11 +4788,15 @@ export default function LookupPage({
                     toast.success(t("toast.copied_to_clipboard"));
                   } catch {
                     toast.error(t("toast.copy_to_clipboard_failed"));
+                  } finally {
+                    setImgActing(null);
                   }
                 }}
               >
-                <RiFileCopyLine className="w-3.5 h-3.5 mr-1.5" />
-                {t("copy")}
+                {imgActing === "copy"
+                  ? <><RiLoader4Line className="w-3.5 h-3.5 mr-1.5 animate-spin" />{isZh ? "生成中…" : "Generating…"}</>
+                  : <><RiFileCopyLine className="w-3.5 h-3.5 mr-1.5" />{t("copy")}</>
+                }
               </Button>
               <Button
                 variant="outline"
