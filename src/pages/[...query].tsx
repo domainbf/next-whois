@@ -62,6 +62,7 @@ import {
   RiAlertLine,
   RiArrowRightSLine,
   RiFlagLine,
+  RiInformationLine,
 } from "@remixicon/react";
 import { getTopRegistrars, DomainPricing } from "@/lib/pricing/client";
 import { useSiteSettings } from "@/lib/site-settings";
@@ -2464,6 +2465,7 @@ function DomainReminderDialog({
   renewPriceFmt,
   isPremium,
   eppStatuses,
+  regStatusType,
 }: {
   domain: string;
   expirationDate: string | null | undefined;
@@ -2476,6 +2478,7 @@ function DomainReminderDialog({
   renewPriceFmt?: string;
   isPremium?: boolean;
   eppStatuses?: string[];
+  regStatusType?: "active" | "registered" | "unregistered" | "reserved" | "prohibited" | "unknown";
 }) {
   const hasExpiry = !!(expirationDate && expirationDate !== "Unknown");
   const [email, setEmail] = React.useState("");
@@ -2730,6 +2733,40 @@ function DomainReminderDialog({
                 transition={{ duration: 0.15 }}
                 className="space-y-3 pt-4"
               >
+                {/* ── Prohibited / Reserved warning banner ─────────────── */}
+                {(regStatusType === "prohibited" || regStatusType === "reserved") && (
+                  <div className={cn(
+                    "flex items-start gap-2.5 rounded-xl border px-3.5 py-3",
+                    regStatusType === "prohibited"
+                      ? "bg-red-50/60 dark:bg-red-950/20 border-red-300/50 dark:border-red-700/40"
+                      : "bg-amber-50/60 dark:bg-amber-950/20 border-amber-300/50 dark:border-amber-700/40"
+                  )}>
+                    <RiInformationLine className={cn(
+                      "w-4 h-4 mt-0.5 shrink-0",
+                      regStatusType === "prohibited" ? "text-red-500" : "text-amber-500"
+                    )} />
+                    <div className="min-w-0">
+                      <p className={cn(
+                        "text-xs font-bold leading-snug",
+                        regStatusType === "prohibited" ? "text-red-600 dark:text-red-400" : "text-amber-600 dark:text-amber-400"
+                      )}>
+                        {regStatusType === "prohibited"
+                          ? (isZh ? "该域名被禁止注册" : "Registration Prohibited")
+                          : (isZh ? "该域名为保留域名" : "Reserved Domain")}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground leading-snug mt-0.5">
+                        {regStatusType === "prohibited"
+                          ? (isZh
+                              ? "该域名被注册局标记为禁止注册字符串，通常无法通过常规渠道注册。仍可订阅，当域名状态变化时会发送通知。"
+                              : "This domain is marked as prohibited by the registry and cannot be registered through normal channels. You can still subscribe to receive status change notifications.")
+                          : (isZh
+                              ? "该域名目前为保留状态，不对公众开放注册。仍可订阅，如状态发生变化或域名开放注册时会收到通知。"
+                              : "This domain is currently reserved and not available for public registration. You can still subscribe to receive notifications if the status changes.")}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 {/* ── Pricing + premium row ────────────────────────────── */}
                 {hasPricing && (
                   <div className="grid grid-cols-3 gap-1.5 rounded-xl border border-border/50 bg-muted/15 overflow-hidden">
@@ -4887,6 +4924,7 @@ export default function LookupPage({
                       }
                       isPremium={result.registerPrice?.isPremium ?? false}
                       eppStatuses={result.status?.map((s) => s.status) ?? []}
+                      regStatusType={getDomainRegistrationStatus(result, locale).type}
                     />
 
                     {result.remainingDays === null &&
