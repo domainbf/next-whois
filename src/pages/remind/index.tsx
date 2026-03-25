@@ -114,28 +114,96 @@ type WhoisInfo = {
   expirationDate: string | null;
   remainingDays: number | null;
   registrar: string | null;
+  hasData: boolean;
 };
 
-function formatDate(raw: string | null): string {
+function fmtDate(raw: string | null): string {
   if (!raw || raw === "Unknown") return "—";
   const d = new Date(raw);
   if (isNaN(d.getTime())) return raw;
   return d.toLocaleDateString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit" });
 }
 
-function RemainingBadge({ days }: { days: number | null }) {
-  if (days === null) return <span className="text-[10px] text-muted-foreground">—</span>;
-  const urgent   = days <= 30;
-  const warning  = days <= 90;
+function fmtRelative(raw: string | null): string | null {
+  if (!raw || raw === "Unknown") return null;
+  const d = new Date(raw);
+  if (isNaN(d.getTime())) return null;
+  const diffDays = Math.round((Date.now() - d.getTime()) / 86_400_000);
+  if (diffDays < 1) return "今天";
+  if (diffDays < 30) return `${diffDays} 天前`;
+  const months = Math.round(diffDays / 30);
+  if (months < 12) return `${months} 个月前`;
+  const years = Math.floor(diffDays / 365);
+  const remMonths = Math.round((diffDays % 365) / 30);
+  return remMonths > 0 ? `${years} 年 ${remMonths} 个月前` : `${years} 年前`;
+}
+
+function fmtDaysRemaining(days: number): string {
+  if (days <= 0) return `已过期 ${Math.abs(days)} 天`;
+  if (days < 30) return `${days} 天后到期`;
+  if (days < 365) {
+    const months = Math.floor(days / 30);
+    const rem = days % 30;
+    return rem > 0 ? `约 ${months} 个月 ${rem} 天后到期` : `约 ${months} 个月后到期`;
+  }
+  const years = Math.floor(days / 365);
+  const remDays = days % 365;
+  const months = Math.floor(remDays / 30);
+  if (months > 0) return `约 ${years} 年 ${months} 个月后到期`;
+  return `约 ${years} 年后到期`;
+}
+
+function DaysRemainingBar({ days }: { days: number }) {
+  const expired = days <= 0;
+  const urgent  = days > 0 && days <= 30;
+  const warning = days > 30 && days <= 90;
+  const pct     = expired ? 100 : Math.min(100, Math.max(2, (1 - days / 365) * 100));
+
   return (
-    <span className={cn(
-      "inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-md",
-      urgent  ? "bg-red-500/10 text-red-500"
-              : warning ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
-              : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+    <div className={cn(
+      "rounded-2xl px-4 py-3 space-y-2",
+      expired ? "bg-red-50/80 dark:bg-red-950/20 border border-red-200/60 dark:border-red-800/40"
+        : urgent ? "bg-red-50/60 dark:bg-red-950/15 border border-red-200/50 dark:border-red-800/30"
+        : warning ? "bg-amber-50/60 dark:bg-amber-950/15 border border-amber-200/50 dark:border-amber-800/30"
+        : "bg-emerald-50/50 dark:bg-emerald-950/10 border border-emerald-200/50 dark:border-emerald-800/30"
     )}>
-      {days > 0 ? `${days} 天后到期` : `已过期 ${Math.abs(days)} 天`}
-    </span>
+      <div className="flex items-center justify-between">
+        <span className={cn(
+          "text-[10px] font-semibold flex items-center gap-1",
+          expired ? "text-red-600 dark:text-red-400"
+            : urgent ? "text-red-600 dark:text-red-400"
+            : warning ? "text-amber-600 dark:text-amber-400"
+            : "text-emerald-700 dark:text-emerald-400"
+        )}>
+          <RiTimerLine className="w-3 h-3" />
+          {fmtDaysRemaining(days)}
+        </span>
+        <span className={cn(
+          "text-[10px] font-bold tabular-nums",
+          expired ? "text-red-500" : urgent ? "text-red-500" : warning ? "text-amber-600" : "text-emerald-600"
+        )}>
+          {expired ? "已过期" : `${days} 天`}
+        </span>
+      </div>
+      <div className="w-full h-1.5 rounded-full bg-black/5 dark:bg-white/10 overflow-hidden">
+        <div
+          className={cn(
+            "h-full rounded-full transition-all",
+            expired ? "bg-red-500" : urgent ? "bg-red-400" : warning ? "bg-amber-400" : "bg-emerald-500"
+          )}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <p className={cn(
+        "text-[9px]",
+        expired ? "text-red-500/70" : urgent ? "text-red-500/70" : warning ? "text-amber-600/70" : "text-emerald-700/60 dark:text-emerald-400/60"
+      )}>
+        {expired ? "域名已到期，可能进入宽限期或赎回期，建议立即续费" :
+          urgent  ? "极度紧急！域名将在 30 天内到期，请尽快续费" :
+          warning ? "建议尽快续费，避免因疏忽造成损失" :
+          "域名状态健康，已为您开启到期提醒"}
+      </p>
+    </div>
   );
 }
 
@@ -148,6 +216,7 @@ function DirectSubscribeForm({ domain }: { domain: string }) {
   const [done, setDone] = React.useState(false);
   const [whois, setWhois] = React.useState<WhoisInfo | null>(null);
   const [whoisLoading, setWhoisLoading] = React.useState(true);
+  const [whoisError, setWhoisError] = React.useState(false);
 
   // Redirect unauthenticated users to login, preserving ?domain=
   React.useEffect(() => {
@@ -161,25 +230,31 @@ function DirectSubscribeForm({ domain }: { domain: string }) {
     if (session?.user?.email) setEmail(prev => prev || session.user!.email!);
   }, [session]);
 
-  // Fetch lightweight WHOIS data to show domain info
-  React.useEffect(() => {
+  const fetchWhois = React.useCallback(() => {
     if (!domain) return;
     setWhoisLoading(true);
+    setWhoisError(false);
     fetch(`/api/lookup?query=${encodeURIComponent(domain)}`)
-      .then(r => r.ok ? r.json() : null)
+      .then(r => r.ok ? r.json() : Promise.reject(new Error("fetch_failed")))
       .then((data: any) => {
-        if (!data) return;
         const r = data.result ?? data;
+        const creation   = r.creationDate   && r.creationDate   !== "Unknown" ? r.creationDate   : null;
+        const expiration = r.expirationDate && r.expirationDate !== "Unknown" ? r.expirationDate : null;
+        const remaining  = typeof r.remainingDays === "number" ? r.remainingDays : null;
+        const registrar  = r.registrar && r.registrar !== "Unknown" ? r.registrar : null;
         setWhois({
-          creationDate:   r.creationDate   ?? null,
-          expirationDate: r.expirationDate ?? null,
-          remainingDays:  r.remainingDays  ?? null,
-          registrar:      r.registrar      ?? null,
+          creationDate:   creation,
+          expirationDate: expiration,
+          remainingDays:  remaining,
+          registrar,
+          hasData: !!(creation || expiration || remaining !== null),
         });
       })
-      .catch(() => {})
+      .catch(() => setWhoisError(true))
       .finally(() => setWhoisLoading(false));
   }, [domain]);
+
+  React.useEffect(() => { fetchWhois(); }, [fetchWhois]);
 
   function toggleThreshold(d: number) {
     setThresholds(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d].sort((a, b) => b - a));
@@ -256,14 +331,13 @@ function DirectSubscribeForm({ domain }: { domain: string }) {
                     确认邮件已发送至 <span className="font-semibold">{email}</span>
                   </p>
                 </div>
-                {whois?.expirationDate && whois.expirationDate !== "Unknown" && (
-                  <div className="bg-muted/40 rounded-xl px-4 py-2.5 text-[11px] text-muted-foreground">
-                    域名到期时间：<span className="font-semibold text-foreground">{formatDate(whois.expirationDate)}</span>
-                    {whois.remainingDays !== null && (
-                      <span className="ml-2">
-                        <RemainingBadge days={whois.remainingDays} />
-                      </span>
-                    )}
+                {whois?.hasData && whois.expirationDate && (
+                  <div className="w-full space-y-1.5">
+                    <div className="bg-muted/40 rounded-xl px-4 py-2.5 text-[11px] text-muted-foreground flex items-center justify-between gap-2">
+                      <span>到期时间</span>
+                      <span className="font-semibold text-foreground font-mono">{fmtDate(whois.expirationDate)}</span>
+                    </div>
+                    {whois.remainingDays !== null && <DaysRemainingBar days={whois.remainingDays} />}
                   </div>
                 )}
                 <div className="flex gap-2 justify-center pt-1">
@@ -296,55 +370,112 @@ function DirectSubscribeForm({ domain }: { domain: string }) {
                     <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50 mb-0.5">域名</p>
                     <p className="text-sm font-bold font-mono truncate">{domain.toUpperCase()}</p>
                   </div>
-                  <Link
-                    href={`/${domain}`}
-                    className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors shrink-0"
-                    onClick={e => e.stopPropagation()}
-                  >
-                    WHOIS <RiExternalLinkLine className="w-3 h-3" />
-                  </Link>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {!whoisLoading && (
+                      <button
+                        type="button"
+                        onClick={fetchWhois}
+                        className="p-1 rounded-lg text-muted-foreground hover:text-foreground transition-colors hover:bg-muted"
+                        title="重新查询"
+                      >
+                        <RiRefreshLine className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                    <Link
+                      href={`/${domain}`}
+                      className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      WHOIS <RiExternalLinkLine className="w-3 h-3" />
+                    </Link>
+                  </div>
                 </div>
 
-                {/* Date info rows */}
+                {/* Date info — 4 states */}
                 {whoisLoading ? (
-                  <div className="px-4 py-3 space-y-2 animate-pulse">
-                    <div className="h-3.5 w-48 rounded bg-muted/50" />
-                    <div className="h-3.5 w-40 rounded bg-muted/40" />
-                    <div className="h-3.5 w-32 rounded bg-muted/35" />
+                  /* Loading skeleton */
+                  <div className="px-4 py-4 space-y-3 animate-pulse">
+                    <div className="flex items-center justify-between">
+                      <div className="h-3 w-16 rounded bg-muted/50" />
+                      <div className="h-3 w-24 rounded bg-muted/40" />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="h-3 w-16 rounded bg-muted/50" />
+                      <div className="h-3 w-24 rounded bg-muted/40" />
+                    </div>
+                    <div className="h-14 w-full rounded-xl bg-muted/30" />
+                  </div>
+                ) : whoisError ? (
+                  /* Error state */
+                  <div className="px-4 py-4 flex items-start gap-3">
+                    <RiAlertLine className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
+                    <div className="flex-1">
+                      <p className="text-[11px] font-semibold text-foreground">WHOIS 查询失败</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">网络错误或服务暂时不可用</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={fetchWhois}
+                      className="text-[10px] font-semibold text-sky-600 dark:text-sky-400 hover:underline shrink-0"
+                    >
+                      重试
+                    </button>
+                  </div>
+                ) : !whois?.hasData ? (
+                  /* No date data */
+                  <div className="px-4 py-4 space-y-1.5">
+                    <div className="flex items-start gap-2.5">
+                      <RiInformationLine className="w-4 h-4 text-muted-foreground/60 mt-0.5 shrink-0" />
+                      <div>
+                        <p className="text-[11px] text-muted-foreground">该域名的 WHOIS 暂未提供到期日期信息</p>
+                        <p className="text-[10px] text-muted-foreground/60 mt-0.5 leading-relaxed">
+                          部分顶级域名（如 .cc、.io 等）的注册商不公开到期时间。
+                          仍可订阅提醒，系统将持续监控并在检测到变化时通知您。
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 ) : (
-                  <div className="px-4 py-3 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] text-muted-foreground flex items-center gap-1.5">
-                        <RiTimeLine className="w-3 h-3" /> 注册时间
-                      </span>
-                      <span className="text-[11px] font-medium font-mono">
-                        {formatDate(whois?.creationDate ?? null)}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] text-muted-foreground flex items-center gap-1.5">
-                        <RiCalendarLine className="w-3 h-3" /> 到期时间
-                      </span>
-                      <span className="text-[11px] font-medium font-mono">
-                        {formatDate(whois?.expirationDate ?? null)}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] text-muted-foreground flex items-center gap-1.5">
-                        <RiTimerLine className="w-3 h-3" /> 剩余时间
-                      </span>
-                      <RemainingBadge days={whois?.remainingDays ?? null} />
-                    </div>
-                    {whois?.registrar && (
+                  /* Has data */
+                  <div className="px-4 py-3 space-y-2.5">
+                    {/* Creation date row */}
+                    {whois.creationDate && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] text-muted-foreground flex items-center gap-1.5">
+                          <RiTimeLine className="w-3 h-3" /> 注册时间
+                        </span>
+                        <div className="text-right">
+                          <span className="text-[11px] font-medium font-mono">{fmtDate(whois.creationDate)}</span>
+                          {fmtRelative(whois.creationDate) && (
+                            <span className="text-[9px] text-muted-foreground ml-1.5">
+                              {fmtRelative(whois.creationDate)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    {/* Expiration date row */}
+                    {whois.expirationDate && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] text-muted-foreground flex items-center gap-1.5">
+                          <RiCalendarLine className="w-3 h-3" /> 到期时间
+                        </span>
+                        <span className="text-[11px] font-medium font-mono">{fmtDate(whois.expirationDate)}</span>
+                      </div>
+                    )}
+                    {/* Registrar */}
+                    {whois.registrar && (
                       <div className="flex items-center justify-between gap-4">
                         <span className="text-[10px] text-muted-foreground flex items-center gap-1.5 shrink-0">
                           <RiInformationLine className="w-3 h-3" /> 注册商
                         </span>
-                        <span className="text-[10px] text-muted-foreground/80 text-right truncate max-w-[60%]">
+                        <span className="text-[10px] text-muted-foreground/80 text-right truncate max-w-[55%]">
                           {whois.registrar}
                         </span>
                       </div>
+                    )}
+                    {/* Prominent days remaining bar */}
+                    {whois.remainingDays !== null && (
+                      <DaysRemainingBar days={whois.remainingDays} />
                     )}
                   </div>
                 )}
