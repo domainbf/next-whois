@@ -9,6 +9,9 @@ export type TianhuTranslateResult = {
   parts: { part_name: string; means: string[] }[];
 };
 
+const _cache = new Map<string, { data: TianhuTranslateResult; ts: number }>();
+const CACHE_TTL = 10 * 60_000;
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse,
@@ -21,6 +24,12 @@ export default async function handler(
   const stem = domain.split(".")[0]?.toLowerCase() || "";
   if (!stem || /^\d+$/.test(stem) || stem.length < 2) {
     return res.status(200).json({ src: stem, dst: null, parts: [] });
+  }
+
+  const cached = _cache.get(stem);
+  if (cached && Date.now() - cached.ts < CACHE_TTL) {
+    res.setHeader("Cache-Control", "public, max-age=300, stale-while-revalidate=600");
+    return res.status(200).json(cached.data);
   }
 
   const ctrl = new AbortController();
@@ -37,11 +46,14 @@ export default async function handler(
     }
     const parts: { part_name: string; means: string[] }[] =
       json.data.dict?.symbols?.[0]?.parts || [];
-    return res.status(200).json({
+    const data: TianhuTranslateResult = {
       src: json.data.src || stem,
       dst: json.data.dst || null,
       parts,
-    } as TianhuTranslateResult);
+    };
+    _cache.set(stem, { data, ts: Date.now() });
+    res.setHeader("Cache-Control", "public, max-age=300, stale-while-revalidate=600");
+    return res.status(200).json(data);
   } catch {
     return res.status(200).json({ src: stem, dst: null, parts: [] });
   } finally {

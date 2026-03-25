@@ -3,11 +3,27 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
 import { many, run } from "@/lib/db-query";
 import { requireAdmin } from "@/lib/admin";
-import { isAdminEmail } from "@/lib/admin-server";
+import { isAdminEmail, invalidateAdminEmailCache } from "@/lib/admin-server";
 import { DEFAULT_SETTINGS, type SiteSettings } from "@/lib/site-settings";
 
 const ALLOWED_KEYS = new Set(Object.keys(DEFAULT_SETTINGS));
 const SERVER_ONLY_KEYS = new Set(["captcha_secret_key", "smtp_pass"]);
+
+let _rowsCache: { rows: { key: string; value: string }[]; ts: number } | null = null;
+const ROWS_CACHE_TTL = 30_000;
+
+async function getCachedRows() {
+  const now = Date.now();
+  if (_rowsCache && now - _rowsCache.ts < ROWS_CACHE_TTL) return _rowsCache.rows;
+  const rows = await many<{ key: string; value: string }>("SELECT key, value FROM site_settings");
+  _rowsCache = { rows, ts: now };
+  return rows;
+}
+
+function invalidateCache() {
+  _rowsCache = null;
+  invalidateAdminEmailCache();
+}
 
 async function isAdmin(req: NextApiRequest, res: NextApiResponse): Promise<boolean> {
   try {
@@ -23,7 +39,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method === "GET") {
     try {
       const admin = await isAdmin(req, res);
-      const rows = await many<{ key: string; value: string }>("SELECT key, value FROM site_settings");
+      const rows = await getCachedRows();
       const settings: Record<string, string> = {};
       for (const row of rows) {
         if (ALLOWED_KEYS.has(row.key)) {
@@ -32,8 +48,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           }
         }
       }
+      res.setHeader("Cache-Control", "public, max-age=15, stale-while-revalidate=30");
       return res.json({ settings: { ...DEFAULT_SETTINGS, ...settings } });
     } catch {
+      res.setHeader("Cache-Control", "public, max-age=15, stale-while-revalidate=30");
       return res.json({ settings: DEFAULT_SETTINGS });
     }
   }
@@ -54,6 +72,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           );
         }
       }
+      invalidateCache();
       return res.json({ ok: true });
     } catch (err: any) {
       return res.status(500).json({ error: err.message });
