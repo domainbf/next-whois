@@ -7,6 +7,31 @@ function extractTld(domain: string): string {
   return parts.length >= 2 ? parts[parts.length - 1] : domain.toLowerCase();
 }
 
+// ─── Static permanent-fallback list ───────────────────────────────────────────
+// TLDs confirmed to have NO public WHOIS server AND no accessible RDAP endpoint.
+// For these, native lookup will ALWAYS fail, so we skip the 3-failure learning
+// cycle and jump directly to yisi/tianhu on the very first query.
+//
+// Criteria for inclusion:
+//   - Listed as null (no WHOIS server) in cctld-whois-servers.json, AND
+//   - Confirmed no RDAP in STATIC_NO_RDAP (tld-rdap-skip.ts) or otherwise known
+//
+// TLDs that sometimes succeed via custom scrapers (e.g. .ba → nic-ba) are NOT
+// listed here; they get promoted via forceTldFallback after a confirmed block.
+const STATIC_ALWAYS_FALLBACK = new Set<string>([
+  // No WHOIS server + confirmed no RDAP (cross-ref with STATIC_NO_RDAP)
+  "bd",  // Bangladesh — WHOIS null, no RDAP
+  "cg",  // Republic of Congo — WHOIS null, no RDAP
+  "er",  // Eritrea — WHOIS null, no RDAP
+  "gw",  // Guinea-Bissau — WHOIS null, no RDAP
+  "lr",  // Liberia — WHOIS null, no RDAP
+  "ne",  // Niger — WHOIS null, no RDAP
+  "sz",  // Eswatini — WHOIS null, no RDAP
+  // No WHOIS server + RDAP clearly unavailable for other reasons
+  "kp",  // North Korea — no public internet services
+  "cu",  // Cuba — no WHOIS, no functional RDAP
+]);
+
 // ─── In-memory cache ──────────────────────────────────────────────────────────
 // Loaded once from DB at startup (or on first use).  All reads after that are
 // synchronous — zero DB latency in the hot lookup path.
@@ -33,11 +58,17 @@ async function maybeLoad(): Promise<void> {
 /**
  * Returns true if the fallback gate is open for this TLD (i.e., native WHOIS
  * / RDAP has failed enough times that we should start yisi/tianhu immediately).
- * Hot-path: synchronous after the one-time DB seed.
+ *
+ * Static TLDs in STATIC_ALWAYS_FALLBACK are checked first (synchronous, zero
+ * cost) — they never need to accumulate failures before using third-party APIs.
+ * Hot-path: synchronous after the one-time DB seed for the dynamic set.
  */
 export async function isTldFallbackEnabled(domain: string): Promise<boolean> {
+  const tld = extractTld(domain);
+  // Static check first — no DB round-trip needed for permanently unreachable TLDs
+  if (STATIC_ALWAYS_FALLBACK.has(tld)) return true;
   await maybeLoad();
-  return _enabled.has(extractTld(domain));
+  return _enabled.has(tld);
 }
 
 export async function recordTldNativeFailure(domain: string): Promise<void> {

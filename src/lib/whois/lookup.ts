@@ -877,6 +877,10 @@ export async function lookupWhois(domain: string): Promise<WhoisResult> {
     whoisError instanceof ScraperRequiredError
       ? whoisError.registryUrl
       : undefined;
+  // A "blocked" scraper (e.g. nic.ba CAPTCHA) is a permanent failure for this
+  // TLD — no point counting towards the threshold; open the gate immediately.
+  const scraperPermanentBlock =
+    whoisError instanceof ScraperRequiredError && whoisError.blocked;
 
   async function failWithDns(
     error: string,
@@ -899,10 +903,16 @@ export async function lookupWhois(domain: string): Promise<WhoisResult> {
    * Try yisi/tianhu as a last-resort fallback.
    * When useFallbackEarly was already true the early promise is already
    * settled — we await it cheaply rather than firing new requests.
+   *
+   * permanentBlock = true when the native failure is known to be permanent
+   * (e.g. a scraper that requires CAPTCHA).  In that case we immediately open
+   * the fallback gate via forceTldFallback so the next query for this TLD
+   * skips native lookup entirely, rather than counting towards the threshold.
    */
   async function tryYisiOrFail(
     error: string,
     registryUrl?: string,
+    permanentBlock = false,
   ): Promise<WhoisResult> {
     if (isDomainQuery) {
       if (useFallbackEarly) {
@@ -918,6 +928,11 @@ export async function lookupWhois(domain: string): Promise<WhoisResult> {
           ]);
           if (tianhuResult) return tianhuResult;
           if (yisiResult) return yisiResult;
+        } else if (permanentBlock) {
+          // Permanently blocked (e.g. scraper CAPTCHA) — open gate immediately
+          // so the next query races yisi/tianhu from the start without needing
+          // to accumulate 3 individual failures first.
+          forceTldFallback(domain).catch(() => {});
         } else {
           recordTldNativeFailure(domain).catch(() => {});
         }
@@ -1010,5 +1025,5 @@ export async function lookupWhois(domain: string): Promise<WhoisResult> {
       : isWhoisServerEmpty
         ? `WHOIS server (${whoisData!.server}) connected but returned no data — the server may restrict access by IP or require queries from the registry's country`
         : whoisMsg || rdapMsg || "Unknown error occurred";
-  return tryYisiOrFail(errMsg, scraperRegistryUrl);
+  return tryYisiOrFail(errMsg, scraperRegistryUrl, scraperPermanentBlock);
 }
