@@ -4,12 +4,12 @@ import { spawnSync } from "child_process";
 import fs from "fs";
 import path from "path";
 
-function run(cmd: string, args: string[], cwd: string): { out: string; err: string; ok: boolean } {
+function run(cmd: string, args: string[], cwd: string, env?: NodeJS.ProcessEnv): { out: string; err: string; ok: boolean } {
   const r = spawnSync(cmd, args, {
     cwd,
     timeout: 45000,
     encoding: "utf8",
-    env: { ...process.env, GIT_TERMINAL_PROMPT: "0" },
+    env: env ?? { ...process.env, GIT_TERMINAL_PROMPT: "0" },
   });
   return {
     out: (r.stdout ?? "").trim(),
@@ -22,6 +22,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method !== "POST") return res.status(405).end();
   const session = await requireAdmin(req, res);
   if (!session) return;
+
+  const { token } = req.body as { token?: string };
+  if (!token || token.trim().length < 10) {
+    return res.status(400).json({ success: false, log: ["✗ 请提供 GitHub Personal Access Token"] });
+  }
 
   const cwd = process.cwd();
   const log: string[] = [];
@@ -39,21 +44,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const abort = run("git", ["merge", "--abort"], cwd);
   log.push(abort.ok ? "✓ 已中止合并" : "- 无待定合并");
 
-  // 3. Check remote URL
+  // 3. Get repo info
   const remoteUrl = run("git", ["config", "--get", "remote.origin.url"], cwd);
-  log.push("远程: " + (remoteUrl.out || "未知"));
+  const rawUrl = remoteUrl.out || "";
+  // Build authenticated URL: https://TOKEN@github.com/owner/repo
+  const authUrl = rawUrl.replace("https://github.com/", `https://${token.trim()}@github.com/`);
+  log.push("✓ 已注入认证 Token");
 
-  // 4. Force push
-  const push = run("git", ["push", "origin", "main", "--force"], cwd);
+  // 4. Force push using authenticated URL directly
+  const push = run("git", ["push", authUrl, "HEAD:main", "--force"], cwd, {
+    ...process.env,
+    GIT_TERMINAL_PROMPT: "0",
+  });
+
   if (push.ok) {
-    log.push("✓ Force push 成功！" + (push.out ? " " + push.out : ""));
+    log.push("✅ Force push 成功！");
   } else {
-    log.push("✗ Push 失败: " + (push.err || push.out || "未知错误"));
-    // Try with verbose for debugging
-    const verbose = run("git", ["push", "origin", "main", "--force", "--verbose"], cwd);
-    log.push("详细: " + (verbose.err || verbose.out));
+    const errMsg = (push.err || push.out || "未知错误")
+      .replace(token.trim(), "***")  // hide token in logs
+      .replace(authUrl, rawUrl);
+    log.push("✗ Push 失败: " + errMsg);
   }
 
-  const success = push.ok;
-  return res.json({ success, log });
+  return res.json({ success: push.ok, log });
 }
