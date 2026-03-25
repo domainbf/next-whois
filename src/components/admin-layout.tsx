@@ -21,6 +21,7 @@ import {
   RiMenuLine, RiCloseLine,
   RiBankCardLine, RiBankCardFill, RiPriceTag3Line,
   RiMailSendLine, RiLayoutGridLine,
+  RiRobot2Line,
 } from "@remixicon/react";
 
 type NavItem = {
@@ -67,6 +68,7 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
       { href: "/admin/access-keys",   label: "密钥",   icon: RiShieldUserLine, activeIcon: RiShieldUserLine },
       { href: "/admin/links",         label: "链接",   icon: RiLinksLine,    activeIcon: RiLinksLine },
       { href: "/admin/tld-lifecycle", label: "TLD规则",icon: RiTimeLine,     activeIcon: RiTimeLine },
+      { href: "/admin/tld-rules",     label: "AI抓取", icon: RiRobot2Line,   activeIcon: RiRobot2Line },
       { href: "/admin/tld-lifecycle-feedback", label: "TLD纠错", icon: RiFlagLine, activeIcon: RiFlagLine },
       { href: "/admin/og-styles",     label: "OG卡片", icon: RiImageLine,    activeIcon: RiImageLine },
     ],
