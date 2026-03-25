@@ -247,13 +247,17 @@ export function SiteSettingsProvider({
   }, []);
 
   React.useEffect(() => {
-    // Apply any previously-cached settings first (instant, no network round-trip),
-    // then fetch fresh settings from the API.
+    // Apply any previously-cached settings first (instant, no network round-trip).
+    // If cache exists the UI already has the right values, so we can afford
+    // to defer the network refresh — it's not on the critical render path.
     const cache = readSessionCache();
     if (cache) {
       setSettings({ ...DEFAULT_SETTINGS, ...(initialSettings || {}), ...cache });
     }
-    fetchSettings();
+
+    // Delay first fetch: sessionStorage already hydrates the UI.
+    // Without cache we still fetch quickly (500ms) so the first view isn't stale.
+    const initialDelay = setTimeout(fetchSettings, cache ? 1500 : 500);
 
     function onStorage(e: StorageEvent) {
       if (e.key === STORAGE_KEY) fetchSettings();
@@ -266,6 +270,7 @@ export function SiteSettingsProvider({
     const timer = setInterval(fetchSettings, 60_000);
 
     return () => {
+      clearTimeout(initialDelay);
       window.removeEventListener("storage", onStorage);
       window.removeEventListener("site-settings-updated", onUpdate);
       clearInterval(timer);

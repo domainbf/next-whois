@@ -64,7 +64,6 @@ import {
   RiFlagLine,
 } from "@remixicon/react";
 import { getTopRegistrars, DomainPricing } from "@/lib/pricing/client";
-import { FeedbackDrawer } from "@/components/feedback-drawer";
 import { useSiteSettings } from "@/lib/site-settings";
 import { computeLifecycle, fmtDate, fmtDateTime, fmtCountdown } from "@/lib/lifecycle";
 import React, { useEffect, useMemo } from "react";
@@ -115,6 +114,13 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { useSearchHotkeys } from "@/hooks/useSearchHotkeys";
+import dynamic from "next/dynamic";
+
+// Lazy-loaded: only needed when the user opens the feedback panel
+const FeedbackDrawer = dynamic(
+  () => import("@/components/feedback-drawer").then((m) => ({ default: m.FeedbackDrawer })),
+  { ssr: false, loading: () => null }
+);
 
 const CARD_CONTAINER_VARIANTS = {
   hidden: { opacity: 0 },
@@ -3784,11 +3790,14 @@ export default function LookupPage({
     const domainKey = data.result?.domain || target;
     if (!domainKey) return;
     const ctrl = new AbortController();
-    fetch(`/api/stamp/check?domain=${encodeURIComponent(domainKey)}`, { signal: ctrl.signal })
-      .then((r) => r.json())
-      .then((d) => setVerifiedStamps(d.stamps || []))
-      .catch(() => {});
-    return () => ctrl.abort();
+    // Defer until after initial paint so it doesn't compete with critical rendering
+    const timer = setTimeout(() => {
+      fetch(`/api/stamp/check?domain=${encodeURIComponent(domainKey)}`, { signal: ctrl.signal })
+        .then((r) => r.json())
+        .then((d) => setVerifiedStamps(d.stamps || []))
+        .catch(() => {});
+    }, 300);
+    return () => { clearTimeout(timer); ctrl.abort(); };
   }, [data.result?.domain, target]);
 
   const FALLBACK_EUR_RATES: Record<string, number> = {
