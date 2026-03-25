@@ -13,6 +13,8 @@ import {
   RiExternalLinkLine,
   RiCheckboxCircleLine,
   RiErrorWarningLine,
+  RiPlayCircleLine,
+  RiStopCircleLine,
 } from "@remixicon/react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -29,22 +31,153 @@ type TldRule = {
   updated_at: string;
 };
 
-// Suggested registry URLs for common TLDs
-const SUGGESTED_URLS: Record<string, string> = {
-  mk: "https://marnet.mk/en/domain-registration/",
-  rw: "https://ricta.org.rw/policies/",
-  xxx: "https://www.icmregistry.com/policies/",
-  bi: "https://www.nic.bi/index.php/domaines",
-  cm: "https://www.netcom.cm/en/domain-names/",
-  td: "https://www.nic.td/",
-  cf: "https://www.nic.cf/",
-  sn: "https://www.nic.sn/",
-  ml: "https://www.nic.ml/",
-  bf: "https://www.nic.bf/",
-  tg: "https://www.nic.tg/",
-  bj: "https://www.nic.bj/",
-  mg: "https://www.nic.mg/",
-  tn: "https://www.registre.tn/",
+// Curated batch list: TLDs worth scraping that lack reliable lifecycle data.
+// source_url left blank → API defaults to IANA root-db page.
+const BATCH_TLDS: { tld: string; source_url?: string }[] = [
+  { tld: "ac" },
+  { tld: "ae" },
+  { tld: "af" },
+  { tld: "ag" },
+  { tld: "ai" },
+  { tld: "al" },
+  { tld: "am" },
+  { tld: "ao" },
+  { tld: "aq" },
+  { tld: "ar" },
+  { tld: "az" },
+  { tld: "ba" },
+  { tld: "bb" },
+  { tld: "bd" },
+  { tld: "bf" },
+  { tld: "bh" },
+  { tld: "bi" },
+  { tld: "bj" },
+  { tld: "bn" },
+  { tld: "bo" },
+  { tld: "bs" },
+  { tld: "bt" },
+  { tld: "bw" },
+  { tld: "bz" },
+  { tld: "cd" },
+  { tld: "cf" },
+  { tld: "cg" },
+  { tld: "cm" },
+  { tld: "cv" },
+  { tld: "cy" },
+  { tld: "dj" },
+  { tld: "dm" },
+  { tld: "dz" },
+  { tld: "ec" },
+  { tld: "ee" },
+  { tld: "eg" },
+  { tld: "er" },
+  { tld: "et" },
+  { tld: "fj" },
+  { tld: "fk" },
+  { tld: "fm" },
+  { tld: "fo" },
+  { tld: "ga" },
+  { tld: "gd" },
+  { tld: "ge" },
+  { tld: "gh" },
+  { tld: "gm" },
+  { tld: "gn" },
+  { tld: "gq" },
+  { tld: "gt" },
+  { tld: "gw" },
+  { tld: "gy" },
+  { tld: "hn" },
+  { tld: "ht" },
+  { tld: "iq" },
+  { tld: "ir" },
+  { tld: "je" },
+  { tld: "jo" },
+  { tld: "kg" },
+  { tld: "ki" },
+  { tld: "km" },
+  { tld: "kn" },
+  { tld: "kp" },
+  { tld: "kw" },
+  { tld: "kz" },
+  { tld: "la" },
+  { tld: "lb" },
+  { tld: "lc" },
+  { tld: "lk" },
+  { tld: "lr" },
+  { tld: "ls" },
+  { tld: "ly" },
+  { tld: "ma" },
+  { tld: "md" },
+  { tld: "me" },
+  { tld: "mg" },
+  { tld: "mh" },
+  { tld: "mk" },
+  { tld: "ml" },
+  { tld: "mm" },
+  { tld: "mn" },
+  { tld: "mo" },
+  { tld: "mr" },
+  { tld: "mv" },
+  { tld: "mw" },
+  { tld: "mz" },
+  { tld: "na" },
+  { tld: "ne" },
+  { tld: "ng" },
+  { tld: "ni" },
+  { tld: "np" },
+  { tld: "nr" },
+  { tld: "om" },
+  { tld: "pa" },
+  { tld: "pg" },
+  { tld: "ph" },
+  { tld: "pk" },
+  { tld: "ps" },
+  { tld: "pw" },
+  { tld: "py" },
+  { tld: "qa" },
+  { tld: "rw" },
+  { tld: "sb" },
+  { tld: "sc" },
+  { tld: "sd" },
+  { tld: "sl" },
+  { tld: "sm" },
+  { tld: "sn" },
+  { tld: "so" },
+  { tld: "sr" },
+  { tld: "ss" },
+  { tld: "st" },
+  { tld: "sv" },
+  { tld: "sy" },
+  { tld: "sz" },
+  { tld: "td" },
+  { tld: "tg" },
+  { tld: "tj" },
+  { tld: "tl" },
+  { tld: "tm" },
+  { tld: "tn" },
+  { tld: "to" },
+  { tld: "tt" },
+  { tld: "tv" },
+  { tld: "tz" },
+  { tld: "ua" },
+  { tld: "ug" },
+  { tld: "uy" },
+  { tld: "uz" },
+  { tld: "va" },
+  { tld: "vc" },
+  { tld: "ve" },
+  { tld: "vu" },
+  { tld: "ws" },
+  { tld: "ye" },
+  { tld: "zm" },
+  { tld: "zw" },
+];
+
+type BatchStatus = "idle" | "running" | "done";
+type BatchItem = {
+  tld: string;
+  status: "pending" | "ok" | "error" | "skipped";
+  msg?: string;
 };
 
 export default function AdminTldRulesPage() {
@@ -55,6 +188,12 @@ export default function AdminTldRulesPage() {
   const [deleting, setDeleting] = React.useState<string | null>(null);
   const [form, setForm] = React.useState({ tld: "", source_url: "" });
   const [lastResult, setLastResult] = React.useState<any>(null);
+
+  // Batch state
+  const [batchStatus, setBatchStatus] = React.useState<BatchStatus>("idle");
+  const [batchItems, setBatchItems] = React.useState<BatchItem[]>([]);
+  const [batchIdx, setBatchIdx] = React.useState(0);
+  const batchAbortRef = React.useRef(false);
 
   async function load() {
     setLoading(true);
@@ -72,20 +211,11 @@ export default function AdminTldRulesPage() {
 
   React.useEffect(() => { load(); }, []);
 
-  // Auto-fill suggested URL when TLD changes
-  React.useEffect(() => {
-    const tld = form.tld.toLowerCase().replace(/^\./, "");
-    if (tld && SUGGESTED_URLS[tld] && !form.source_url) {
-      setForm(f => ({ ...f, source_url: SUGGESTED_URLS[tld] }));
-    }
-  }, [form.tld]);
-
   async function handleScrape(e: React.FormEvent) {
     e.preventDefault();
     const tld = form.tld.toLowerCase().replace(/^\./, "").trim();
-    const source_url = form.source_url.trim();
-    if (!tld || !source_url) {
-      toast.error("请填写 TLD 和注册局页面 URL");
+    if (!tld) {
+      toast.error("请填写 TLD");
       return;
     }
     setScraping(true);
@@ -94,7 +224,7 @@ export default function AdminTldRulesPage() {
       const res = await fetch("/api/admin/tld-rules", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tld, source_url }),
+        body: JSON.stringify({ tld, source_url: form.source_url.trim() || undefined }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "抓取失败");
@@ -131,6 +261,90 @@ export default function AdminTldRulesPage() {
     }
   }
 
+  // ── Batch scrape ──────────────────────────────────────────────────────────
+  function startBatch() {
+    // Only scrape TLDs not already in DB
+    const existing = new Set(rules.map(r => r.tld));
+    const todo = BATCH_TLDS.filter(t => !existing.has(t.tld));
+    if (todo.length === 0) {
+      toast.info("所有预置 TLD 已抓取完毕，无需重复");
+      return;
+    }
+    batchAbortRef.current = false;
+    setBatchItems(todo.map(t => ({ tld: t.tld, status: "pending" })));
+    setBatchIdx(0);
+    setBatchStatus("running");
+  }
+
+  function stopBatch() {
+    batchAbortRef.current = true;
+    setBatchStatus("done");
+    toast.info("已停止批量抓取");
+  }
+
+  // Drive batch processing via effect
+  React.useEffect(() => {
+    if (batchStatus !== "running") return;
+    if (batchIdx >= batchItems.length) {
+      setBatchStatus("done");
+      toast.success(`批量抓取完成，共处理 ${batchItems.length} 个 TLD`);
+      load();
+      return;
+    }
+    if (batchAbortRef.current) return;
+
+    const item = batchItems[batchIdx];
+    const batchTld = BATCH_TLDS.find(t => t.tld === item.tld);
+
+    (async () => {
+      setBatchItems(prev =>
+        prev.map((it, i) => i === batchIdx ? { ...it, status: "pending" } : it)
+      );
+      try {
+        const res = await fetch("/api/admin/tld-rules", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            tld: item.tld,
+            source_url: batchTld?.source_url,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          const isRateLimit = res.status === 429;
+          setBatchItems(prev =>
+            prev.map((it, i) =>
+              i === batchIdx
+                ? { ...it, status: isRateLimit ? "skipped" : "error", msg: data.error }
+                : it
+            )
+          );
+        } else {
+          setBatchItems(prev =>
+            prev.map((it, i) =>
+              i === batchIdx
+                ? { ...it, status: "ok", msg: `总${data.total_release_days}天` }
+                : it
+            )
+          );
+        }
+      } catch (err: any) {
+        setBatchItems(prev =>
+          prev.map((it, i) =>
+            i === batchIdx ? { ...it, status: "error", msg: err.message } : it
+          )
+        );
+      } finally {
+        if (!batchAbortRef.current) {
+          // 1.5s delay between requests to be polite to external servers
+          await new Promise(r => setTimeout(r, 1500));
+          setBatchIdx(i => i + 1);
+        }
+      }
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [batchStatus, batchIdx]);
+
   const filtered = React.useMemo(() => {
     const q = search.toLowerCase().trim();
     if (!q) return rules;
@@ -142,6 +356,13 @@ export default function AdminTldRulesPage() {
     if (c === "ai") return <span className="text-xs px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">AI</span>;
     return <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">估算</span>;
   }
+
+  const batchDone = batchItems.filter(i => i.status === "ok").length;
+  const batchErr = batchItems.filter(i => i.status === "error").length;
+  const batchSkip = batchItems.filter(i => i.status === "skipped").length;
+  const batchPct = batchItems.length
+    ? Math.round(((batchDone + batchErr + batchSkip) / batchItems.length) * 100)
+    : 0;
 
   return (
     <AdminLayout>
@@ -155,11 +376,11 @@ export default function AdminTldRulesPage() {
           </p>
         </div>
 
-        {/* Scrape form */}
+        {/* Single scrape form */}
         <div className="border rounded-xl p-5 space-y-4 bg-card">
           <h2 className="font-medium flex items-center gap-2">
             <RiRobot2Line className="w-4 h-4 text-blue-500" />
-            抓取新 TLD 规则
+            抓取单个 TLD
           </h2>
           <form onSubmit={handleScrape} className="grid grid-cols-1 sm:grid-cols-[120px_1fr_auto] gap-3 items-end">
             <div className="space-y-1">
@@ -172,9 +393,14 @@ export default function AdminTldRulesPage() {
               />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">注册局政策页面 URL</Label>
+              <Label className="text-xs text-muted-foreground">
+                注册局页面 URL
+                <span className="ml-1 text-muted-foreground/60">（可选，留空自动用 IANA 官方页）</span>
+              </Label>
               <Input
-                placeholder="https://nic.mk/en/domain-registration/"
+                placeholder={form.tld
+                  ? `https://www.iana.org/domains/root/db/${form.tld.toLowerCase().replace(/^\./, "")}.html`
+                  : "留空则自动使用 IANA 官方页面"}
                 value={form.source_url}
                 onChange={e => setForm(f => ({ ...f, source_url: e.target.value }))}
                 className="h-9"
@@ -184,7 +410,7 @@ export default function AdminTldRulesPage() {
               {scraping ? (
                 <><RiLoader4Line className="w-4 h-4 animate-spin" />抓取中…</>
               ) : (
-                <><RiRobot2Line className="w-4 h-4" />抓取 &amp; 提取</>
+                <><RiRobot2Line className="w-4 h-4" />抓取</>
               )}
             </Button>
           </form>
@@ -195,7 +421,6 @@ export default function AdminTldRulesPage() {
             </p>
           )}
 
-          {/* Result preview */}
           {lastResult && (
             <div className={cn(
               "rounded-lg p-4 text-sm border",
@@ -241,6 +466,89 @@ export default function AdminTldRulesPage() {
           )}
         </div>
 
+        {/* Batch scrape */}
+        <div className="border rounded-xl p-5 space-y-4 bg-card">
+          <div className="flex items-center justify-between">
+            <h2 className="font-medium flex items-center gap-2">
+              <RiPlayCircleLine className="w-4 h-4 text-violet-500" />
+              批量抓取
+              <span className="text-xs text-muted-foreground font-normal">
+                — 预置 {BATCH_TLDS.length} 个 TLD，跳过已有数据，自动使用 IANA 页面
+              </span>
+            </h2>
+            <div className="flex items-center gap-2">
+              {batchStatus === "running" ? (
+                <Button variant="outline" size="sm" onClick={stopBatch} className="gap-1.5 text-red-600 border-red-300 hover:bg-red-50">
+                  <RiStopCircleLine className="w-4 h-4" />停止
+                </Button>
+              ) : (
+                <Button variant="outline" size="sm" onClick={startBatch} className="gap-1.5">
+                  <RiPlayCircleLine className="w-4 h-4" />
+                  {batchStatus === "done" ? "重新批量" : "开始批量抓取"}
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {batchItems.length > 0 && (
+            <div className="space-y-3">
+              {/* Progress bar */}
+              <div className="space-y-1">
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>
+                    {batchStatus === "running"
+                      ? `正在处理 .${batchItems[batchIdx]?.tld ?? "…"} (${batchIdx + 1}/${batchItems.length})`
+                      : `完成 ${batchDone} ✓  失败 ${batchErr} ✗  跳过 ${batchSkip}`}
+                  </span>
+                  <span>{batchPct}%</span>
+                </div>
+                <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
+                  <div
+                    className="h-full bg-violet-500 transition-all duration-300"
+                    style={{ width: `${batchPct}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Item list */}
+              <div className="max-h-48 overflow-y-auto grid grid-cols-3 sm:grid-cols-5 gap-1">
+                {batchItems.map((it, i) => (
+                  <div
+                    key={it.tld}
+                    title={it.msg}
+                    className={cn(
+                      "text-xs px-2 py-1 rounded flex items-center gap-1",
+                      it.status === "ok" && "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+                      it.status === "error" && "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+                      it.status === "skipped" && "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
+                      it.status === "pending" && i === batchIdx && batchStatus === "running" && "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400",
+                      it.status === "pending" && i !== batchIdx && "bg-muted text-muted-foreground",
+                    )}
+                  >
+                    {it.status === "pending" && i === batchIdx && batchStatus === "running"
+                      ? <RiLoader4Line className="w-3 h-3 animate-spin shrink-0" />
+                      : it.status === "ok"
+                      ? <RiCheckboxCircleLine className="w-3 h-3 shrink-0" />
+                      : it.status === "error"
+                      ? <RiErrorWarningLine className="w-3 h-3 shrink-0" />
+                      : null}
+                    .{it.tld}
+                    {it.msg && it.status === "ok" && (
+                      <span className="text-muted-foreground ml-auto">{it.msg}</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {batchItems.length === 0 && (
+            <p className="text-xs text-muted-foreground">
+              点击"开始批量抓取"，系统会依次处理所有预置 TLD（已存在的自动跳过），每条间隔 1.5 秒避免对注册局造成压力。
+            </p>
+          )}
+        </div>
+
         {/* Rules table */}
         <div className="border rounded-xl overflow-hidden bg-card">
           <div className="flex items-center gap-3 px-4 py-3 border-b">
@@ -263,7 +571,7 @@ export default function AdminTldRulesPage() {
             </div>
           ) : filtered.length === 0 ? (
             <div className="text-center py-12 text-sm text-muted-foreground">
-              {rules.length === 0 ? "暂无规则，请在上方抓取第一个 TLD" : "无匹配结果"}
+              {rules.length === 0 ? "暂无规则，请在上方抓取第一个 TLD 或批量抓取" : "无匹配结果"}
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -333,10 +641,10 @@ export default function AdminTldRulesPage() {
         <div className="rounded-xl border bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-900 p-4 text-sm text-blue-800 dark:text-blue-300 space-y-1.5">
           <p className="font-medium">使用说明</p>
           <ul className="list-disc list-inside space-y-1 text-xs leading-relaxed">
-            <li>输入 TLD（如 <code>mk</code>）和注册局的域名政策页面 URL，点击"抓取 &amp; 提取"</li>
-            <li>系统会爬取页面正文，调用 GLM-4-Flash 自动提取宽限期等4个数字</li>
-            <li>提取结果自动保存到数据库，优先级高于代码内置静态值</li>
-            <li>数据被 <strong>lifecycle-overrides</strong> 模块读取，直接用于域名释放时间计算和订阅提醒</li>
+            <li>单个抓取：只需填写 TLD，URL 可留空（自动用 IANA 官方页）；也可填自定义注册局政策页面 URL</li>
+            <li>批量抓取：一键处理预置 {BATCH_TLDS.length} 个 TLD，已有数据的自动跳过，每条间隔 1.5 秒</li>
+            <li>系统爬取页面正文，调用 GLM-4-Flash 自动提取宽限期等4个数字</li>
+            <li>提取结果自动保存，优先级高于代码内置静态值，直接用于域名释放时间计算和订阅提醒</li>
             <li>同一 TLD 每小时限制抓取一次，防止被注册局封禁</li>
           </ul>
         </div>

@@ -178,11 +178,13 @@ export default async function handler(
       tld?: string;
       source_url?: string;
     };
-    if (!tld || !source_url) {
-      return res.status(400).json({ error: "tld and source_url are required" });
+    if (!tld) {
+      return res.status(400).json({ error: "tld is required" });
     }
     const cleanTld = tld.toLowerCase().replace(/^\./, "");
-    const cleanUrl = source_url.trim();
+    // Default to IANA root-db page if no URL supplied
+    const cleanUrl = (source_url ?? "").trim() ||
+      `https://www.iana.org/domains/root/db/${cleanTld}.html`;
 
     // Rate limit
     const allowed = await checkRateLimit(cleanTld);
