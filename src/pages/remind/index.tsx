@@ -9,9 +9,10 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import {
   RiCalendarLine, RiMailLine, RiSearchLine, RiShieldCheckLine,
-  RiArrowRightLine, RiCheckLine, RiGlobalLine, RiTimeLine, RiTimerLine,
-  RiLoader4Line, RiDeleteBinLine, RiEdit2Line, RiExternalLinkLine,
+  RiArrowRightLine, RiGlobalLine, RiTimeLine, RiTimerLine,
+  RiLoader4Line, RiDeleteBinLine, RiExternalLinkLine,
   RiArrowLeftLine, RiBellLine, RiAlertLine, RiLockLine,
+  RiCheckLine, RiRefreshLine, RiInformationLine,
 } from "@remixicon/react";
 
 type Subscription = {
@@ -20,7 +21,21 @@ type Subscription = {
   expiration_date: string | null;
   active: boolean;
   created_at: string;
+  days_before: number | null;
+  phase: string | null;
+  days_to_expiry: number | null;
+  days_to_drop: number | null;
+  sent_keys: number[];
+  last_reminded_at: string | null;
+  next_reminder_at: string | null;
+  next_reminder_days: number | null;
+  tld_confidence: string | null;
+  drop_date: string | null;
+  grace_end: string | null;
+  redemption_end: string | null;
 };
+
+type FilterKey = "all" | "expiring" | "expired" | "inactive";
 
 const STEPS = [
   {
@@ -47,10 +62,47 @@ function fmt(d: Date) {
   return d.toLocaleDateString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit" });
 }
 
+function fmtShort(d: Date) {
+  return d.toLocaleDateString("zh-CN", { month: "2-digit", day: "2-digit" });
+}
+
 function getDaysLeft(expDate: string | null): number | null {
   if (!expDate) return null;
   const diff = new Date(expDate).getTime() - Date.now();
   return Math.ceil(diff / 86400000);
+}
+
+function PhaseChip({ phase }: { phase: string | null }) {
+  if (!phase || phase === "active") return null;
+  const map: Record<string, { label: string; cls: string }> = {
+    grace:      { label: "宽限期", cls: "bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400" },
+    redemption: { label: "赎回期", cls: "bg-orange-100 dark:bg-orange-950/40 text-orange-700 dark:text-orange-400" },
+    pending:    { label: "待删除", cls: "bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-400" },
+    dropped:    { label: "已释放", cls: "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400" },
+  };
+  const info = map[phase];
+  if (!info) return null;
+  return (
+    <span className={cn("inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold", info.cls)}>
+      {info.label}
+    </span>
+  );
+}
+
+function UrgencyBar({ daysLeft, phase }: { daysLeft: number | null; phase: string | null }) {
+  if (daysLeft === null) return null;
+  if (daysLeft > 90) return null;
+  const pct = Math.max(0, Math.min(100, (daysLeft / 90) * 100));
+  const color =
+    daysLeft <= 7  ? "bg-red-500" :
+    daysLeft <= 30 ? "bg-orange-500" :
+    daysLeft <= 60 ? "bg-amber-400" :
+                     "bg-emerald-500";
+  return (
+    <div className="h-1 w-full rounded-full bg-muted/50 overflow-hidden mt-1.5">
+      <div className={cn("h-full rounded-full transition-all", color)} style={{ width: `${pct}%` }} />
+    </div>
+  );
 }
 
 export default function RemindPage() {
@@ -60,6 +112,9 @@ export default function RemindPage() {
   const [subscriptions, setSubscriptions] = React.useState<Subscription[]>([]);
   const [loadingSubs, setLoadingSubs] = React.useState(false);
   const [cancelling, setCancelling] = React.useState<string | null>(null);
+  const [reactivating, setReactivating] = React.useState<string | null>(null);
+  const [filter, setFilter] = React.useState<FilterKey>("all");
+  const [expandInactive, setExpandInactive] = React.useState(false);
 
   React.useEffect(() => {
     if (status === "authenticated") {
@@ -92,6 +147,55 @@ export default function RemindPage() {
     }
   }
 
+  async function reactivateSub(id: string, domain: string) {
+    setReactivating(id);
+    try {
+      const r = await fetch(`/api/user/subscriptions?id=${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ active: true }),
+      });
+      if (!r.ok) throw new Error();
+      setSubscriptions(prev => prev.map(s => s.id === id ? { ...s, active: true } : s));
+      toast.success("已重新激活订阅");
+    } catch {
+      router.push(`/${domain}`);
+    } finally {
+      setReactivating(null);
+    }
+  }
+
+  const activeSubs = subscriptions.filter(s => s.active);
+  const inactiveSubs = subscriptions.filter(s => !s.active);
+
+  const expiringSoon = activeSubs.filter(s => {
+    const d = s.days_to_expiry ?? getDaysLeft(s.expiration_date);
+    return d !== null && d >= 0 && d <= 30;
+  });
+
+  const expiredSubs = activeSubs.filter(s => {
+    const d = s.days_to_expiry ?? getDaysLeft(s.expiration_date);
+    return d !== null && d < 0;
+  });
+
+  const totalSent = subscriptions.reduce((acc, s) => acc + (s.sent_keys?.length ?? 0), 0);
+
+  const filteredSubs = (() => {
+    switch (filter) {
+      case "expiring": return expiringSoon;
+      case "expired":  return expiredSubs;
+      case "inactive": return inactiveSubs;
+      default:         return activeSubs;
+    }
+  })();
+
+  const filterTabs: { key: FilterKey; label: string; count?: number }[] = [
+    { key: "all",      label: "全部活跃",   count: activeSubs.length },
+    { key: "expiring", label: "30天内到期",  count: expiringSoon.length },
+    { key: "expired",  label: "已过期",      count: expiredSubs.length },
+    { key: "inactive", label: "已取消",      count: inactiveSubs.length },
+  ];
+
   return (
     <>
       <Head>
@@ -112,8 +216,8 @@ export default function RemindPage() {
           </div>
           <h1 className="text-2xl font-bold">域名到期提醒</h1>
           <p className="text-sm text-muted-foreground leading-relaxed">
-            订阅你拥有的域名，到期前 <span className="text-foreground font-semibold">90天、30天、7天、1天</span>
-            自动发送提醒邮件，让你有充足时间续费，避免域名丢失。
+            订阅你拥有的域名，到期前自动发送提醒邮件，让你有充足时间续费，避免域名丢失。<br />
+            同时跟踪宽限期、赎回期等域名生命周期阶段，全程掌握域名状态。
           </p>
         </div>
 
@@ -138,7 +242,7 @@ export default function RemindPage() {
           </form>
         </div>
 
-        {/* Visual mockup — shows where to click */}
+        {/* Visual mockup */}
         <div className="space-y-2">
           <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">在这里找到入口</p>
           <div className="relative rounded-2xl border border-border bg-muted/10 p-4">
@@ -154,7 +258,18 @@ export default function RemindPage() {
                   <span className="text-[10px] text-muted-foreground">⏱ 2y</span>
                 </div>
               </div>
-              {/* Mobile: circular icon buttons */}
+              <div className="px-4 pb-3.5 hidden sm:flex items-center gap-2">
+                <div className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium border bg-muted/40 border-border/50 text-muted-foreground/50">
+                  <RiShieldCheckLine className="w-3 h-3" />品牌认领
+                </div>
+                <div className="relative flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold border bg-sky-100 dark:bg-sky-950/50 border-sky-400/70 text-sky-600 dark:text-sky-400 shadow-sm ring-2 ring-sky-400/20">
+                  <RiTimeLine className="w-3 h-3" />域名订阅
+                  <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-60" />
+                    <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-sky-500" />
+                  </span>
+                </div>
+              </div>
               <div className="px-4 pb-3.5 flex items-center gap-2 sm:hidden">
                 <div className="flex items-center justify-center w-6 h-6 rounded-full border bg-muted/40 border-border/50 text-muted-foreground/60">
                   <RiShieldCheckLine className="w-3 h-3" />
@@ -167,19 +282,6 @@ export default function RemindPage() {
                   </span>
                 </div>
                 <span className="text-[9px] text-muted-foreground ml-1">← 点击订阅按钮</span>
-              </div>
-              {/* Desktop: text pill buttons */}
-              <div className="px-4 pb-3.5 hidden sm:flex items-center gap-2">
-                <div className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium border bg-muted/40 border-border/50 text-muted-foreground/50">
-                  <RiShieldCheckLine className="w-3 h-3" />品牌认领
-                </div>
-                <div className="relative flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold border bg-sky-100 dark:bg-sky-950/50 border-sky-400/70 text-sky-600 dark:text-sky-400 shadow-sm ring-2 ring-sky-400/20">
-                  <RiTimeLine className="w-3 h-3" />域名订阅
-                  <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-60" />
-                    <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-sky-500" />
-                  </span>
-                </div>
               </div>
             </div>
             <p className="text-[10px] text-muted-foreground text-center mt-2.5">
@@ -205,9 +307,6 @@ export default function RemindPage() {
                   <p className="text-sm font-semibold">{step.title}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">{step.desc}</p>
                 </div>
-                {i < STEPS.length - 1 && (
-                  <div className="absolute ml-4 mt-9 text-muted-foreground/30 hidden" />
-                )}
               </div>
             ))}
           </div>
@@ -216,10 +315,10 @@ export default function RemindPage() {
         {/* Features */}
         <div className="grid grid-cols-2 gap-3">
           {[
-            { icon: RiMailLine, title: "邮件提醒", desc: "多个时间节点自动推送" },
+            { icon: RiMailLine,        title: "邮件提醒", desc: "多个时间节点自动推送" },
             { icon: RiShieldCheckLine, title: "生命周期", desc: "宽限期 / 赎回期全跟踪" },
-            { icon: RiTimeLine, title: "到期日历", desc: "手动修正到期日期" },
-            { icon: RiGlobalLine, title: "多域名", desc: "同时订阅多个域名" },
+            { icon: RiTimeLine,        title: "到期日历", desc: "手动修正到期日期" },
+            { icon: RiGlobalLine,      title: "多域名",   desc: "同时订阅多个域名" },
           ].map(f => (
             <div key={f.title} className="glass-panel border border-border rounded-xl p-3.5 flex items-start gap-3">
               <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
@@ -257,66 +356,202 @@ export default function RemindPage() {
               </div>
             )}
 
-            {(session?.user as any)?.subscriptionAccess && <>
+            {(session?.user as any)?.subscriptionAccess && (
+              <>
+                {/* Stats row */}
+                {!loadingSubs && subscriptions.length > 0 && (
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { label: "活跃订阅",   value: activeSubs.length,      color: "text-primary" },
+                      { label: "30天内到期", value: expiringSoon.length,    color: expiringSoon.length > 0 ? "text-orange-500" : "text-muted-foreground" },
+                      { label: "已发提醒",   value: totalSent,              color: "text-muted-foreground" },
+                    ].map(stat => (
+                      <div key={stat.label} className="glass-panel border border-border rounded-xl p-3 text-center">
+                        <p className={cn("text-xl font-bold", stat.color)}>{stat.value}</p>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">{stat.label}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
 
-            {loadingSubs ? (
-              <div className="flex justify-center py-6">
-                <RiLoader4Line className="w-5 h-5 animate-spin text-muted-foreground" />
-              </div>
-            ) : subscriptions.filter(s => s.active).length === 0 ? (
-              <div className="glass-panel border border-dashed border-border rounded-2xl p-8 text-center space-y-2">
-                <RiCalendarLine className="w-8 h-8 text-muted-foreground/30 mx-auto" />
-                <p className="text-sm text-muted-foreground">暂无活跃订阅</p>
-                <p className="text-xs text-muted-foreground/60">搜索并订阅你的域名，到期前自动提醒</p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {subscriptions.filter(s => s.active).map(sub => {
-                  const daysLeft = getDaysLeft(sub.expiration_date);
-                  const urgent = daysLeft !== null && daysLeft <= 30;
-                  const warn = daysLeft !== null && daysLeft <= 90;
-                  return (
-                    <div key={sub.id} className="glass-panel border border-border rounded-2xl p-4 flex items-center gap-3">
-                      <div className={cn(
-                        "w-8 h-8 rounded-lg flex items-center justify-center shrink-0",
-                        urgent ? "bg-red-100 dark:bg-red-950/40" : warn ? "bg-orange-100 dark:bg-orange-950/40" : "bg-primary/10"
-                      )}>
-                        {urgent
-                          ? <RiAlertLine className="w-4 h-4 text-red-600 dark:text-red-400" />
-                          : <RiGlobalLine className="w-4 h-4 text-primary" />
-                        }
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold font-mono truncate">{sub.domain}</p>
-                        <p className={cn("text-[11px] mt-0.5", urgent ? "text-red-600 dark:text-red-400 font-semibold" : warn ? "text-orange-600 dark:text-orange-400" : "text-muted-foreground")}>
-                          {sub.expiration_date
-                            ? daysLeft !== null && daysLeft >= 0
-                              ? `还有 ${daysLeft} 天到期 · ${fmt(new Date(sub.expiration_date))}`
-                              : `已于 ${fmt(new Date(sub.expiration_date))} 过期`
-                            : "到期日期未设置"}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-1 shrink-0">
-                        <Link href={`/${sub.domain}`} className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
-                          <RiExternalLinkLine className="w-3.5 h-3.5" />
-                        </Link>
-                        <button
-                          onClick={() => cancelSub(sub.id)}
-                          disabled={cancelling === sub.id}
-                          className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 text-muted-foreground hover:text-red-500 transition-colors"
+                {/* Filter tabs */}
+                {!loadingSubs && subscriptions.length > 0 && (
+                  <div className="flex gap-1.5 flex-wrap">
+                    {filterTabs.map(tab => (
+                      <button
+                        key={tab.key}
+                        onClick={() => setFilter(tab.key)}
+                        className={cn(
+                          "inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors",
+                          filter === tab.key
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground"
+                        )}
+                      >
+                        {tab.label}
+                        {tab.count !== undefined && (
+                          <span className={cn(
+                            "text-[10px] px-1 rounded-full",
+                            filter === tab.key ? "bg-white/20 text-white" : "bg-muted text-muted-foreground"
+                          )}>
+                            {tab.count}
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {loadingSubs ? (
+                  <div className="flex justify-center py-6">
+                    <RiLoader4Line className="w-5 h-5 animate-spin text-muted-foreground" />
+                  </div>
+                ) : filteredSubs.length === 0 ? (
+                  <div className="glass-panel border border-dashed border-border rounded-2xl p-8 text-center space-y-2">
+                    <RiCalendarLine className="w-8 h-8 text-muted-foreground/30 mx-auto" />
+                    <p className="text-sm text-muted-foreground">
+                      {filter === "all"      && (subscriptions.length === 0 ? "暂无活跃订阅" : "暂无活跃订阅")}
+                      {filter === "expiring" && "暂无 30 天内到期的域名"}
+                      {filter === "expired"  && "暂无已过期的域名"}
+                      {filter === "inactive" && "暂无已取消的订阅"}
+                    </p>
+                    {filter === "all" && subscriptions.length === 0 && (
+                      <p className="text-xs text-muted-foreground/60">搜索并订阅你的域名，到期前自动提醒</p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {filteredSubs.map(sub => {
+                      const daysLeft = sub.days_to_expiry ?? getDaysLeft(sub.expiration_date);
+                      const isExpired = daysLeft !== null && daysLeft < 0;
+                      const isUrgent  = daysLeft !== null && daysLeft >= 0 && daysLeft <= 7;
+                      const isWarn    = daysLeft !== null && daysLeft >= 0 && daysLeft <= 30;
+                      const isInactive = !sub.active;
+
+                      return (
+                        <div
+                          key={sub.id}
+                          className={cn(
+                            "glass-panel border rounded-2xl p-4 space-y-2.5",
+                            isUrgent  ? "border-red-200 dark:border-red-800/50 bg-red-50/30 dark:bg-red-950/10" :
+                            isExpired ? "border-orange-200 dark:border-orange-800/50 bg-orange-50/20 dark:bg-orange-950/10" :
+                            isInactive ? "border-border/50 opacity-60" :
+                                         "border-border"
+                          )}
                         >
-                          {cancelling === sub.id
-                            ? <RiLoader4Line className="w-3.5 h-3.5 animate-spin" />
-                            : <RiDeleteBinLine className="w-3.5 h-3.5" />
-                          }
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+                          {/* Row 1: icon + domain + phase + actions */}
+                          <div className="flex items-center gap-3">
+                            <div className={cn(
+                              "w-8 h-8 rounded-lg flex items-center justify-center shrink-0",
+                              isUrgent   ? "bg-red-100 dark:bg-red-950/40" :
+                              isExpired  ? "bg-orange-100 dark:bg-orange-950/40" :
+                              isInactive ? "bg-muted/40" :
+                                           "bg-primary/10"
+                            )}>
+                              {isUrgent
+                                ? <RiAlertLine className="w-4 h-4 text-red-600 dark:text-red-400" />
+                                : isExpired
+                                  ? <RiAlertLine className="w-4 h-4 text-orange-500" />
+                                  : <RiGlobalLine className={cn("w-4 h-4", isInactive ? "text-muted-foreground/50" : "text-primary")} />
+                              }
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <p className={cn("text-sm font-semibold font-mono truncate", isInactive && "text-muted-foreground")}>
+                                  {sub.domain}
+                                </p>
+                                <PhaseChip phase={sub.phase} />
+                                {isInactive && (
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">已取消</span>
+                                )}
+                              </div>
+                              <p className={cn(
+                                "text-[11px] mt-0.5",
+                                isUrgent  ? "text-red-600 dark:text-red-400 font-semibold" :
+                                isExpired ? "text-orange-600 dark:text-orange-400 font-semibold" :
+                                isWarn    ? "text-amber-600 dark:text-amber-400" :
+                                            "text-muted-foreground"
+                              )}>
+                                {sub.expiration_date
+                                  ? daysLeft !== null
+                                    ? daysLeft >= 0
+                                      ? `还有 ${daysLeft} 天到期 · ${fmt(new Date(sub.expiration_date))}`
+                                      : `已于 ${fmt(new Date(sub.expiration_date))} 过期`
+                                    : fmt(new Date(sub.expiration_date))
+                                  : "到期日期未设置"}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-1 shrink-0">
+                              <Link href={`/${sub.domain}`} className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground" title="查看 WHOIS">
+                                <RiExternalLinkLine className="w-3.5 h-3.5" />
+                              </Link>
+                              {isInactive ? (
+                                <button
+                                  onClick={() => reactivateSub(sub.id, sub.domain)}
+                                  disabled={reactivating === sub.id}
+                                  title="重新订阅"
+                                  className="p-1.5 rounded-lg hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors"
+                                >
+                                  {reactivating === sub.id
+                                    ? <RiLoader4Line className="w-3.5 h-3.5 animate-spin" />
+                                    : <RiRefreshLine className="w-3.5 h-3.5" />
+                                  }
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => cancelSub(sub.id)}
+                                  disabled={cancelling === sub.id}
+                                  title="取消订阅"
+                                  className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 text-muted-foreground hover:text-red-500 transition-colors"
+                                >
+                                  {cancelling === sub.id
+                                    ? <RiLoader4Line className="w-3.5 h-3.5 animate-spin" />
+                                    : <RiDeleteBinLine className="w-3.5 h-3.5" />
+                                  }
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Urgency progress bar */}
+                          {sub.active && <UrgencyBar daysLeft={daysLeft} phase={sub.phase} />}
+
+                          {/* Row 2: meta chips */}
+                          {sub.active && (
+                            <div className="flex items-center gap-2 flex-wrap">
+                              {sub.next_reminder_at && sub.next_reminder_days !== null && (
+                                <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground bg-muted/60 rounded-full px-2 py-0.5">
+                                  <RiBellLine className="w-2.5 h-2.5" />
+                                  下次提醒：{sub.next_reminder_days} 天前 · {fmtShort(new Date(sub.next_reminder_at))}
+                                </span>
+                              )}
+                              {sub.last_reminded_at && (
+                                <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground bg-muted/60 rounded-full px-2 py-0.5">
+                                  <RiCheckLine className="w-2.5 h-2.5" />
+                                  最近提醒：{fmtShort(new Date(sub.last_reminded_at))}
+                                </span>
+                              )}
+                              {sub.sent_keys.length > 0 && (
+                                <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground bg-muted/60 rounded-full px-2 py-0.5">
+                                  <RiMailLine className="w-2.5 h-2.5" />
+                                  已发 {sub.sent_keys.length} 次
+                                </span>
+                              )}
+                              {sub.phase && sub.phase !== "active" && sub.drop_date && (
+                                <span className="inline-flex items-center gap-1 text-[10px] text-orange-600 dark:text-orange-400 bg-orange-100/60 dark:bg-orange-950/30 rounded-full px-2 py-0.5">
+                                  <RiInformationLine className="w-2.5 h-2.5" />
+                                  预计释放：{fmt(new Date(sub.drop_date))}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </>
             )}
-            </>}
           </div>
         )}
 

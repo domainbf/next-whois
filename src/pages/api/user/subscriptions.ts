@@ -103,7 +103,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { id } = req.query;
     if (!id) return res.status(400).json({ error: "Missing id" });
 
-    const { expiration_date, days_before } = req.body ?? {};
+    const { expiration_date, days_before, active } = req.body ?? {};
 
     if (expiration_date !== undefined) {
       const parsed = new Date(expiration_date);
@@ -130,6 +130,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       } catch (err: any) {
         console.error("[subscriptions] PATCH days_before error:", err.message);
         return res.status(500).json({ error: "更新提醒设置失败" });
+      }
+    }
+
+    if (active !== undefined) {
+      const activeVal = Boolean(active);
+      try {
+        await run(
+          "UPDATE reminders SET active = $1 WHERE id = $2 AND email = $3",
+          [activeVal, id as string, session.user.email],
+        );
+      } catch (err: any) {
+        console.error("[subscriptions] PATCH active error:", err.message);
+        return res.status(500).json({ error: "更新状态失败" });
       }
     }
 

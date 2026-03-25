@@ -152,7 +152,39 @@ const TAG_ID_KEY_MAP: Record<string, StampKey> = {
 // ── No-domain landing page ─────────────────────────────────────────────────────
 function StampLandingPage() {
   const router = useRouter();
+  const { data: session, status: authStatus } = useSession();
   const [query, setQuery] = React.useState("");
+  const [myStamps, setMyStamps] = React.useState<{
+    id: string; domain: string; tag_name: string; tag_style: string;
+    verified: boolean; created_at: string; verified_at: string | null;
+    link: string | null; nickname: string;
+  }[]>([]);
+  const [stampsLoading, setStampsLoading] = React.useState(false);
+  const [deletingId, setDeletingId] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (authStatus === "authenticated") {
+      setStampsLoading(true);
+      fetch("/api/user/stamps")
+        .then(r => r.json())
+        .then(d => { if (d.stamps) setMyStamps(d.stamps); })
+        .catch(() => {})
+        .finally(() => setStampsLoading(false));
+    }
+  }, [authStatus]);
+
+  async function deleteStamp(id: string) {
+    setDeletingId(id);
+    try {
+      await fetch(`/api/user/stamps?id=${id}`, { method: "DELETE" });
+      setMyStamps(prev => prev.filter(s => s.id !== id));
+      toast.success("已删除认领记录");
+    } catch {
+      toast.error("删除失败");
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
@@ -188,6 +220,9 @@ function StampLandingPage() {
     },
   ];
 
+  const verifiedStamps = myStamps.filter(s => s.verified);
+  const pendingStamps = myStamps.filter(s => !s.verified);
+
   return (
     <>
       <Head>
@@ -215,6 +250,127 @@ function StampLandingPage() {
             </div>
           </div>
         </div>
+
+        {/* My claims — authenticated users */}
+        {authStatus === "authenticated" && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">我的认领</p>
+              {myStamps.length > 0 && (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  {verifiedStamps.length > 0 && (
+                    <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                      <RiCheckLine className="w-3 h-3" />{verifiedStamps.length} 已认证
+                    </span>
+                  )}
+                  {pendingStamps.length > 0 && (
+                    <span className="inline-flex items-center gap-1 text-amber-500">
+                      <RiTimeLine className="w-3 h-3" />{pendingStamps.length} 待验证
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {stampsLoading ? (
+              <div className="flex justify-center py-6">
+                <RiLoader4Line className="w-5 h-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : myStamps.length === 0 ? (
+              <div className="glass-panel border border-dashed border-border rounded-2xl p-6 text-center space-y-2">
+                <RiAwardLine className="w-7 h-7 text-muted-foreground/25 mx-auto" />
+                <p className="text-sm text-muted-foreground">暂无认领记录</p>
+                <p className="text-xs text-muted-foreground/60">搜索并认领你的域名，在 WHOIS 结果中展示品牌</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {myStamps.map(stamp => (
+                  <div
+                    key={stamp.id}
+                    className={cn(
+                      "glass-panel border rounded-2xl p-4 flex items-center gap-3",
+                      stamp.verified ? "border-border" : "border-amber-200/60 dark:border-amber-800/40 bg-amber-50/20 dark:bg-amber-950/10"
+                    )}
+                  >
+                    <div className={cn(
+                      "w-8 h-8 rounded-lg flex items-center justify-center shrink-0",
+                      stamp.verified ? "bg-emerald-100 dark:bg-emerald-950/40" : "bg-amber-100 dark:bg-amber-950/40"
+                    )}>
+                      {stamp.verified
+                        ? <RiCheckLine className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                        : <RiTimeLine className="w-4 h-4 text-amber-500" />
+                      }
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <p className="text-sm font-semibold font-mono truncate">{stamp.domain}</p>
+                        <TagBadge tagName={stamp.tag_name} tagStyle={stamp.tag_style} live={stamp.verified} />
+                      </div>
+                      <p className="text-[11px] mt-0.5 text-muted-foreground">
+                        {stamp.verified
+                          ? `已认证 · ${stamp.verified_at ? new Date(stamp.verified_at).toLocaleDateString("zh-CN") : ""}`
+                          : "待验证 · 点击「继续」完成 DNS 验证"
+                        }
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      {stamp.verified ? (
+                        <Link
+                          href={`/${stamp.domain}`}
+                          className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                          title="查看 WHOIS"
+                        >
+                          <RiExternalLinkLine className="w-3.5 h-3.5" />
+                        </Link>
+                      ) : (
+                        <Link
+                          href={`/stamp?domain=${encodeURIComponent(stamp.domain)}`}
+                          className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 hover:bg-amber-200 dark:hover:bg-amber-900/40 transition-colors"
+                        >
+                          继续验证
+                        </Link>
+                      )}
+                      <button
+                        onClick={() => deleteStamp(stamp.id)}
+                        disabled={deletingId === stamp.id}
+                        title="删除"
+                        className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 text-muted-foreground hover:text-red-500 transition-colors"
+                      >
+                        {deletingId === stamp.id
+                          ? <RiLoader4Line className="w-3.5 h-3.5 animate-spin" />
+                          : <RiDeleteBinLine className="w-3.5 h-3.5" />
+                        }
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Login prompt for unauthenticated */}
+        {authStatus === "unauthenticated" && (
+          <div className="glass-panel border border-violet-200/40 dark:border-violet-800/30 rounded-2xl p-5 text-center space-y-3">
+            <RiShieldCheckLine className="w-7 h-7 text-violet-500/50 mx-auto" />
+            <div>
+              <p className="text-sm font-semibold">登录后管理认领记录</p>
+              <p className="text-xs text-muted-foreground mt-1">登录后可查看所有认领记录并管理验证状态</p>
+            </div>
+            <div className="flex gap-2 justify-center">
+              <Link href="/login?callbackUrl=%2Fstamp">
+                <Button size="sm" className="rounded-xl h-9 gap-1.5 text-xs bg-violet-600 hover:bg-violet-700">
+                  登录
+                </Button>
+              </Link>
+              <Link href="/register?callbackUrl=%2Fstamp">
+                <Button size="sm" variant="outline" className="rounded-xl h-9 gap-1.5 text-xs">
+                  注册账号
+                </Button>
+              </Link>
+            </div>
+          </div>
+        )}
 
         {/* Visual mockup — shows where to click */}
         <div className="space-y-2">
@@ -318,12 +474,10 @@ export default function StampPage() {
 
   const domain = String(router.query.domain || "");
 
-  // Redirect unauthenticated users to login, preserving the destination URL.
+  // Redirect unauthenticated users to login only when a domain is specified.
   React.useEffect(() => {
-    if (authStatus === "unauthenticated") {
-      const callbackUrl = domain
-        ? `/stamp?domain=${encodeURIComponent(domain)}`
-        : "/stamp";
+    if (authStatus === "unauthenticated" && domain) {
+      const callbackUrl = `/stamp?domain=${encodeURIComponent(domain)}`;
       router.replace(`/login?callbackUrl=${encodeURIComponent(callbackUrl)}`);
     }
   }, [authStatus, domain, router]);
@@ -691,14 +845,14 @@ export default function StampPage() {
     }
   }, [verifyTab, submitResult?.id]);
 
-  // Don't render the page content while checking auth or redirecting.
-  if (authStatus === "loading" || authStatus === "unauthenticated") {
-    return null;
-  }
-
-  // No domain specified — show a rich landing/guide page
+  // No domain specified — show a rich landing/guide page (handles own auth state)
   if (!domain) {
     return <StampLandingPage />;
+  }
+
+  // Don't render the claim flow while checking auth or redirecting (domain-specific).
+  if (authStatus === "loading" || authStatus === "unauthenticated") {
+    return null;
   }
 
   return (
