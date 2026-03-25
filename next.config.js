@@ -21,6 +21,7 @@ const nextConfig = {
         'whoiser',
         'node-rdap',
         'ioredis',
+        'nodemailer',
       ];
     }
     return config;
