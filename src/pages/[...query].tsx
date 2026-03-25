@@ -2974,24 +2974,29 @@ function DomainReminderDialog({
 
         {/* ── Header ── */}
         <div className="px-5 pt-5 pb-4 border-b border-border/50 bg-gradient-to-br from-sky-500/5 via-transparent to-blue-500/5">
-          <div className="flex items-start gap-3">
-            <div className="w-9 h-9 rounded-xl bg-sky-500/10 border border-sky-400/20 flex items-center justify-center shrink-0 mt-0.5">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-sky-500/10 border border-sky-400/20 flex items-center justify-center shrink-0">
               <RiTimerLine className="w-[18px] h-[18px] text-sky-500" />
             </div>
-            <div className="min-w-0 flex-1">
-              <h2 className="text-sm font-bold text-foreground leading-none">
-                {isZh ? "域名监控订阅" : "Domain Monitoring"}
-              </h2>
-              <p className="text-[12px] text-sky-600 dark:text-sky-400 font-mono font-semibold mt-1 truncate">{domain}</p>
-              {lc?.cfg.registry && (
-                <p className="text-[10px] text-muted-foreground/55 mt-0.5">{lc.cfg.registry}</p>
-              )}
-            </div>
+            <h2 className="text-sm font-bold text-foreground leading-none">
+              {isZh ? "域名监控订阅" : "Domain Monitoring"}
+            </h2>
           </div>
         </div>
 
         {/* ── Body ── */}
         <div className="px-5 pb-5 overflow-y-auto max-h-[72vh]">
+
+          {/* ── Domain name card — centered, above pricing ── */}
+          <div className="flex flex-col items-center justify-center pt-4 pb-1 gap-1">
+            <div className="px-4 py-2.5 rounded-xl border border-sky-300/40 bg-sky-50/50 dark:bg-sky-950/20 text-center min-w-0 max-w-full">
+              <p className="text-[15px] font-mono font-bold text-sky-600 dark:text-sky-400 truncate tracking-tight">{domain}</p>
+              {lc?.cfg.registry && (
+                <p className="text-[10px] text-muted-foreground/55 mt-0.5 truncate">{lc.cfg.registry}</p>
+              )}
+            </div>
+          </div>
+
           <AnimatePresence mode="wait" initial={false}>
 
             {/* ── Success ── */}
@@ -3067,7 +3072,7 @@ function DomainReminderDialog({
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.15 }}
-                className="space-y-3 pt-4"
+                className="space-y-3 pt-2"
               >
                 {/* ── Prohibited / Reserved warning banner ─────────────── */}
                 {(regStatusType === "prohibited" || regStatusType === "reserved") && (
@@ -3583,8 +3588,8 @@ function DomainReminderDialog({
         )}
 
         {!lcDone && (
-          <DialogFooter className="px-5 pb-5 pt-0">
-            <Button variant="ghost" size="sm" onClick={() => setLcFeedbackOpen(false)} className="flex-1">
+          <div className="flex flex-row gap-2 px-5 pb-5 pt-0">
+            <Button variant="outline" size="sm" onClick={() => setLcFeedbackOpen(false)} className="flex-1">
               {isZh ? "取消" : "Cancel"}
             </Button>
             <Button
@@ -3597,7 +3602,7 @@ function DomainReminderDialog({
                 ? <><RiLoader4Line className="w-3.5 h-3.5 animate-spin mr-1" />{isZh ? "提交中…" : "Submitting…"}</>
                 : <><RiFlagLine className="w-3.5 h-3.5 mr-1" />{isZh ? "提交纠错" : "Submit Correction"}</>}
             </Button>
-          </DialogFooter>
+          </div>
         )}
       </DialogContent>
     </Dialog>
