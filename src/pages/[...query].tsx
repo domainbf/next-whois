@@ -3178,7 +3178,7 @@ function RegistrarIcon({ faviconDomain, name }: { faviconDomain: string | null; 
     <div className="shrink-0 w-9 h-9 rounded-xl flex items-center justify-center overflow-hidden bg-muted/40 border border-border/30">
       {faviconDomain && !imgFailed ? (
         <img
-          src={`https://www.google.com/s2/favicons?domain=${faviconDomain}&sz=64`}
+          src={`/api/favicon?domain=${encodeURIComponent(faviconDomain)}`}
           alt={name}
           className="w-6 h-6 object-contain"
           onError={() => setImgFailed(true)}
@@ -3189,6 +3189,31 @@ function RegistrarIcon({ faviconDomain, name }: { faviconDomain: string | null; 
         </span>
       )}
     </div>
+  );
+}
+
+function DomainFavicon({
+  domain,
+  size = 20,
+  className = "",
+  fallback,
+}: {
+  domain: string;
+  size?: number;
+  className?: string;
+  fallback: React.ReactNode;
+}) {
+  const [failed, setFailed] = React.useState(false);
+  if (!domain || failed) return <>{fallback}</>;
+  return (
+    <img
+      src={`/api/favicon?domain=${encodeURIComponent(domain)}`}
+      alt=""
+      width={size}
+      height={size}
+      className={`object-contain rounded-sm ${className}`}
+      onError={() => setFailed(true)}
+    />
   );
 }
 
@@ -4677,8 +4702,8 @@ export default function LookupPage({
                                       <div className="h-[3px] w-full bg-gradient-to-r from-blue-400 via-sky-400 to-indigo-500" />
                                       <div className="px-4 pt-4 pb-5">
                                         <div className="flex items-center gap-3 mb-3">
-                                          <div className="relative shrink-0 w-10 h-10 rounded-xl bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900/40 dark:to-indigo-900/40 border border-blue-200/60 dark:border-blue-700/50 flex items-center justify-center">
-                                            <RiGlobalLine className="w-5 h-5 text-blue-500" />
+                                          <div className="relative shrink-0 w-10 h-10 rounded-xl bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900/40 dark:to-indigo-900/40 border border-blue-200/60 dark:border-blue-700/50 flex items-center justify-center overflow-hidden">
+                                            <DomainFavicon domain={domainKey} size={20} fallback={<RiGlobalLine className="w-5 h-5 text-blue-500" />} />
                                             <motion.span className="absolute inset-0 rounded-xl border-2 border-blue-400/40" animate={{ scale: [1, 1.5, 1], opacity: [0.5, 0, 0.5] }} transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }} />
                                           </div>
                                           <div className="min-w-0">
@@ -4717,8 +4742,8 @@ export default function LookupPage({
                                     <div className="h-[3px] w-full bg-gradient-to-r from-blue-400 via-sky-400 to-indigo-500" />
                                     <div className="px-4 pt-4 pb-4">
                                       <div className="flex items-center gap-3 mb-3">
-                                        <div className="relative shrink-0 w-10 h-10 rounded-xl bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900/40 dark:to-indigo-900/40 border border-blue-200/60 dark:border-blue-700/50 flex items-center justify-center">
-                                          <RiGlobalLine className="w-5 h-5 text-blue-500" />
+                                        <div className="relative shrink-0 w-10 h-10 rounded-xl bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900/40 dark:to-indigo-900/40 border border-blue-200/60 dark:border-blue-700/50 flex items-center justify-center overflow-hidden">
+                                          <DomainFavicon domain={domainKey} size={20} fallback={<RiGlobalLine className="w-5 h-5 text-blue-500" />} />
                                           <motion.span className="absolute inset-0 rounded-xl border-2 border-blue-400/40" animate={{ scale: [1, 1.5, 1], opacity: [0.5, 0, 0.5] }} transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }} />
                                         </div>
                                         <div className="min-w-0">
