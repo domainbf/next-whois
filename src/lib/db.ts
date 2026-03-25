@@ -317,23 +317,31 @@ export function getDb(): Pool | null {
 export async function runMigrations(db: Pool): Promise<void> {
   const client = await db.connect();
   try {
-    for (const sql of CREATE_TABLES) {
-      await client.query(sql);
-    }
-    for (const sql of ALTER_COLUMNS) {
-      try {
-        await client.query(sql);
-      } catch {
-        // Column may already exist — ignore
-      }
-    }
-    for (const sql of CREATE_INDEXES) {
-      try {
-        await client.query(sql);
-      } catch {
-        // Index may already exist — ignore
-      }
-    }
+    // Batch 1: all CREATE TABLE statements in a single round-trip.
+    // pg uses simple query protocol (no parameters) → multi-statement is supported.
+    await client.query(CREATE_TABLES.join(";\n") + ";");
+
+    // Batch 2: all ALTER COLUMN/TABLE statements wrapped in a single DO block.
+    // Errors (e.g. column already exists) are silently swallowed per-statement.
+    const alterBlock =
+      `DO $$\nBEGIN\n` +
+      ALTER_COLUMNS.map(
+        (s) => `  BEGIN\n    ${s};\n  EXCEPTION WHEN OTHERS THEN NULL;\n  END;`,
+      ).join("\n") +
+      `\nEND $$`;
+    await client.query(alterBlock);
+
+    // Batch 3: all CREATE INDEX IF NOT EXISTS in a single DO block.
+    // Each is individually exception-protected so a bad index definition
+    // (e.g., referencing a non-existent column) won't abort the rest.
+    const indexBlock =
+      `DO $$\nBEGIN\n` +
+      CREATE_INDEXES.map(
+        (s) => `  BEGIN\n    ${s};\n  EXCEPTION WHEN OTHERS THEN NULL;\n  END;`,
+      ).join("\n") +
+      `\nEND $$`;
+    await client.query(indexBlock);
+
     console.log("[db] Schema ready");
   } finally {
     client.release();
