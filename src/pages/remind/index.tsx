@@ -13,6 +13,7 @@ import {
   RiLoader4Line, RiDeleteBinLine, RiExternalLinkLine,
   RiArrowLeftLine, RiBellLine, RiAlertLine, RiLockLine,
   RiCheckLine, RiRefreshLine, RiInformationLine,
+  RiCheckboxCircleLine,
 } from "@remixicon/react";
 
 type Subscription = {
@@ -105,6 +106,199 @@ function UrgencyBar({ daysLeft, phase }: { daysLeft: number | null; phase: strin
   );
 }
 
+const ALL_THRESHOLDS = [60, 30, 10, 5, 1];
+
+// ── Direct-subscribe form (shown when ?domain= is in the URL) ──────────────
+function DirectSubscribeForm({ domain }: { domain: string }) {
+  const router = useRouter();
+  const { data: session, status } = useSession();
+  const [email, setEmail] = React.useState("");
+  const [thresholds, setThresholds] = React.useState<number[]>([60, 30, 1]);
+  const [submitting, setSubmitting] = React.useState(false);
+  const [done, setDone] = React.useState(false);
+
+  // Redirect unauthenticated users to login, preserving ?domain=
+  React.useEffect(() => {
+    if (status === "unauthenticated") {
+      router.replace(`/login?callbackUrl=${encodeURIComponent(`/remind?domain=${encodeURIComponent(domain)}`)}`);
+    }
+  }, [status, domain, router]);
+
+  // Prefill email from session
+  React.useEffect(() => {
+    if (session?.user?.email) setEmail(prev => prev || session.user!.email!);
+  }, [session]);
+
+  function toggleThreshold(d: number) {
+    setThresholds(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d].sort((a, b) => b - a));
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!email || !email.includes("@")) { toast.error("请输入有效邮箱"); return; }
+    if (thresholds.length === 0) { toast.error("请至少选择一个提醒时间"); return; }
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/remind/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          domain: domain.toLowerCase().trim(),
+          email,
+          expirationDate: null,
+          phaseAlerts: { grace: true, redemption: true, pendingDelete: true, dropSoon: true, dropped: true },
+          thresholds,
+          regStatusType: null,
+        }),
+      });
+      if (res.ok) { setDone(true); } else { toast.error("提交失败，请重试"); }
+    } catch { toast.error("网络错误，请重试"); }
+    finally { setSubmitting(false); }
+  }
+
+  if (status === "loading" || status === "unauthenticated") {
+    return (
+      <div className="min-h-[calc(100vh-64px)] bg-background">
+        <div className="max-w-lg mx-auto px-4 py-5 space-y-4 animate-pulse">
+          <div className="h-5 w-32 rounded-lg bg-muted/50" />
+          <div className="h-28 rounded-2xl bg-muted/40" />
+          <div className="h-48 rounded-2xl bg-muted/40" />
+          <div className="h-12 rounded-xl bg-muted/35" />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <Head>
+        <title key="site-title">{`订阅提醒 · ${domain}`}</title>
+      </Head>
+      <div className="min-h-[calc(100vh-64px)] bg-background">
+        <div className="max-w-lg mx-auto px-4 py-5 pb-10">
+          {/* Back nav */}
+          <div className="flex items-center gap-2 mb-5">
+            <button
+              onClick={() => { if (window.history.length > 1) router.back(); else router.push("/dashboard"); }}
+              className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors group"
+            >
+              <RiArrowLeftLine className="w-4 h-4 transition-transform group-hover:-translate-x-0.5" />
+              返回
+            </button>
+            <span className="text-muted-foreground/30">·</span>
+            <span className="text-sm font-mono text-muted-foreground/80">{domain}</span>
+          </div>
+
+          {done ? (
+            /* ── Success state ── */
+            <div className="space-y-4">
+              <div className="glass-panel border border-border rounded-2xl p-8 text-center space-y-4">
+                <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-200/60 dark:border-emerald-800/40 flex items-center justify-center mx-auto">
+                  <RiCheckboxCircleLine className="w-7 h-7 text-emerald-500" />
+                </div>
+                <div className="space-y-1.5">
+                  <p className="text-base font-bold">订阅成功</p>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    已为 <span className="font-mono font-semibold">{domain}</span> 开启到期提醒<br />
+                    确认邮件已发送至 <span className="font-semibold">{email}</span>
+                  </p>
+                </div>
+                <div className="flex gap-2 justify-center pt-1">
+                  <Button size="sm" variant="outline" className="rounded-xl text-xs h-8 gap-1" onClick={() => router.push("/dashboard")}>
+                    前往用户中心
+                  </Button>
+                  <Button size="sm" className="rounded-xl text-xs h-8 gap-1" onClick={() => router.push(`/${domain}`)}>
+                    查看域名 WHOIS
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            /* ── Subscription form ── */
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Header */}
+              <div className="flex items-center gap-2 mb-5">
+                <RiCalendarLine className="w-4 h-4 text-sky-500 shrink-0" />
+                <h1 className="text-sm font-bold">域名到期提醒</h1>
+              </div>
+
+              {/* Domain display */}
+              <div className="glass-panel border border-border rounded-2xl p-4 flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-sky-500/10 flex items-center justify-center shrink-0">
+                  <RiGlobalLine className="w-4.5 h-4.5 text-sky-500" />
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50">域名</p>
+                  <p className="text-sm font-bold font-mono">{domain.toUpperCase()}</p>
+                </div>
+              </div>
+
+              {/* Email */}
+              <div className="glass-panel border border-border rounded-2xl p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <RiMailLine className="w-3.5 h-3.5 text-muted-foreground" />
+                  <p className="text-xs font-semibold">接收邮箱</p>
+                </div>
+                <Input
+                  type="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  placeholder="your@email.com"
+                  className="h-9 rounded-xl text-sm"
+                  required
+                />
+                <p className="text-[10px] text-muted-foreground">到期前提醒邮件将发送到此邮箱</p>
+              </div>
+
+              {/* Thresholds */}
+              <div className="glass-panel border border-border rounded-2xl p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <RiBellLine className="w-3.5 h-3.5 text-muted-foreground" />
+                  <p className="text-xs font-semibold">提醒时间</p>
+                  <span className="text-[10px] text-muted-foreground ml-auto">到期前多少天发送邮件</span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {ALL_THRESHOLDS.map(d => {
+                    const active = thresholds.includes(d);
+                    return (
+                      <button
+                        key={d}
+                        type="button"
+                        onClick={() => toggleThreshold(d)}
+                        className={cn(
+                          "px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all",
+                          active
+                            ? "bg-sky-500 text-white border-sky-500"
+                            : "bg-background text-muted-foreground border-border hover:border-sky-400/60 hover:text-sky-600"
+                        )}
+                      >
+                        {d} 天前
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-[10px] text-muted-foreground">另外，宽限期、赎回期、待删除阶段也会自动发送提醒</p>
+              </div>
+
+              {/* Submit */}
+              <Button type="submit" disabled={submitting} className="w-full h-11 rounded-xl gap-1.5">
+                {submitting ? <RiLoader4Line className="w-4 h-4 animate-spin" /> : <RiCheckLine className="w-4 h-4" />}
+                {submitting ? "提交中…" : "开启到期提醒"}
+              </Button>
+
+              <p className="text-[10px] text-muted-foreground text-center">
+                订阅成功后可在{" "}
+                <button type="button" className="underline hover:text-foreground" onClick={() => router.push("/dashboard")}>用户中心</button>
+                {" "}随时管理或取消订阅
+              </p>
+            </form>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
 export default function RemindPage() {
   const router = useRouter();
   const { data: session, status } = useSession();
@@ -116,7 +310,11 @@ export default function RemindPage() {
   const [filter, setFilter] = React.useState<FilterKey>("all");
   const [expandInactive, setExpandInactive] = React.useState(false);
 
+  const domainParam = String(router.query.domain || "").trim();
+
+  // Load subscriptions only in list mode (no domain param)
   React.useEffect(() => {
+    if (domainParam) return;
     if (status === "authenticated") {
       setLoadingSubs(true);
       fetch("/api/user/subscriptions")
@@ -125,7 +323,7 @@ export default function RemindPage() {
         .catch(() => {})
         .finally(() => setLoadingSubs(false));
     }
-  }, [status]);
+  }, [status, domainParam]);
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
@@ -133,6 +331,9 @@ export default function RemindPage() {
     if (!q) return;
     router.push(`/${q}?subscribe=1`);
   }
+
+  // Delegate to DirectSubscribeForm when ?domain= is present — after all hooks
+  if (domainParam) return <DirectSubscribeForm domain={domainParam} />;
 
   async function cancelSub(id: string) {
     setCancelling(id);
