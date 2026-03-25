@@ -537,8 +537,10 @@ export default function StampPage() {
   const [showGuide, setShowGuide] = React.useState(false);
   React.useEffect(() => {
     if (!hydrated) return;
-    if (!localStorage.getItem(GUIDE_KEY)) setShowGuide(true);
-  }, [hydrated]);
+    // When a domain is pre-filled via URL param the user arrived from a guide modal
+    // and has already seen the walkthrough — skip the auto-popup to avoid double-guiding.
+    if (!domain && !localStorage.getItem(GUIDE_KEY)) setShowGuide(true);
+  }, [hydrated, domain]);
   function dismissGuide() {
     setShowGuide(false);
     localStorage.setItem(GUIDE_KEY, "1");
