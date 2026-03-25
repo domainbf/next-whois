@@ -1,0 +1,60 @@
+import type { NextApiRequest, NextApiResponse } from "next";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/pages/api/auth/[...nextauth]";
+import { sendEmail, getSiteLabel } from "@/lib/email";
+import { ADMIN_EMAIL } from "@/lib/admin-shared";
+
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (req.method !== "POST") return res.status(405).end();
+
+  const session = await getServerSession(req, res, authOptions);
+  if (!session?.user?.email) return res.status(401).json({ error: "请先登录" });
+
+  const { message } = req.body;
+  if (!message || typeof message !== "string" || !message.trim()) {
+    return res.status(400).json({ error: "消息内容不能为空" });
+  }
+
+  const userEmail = session.user.email;
+  const userName  = (session.user as any)?.name || userEmail;
+  const siteName  = await getSiteLabel().catch(() => "X.RW");
+  const isMember  = !!(session.user as any)?.subscriptionAccess;
+
+  const html = `
+    <div style="font-family:system-ui,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#1a1a1a">
+      <h2 style="font-size:18px;font-weight:700;margin-bottom:4px">📩 新客服消息 · ${siteName}</h2>
+      <p style="font-size:13px;color:#6b7280;margin-bottom:20px">来自用户中心联系客服表单</p>
+      <table style="width:100%;border-collapse:collapse;margin-bottom:20px">
+        <tr>
+          <td style="padding:8px 12px;background:#f9fafb;border:1px solid #e5e7eb;width:100px;font-size:12px;font-weight:600;color:#374151">用户</td>
+          <td style="padding:8px 12px;border:1px solid #e5e7eb;font-size:13px">${userName}</td>
+        </tr>
+        <tr>
+          <td style="padding:8px 12px;background:#f9fafb;border:1px solid #e5e7eb;font-size:12px;font-weight:600;color:#374151">邮箱</td>
+          <td style="padding:8px 12px;border:1px solid #e5e7eb;font-size:13px"><a href="mailto:${userEmail}">${userEmail}</a></td>
+        </tr>
+        <tr>
+          <td style="padding:8px 12px;background:#f9fafb;border:1px solid #e5e7eb;font-size:12px;font-weight:600;color:#374151">身份</td>
+          <td style="padding:8px 12px;border:1px solid #e5e7eb;font-size:13px">${isMember ? "会员" : "普通用户"}</td>
+        </tr>
+        <tr>
+          <td style="padding:8px 12px;background:#f9fafb;border:1px solid #e5e7eb;font-size:12px;font-weight:600;color:#374151;vertical-align:top">内容</td>
+          <td style="padding:8px 12px;border:1px solid #e5e7eb;font-size:13px;line-height:1.6;white-space:pre-wrap">${message.trim().slice(0, 500)}</td>
+        </tr>
+      </table>
+      <p style="font-size:11px;color:#9ca3af">请直接回复此邮件即可联系用户 · ${new Date().toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" })}</p>
+    </div>
+  `;
+
+  try {
+    await sendEmail({
+      to: ADMIN_EMAIL,
+      subject: `[客服消息] ${userName} · ${siteName}`,
+      html,
+    });
+    return res.status(200).json({ ok: true });
+  } catch (err: any) {
+    console.error("[user/contact] send error:", err.message);
+    return res.status(500).json({ error: "发送失败，请稍后重试" });
+  }
+}

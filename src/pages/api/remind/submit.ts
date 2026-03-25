@@ -1,10 +1,14 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { randomBytes } from "crypto";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/pages/api/auth/[...nextauth]";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { sendEmail, subscriptionConfirmHtml, getSiteLabel } from "@/lib/email";
 import { computeLifecycle, fmtDate } from "@/lib/lifecycle";
 import { one, run, isDbReady } from "@/lib/db-query";
 import { loadLifecycleOverrides } from "@/lib/server/lifecycle-overrides";
+
+const FREE_TIER_LIMIT = 5;
 
 const ALL_THRESHOLDS   = [60, 30, 10, 5, 1];
 const DEFAULT_THRESHOLDS = [60, 30, 1];
@@ -38,6 +42,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!(await isDbReady())) return res.status(500).json({ error: "Database unavailable" });
 
   const cleanDomain  = String(domain).toLowerCase().trim();
+
+  // ── Enforce free-tier subscription limit ─────────────────────────────────
+  const session = await getServerSession(req, res, authOptions);
+  const isMember = !!(session?.user as any)?.subscriptionAccess;
+  if (!isMember) {
+    const countRow = await one<{ count: string }>(
+      "SELECT COUNT(*) as count FROM reminders WHERE email = $1 AND active = true",
+      [String(email).trim()],
+    ).catch(() => null);
+    const activeCount = parseInt(countRow?.count ?? "0", 10);
+    // Allow updating existing subscription without counting toward limit
+    const existing = await one<{ id: string }>(
+      "SELECT id FROM reminders WHERE domain = $1 AND email = $2",
+      [cleanDomain, String(email).trim()],
+    ).catch(() => null);
+    if (!existing && activeCount >= FREE_TIER_LIMIT) {
+      return res.status(403).json({
+        error: `普通用户最多订阅 ${FREE_TIER_LIMIT} 个域名，请升级会员解锁无限订阅`,
+        code: "LIMIT_EXCEEDED",
+        limit: FREE_TIER_LIMIT,
+        current: activeCount,
+      });
+    }
+  }
   const cleanEmail   = String(email).trim();
   const expDate      = expirationDate ? String(expirationDate) : null;
   const cancelToken  = randomBytes(20).toString("hex");

@@ -125,7 +125,7 @@ const EDIT_TAG_STYLES: {
 ];
 
 // ── Edit Stamp Modal ──────────────────────────────────────────────────────────
-function EditStampModal({ stamp, onClose, onSaved }: { stamp: Stamp; onClose: () => void; onSaved: () => void }) {
+function EditStampModal({ stamp, onClose, onSaved, isMember }: { stamp: Stamp; onClose: () => void; onSaved: () => void; isMember: boolean }) {
   const [tagName, setTagName] = React.useState(stamp.tag_name);
   const [tagStyle, setTagStyle] = React.useState(stamp.tag_style);
   const [link, setLink] = React.useState(stamp.link || "");
@@ -169,25 +169,38 @@ function EditStampModal({ stamp, onClose, onSaved }: { stamp: Stamp; onClose: ()
         <p className="text-xs text-muted-foreground">域名：<span className="font-mono text-foreground">{stamp.domain}</span></p>
         <div className="space-y-3">
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold">标签文字</Label>
-            <Input value={tagName} onChange={e => setTagName(e.target.value)} maxLength={32} className="h-9 rounded-xl text-sm" />
+            <div className="flex items-baseline justify-between">
+              <Label className="text-xs font-semibold">标签文字</Label>
+              {!isMember && <span className="text-[10px] text-amber-500">普通用户限 5 字</span>}
+            </div>
+            <Input value={tagName} onChange={e => setTagName(e.target.value)} maxLength={isMember ? 32 : 5} className="h-9 rounded-xl text-sm" />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold">标签样式</Label>
+            <div className="flex items-baseline justify-between">
+              <Label className="text-xs font-semibold">标签样式</Label>
+              {!isMember && <span className="text-[10px] text-violet-600 flex items-center gap-0.5"><RiVipCrownLine className="w-3 h-3"/>会员专属</span>}
+            </div>
             <div className="flex flex-wrap gap-1.5">
               {EDIT_TAG_STYLES.map(ts => {
                 const Icon = ts.icon;
+                const isFree = ts.value === "personal";
+                const locked = !isMember && !isFree;
                 return (
-                  <button key={ts.value} type="button" onClick={() => setTagStyle(ts.value)}
+                  <button key={ts.value} type="button"
+                    onClick={() => { if (!locked) setTagStyle(ts.value); else toast.info("升级会员后可使用此样式"); }}
+                    title={locked ? "会员专属样式" : undefined}
                     className={cn(
-                      "flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold border-2 transition-all active:scale-[0.96]",
-                      tagStyle === ts.value
+                      "relative flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold border-2 transition-all active:scale-[0.96]",
+                      locked ? "opacity-40 cursor-not-allowed border-transparent" : tagStyle === ts.value
                         ? "border-white/60 ring-2 ring-offset-1 ring-primary scale-105 shadow-md"
                         : "border-transparent opacity-75 hover:opacity-100",
                       ts.color
                     )}>
-                    <Icon className="w-3 h-3 shrink-0" />
+                    {locked ? <RiLockLine className="w-3 h-3 shrink-0" /> : <Icon className="w-3 h-3 shrink-0" />}
                     {isZh ? ts.zhLabel : ts.enLabel}
+                    {isFree && !isMember && (
+                      <span className="ml-0.5 text-[7px] font-bold bg-white/30 px-1 py-0.5 rounded-full leading-tight">免费</span>
+                    )}
                   </button>
                 );
               })}
@@ -230,14 +243,26 @@ function EditStampModal({ stamp, onClose, onSaved }: { stamp: Stamp; onClose: ()
             <Label className="text-xs font-semibold">昵称</Label>
             <Input value={nickname} onChange={e => setNickname(e.target.value)} maxLength={50} className="h-9 rounded-xl text-sm" />
           </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs font-semibold">链接 <span className="text-muted-foreground font-normal">（可选）</span></Label>
-            <Input value={link} onChange={e => setLink(e.target.value)} maxLength={200} placeholder="https://" className="h-9 rounded-xl text-sm" />
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs font-semibold">描述 <span className="text-muted-foreground font-normal">（可选）</span></Label>
-            <Input value={description} onChange={e => setDescription(e.target.value)} maxLength={200} className="h-9 rounded-xl text-sm" />
-          </div>
+          {isMember ? (
+            <>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">链接 <span className="text-muted-foreground font-normal">（可选）</span></Label>
+                <Input value={link} onChange={e => setLink(e.target.value)} maxLength={200} placeholder="https://" className="h-9 rounded-xl text-sm" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">描述 <span className="text-muted-foreground font-normal">（可选）</span></Label>
+                <Input value={description} onChange={e => setDescription(e.target.value)} maxLength={200} className="h-9 rounded-xl text-sm" />
+              </div>
+            </>
+          ) : (
+            <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-violet-50/50 dark:bg-violet-950/10 border border-dashed border-violet-200/60 dark:border-violet-800/40">
+              <RiVipCrownLine className="w-4 h-4 text-violet-500 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-[11px] font-semibold text-violet-700 dark:text-violet-300">链接 & 简介 · 会员专属</p>
+                <p className="text-[10px] text-muted-foreground/70 leading-relaxed">升级会员后可设置品牌官网链接及详细说明</p>
+              </div>
+            </div>
+          )}
         </div>
         <div className="flex gap-2 pt-1">
           <Button onClick={onClose} variant="outline" className="flex-1 h-9 rounded-xl text-sm">取消</Button>
@@ -605,6 +630,9 @@ export default function DashboardPage() {
   const [loadingOrders, setLoadingOrders] = React.useState(false);
   const [redeemCode, setRedeemCode] = React.useState("");
   const [redeeming, setRedeeming] = React.useState(false);
+  const [contactMsg, setContactMsg] = React.useState("");
+  const [contactSending, setContactSending] = React.useState(false);
+  const [contactSent, setContactSent] = React.useState(false);
   const [inviteCodeInput, setInviteCodeInput] = React.useState("");
   const [applyingCode, setApplyingCode] = React.useState(false);
   const [editingName, setEditingName] = React.useState(false);
@@ -1020,7 +1048,7 @@ export default function DashboardPage() {
       {showClaimGuide && <ClaimGuideModal onClose={() => setShowClaimGuide(false)} />}
       {showSubscribeGuide && <SubscribeGuideModal onClose={() => setShowSubscribeGuide(false)} />}
       {editingStamp && (
-        <EditStampModal stamp={editingStamp} onClose={() => setEditingStamp(null)} onSaved={refreshData} />
+        <EditStampModal stamp={editingStamp} onClose={() => setEditingStamp(null)} onSaved={refreshData} isMember={!!subscriptionAccessDB} />
       )}
       {editingSubscription && (
         <EditExpiryModal
@@ -1722,39 +1750,68 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
-                {/* ── 购买会员 ── */}
-                {paymentEnabled && (
-                  <div className="glass-panel border border-border rounded-2xl p-4 space-y-3">
-                    <div className="flex items-center gap-2">
-                      <RiStarLine className="w-3.5 h-3.5 text-violet-500" />
-                      <p className="text-xs font-semibold">购买会员</p>
+                {/* ── 会员权益说明 ── */}
+                {!subscriptionAccessDB && (
+                  <div className="glass-panel border border-violet-200/50 dark:border-violet-800/30 rounded-2xl overflow-hidden">
+                    <div className="px-4 pt-3 pb-2 bg-violet-50/50 dark:bg-violet-950/10 flex items-center gap-2 border-b border-violet-100/60 dark:border-violet-800/20">
+                      <RiVipCrownLine className="w-3.5 h-3.5 text-violet-500" />
+                      <p className="text-xs font-bold">升级会员，解锁更多权益</p>
                     </div>
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="px-4 py-3 grid grid-cols-1 gap-1.5">
                       {[
-                        { label: "月度会员", sub: "30天", badge: null },
-                        { label: "年度会员", sub: "365天", badge: "推荐" },
-                        { label: "永久会员", sub: "无限期", badge: "最划算" },
-                      ].map(p => (
-                        <Link key={p.label} href="/payment/checkout" className={cn(
-                          "relative flex flex-col items-center gap-1 px-2 py-3 rounded-xl border text-center transition-all group hover:border-violet-400/60 hover:bg-violet-50/50 dark:hover:bg-violet-950/10",
-                          p.badge === "推荐" ? "border-violet-300/70 dark:border-violet-700/40 bg-violet-50/30 dark:bg-violet-950/10" : "border-border"
-                        )}>
-                          {p.badge && (
-                            <span className="absolute -top-2 left-1/2 -translate-x-1/2 text-[8px] font-bold px-1.5 py-0.5 rounded-full bg-violet-500 text-white whitespace-nowrap">
-                              {p.badge}
-                            </span>
-                          )}
-                          <RiVipCrownLine className={cn("w-4 h-4", p.badge ? "text-violet-500" : "text-muted-foreground group-hover:text-violet-500")} />
-                          <p className="text-[10px] font-semibold leading-tight">{p.label}</p>
-                          <p className="text-[9px] text-muted-foreground">{p.sub}</p>
-                        </Link>
+                        { icon: RiBellLine,         text: "无限域名到期订阅（普通用户限 5 个）" },
+                        { icon: RiShieldCheckLine,  text: "品牌认领高级样式（官方/品牌/认证/合作等）" },
+                        { icon: RiExternalLinkLine, text: "认领页面设置跳转链接与品牌简介（最多 300 字）" },
+                        { icon: RiEdit2Line,        text: "标签标题最多 20 字（普通用户限 5 字）" },
+                        { icon: RiBarChartLine,     text: "WHOIS 查询历史无限记录与导出" },
+                        { icon: RiFlashlightLine,   text: "优先支持与新功能抢先体验" },
+                      ].map((item, i) => (
+                        <div key={i} className="flex items-start gap-2.5">
+                          <item.icon className="w-3.5 h-3.5 text-violet-500 mt-0.5 shrink-0" />
+                          <p className="text-[11px] text-muted-foreground leading-snug">{item.text}</p>
+                        </div>
                       ))}
                     </div>
-                    <Link href="/payment/checkout" className="flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors py-1">
-                      查看全部套餐 <RiArrowRightLine className="w-3 h-3" />
-                    </Link>
                   </div>
                 )}
+
+                {/* ── 购买会员 ── */}
+                <div className="glass-panel border border-border rounded-2xl p-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <RiStarLine className="w-3.5 h-3.5 text-violet-500" />
+                    <p className="text-xs font-semibold">购买会员</p>
+                    {!paymentEnabled && <span className="text-[10px] text-muted-foreground/60 ml-auto">联系管理员开通</span>}
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { label: "月度会员", sub: "30天", price: "¥XX", badge: null },
+                      { label: "年度会员", sub: "365天", price: "¥XX", badge: "推荐" },
+                      { label: "永久会员", sub: "无限期", price: "¥XX", badge: "最划算" },
+                    ].map(p => (
+                      <Link key={p.label} href={paymentEnabled ? "/payment/checkout" : "#"} className={cn(
+                        "relative flex flex-col items-center gap-1 px-2 py-3 rounded-xl border text-center transition-all group hover:border-violet-400/60 hover:bg-violet-50/50 dark:hover:bg-violet-950/10",
+                        p.badge === "推荐" ? "border-violet-300/70 dark:border-violet-700/40 bg-violet-50/30 dark:bg-violet-950/10" : "border-border",
+                        !paymentEnabled && "opacity-50 pointer-events-none"
+                      )}>
+                        {p.badge && (
+                          <span className="absolute -top-2 left-1/2 -translate-x-1/2 text-[8px] font-bold px-1.5 py-0.5 rounded-full bg-violet-500 text-white whitespace-nowrap">
+                            {p.badge}
+                          </span>
+                        )}
+                        <RiVipCrownLine className={cn("w-4 h-4", p.badge ? "text-violet-500" : "text-muted-foreground group-hover:text-violet-500")} />
+                        <p className="text-[10px] font-semibold leading-tight">{p.label}</p>
+                        <p className="text-[9px] text-muted-foreground">{p.sub}</p>
+                      </Link>
+                    ))}
+                  </div>
+                  {paymentEnabled ? (
+                    <Link href="/payment/checkout" className="flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors py-1">
+                      查看全部套餐及价格 <RiArrowRightLine className="w-3 h-3" />
+                    </Link>
+                  ) : (
+                    <p className="text-[10px] text-muted-foreground/60 text-center py-0.5">支付功能由管理员配置 · 可使用激活码直接兑换</p>
+                  )}
+                </div>
 
                 {/* ── 激活码兑换 ── */}
                 <div className="glass-panel border border-border rounded-2xl p-4 space-y-3">
@@ -1839,9 +1896,63 @@ export default function DashboardPage() {
                   )}
                 </div>
 
+                {/* ── 联系客服 ── */}
+                <div className="glass-panel border border-border rounded-2xl overflow-hidden">
+                  <div className="px-4 pt-3 pb-2 border-b border-border/60 flex items-center gap-2">
+                    <RiMailLine className="w-3.5 h-3.5 text-muted-foreground" />
+                    <p className="text-xs font-semibold">联系客服</p>
+                  </div>
+                  {contactSent ? (
+                    <div className="px-4 py-5 flex flex-col items-center gap-2 text-center">
+                      <RiCheckboxCircleLine className="w-8 h-8 text-emerald-500" />
+                      <p className="text-xs font-semibold">消息已发送</p>
+                      <p className="text-[10px] text-muted-foreground">我们会尽快通过邮件回复您</p>
+                      <button onClick={() => { setContactSent(false); setContactMsg(""); }} className="text-[10px] text-muted-foreground hover:text-foreground mt-1">重新发送</button>
+                    </div>
+                  ) : (
+                    <div className="px-4 py-3 space-y-2.5">
+                      <textarea
+                        value={contactMsg}
+                        onChange={e => setContactMsg(e.target.value)}
+                        placeholder="描述您遇到的问题或咨询内容…"
+                        rows={3}
+                        maxLength={500}
+                        className="w-full text-sm rounded-xl border border-border bg-background px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 transition-shadow placeholder:text-muted-foreground/40"
+                      />
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-[10px] text-muted-foreground/60">回复将发送至账户邮箱</p>
+                        <Button
+                          size="sm"
+                          className="h-8 rounded-xl text-xs gap-1.5 shrink-0"
+                          disabled={!contactMsg.trim() || contactSending}
+                          onClick={async () => {
+                            if (!contactMsg.trim()) return;
+                            setContactSending(true);
+                            try {
+                              await fetch("/api/user/contact", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ message: contactMsg }),
+                              });
+                              setContactSent(true);
+                            } catch {
+                              toast.error("发送失败，请稍后重试");
+                            } finally {
+                              setContactSending(false);
+                            }
+                          }}
+                        >
+                          {contactSending ? <RiLoader4Line className="w-3.5 h-3.5 animate-spin" /> : <RiMailLine className="w-3.5 h-3.5" />}
+                          发送
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 {/* ── 支付说明 ── */}
                 <div className="px-1 text-[10px] text-muted-foreground/60 text-center leading-relaxed">
-                  支持支付宝、微信扫码、信用卡等方式 · 付款成功后自动激活 · 有问题请联系客服
+                  支持支付宝、微信扫码、信用卡等方式 · 付款成功后自动激活
                 </div>
               </motion.div>
             );

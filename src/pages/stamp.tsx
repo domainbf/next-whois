@@ -475,6 +475,7 @@ function StampLandingPage() {
 export default function StampPage() {
   const router = useRouter();
   const { data: session, status: authStatus } = useSession();
+  const isMember = !!(session?.user as any)?.subscriptionAccess;
   const { t, locale } = useTranslation();
   const isZh = locale.startsWith("zh");
   const s = (key: StampKey, params?: Record<string, string | number>) =>
@@ -1033,40 +1034,61 @@ export default function StampPage() {
 
                           {/* Tag name */}
                           <div>
-                            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-2 block">
-                              {s("tag_name_label")} <span className="text-red-500 normal-case tracking-normal font-normal">*</span>
-                            </Label>
+                            <div className="flex items-baseline justify-between mb-2">
+                              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">
+                                {s("tag_name_label")} <span className="text-red-500 normal-case tracking-normal font-normal">*</span>
+                              </Label>
+                              {!isMember && (
+                                <span className="text-[10px] text-amber-600 dark:text-amber-400">
+                                  普通用户限 5 字 · <Link href="/dashboard" className="underline underline-offset-2">升级会员</Link>
+                                </span>
+                              )}
+                            </div>
                             <Input
                               value={form.tagName}
                               onChange={(e) => update("tagName", e.target.value)}
                               placeholder={s("tag_name_placeholder")}
-                              maxLength={20}
+                              maxLength={isMember ? 20 : 5}
                             />
+                            {!isMember && form.tagName.length >= 5 && (
+                              <p className="text-[10px] text-amber-500 mt-1 flex items-center gap-1">
+                                <RiVipCrownLine className="w-3 h-3" /> 会员可设置最多 20 字标题
+                              </p>
+                            )}
                           </div>
 
                           {/* Unified style picker */}
                           <div>
                             <div className="flex items-center justify-between mb-2.5">
                               <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">{s("tag_style_label")}</Label>
-                              <span className="text-[10px] text-muted-foreground/50">{isZh ? "点击预览效果" : "Tap to preview"}</span>
+                              {!isMember
+                                ? <span className="text-[10px] text-violet-600 dark:text-violet-400 flex items-center gap-1"><RiVipCrownLine className="w-3 h-3" />会员解锁更多样式</span>
+                                : <span className="text-[10px] text-muted-foreground/50">{isZh ? "点击预览效果" : "Tap to preview"}</span>
+                              }
                             </div>
                             <div className="grid grid-cols-4 gap-2">
                               {TAG_STYLES.map((ts) => {
                                 const cardTheme = CARD_THEME_OPTIONS.find(t => t.id === ts.theme) || CARD_THEME_OPTIONS[0];
                                 const isSelected = form.tagStyle === ts.id;
                                 const Icon = ts.icon;
+                                const isFree = ts.id === "personal";
+                                const locked = !isMember && !isFree;
                                 return (
                                   <button
                                     key={ts.id}
                                     type="button"
                                     onClick={() => {
+                                      if (locked) {
+                                        toast.info("升级会员后可使用此样式");
+                                        return;
+                                      }
                                       update("tagStyle", ts.id);
                                       setPreviewStyleId(ts.id);
                                     }}
                                     className={cn(
                                       "relative flex flex-col overflow-hidden rounded-2xl border-2 transition-all text-left group",
-                                      isSelected
-                                        ? "border-violet-400 dark:border-violet-500 shadow-sm"
+                                      locked ? "opacity-50 cursor-not-allowed border-border/30"
+                                        : isSelected ? "border-violet-400 dark:border-violet-500 shadow-sm"
                                         : "border-border/50 hover:border-border"
                                     )}
                                   >
@@ -1078,17 +1100,25 @@ export default function StampPage() {
                                         "relative flex items-center justify-center w-8 h-8 rounded-xl shadow-md border border-white/20",
                                         "bg-white/20"
                                       )}>
-                                        <Icon className="w-4 h-4 text-white drop-shadow" />
+                                        {locked
+                                          ? <RiVipCrownLine className="w-4 h-4 text-white/70 drop-shadow" />
+                                          : <Icon className="w-4 h-4 text-white drop-shadow" />
+                                        }
                                       </div>
-                                      {isSelected && (
+                                      {isSelected && !locked && (
                                         <div className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-white/90 flex items-center justify-center shadow">
                                           <RiCheckLine className="w-2.5 h-2.5 text-violet-600" />
                                         </div>
                                       )}
+                                      {isFree && !isMember && (
+                                        <div className="absolute bottom-1 left-1/2 -translate-x-1/2 text-[7px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-500 text-white whitespace-nowrap leading-tight shadow-sm">
+                                          限时免费
+                                        </div>
+                                      )}
                                     </div>
                                     {/* Label row */}
-                                    <div className={cn("px-2 py-1.5 text-center", isSelected ? "bg-violet-50/60 dark:bg-violet-950/30" : "bg-background")}>
-                                      <p className={cn("text-[11px] font-semibold leading-none", isSelected ? "text-violet-600 dark:text-violet-400" : "text-foreground/80")}>
+                                    <div className={cn("px-2 py-1.5 text-center", isSelected && !locked ? "bg-violet-50/60 dark:bg-violet-950/30" : "bg-background")}>
+                                      <p className={cn("text-[11px] font-semibold leading-none", isSelected && !locked ? "text-violet-600 dark:text-violet-400" : "text-foreground/80")}>
                                         {isZh ? ts.zhName : ts.label}
                                       </p>
                                     </div>
@@ -1098,37 +1128,59 @@ export default function StampPage() {
                             </div>
                           </div>
 
-                          {/* Link (optional) */}
-                          <div>
-                            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-2 block">
-                              {s("link_label")} <span className="normal-case tracking-normal font-normal text-muted-foreground/60">{s("optional")}</span>
-                            </Label>
-                            <Input
-                              value={form.link}
-                              onChange={(e) => update("link", e.target.value)}
-                              placeholder="https://x.rw"
-                              type="text"
-                              inputMode="url"
-                            />
-                          </div>
-
-                          {/* Description */}
-                          <div>
-                            <div className="flex items-baseline justify-between mb-2">
-                              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">
-                                {s("desc_label")} <span className="normal-case tracking-normal font-normal text-muted-foreground/60">{s("optional")}</span>
+                          {/* Link (optional) — members only */}
+                          {isMember ? (
+                            <div>
+                              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-2 block">
+                                {s("link_label")} <span className="normal-case tracking-normal font-normal text-muted-foreground/60">{s("optional")}</span>
                               </Label>
-                              <span className={cn("text-[10px] tabular-nums", form.description.length >= 270 ? "text-red-500 font-semibold" : "text-muted-foreground/50")}>{form.description.length}/300</span>
+                              <Input
+                                value={form.link}
+                                onChange={(e) => update("link", e.target.value)}
+                                placeholder="https://x.rw"
+                                type="text"
+                                inputMode="url"
+                              />
                             </div>
-                            <textarea
-                              value={form.description}
-                              onChange={(e) => update("description", e.target.value)}
-                              placeholder={s("desc_placeholder")}
-                              maxLength={300}
-                              rows={2}
-                              className="w-full text-base sm:text-sm rounded-lg border border-border bg-background px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-violet-400/40 transition-shadow placeholder:text-muted-foreground/50"
-                            />
-                          </div>
+                          ) : (
+                            <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-muted/50 border border-dashed border-border">
+                              <RiVipCrownLine className="w-4 h-4 text-violet-400 shrink-0" />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-[11px] font-semibold text-muted-foreground">跳转链接 <span className="text-violet-500">· 会员专属</span></p>
+                                <p className="text-[10px] text-muted-foreground/60">升级会员后可设置个人主页或品牌官网链接</p>
+                              </div>
+                              <Link href="/dashboard" className="text-[10px] font-semibold text-violet-600 dark:text-violet-400 shrink-0 hover:underline">升级</Link>
+                            </div>
+                          )}
+
+                          {/* Description — members only */}
+                          {isMember ? (
+                            <div>
+                              <div className="flex items-baseline justify-between mb-2">
+                                <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">
+                                  {s("desc_label")} <span className="normal-case tracking-normal font-normal text-muted-foreground/60">{s("optional")}</span>
+                                </Label>
+                                <span className={cn("text-[10px] tabular-nums", form.description.length >= 270 ? "text-red-500 font-semibold" : "text-muted-foreground/50")}>{form.description.length}/300</span>
+                              </div>
+                              <textarea
+                                value={form.description}
+                                onChange={(e) => update("description", e.target.value)}
+                                placeholder={s("desc_placeholder")}
+                                maxLength={300}
+                                rows={2}
+                                className="w-full text-base sm:text-sm rounded-lg border border-border bg-background px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-violet-400/40 transition-shadow placeholder:text-muted-foreground/50"
+                              />
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-muted/50 border border-dashed border-border">
+                              <RiVipCrownLine className="w-4 h-4 text-violet-400 shrink-0" />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-[11px] font-semibold text-muted-foreground">品牌简介 <span className="text-violet-500">· 会员专属</span></p>
+                                <p className="text-[10px] text-muted-foreground/60">升级会员后可添加品牌介绍或个人说明（最多 300 字）</p>
+                              </div>
+                              <Link href="/dashboard" className="text-[10px] font-semibold text-violet-600 dark:text-violet-400 shrink-0 hover:underline">升级</Link>
+                            </div>
+                          )}
 
                           {/* Live mini card preview */}
                           {(() => {

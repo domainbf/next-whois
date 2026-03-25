@@ -278,7 +278,22 @@ function DirectSubscribeForm({ domain }: { domain: string }) {
           regStatusType: null,
         }),
       });
-      if (res.ok) { setDone(true); } else { toast.error("提交失败，请重试"); }
+      if (res.ok) {
+        setDone(true);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        if (data.code === "LIMIT_EXCEEDED") {
+          toast.error(
+            `已达到 ${data.limit} 个订阅上限，请升级会员解锁无限订阅`,
+            {
+              action: { label: "立即升级", onClick: () => router.push("/dashboard?tab=membership") },
+              duration: 6000,
+            }
+          );
+        } else {
+          toast.error(data.error || "提交失败，请重试");
+        }
+      }
     } catch { toast.error("网络错误，请重试"); }
     finally { setSubmitting(false); }
   }
