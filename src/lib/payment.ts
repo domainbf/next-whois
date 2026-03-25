@@ -150,20 +150,6 @@ export async function markOrderPaid(params: {
     }
   }
 
-  await run(
-    `INSERT INTO sponsors (id, name, avatar_url, amount, currency, message, sponsor_date, is_anonymous, is_visible, platform)
-     VALUES ($1, $2, NULL, $3, $4, $5, CURRENT_DATE, false, false, $6)
-     ON CONFLICT DO NOTHING`,
-    [
-      randomBytes(8).toString("hex"),
-      order.user_email,
-      (await one<{ amount: string }>(`SELECT amount FROM payment_orders WHERE id=$1`, [params.orderId]))?.amount ?? 0,
-      "CNY",
-      "通过支付系统赞助",
-      order.plan_id ?? "payment",
-    ]
-  );
-
   const paidOrder = await one<{ plan_name: string; amount: number; currency: string }>(
     `SELECT plan_name, amount::float AS amount, currency FROM payment_orders WHERE id=$1`,
     [params.orderId]
@@ -172,6 +158,21 @@ export async function markOrderPaid(params: {
     `SELECT name FROM users WHERE id=$1 OR email=$2 LIMIT 1`,
     [order.user_id ?? "", order.user_email]
   );
+  // Record payment as a sponsor entry with the correct currency from the order
+  await run(
+    `INSERT INTO sponsors (id, name, avatar_url, amount, currency, message, sponsor_date, is_anonymous, is_visible, platform)
+     VALUES ($1, $2, NULL, $3, $4, $5, CURRENT_DATE, false, false, $6)
+     ON CONFLICT DO NOTHING`,
+    [
+      randomBytes(8).toString("hex"),
+      order.user_email,
+      paidOrder?.amount ?? 0,
+      paidOrder?.currency ?? "CNY",
+      "通过支付系统赞助",
+      order.plan_id ?? "payment",
+    ]
+  ).catch(e => console.warn("[markOrderPaid] sponsor insert error:", e));
+
   const siteName = await getSiteLabel();
   sendEmail({
     to: order.user_email,

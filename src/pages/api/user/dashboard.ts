@@ -12,7 +12,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
-import { many, one, isDbReady } from "@/lib/db-query";
+import { many, one, run, isDbReady } from "@/lib/db-query";
 import { computeLifecycle } from "@/lib/lifecycle";
 import { loadLifecycleOverrides } from "@/lib/server/lifecycle-overrides";
 
@@ -119,8 +119,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
     // DB-authoritative access flag — always trust DB over stale JWT
-    const subscriptionAccess = userRow?.subscription_access ?? false;
-    const subscriptionExpiresAt = userRow?.subscription_expires_at ?? null;
+    // Auto-revoke if a time-limited subscription has expired
+    let subscriptionAccess = userRow?.subscription_access ?? false;
+    let subscriptionExpiresAt = userRow?.subscription_expires_at ?? null;
+    if (subscriptionAccess && subscriptionExpiresAt && new Date(subscriptionExpiresAt) < new Date()) {
+      // Subscription has expired; revoke in DB (fire-and-forget, don't block response)
+      run(
+        "UPDATE users SET subscription_access = FALSE, subscription_expires_at = NULL, updated_at = NOW() WHERE email = $1",
+        [email]
+      ).catch(e => console.error("[dashboard] expiry revoke error:", e));
+      subscriptionAccess = false;
+      subscriptionExpiresAt = null;
+    }
 
     // User-specific; allow browser to serve stale while quietly revalidating
     res.setHeader("Cache-Control", "private, max-age=0, stale-while-revalidate=60");

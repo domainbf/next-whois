@@ -94,7 +94,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (email !== undefined) { params.push(email.toLowerCase().trim()); updates.push(`email = $${params.length}`); }
       if (admin_notes !== undefined) { params.push(admin_notes || null); updates.push(`admin_notes = $${params.length}`); }
       if (disabled !== undefined) { params.push(Boolean(disabled)); updates.push(`disabled = $${params.length}`); }
-      if (subscription_access !== undefined) { params.push(Boolean(subscription_access)); updates.push(`subscription_access = $${params.length}`); }
+      if (subscription_access !== undefined) {
+        params.push(Boolean(subscription_access));
+        updates.push(`subscription_access = $${params.length}`);
+        // Clear expiry whenever subscription is explicitly revoked
+        if (!subscription_access) {
+          updates.push(`subscription_expires_at = NULL`);
+        }
+      }
       if (email_verified !== undefined) { params.push(Boolean(email_verified)); updates.push(`email_verified = $${params.length}`); }
 
       if (updates.length === 0) return res.status(400).json({ error: "无可更新字段" });
@@ -105,7 +112,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       const updated = await one(
         `SELECT id, email, name, created_at, updated_at, disabled, admin_notes,
-                subscription_access, email_verified,
+                subscription_access, subscription_expires_at, email_verified,
                 (SELECT COUNT(*) FROM search_history sh WHERE sh.user_id = u.id)::int AS search_count,
                 (SELECT COUNT(*) FROM stamps s WHERE s.email = u.email)::int AS stamp_count,
                 (SELECT COUNT(*) FROM reminders r WHERE r.email = u.email AND r.active = true)::int AS reminder_count

@@ -4,6 +4,7 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import { sendEmail, subscriptionConfirmHtml, getSiteLabel } from "@/lib/email";
 import { computeLifecycle, fmtDate } from "@/lib/lifecycle";
 import { one, run, isDbReady } from "@/lib/db-query";
+import { loadLifecycleOverrides } from "@/lib/server/lifecycle-overrides";
 
 const ALL_THRESHOLDS   = [60, 30, 10, 5, 1];
 const DEFAULT_THRESHOLDS = [60, 30, 1];
@@ -76,7 +77,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(500).json({ error: "数据库写入失败，请稍后重试" });
   }
 
-  const lc = computeLifecycle(cleanDomain, expDate);
+  // Use admin-curated and AI-scraped lifecycle overrides for accurate email info
+  const overrides = await loadLifecycleOverrides().catch(() => ({}));
+  const lc = computeLifecycle(cleanDomain, expDate, undefined, overrides);
   const lifecycleInfo = lc ? {
     phase:           lc.phase,
     graceEnd:        fmtDate(lc.graceEnd),

@@ -82,6 +82,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const daysToDropDate = Math.ceil((dropDate.getTime() - now.getTime()) / msPerDay);
         const sentKeys: number[] = reminder.sent_keys;
 
+        // Parse phase flags and thresholds early (needed by all branches below)
+        let phaseFlags = { grace: true, redemption: true, pendingDelete: true, dropSoon: true, dropped: true };
+        try {
+          if (reminder.phase_flags) phaseFlags = { ...phaseFlags, ...JSON.parse(reminder.phase_flags) };
+        } catch { /* keep defaults */ }
+
+        let thresholds = DEFAULT_THRESHOLDS;
+        try {
+          if (reminder.thresholds_json) {
+            const parsed = JSON.parse(reminder.thresholds_json);
+            if (Array.isArray(parsed) && parsed.length > 0) thresholds = parsed;
+          }
+        } catch { /* keep defaults */ }
+
         const upsertLog = async (daysKey: number) => {
           const logId = randomBytes(8).toString("hex");
           await run(
@@ -132,19 +146,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           results.expired++;
           continue;
         }
-
-        let phaseFlags = { grace: true, redemption: true, pendingDelete: true, dropSoon: true, dropped: true };
-        try {
-          if (reminder.phase_flags) phaseFlags = { ...phaseFlags, ...JSON.parse(reminder.phase_flags) };
-        } catch { /* keep defaults */ }
-
-        let thresholds = DEFAULT_THRESHOLDS;
-        try {
-          if (reminder.thresholds_json) {
-            const parsed = JSON.parse(reminder.thresholds_json);
-            if (Array.isArray(parsed) && parsed.length > 0) thresholds = parsed;
-          }
-        } catch { /* keep defaults */ }
 
         let didSend = false;
 
