@@ -16,7 +16,7 @@ import {
   RiPlugLine, RiPlugFill,
   RiSearchLine, RiSearchFill,
   RiRadarLine, RiHeart3Line, RiHeart3Fill,
-  RiKeyLine, RiKeyFill,
+  RiKeyLine, RiKeyFill, RiGiftLine,
   RiLinksLine, RiTimeLine, RiHistoryLine, RiImageLine, RiFlagLine,
   RiMenuLine, RiCloseLine,
   RiBankCardLine, RiBankCardFill, RiPriceTag3Line,
@@ -64,7 +64,8 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
     title: "配置",
     items: [
       { href: "/admin/tld-fallback",  label: "兜底",   icon: RiRadarLine,    activeIcon: RiRadarLine },
-      { href: "/admin/invite-codes",  label: "邀请码", icon: RiKeyLine,      activeIcon: RiKeyFill },
+      { href: "/admin/invite-codes",    label: "邀请码", icon: RiKeyLine,    activeIcon: RiKeyFill },
+      { href: "/admin/activation-codes", label: "激活码", icon: RiGiftLine,  activeIcon: RiGiftLine },
       { href: "/admin/access-keys",   label: "密钥",   icon: RiShieldUserLine, activeIcon: RiShieldUserLine },
       { href: "/admin/links",         label: "链接",   icon: RiLinksLine,    activeIcon: RiLinksLine },
       { href: "/admin/tld-lifecycle", label: "TLD规则",icon: RiTimeLine,     activeIcon: RiTimeLine },

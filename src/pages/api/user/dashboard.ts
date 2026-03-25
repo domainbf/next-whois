@@ -52,8 +52,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       ),
       loadLifecycleOverrides(),
       // DB-authoritative access flag — heals stale JWTs without re-login
-      one<{ subscription_access: boolean; subscription_expires_at: string | null }>(
-        "SELECT subscription_access, subscription_expires_at FROM users WHERE email = $1",
+      one<{ subscription_access: boolean; subscription_expires_at: string | null; balance_cents: number; membership_plan: string | null }>(
+        "SELECT subscription_access, subscription_expires_at, balance_cents, membership_plan FROM users WHERE email = $1",
         [email],
       ),
     ]);
@@ -134,7 +134,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // User-specific; allow browser to serve stale while quietly revalidating
     res.setHeader("Cache-Control", "private, max-age=0, stale-while-revalidate=60");
-    return res.status(200).json({ subscriptions, stamps: stampsRows, subscriptionAccess, subscriptionExpiresAt });
+    return res.status(200).json({
+      subscriptions,
+      stamps: stampsRows,
+      subscriptionAccess,
+      subscriptionExpiresAt,
+      balanceCents: userRow?.balance_cents ?? 0,
+      membershipPlan: userRow?.membership_plan ?? null,
+    });
   } catch (err: any) {
     console.error("[dashboard] GET error:", err.message);
     return res.status(500).json({ error: "获取数据失败" });

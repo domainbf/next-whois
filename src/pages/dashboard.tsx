@@ -20,13 +20,15 @@ import {
   RiDownloadLine, RiFilterLine, RiDeleteBack2Line, RiFireLine,
   RiTimerLine, RiBarChartLine, RiKeyLine,
   RiIdCardLine, RiBuildingLine, RiAwardLine, RiShakeHandsLine,
-  RiCodeSLine, RiVipCrownLine,
+  RiCodeSLine, RiVipCrownLine, RiCoinLine, RiGiftLine,
+  RiCoupon2Line, RiWalletLine, RiArrowLeftLine, RiCheckboxCircleLine,
+  RiRefreshLine,
 } from "@remixicon/react";
+import { RiBankCardLine, RiStarLine } from "@remixicon/react";
 import { ADMIN_EMAIL } from "@/lib/admin-shared";
 import type { HistoryItem } from "@/lib/history";
 import { useTranslation } from "@/lib/i18n";
 import { useSiteSettings } from "@/lib/site-settings";
-import { RiBankCardLine } from "@remixicon/react";
 
 type Subscription = {
   id: string; domain: string; expiration_date: string | null;
@@ -42,6 +44,17 @@ type Subscription = {
 };
 
 type RegStatus = "registered" | "unregistered" | "reserved" | "error" | "unknown";
+
+type Order = {
+  id: string;
+  plan_name: string;
+  amount: number;
+  currency: string;
+  provider: string;
+  status: string;
+  paid_at: string | null;
+  created_at: string;
+};
 
 type ServerHistoryItem = {
   id?: string;
@@ -568,7 +581,7 @@ export default function DashboardPage() {
   const { data: session, status, update: updateSession } = useSession();
   const siteSettings = useSiteSettings();
   const paymentEnabled = !!(siteSettings.payment_stripe_enabled || siteSettings.payment_xunhupay_enabled || siteSettings.payment_alipay_enabled || siteSettings.payment_paypal_enabled);
-  const [tab, setTab] = React.useState<"subscriptions" | "stamps" | "account" | "history">("stamps");
+  const [tab, setTab] = React.useState<"subscriptions" | "stamps" | "account" | "history" | "membership">("stamps");
   const [subscriptions, setSubscriptions] = React.useState<Subscription[]>([]);
   const [stamps, setStamps] = React.useState<Stamp[]>([]);
   // DB-authoritative access flag; initialized from session (fast), then confirmed by API
@@ -586,6 +599,12 @@ export default function DashboardPage() {
   const [deletingStamp, setDeletingStamp] = React.useState<string | null>(null);
   const [showClaimGuide, setShowClaimGuide] = React.useState(false);
   const [showSubscribeGuide, setShowSubscribeGuide] = React.useState(false);
+  const [balanceCents, setBalanceCents] = React.useState(0);
+  const [membershipPlan, setMembershipPlan] = React.useState<string | null>(null);
+  const [orders, setOrders] = React.useState<Order[]>([]);
+  const [loadingOrders, setLoadingOrders] = React.useState(false);
+  const [redeemCode, setRedeemCode] = React.useState("");
+  const [redeeming, setRedeeming] = React.useState(false);
   const [inviteCodeInput, setInviteCodeInput] = React.useState("");
   const [applyingCode, setApplyingCode] = React.useState(false);
   const [editingName, setEditingName] = React.useState(false);
@@ -627,6 +646,8 @@ export default function DashboardPage() {
     setStamps(d.stamps);
     setSubscriptionAccessDB(d.subscriptionAccess);
     setSubscriptionExpiresAt((d as any).subscriptionExpiresAt ?? null);
+    setBalanceCents((d as any).balanceCents ?? 0);
+    setMembershipPlan((d as any).membershipPlan ?? null);
     // Heal the JWT if DB says TRUE but session says FALSE — no re-login needed
     if (d.subscriptionAccess && !(session?.user as any)?.subscriptionAccess) {
       updateSession({ subscriptionAccess: true });
@@ -675,6 +696,49 @@ export default function DashboardPage() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, status]);
+
+  // Load orders when membership tab opens
+  React.useEffect(() => {
+    if (tab === "membership" && status === "authenticated" && orders.length === 0) {
+      setLoadingOrders(true);
+      fetch("/api/user/orders")
+        .then(r => r.json())
+        .then(d => { if (d.orders) setOrders(d.orders); })
+        .catch(() => {})
+        .finally(() => setLoadingOrders(false));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, status]);
+
+  async function handleRedeemCode(e: React.FormEvent) {
+    e.preventDefault();
+    const code = redeemCode.trim().toUpperCase();
+    if (!code) { toast.error("请输入激活码"); return; }
+    setRedeeming(true);
+    try {
+      const res = await fetch("/api/user/redeem-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success(data.message || "激活成功");
+        setRedeemCode("");
+        setSubscriptionAccessDB(data.subscriptionAccess ?? subscriptionAccessDB);
+        setSubscriptionExpiresAt(data.subscriptionExpiresAt ?? subscriptionExpiresAt);
+        setMembershipPlan(data.membershipPlan ?? membershipPlan);
+        setBalanceCents(data.balanceCents ?? balanceCents);
+        if (data.subscriptionAccess) updateSession({ subscriptionAccess: true });
+      } else {
+        toast.error(data.error || "激活失败");
+      }
+    } catch {
+      toast.error("网络错误，请重试");
+    } finally {
+      setRedeeming(false);
+    }
+  }
 
   function refreshData() {
     invalidateDashCache();
@@ -941,6 +1005,7 @@ export default function DashboardPage() {
   const TABS = [
     { key: "subscriptions" as const, label: "域名订阅", icon: <RiCalendarLine className="w-3.5 h-3.5" />, count: activeSubs.length || undefined },
     { key: "stamps" as const, label: "品牌认领", icon: <RiShieldCheckLine className="w-3.5 h-3.5" />, count: stamps.length || undefined },
+    { key: "membership" as const, label: "会员", icon: <RiVipCrownLine className="w-3.5 h-3.5" /> },
     { key: "history" as const, label: "搜索历史", icon: <RiHistoryLine className="w-3.5 h-3.5" />, count: historyTotal || undefined },
     { key: "account" as const, label: "账户", icon: <RiUserLine className="w-3.5 h-3.5" /> },
   ];
@@ -1588,6 +1653,199 @@ export default function DashboardPage() {
               ))}
             </motion.div>
           )}
+
+          {/* ── Membership ── */}
+          {tab === "membership" && (() => {
+            const isLifetime = subscriptionAccessDB && !subscriptionExpiresAt;
+            const expiresDate = subscriptionExpiresAt ? new Date(subscriptionExpiresAt) : null;
+            const remainingDays = expiresDate ? Math.ceil((expiresDate.getTime() - Date.now()) / 86_400_000) : null;
+            const CURRENCY_SYM: Record<string, string> = { CNY: "¥", USD: "$", EUR: "€", HKD: "HK$" };
+            const STATUS_CLS: Record<string, string> = {
+              paid: "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200/60 dark:border-emerald-700/40",
+              pending: "text-amber-600 bg-amber-50 dark:bg-amber-950/30 border-amber-200/60 dark:border-amber-700/40",
+              failed: "text-red-600 bg-red-50 dark:bg-red-950/30 border-red-200/60 dark:border-red-700/40",
+              expired: "text-muted-foreground bg-muted border-border",
+            };
+            const PROVIDER_LABEL: Record<string, string> = {
+              stripe: "信用卡", xunhupay: "扫码支付", alipay: "支付宝", paypal: "PayPal",
+            };
+            return (
+              <motion.div key="membership" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.18 }} className="space-y-4">
+
+                {/* ── 会员状态卡 ── */}
+                <div className={cn(
+                  "glass-panel border rounded-2xl overflow-hidden",
+                  subscriptionAccessDB ? "border-violet-200/60 dark:border-violet-700/30" : "border-border"
+                )}>
+                  {/* Header */}
+                  <div className={cn(
+                    "px-4 pt-4 pb-3 flex items-center gap-3",
+                    subscriptionAccessDB ? "bg-violet-50/60 dark:bg-violet-950/10" : ""
+                  )}>
+                    <div className={cn(
+                      "w-10 h-10 rounded-xl flex items-center justify-center shrink-0",
+                      subscriptionAccessDB ? "bg-violet-100 dark:bg-violet-900/30" : "bg-muted"
+                    )}>
+                      <RiVipCrownLine className={cn("w-5 h-5", subscriptionAccessDB ? "text-violet-600 dark:text-violet-400" : "text-muted-foreground")} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-bold">
+                        {subscriptionAccessDB
+                          ? (membershipPlan || "会员已激活")
+                          : "普通用户"}
+                      </p>
+                      {subscriptionAccessDB ? (
+                        <p className="text-[10px] text-muted-foreground">
+                          {isLifetime ? "永久会员" : expiresDate
+                            ? `有效期至 ${expiresDate.toLocaleDateString("zh-CN")}（剩余 ${remainingDays} 天）`
+                            : "会员中"}
+                        </p>
+                      ) : (
+                        <p className="text-[10px] text-muted-foreground">升级为会员，解锁域名订阅提醒功能</p>
+                      )}
+                    </div>
+                    {subscriptionAccessDB && (
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300 shrink-0">
+                        {isLifetime ? "永久" : "有效"}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Balance row */}
+                  <div className="px-4 py-3 border-t border-border/60 flex items-center justify-between">
+                    <span className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+                      <RiWalletLine className="w-3.5 h-3.5" /> 账户余额
+                    </span>
+                    <span className="text-sm font-bold font-mono">
+                      ¥{(balanceCents / 100).toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* ── 购买会员 ── */}
+                {paymentEnabled && (
+                  <div className="glass-panel border border-border rounded-2xl p-4 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <RiStarLine className="w-3.5 h-3.5 text-violet-500" />
+                      <p className="text-xs font-semibold">购买会员</p>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[
+                        { label: "月度会员", sub: "30天", badge: null },
+                        { label: "年度会员", sub: "365天", badge: "推荐" },
+                        { label: "永久会员", sub: "无限期", badge: "最划算" },
+                      ].map(p => (
+                        <Link key={p.label} href="/payment/checkout" className={cn(
+                          "relative flex flex-col items-center gap-1 px-2 py-3 rounded-xl border text-center transition-all group hover:border-violet-400/60 hover:bg-violet-50/50 dark:hover:bg-violet-950/10",
+                          p.badge === "推荐" ? "border-violet-300/70 dark:border-violet-700/40 bg-violet-50/30 dark:bg-violet-950/10" : "border-border"
+                        )}>
+                          {p.badge && (
+                            <span className="absolute -top-2 left-1/2 -translate-x-1/2 text-[8px] font-bold px-1.5 py-0.5 rounded-full bg-violet-500 text-white whitespace-nowrap">
+                              {p.badge}
+                            </span>
+                          )}
+                          <RiVipCrownLine className={cn("w-4 h-4", p.badge ? "text-violet-500" : "text-muted-foreground group-hover:text-violet-500")} />
+                          <p className="text-[10px] font-semibold leading-tight">{p.label}</p>
+                          <p className="text-[9px] text-muted-foreground">{p.sub}</p>
+                        </Link>
+                      ))}
+                    </div>
+                    <Link href="/payment/checkout" className="flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors py-1">
+                      查看全部套餐 <RiArrowRightLine className="w-3 h-3" />
+                    </Link>
+                  </div>
+                )}
+
+                {/* ── 激活码兑换 ── */}
+                <div className="glass-panel border border-border rounded-2xl p-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <RiCoupon2Line className="w-3.5 h-3.5 text-amber-500" />
+                    <p className="text-xs font-semibold">激活码兑换</p>
+                  </div>
+                  <form onSubmit={handleRedeemCode} className="flex gap-2">
+                    <Input
+                      value={redeemCode}
+                      onChange={e => setRedeemCode(e.target.value.toUpperCase())}
+                      placeholder="输入激活码（如：XXXX-XXXX-XXXX）"
+                      className="h-9 rounded-xl text-sm font-mono flex-1"
+                    />
+                    <Button type="submit" disabled={redeeming || !redeemCode.trim()} size="sm" className="h-9 rounded-xl px-3 shrink-0">
+                      {redeeming ? <RiLoader4Line className="w-4 h-4 animate-spin" /> : <RiGiftLine className="w-4 h-4" />}
+                    </Button>
+                  </form>
+                  <p className="text-[10px] text-muted-foreground">激活码可兑换会员权益或账户余额，每码限用一次</p>
+                </div>
+
+                {/* ── 购买记录 ── */}
+                <div className="glass-panel border border-border rounded-2xl overflow-hidden">
+                  <div className="px-4 py-3 border-b border-border/60 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <RiFileTextLine className="w-3.5 h-3.5 text-muted-foreground" />
+                      <p className="text-xs font-semibold">购买记录</p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setLoadingOrders(true);
+                        fetch("/api/user/orders").then(r => r.json()).then(d => {
+                          if (d.orders) setOrders(d.orders);
+                        }).catch(() => {}).finally(() => setLoadingOrders(false));
+                      }}
+                      className="text-[10px] text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+                    >
+                      <RiRefreshLine className={cn("w-3 h-3", loadingOrders && "animate-spin")} />
+                      刷新
+                    </button>
+                  </div>
+
+                  {loadingOrders ? (
+                    <div className="p-4 space-y-3 animate-pulse">
+                      {[1,2].map(i => <div key={i} className="h-14 rounded-xl bg-muted/50" />)}
+                    </div>
+                  ) : orders.length === 0 ? (
+                    <div className="px-4 py-8 text-center text-[11px] text-muted-foreground">
+                      <RiCoinLine className="w-7 h-7 mx-auto mb-2 text-muted-foreground/30" />
+                      暂无购买记录
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-border/50">
+                      {orders.map(o => (
+                        <div key={o.id} className="px-4 py-3 flex items-center gap-3">
+                          <div className={cn(
+                            "w-7 h-7 rounded-lg flex items-center justify-center shrink-0",
+                            o.status === "paid" ? "bg-emerald-50 dark:bg-emerald-950/30" : "bg-muted"
+                          )}>
+                            {o.status === "paid"
+                              ? <RiCheckboxCircleLine className="w-4 h-4 text-emerald-500" />
+                              : <RiCoinLine className="w-4 h-4 text-muted-foreground" />}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-semibold truncate">{o.plan_name}</p>
+                            <p className="text-[10px] text-muted-foreground">
+                              {PROVIDER_LABEL[o.provider] ?? o.provider} · {new Date(o.created_at).toLocaleDateString("zh-CN")}
+                            </p>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className="text-xs font-bold font-mono">{CURRENCY_SYM[o.currency] ?? ""}{o.amount.toFixed(2)}</p>
+                            <span className={cn(
+                              "inline-block text-[9px] font-semibold px-1.5 py-0.5 rounded-full border",
+                              STATUS_CLS[o.status] ?? STATUS_CLS.expired
+                            )}>
+                              {o.status === "paid" ? "已付款" : o.status === "pending" ? "待付款" : o.status === "failed" ? "失败" : "已过期"}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* ── 支付说明 ── */}
+                <div className="px-1 text-[10px] text-muted-foreground/60 text-center leading-relaxed">
+                  支持支付宝、微信扫码、信用卡等方式 · 付款成功后自动激活 · 有问题请联系客服
+                </div>
+              </motion.div>
+            );
+          })()}
 
           {/* ── Search History ── */}
           {tab === "history" && (() => {

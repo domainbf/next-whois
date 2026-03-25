@@ -203,6 +203,33 @@ const CREATE_TABLES = [
     metadata        JSONB,
     created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW()
   )`,
+
+  `CREATE TABLE IF NOT EXISTS activation_codes (
+    id              SERIAL       PRIMARY KEY,
+    code            TEXT         NOT NULL UNIQUE,
+    plan_id         VARCHAR(16)  REFERENCES payment_plans(id) ON DELETE SET NULL,
+    plan_name       TEXT         NOT NULL,
+    duration_days   INTEGER,
+    grants_subscription BOOLEAN  NOT NULL DEFAULT true,
+    balance_grant_cents INTEGER  NOT NULL DEFAULT 0,
+    used            BOOLEAN      NOT NULL DEFAULT false,
+    used_by         VARCHAR(16)  REFERENCES users(id) ON DELETE SET NULL,
+    used_at         TIMESTAMPTZ,
+    note            TEXT,
+    created_by      VARCHAR(16)  REFERENCES users(id) ON DELETE SET NULL,
+    expires_at      TIMESTAMPTZ,
+    created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+  )`,
+
+  `CREATE TABLE IF NOT EXISTS balance_transactions (
+    id              SERIAL       PRIMARY KEY,
+    user_id         VARCHAR(16)  NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    amount_cents    INTEGER      NOT NULL,
+    type            TEXT         NOT NULL,
+    description     TEXT,
+    order_id        VARCHAR(32)  REFERENCES payment_orders(id) ON DELETE SET NULL,
+    created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+  )`,
 ];
 
 const ALTER_COLUMNS = [
@@ -225,6 +252,8 @@ const ALTER_COLUMNS = [
   `ALTER TABLE stamps        ADD COLUMN IF NOT EXISTS card_theme          TEXT NOT NULL DEFAULT 'app'`,
   `ALTER TABLE invite_codes  ADD COLUMN IF NOT EXISTS expires_at          TIMESTAMPTZ`,
   `ALTER TABLE reminders     ADD COLUMN IF NOT EXISTS thresholds_json     TEXT`,
+  `ALTER TABLE users         ADD COLUMN IF NOT EXISTS balance_cents       INTEGER NOT NULL DEFAULT 0`,
+  `ALTER TABLE users         ADD COLUMN IF NOT EXISTS membership_plan     TEXT`,
 ];
 
 const CREATE_INDEXES = [
@@ -245,6 +274,10 @@ const CREATE_INDEXES = [
   `CREATE INDEX IF NOT EXISTS idx_rate_limit_key_exp       ON rate_limit_records (key, expires_at)`,
   `CREATE INDEX IF NOT EXISTS idx_password_reset_token     ON password_reset_tokens (token)`,
   `CREATE INDEX IF NOT EXISTS idx_password_reset_email     ON password_reset_tokens (user_email)`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_activation_codes_code ON activation_codes (code)`,
+  `CREATE INDEX IF NOT EXISTS idx_activation_codes_used    ON activation_codes (used)`,
+  `CREATE INDEX IF NOT EXISTS idx_balance_tx_user_id       ON balance_transactions (user_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_balance_tx_created       ON balance_transactions (created_at DESC)`,
 ];
 
 function getConnectionString(): { url: string; source: string } | null {
