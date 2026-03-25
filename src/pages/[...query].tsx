@@ -4405,7 +4405,22 @@ export default function LookupPage({
                             <RiShieldCheckLine className="w-3 h-3" />
                             {isChinese ? "已认领" : "Claimed"}
                           </button>
-                        ) : null}
+                        ) : (
+                          <button
+                            onClick={() => {
+                              const domain = result.domain || target;
+                              if (!session) {
+                                router.push(`/login?callbackUrl=${encodeURIComponent(`/stamp?domain=${encodeURIComponent(domain)}`)}`);
+                                return;
+                              }
+                              router.push(`/stamp?domain=${encodeURIComponent(domain)}`);
+                            }}
+                            title={isChinese ? "认领域名" : "Claim domain"}
+                            className="sm:hidden flex items-center justify-center w-6 h-6 rounded-full text-xs border transition-all active:scale-[0.93] bg-muted/50 border-border/50 text-muted-foreground hover:border-violet-400/50 hover:text-violet-500"
+                          >
+                            <RiShieldCheckLine className="w-3 h-3" />
+                          </button>
+                        )}
                       </div>
                       <motion.h2
                         className="text-3xl sm:text-4xl font-bold tracking-tight mb-1 cursor-pointer hover:opacity-80 transition-opacity uppercase select-none"
@@ -4569,7 +4584,22 @@ export default function LookupPage({
                             <RiShieldCheckLine className="w-3 h-3" />
                             {isChinese ? "已认领" : "Claimed"}
                           </button>
-                        ) : null}
+                        ) : (
+                          <button
+                            onClick={() => {
+                              const domain = result.domain || target;
+                              if (!session) {
+                                router.push(`/login?callbackUrl=${encodeURIComponent(`/stamp?domain=${encodeURIComponent(domain)}`)}`);
+                                return;
+                              }
+                              router.push(`/stamp?domain=${encodeURIComponent(domain)}`);
+                            }}
+                            className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-all active:scale-[0.93] bg-muted/50 border-border/50 text-muted-foreground hover:border-violet-400/50 hover:text-violet-500"
+                          >
+                            <RiShieldCheckLine className="w-3 h-3" />
+                            {isChinese ? "域名认领" : "Claim"}
+                          </button>
+                        )}
                       </div>
                       <div className="flex items-center gap-2 mt-2">
                         <span className="text-[10px] text-muted-foreground font-mono">
