@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { useTranslation } from "@/lib/i18n";
 import {
   RiCalendarLine, RiMailLine, RiSearchLine, RiShieldCheckLine,
   RiArrowRightLine, RiGlobalLine, RiTimeLine, RiTimerLine,
@@ -215,6 +216,7 @@ function DaysRemainingBar({ days }: { days: number }) {
 
 function DirectSubscribeForm({ domain }: { domain: string }) {
   const router = useRouter();
+  const { t } = useTranslation();
   const { data: session, status } = useSession();
   const [email, setEmail] = React.useState("");
   const [thresholds, setThresholds] = React.useState<number[]>([60, 30, 1]);
@@ -328,7 +330,7 @@ function DirectSubscribeForm({ domain }: { domain: string }) {
           toast.error(
             `已达到 ${data.limit} 个订阅上限，请升级会员解锁无限订阅`,
             {
-              action: { label: "立即升级", onClick: () => router.push("/payment/checkout") },
+              action: { label: t("remind.upgrade_now"), onClick: () => router.push("/payment/checkout") },
               duration: 6000,
             }
           );
@@ -336,7 +338,7 @@ function DirectSubscribeForm({ domain }: { domain: string }) {
           toast.error(data.error || "提交失败，请重试");
         }
       }
-    } catch { toast.error("网络错误，请重试"); }
+    } catch { toast.error(t("remind.network_error")); }
     finally { setSubmitting(false); }
   }
 
@@ -697,6 +699,7 @@ function DirectSubscribeForm({ domain }: { domain: string }) {
 
 export default function RemindPage() {
   const router = useRouter();
+  const { t } = useTranslation();
   const { data: session, status } = useSession();
   const [searchQuery, setSearchQuery] = React.useState("");
   const [subscriptions, setSubscriptions] = React.useState<Subscription[]>([]);

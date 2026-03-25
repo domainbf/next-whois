@@ -631,7 +631,7 @@ export default function DashboardPage() {
   const [redeemCode, setRedeemCode] = React.useState("");
   const [redeeming, setRedeeming] = React.useState(false);
   const [contactMsg, setContactMsg] = React.useState("");
-  const [contactCategory, setContactCategory] = React.useState("支付问题");
+  const [contactCategory, setContactCategory] = React.useState(() => t("contact.cat_payment"));
   const [contactSending, setContactSending] = React.useState(false);
   const [contactSent, setContactSent] = React.useState(false);
   const [inviteCodeInput, setInviteCodeInput] = React.useState("");
@@ -763,7 +763,7 @@ export default function DashboardPage() {
         toast.error(data.error || "激活失败");
       }
     } catch {
-      toast.error("网络错误，请重试");
+      toast.error(t("remind.network_error"));
     } finally {
       setRedeeming(false);
     }
@@ -1901,34 +1901,38 @@ export default function DashboardPage() {
                 <div className="glass-panel border border-border rounded-2xl overflow-hidden">
                   <div className="px-4 pt-3 pb-2 border-b border-border/60 flex items-center gap-2">
                     <RiMailLine className="w-3.5 h-3.5 text-muted-foreground" />
-                    <p className="text-xs font-semibold">联系客服</p>
+                    <p className="text-xs font-semibold">{t("contact.title")}</p>
                   </div>
                   {contactSent ? (
                     <div className="px-4 py-5 flex flex-col items-center gap-2 text-center">
                       <RiCheckboxCircleLine className="w-8 h-8 text-emerald-500" />
-                      <p className="text-xs font-semibold">消息已发送</p>
-                      <p className="text-[10px] text-muted-foreground">我们会尽快通过邮件回复您</p>
-                      <button onClick={() => { setContactSent(false); setContactMsg(""); setContactCategory("支付问题"); }} className="text-[10px] text-muted-foreground hover:text-foreground mt-1">重新发送</button>
+                      <p className="text-xs font-semibold">{t("contact.sent_title")}</p>
+                      <button onClick={() => { setContactSent(false); setContactMsg(""); setContactCategory(t("contact.cat_payment")); }} className="text-[10px] text-muted-foreground hover:text-foreground mt-1">{t("contact.resend")}</button>
                     </div>
                   ) : (
                     <div className="px-4 py-3 space-y-2.5">
                       {/* Category selector */}
                       <div className="space-y-1.5">
-                        <p className="text-[10px] font-medium text-muted-foreground">问题类型</p>
+                        <p className="text-[10px] font-medium text-muted-foreground">{t("contact.category_label")}</p>
                         <div className="grid grid-cols-2 gap-1.5">
-                          {["支付问题", "会员问题", "功能问题", "其他问题"].map(cat => (
+                          {([
+                            [t("contact.cat_payment"), "cat_payment"],
+                            [t("contact.cat_membership"), "cat_membership"],
+                            [t("contact.cat_feature"), "cat_feature"],
+                            [t("contact.cat_other"), "cat_other"],
+                          ] as [string, string][]).map(([label]) => (
                             <button
-                              key={cat}
+                              key={label}
                               type="button"
-                              onClick={() => setContactCategory(cat)}
+                              onClick={() => setContactCategory(label)}
                               className={cn(
                                 "h-8 rounded-xl text-[11px] font-medium border transition-all",
-                                contactCategory === cat
+                                contactCategory === label
                                   ? "bg-foreground text-background border-foreground"
                                   : "bg-muted/30 text-muted-foreground border-border hover:border-muted-foreground/40"
                               )}
                             >
-                              {cat}
+                              {label}
                             </button>
                           ))}
                         </div>
@@ -1936,13 +1940,13 @@ export default function DashboardPage() {
                       <textarea
                         value={contactMsg}
                         onChange={e => setContactMsg(e.target.value)}
-                        placeholder="描述您遇到的问题或咨询内容…"
+                        placeholder={t("contact.placeholder")}
                         rows={3}
                         maxLength={500}
                         className="w-full text-sm rounded-xl border border-border bg-background px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 transition-shadow placeholder:text-muted-foreground/40"
                       />
                       <div className="flex items-center justify-between gap-2">
-                        <p className="text-[10px] text-muted-foreground/60">{contactMsg.length}/500 · 回复将发送至账户邮箱</p>
+                        <p className="text-[10px] text-muted-foreground/60">{t("contact.char_count", { count: contactMsg.length })}</p>
                         <Button
                           size="sm"
                           className="h-8 rounded-xl text-xs gap-1.5 shrink-0"
@@ -1956,17 +1960,17 @@ export default function DashboardPage() {
                                 headers: { "Content-Type": "application/json" },
                                 body: JSON.stringify({ category: contactCategory, message: contactMsg }),
                               });
-                              if (!r.ok) { toast.error("发送失败，请稍后重试"); return; }
+                              if (!r.ok) { toast.error(t("contact.send_failed")); return; }
                               setContactSent(true);
                             } catch {
-                              toast.error("发送失败，请稍后重试");
+                              toast.error(t("contact.send_failed"));
                             } finally {
                               setContactSending(false);
                             }
                           }}
                         >
                           {contactSending ? <RiLoader4Line className="w-3.5 h-3.5 animate-spin" /> : <RiMailLine className="w-3.5 h-3.5" />}
-                          发送
+                          {t("contact.send")}
                         </Button>
                       </div>
                     </div>

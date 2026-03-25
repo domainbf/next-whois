@@ -344,16 +344,8 @@
     "dns_prop_suffix": " to propagate globally. Closing this page won't lose your progress."
   },
   "remind": {
-    "cancel_title": "Unsubscribe",
-    "cancel_loading": "Processing…",
-    "cancel_success_title": "Unsubscribed",
-    "cancel_success_domain": "{{domain}} expiry reminders have been cancelled.",
-    "cancel_success_email": "{{email}} will no longer receive emails.",
-    "cancel_not_found_title": "Subscription not found",
-    "cancel_not_found_desc": "This subscription has already been cancelled or does not exist.",
-    "cancel_error_title": "Something went wrong",
-    "cancel_error_desc": "Please try again later or contact support.",
-    "cancel_go_home": "Go home"
+    "network_error": "Network error, please try again",
+    "upgrade_now": "Upgrade Now"
   },
   "tools": {
     "page_title": "Domain Toolbox",
@@ -468,5 +460,50 @@
     "back": "Back",
     "copy": "Copy",
     "results_count": "{{count}} result(s)"
+  },
+  "guide": {
+    "page_title": "User Guide · Domain Expiry Reminders",
+    "page_meta_desc": "Learn how to look up domain WHOIS information and subscribe to expiry reminders to protect your domain assets.",
+    "header_title": "User Guide",
+    "header_subtitle": "3 steps to enable domain expiry reminders",
+    "go_query": "Search",
+    "badge": "Domain Expiry Reminder Service",
+    "hero_title_1": "Protect Your Domains",
+    "hero_title_2": "Never Miss a Renewal",
+    "hero_desc": "Look up domain WHOIS info and subscribe to expiry reminder emails. Setup takes just 3 steps.",
+    "features_title": "Service Includes",
+    "cta_button": "Go Search Domains",
+    "cta_hint": "After searching, click the 🔔 icon on the domain card to subscribe",
+    "back": "Go back",
+    "step1_title": "Search a Domain",
+    "step1_subtitle": "Look up any domain on the home page",
+    "step1_desc": "Go to the home page, type the domain you want to monitor (e.g. google.com) in the search box, then click Search.",
+    "step1_tip": "Supports internationalized domains (IDN) and all TLDs such as .com, .io, etc.",
+    "step2_title": "Click the Subscribe Icon",
+    "step2_subtitle": "Set a reminder in one click",
+    "step2_desc": "On the result page, click the 🔔 bell icon next to the domain card to open the reminder subscription page.",
+    "step2_tip": "Can't find the icon? Click the top-right area of the domain card.",
+    "step3_title": "Enter Email & Submit",
+    "step3_subtitle": "Configure how and when to be notified",
+    "step3_desc": "Enter the email address for notifications, choose how many days in advance (e.g. 60, 30, 10 days), then click 'Enable Expiry Reminder'.",
+    "step3_tip": "After logging in you can manage or cancel subscriptions anytime in the dashboard.",
+    "feature1": "Email alerts 60/30/10/5/1 days before expiry",
+    "feature2": "Grace period · Redemption period · Pending delete — full monitoring",
+    "feature3": "Registrar, DNS, DNSSEC key info at a glance",
+    "feature4": "Supports 1000+ global TLDs (including .cn .io .cc etc.)"
+  },
+  "contact": {
+    "title": "Contact Support",
+    "sent_title": "Message Sent",
+    "resend": "Send again",
+    "category_label": "Issue type",
+    "cat_payment": "Payment Issue",
+    "cat_membership": "Membership Issue",
+    "cat_feature": "Feature Request",
+    "cat_other": "Other",
+    "placeholder": "Describe the issue or inquiry…",
+    "char_count": "{{count}}/500 · Reply will be sent to your account email",
+    "send": "Send",
+    "send_failed": "Failed to send, please try again later"
   }
 }

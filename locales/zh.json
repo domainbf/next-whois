@@ -344,16 +344,8 @@
     "dns_prop_suffix": "全球生效，取决于你的 DNS 服务商和 TTL 设置。关闭页面不会丢失进度，重新打开后可继续验证。"
   },
   "remind": {
-    "cancel_title": "取消订阅",
-    "cancel_loading": "处理中…",
-    "cancel_success_title": "已取消订阅",
-    "cancel_success_domain": "已成功取消 {{domain}} 的到期提醒。",
-    "cancel_success_email": "{{email}} 将不再收到相关邮件。",
-    "cancel_not_found_title": "未找到订阅",
-    "cancel_not_found_desc": "该订阅已取消或不存在。",
-    "cancel_error_title": "取消失败",
-    "cancel_error_desc": "请稍后重试或联系支持。",
-    "cancel_go_home": "返回首页"
+    "network_error": "网络错误，请重试",
+    "upgrade_now": "立即升级"
   },
   "tools": {
     "page_title": "域名工具箱",
@@ -468,5 +460,50 @@
     "back": "返回",
     "copy": "复制",
     "results_count": "{{count}} 条记录"
+  },
+  "guide": {
+    "page_title": "使用指南 · 域名到期提醒",
+    "page_meta_desc": "了解如何查询域名 WHOIS 信息、订阅到期提醒，轻松守护您的域名资产。",
+    "header_title": "使用指南",
+    "header_subtitle": "3 步开启域名到期提醒",
+    "go_query": "去查询",
+    "badge": "域名到期提醒服务",
+    "hero_title_1": "守护您的域名",
+    "hero_title_2": "不再错过续期",
+    "hero_desc": "在手机上查询域名 WHOIS 信息，并订阅到期提醒邮件。仅需 3 步完成设置。",
+    "features_title": "服务包含",
+    "cta_button": "前往首页查询域名",
+    "cta_hint": "查询完成后，点击域名卡片右侧的 🔔 图标即可订阅提醒",
+    "back": "返回上一页",
+    "step1_title": "搜索域名",
+    "step1_subtitle": "在首页查询任意域名",
+    "step1_desc": "进入首页，在搜索框输入您想监控的域名，例如 google.com，然后点击查询按钮。",
+    "step1_tip": "支持国际域名（IDN）和 .cn、.io 等各种顶级域",
+    "step2_title": "点击订阅图标",
+    "step2_subtitle": "一键设置到期提醒",
+    "step2_desc": "在查询结果页面，点击域名卡片右侧的 🔔 铃铛图标，即可进入订阅提醒页面。",
+    "step2_tip": "找不到图标？点击域名卡片右上角区域",
+    "step3_title": "填写邮箱 & 提交",
+    "step3_subtitle": "设置提醒方式与时间",
+    "step3_desc": "填写接收提醒的邮箱地址，选择提前多少天通知（如 60天、30天、10天等），然后点击「开启到期提醒」。",
+    "step3_tip": "登录后可在用户中心随时管理或取消订阅",
+    "feature1": "到期前 60/30/10/5/1 天邮件提醒",
+    "feature2": "宽限期 · 赎回期 · 待删除全程监控",
+    "feature3": "注册商、DNS、DNSSEC 关键信息速览",
+    "feature4": "支持全球 1000+ 顶级域名（含 .cn .io .cc 等）"
+  },
+  "contact": {
+    "title": "联系客服",
+    "sent_title": "消息已发送",
+    "resend": "重新发送",
+    "category_label": "问题类型",
+    "cat_payment": "支付问题",
+    "cat_membership": "会员问题",
+    "cat_feature": "功能问题",
+    "cat_other": "其他问题",
+    "placeholder": "描述您遇到的问题或咨询内容…",
+    "char_count": "{{count}}/500 · 回复将发送至账户邮箱",
+    "send": "发送",
+    "send_failed": "发送失败，请稍后重试"
   }
 }
