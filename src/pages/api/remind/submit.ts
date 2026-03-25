@@ -16,7 +16,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const rl = await checkRateLimit(ip, 5);
   if (!rl.ok) return res.status(429).json({ error: "请求过于频繁，请稍后再试" });
 
-  const { domain, email, expirationDate, phaseAlerts, thresholds } = req.body;
+  const { domain, email, expirationDate, phaseAlerts, thresholds, regStatusType } = req.body;
   if (!domain || !email) return res.status(400).json({ error: "Missing required fields" });
 
   const flags = {
@@ -92,14 +92,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   } : undefined;
 
   const siteName = await getSiteLabel().catch(() => "X.RW");
+  const isRestricted = regStatusType === "prohibited" || regStatusType === "reserved";
   await sendEmail({
     to: cleanEmail,
-    subject: `✅ 域名订阅已设置 · ${cleanDomain}`,
+    subject: isRestricted
+      ? `✅ 域名状态变化订阅已设置 · ${cleanDomain}`
+      : `✅ 域名订阅已设置 · ${cleanDomain}`,
     html: subscriptionConfirmHtml({
       domain: cleanDomain,
       expirationDate: expDate,
       cancelToken: cancelTok,
       thresholds: selectedThresholds,
+      regStatusType: regStatusType ? String(regStatusType) : undefined,
       lifecycle: lifecycleInfo,
       siteName,
     }),

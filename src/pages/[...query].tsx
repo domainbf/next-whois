@@ -2501,12 +2501,14 @@ function DomainReminderDialog({
     if (open) { setEmail(userEmail || ""); setDone(false); setSelectedThresholds(DEFAULT_REMINDER_THRESHOLDS); }
   }, [open, userEmail]);
 
+  const isRestricted = regStatusType === "prohibited" || regStatusType === "reserved";
+
   async function handleSubmit() {
     if (!email || !email.includes("@")) {
       toast.error(isZh ? "请输入有效邮箱" : "Please enter a valid email");
       return;
     }
-    if (selectedThresholds.length === 0) {
+    if (!isRestricted && selectedThresholds.length === 0) {
       toast.error(isZh ? "请至少选择一个到期前提醒时间" : "Please select at least one pre-expiry reminder");
       return;
     }
@@ -2515,7 +2517,11 @@ function DomainReminderDialog({
       const res = await fetch("/api/remind/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ domain, email, expirationDate, phaseAlerts, thresholds: selectedThresholds }),
+        body: JSON.stringify({
+          domain, email, expirationDate, phaseAlerts,
+          thresholds: isRestricted ? [] : selectedThresholds,
+          regStatusType,
+        }),
       });
       if (res.ok) {
         setDone(true);
@@ -2697,27 +2703,38 @@ function DomainReminderDialog({
                   <p className="text-[10px] font-bold text-foreground/60 uppercase tracking-widest">
                     {isZh ? "已订阅的提醒类型" : "Subscribed alerts"}
                   </p>
-                  <div>
-                    <p className="text-[10px] text-foreground/60 font-semibold mb-1.5">{isZh ? "到期前提醒" : "Pre-expiry"}</p>
-                    <div className="flex flex-wrap gap-1">
-                      {[...selectedThresholds].sort((a, b) => b - a).map((d) => (
-                        <span key={d} className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-sky-500/15 border border-sky-400/40 text-sky-700 dark:text-sky-300 text-[10px] font-semibold">
-                          <RiTimerLine className="w-2.5 h-2.5" />{isZh ? `提前${d}天` : `${d}d`}
-                        </span>
-                      ))}
+                  {isRestricted ? (
+                    <div className="flex items-center gap-1.5">
+                      <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-sky-500/15 border border-sky-400/40 text-sky-700 dark:text-sky-300 text-[10px] font-semibold">
+                        <RiCheckboxCircleLine className="w-2.5 h-2.5" />
+                        {isZh ? "域名状态变化通知" : "Status change alert"}
+                      </span>
                     </div>
-                  </div>
-                  {phaseChips.filter((c) => phaseAlerts[c.key]).length > 0 && (
-                    <div>
-                      <p className="text-[10px] text-foreground/60 font-semibold mb-1.5">{isZh ? "阶段提醒" : "Phase alerts"}</p>
-                      <div className="flex flex-wrap gap-1">
-                        {phaseChips.filter((c) => phaseAlerts[c.key]).map((chip) => (
-                          <span key={chip.key} className={cn("inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md border text-[10px] font-semibold", chip.activeCls)}>
-                            <RiCheckboxCircleLine className="w-2.5 h-2.5" />{chip.label}
-                          </span>
-                        ))}
+                  ) : (
+                    <>
+                      <div>
+                        <p className="text-[10px] text-foreground/60 font-semibold mb-1.5">{isZh ? "到期前提醒" : "Pre-expiry"}</p>
+                        <div className="flex flex-wrap gap-1">
+                          {[...selectedThresholds].sort((a, b) => b - a).map((d) => (
+                            <span key={d} className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-sky-500/15 border border-sky-400/40 text-sky-700 dark:text-sky-300 text-[10px] font-semibold">
+                              <RiTimerLine className="w-2.5 h-2.5" />{isZh ? `提前${d}天` : `${d}d`}
+                            </span>
+                          ))}
+                        </div>
                       </div>
-                    </div>
+                      {phaseChips.filter((c) => phaseAlerts[c.key]).length > 0 && (
+                        <div>
+                          <p className="text-[10px] text-foreground/60 font-semibold mb-1.5">{isZh ? "阶段提醒" : "Phase alerts"}</p>
+                          <div className="flex flex-wrap gap-1">
+                            {phaseChips.filter((c) => phaseAlerts[c.key]).map((chip) => (
+                              <span key={chip.key} className={cn("inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md border text-[10px] font-semibold", chip.activeCls)}>
+                                <RiCheckboxCircleLine className="w-2.5 h-2.5" />{chip.label}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
                 <p className="text-[10px] text-muted-foreground/55">{isZh ? "确认邮件已发送，请查收" : "Check your inbox for confirmation"}</p>
@@ -2948,88 +2965,114 @@ function DomainReminderDialog({
                 ) : null}
 
                 {/* Reminder plan */}
-                <div className="rounded-xl border border-border/60 bg-muted/15 p-3.5 space-y-3">
-                  <p className="text-[10px] font-bold text-foreground/60 uppercase tracking-widest">
-                    {isZh ? "提醒计划" : "Reminder plan"}
-                  </p>
-                  {/* Pre-expiry day alerts — interactive */}
-                  <div>
-                    <p className="text-[10px] text-foreground/70 mb-2 flex items-center gap-1.5 font-semibold">
-                      <RiTimerLine className="w-3 h-3 text-sky-500" />
-                      {isZh ? "到期前提醒" : "Pre-expiry alerts"}
-                      <span className="ml-auto text-[9px] text-muted-foreground/60 font-normal normal-case">
-                        {isZh ? "点击选择" : "tap to toggle"}
-                      </span>
+                {isRestricted ? (
+                  /* Restricted (prohibited / reserved) — status-change only */
+                  <div className="rounded-xl border border-border/60 bg-muted/15 p-3.5 space-y-2.5">
+                    <p className="text-[10px] font-bold text-foreground/60 uppercase tracking-widest">
+                      {isZh ? "提醒计划" : "Reminder plan"}
                     </p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {ALL_REMINDER_THRESHOLDS.map((d) => {
-                        const on = selectedThresholds.includes(d);
-                        return (
-                          <button
-                            key={d}
-                            type="button"
-                            onClick={() => toggleThreshold(d)}
-                            className={cn(
-                              "inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md border text-[11px] font-semibold transition-all cursor-pointer select-none",
-                              on
-                                ? "bg-sky-500/15 border-sky-400/60 text-sky-700 dark:text-sky-300"
-                                : "bg-muted/30 border-border/50 text-muted-foreground/55"
-                            )}
-                          >
-                            {on
-                              ? <RiCheckboxCircleLine className="w-2.5 h-2.5 shrink-0" />
-                              : <RiCheckboxBlankCircleLine className="w-2.5 h-2.5 shrink-0" />}
-                            {isZh ? `提前 ${d} 天` : `${d}d`}
-                          </button>
-                        );
-                      })}
+                    <div className="flex items-center gap-2.5 rounded-lg border border-sky-300/40 bg-sky-50/40 dark:bg-sky-950/15 px-3 py-2.5">
+                      <RiCheckboxCircleLine className="w-4 h-4 text-sky-500 shrink-0" />
+                      <div>
+                        <p className="text-[11px] font-bold text-sky-700 dark:text-sky-300">
+                          {isZh ? "域名状态变化通知" : "Status change alert"}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground leading-snug mt-0.5">
+                          {isZh
+                            ? "当该域名注册状态发生变化（如解禁、开放注册）时，系统将自动发送邮件通知。"
+                            : "You'll be notified by email if this domain's status changes (e.g. restriction lifted, becomes available)."}
+                        </p>
+                      </div>
                     </div>
+                    <p className="text-[10px] text-muted-foreground/65 border-t border-border/40 pt-2 leading-relaxed">
+                      {isZh ? "可随时取消订阅" : "Unsubscribe anytime"}
+                    </p>
                   </div>
-                  {/* Phase event alerts */}
-                  {phaseChips.length > 0 ? (
+                ) : (
+                  /* Normal domain — pre-expiry + phase chips */
+                  <div className="rounded-xl border border-border/60 bg-muted/15 p-3.5 space-y-3">
+                    <p className="text-[10px] font-bold text-foreground/60 uppercase tracking-widest">
+                      {isZh ? "提醒计划" : "Reminder plan"}
+                    </p>
+                    {/* Pre-expiry day alerts — interactive */}
                     <div>
                       <p className="text-[10px] text-foreground/70 mb-2 flex items-center gap-1.5 font-semibold">
-                        <RiCalendarEventLine className="w-3 h-3 text-violet-500" />
-                        {isZh ? `阶段提醒（.${tldUpper}）` : `Phase alerts (.${tldUpper})`}
+                        <RiTimerLine className="w-3 h-3 text-sky-500" />
+                        {isZh ? "到期前提醒" : "Pre-expiry alerts"}
                         <span className="ml-auto text-[9px] text-muted-foreground/60 font-normal normal-case">
                           {isZh ? "点击选择" : "tap to toggle"}
                         </span>
                       </p>
                       <div className="flex flex-wrap gap-1.5">
-                        {phaseChips.map((chip) => {
-                          const on = phaseAlerts[chip.key];
+                        {ALL_REMINDER_THRESHOLDS.map((d) => {
+                          const on = selectedThresholds.includes(d);
                           return (
                             <button
-                              key={chip.key}
+                              key={d}
                               type="button"
-                              onClick={() => togglePhase(chip.key)}
+                              onClick={() => toggleThreshold(d)}
                               className={cn(
                                 "inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md border text-[11px] font-semibold transition-all cursor-pointer select-none",
-                                on ? chip.activeCls : chip.inactiveCls
+                                on
+                                  ? "bg-sky-500/15 border-sky-400/60 text-sky-700 dark:text-sky-300"
+                                  : "bg-muted/30 border-border/50 text-muted-foreground/55"
                               )}
                             >
                               {on
                                 ? <RiCheckboxCircleLine className="w-2.5 h-2.5 shrink-0" />
                                 : <RiCheckboxBlankCircleLine className="w-2.5 h-2.5 shrink-0" />}
-                              {chip.label}
+                              {isZh ? `提前 ${d} 天` : `${d}d`}
                             </button>
                           );
                         })}
                       </div>
                     </div>
-                  ) : lc ? (
-                    <p className="text-[10px] text-muted-foreground/55 italic">
+                    {/* Phase event alerts */}
+                    {phaseChips.length > 0 ? (
+                      <div>
+                        <p className="text-[10px] text-foreground/70 mb-2 flex items-center gap-1.5 font-semibold">
+                          <RiCalendarEventLine className="w-3 h-3 text-violet-500" />
+                          {isZh ? `阶段提醒（.${tldUpper}）` : `Phase alerts (.${tldUpper})`}
+                          <span className="ml-auto text-[9px] text-muted-foreground/60 font-normal normal-case">
+                            {isZh ? "点击选择" : "tap to toggle"}
+                          </span>
+                        </p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {phaseChips.map((chip) => {
+                            const on = phaseAlerts[chip.key];
+                            return (
+                              <button
+                                key={chip.key}
+                                type="button"
+                                onClick={() => togglePhase(chip.key)}
+                                className={cn(
+                                  "inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md border text-[11px] font-semibold transition-all cursor-pointer select-none",
+                                  on ? chip.activeCls : chip.inactiveCls
+                                )}
+                              >
+                                {on
+                                  ? <RiCheckboxCircleLine className="w-2.5 h-2.5 shrink-0" />
+                                  : <RiCheckboxBlankCircleLine className="w-2.5 h-2.5 shrink-0" />}
+                                {chip.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ) : lc ? (
+                      <p className="text-[10px] text-muted-foreground/55 italic">
+                        {isZh
+                          ? `.${tldUpper} 注册局不设宽限期，仅发送到期前提醒`
+                          : `.${tldUpper} has no grace/redemption — pre-expiry alerts only`}
+                      </p>
+                    ) : null}
+                    <p className="text-[10px] text-muted-foreground/65 border-t border-border/40 pt-2.5 leading-relaxed">
                       {isZh
-                        ? `.${tldUpper} 注册局不设宽限期，仅发送到期前提醒`
-                        : `.${tldUpper} has no grace/redemption — pre-expiry alerts only`}
+                        ? "域名释放后自动停止 · 续费时提醒保留直至到期 · 可随时取消"
+                        : "Auto-stops on drop · Reminders continue after renewal until new expiry · Unsubscribe anytime"}
                     </p>
-                  ) : null}
-                  <p className="text-[10px] text-muted-foreground/65 border-t border-border/40 pt-2.5 leading-relaxed">
-                    {isZh
-                      ? "域名释放后自动停止 · 续费时提醒保留直至到期 · 可随时取消"
-                      : "Auto-stops on drop · Reminders continue after renewal until new expiry · Unsubscribe anytime"}
-                  </p>
-                </div>
+                  </div>
+                )}
 
                 {/* Email input */}
                 <div>

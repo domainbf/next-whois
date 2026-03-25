@@ -199,6 +199,7 @@ export interface SubscriptionEmailParams {
   expirationDate: string | null;
   cancelToken: string;
   thresholds: number[];
+  regStatusType?: string;
   lifecycle?: {
     phase: string;
     graceEnd: string;
@@ -214,7 +215,40 @@ export interface SubscriptionEmailParams {
 export function subscriptionConfirmHtml(p: SubscriptionEmailParams & { siteName?: string }): string {
   const siteName = p.siteName || "X.RW";
   const cancelUrl = `${BASE_URL()}/remind/cancel?token=${p.cancelToken}`;
+  const isRestricted = p.regStatusType === "prohibited" || p.regStatusType === "reserved";
 
+  // ── Restricted domain email (prohibited / reserved) ──────────────────────
+  if (isRestricted) {
+    const statusLabel = p.regStatusType === "prohibited" ? "禁止注册" : "保留域名";
+    const statusColor = p.regStatusType === "prohibited" ? "#dc2626" : "#d97706";
+    const statusBg    = p.regStatusType === "prohibited" ? "#fef2f2" : "#fffbeb";
+    const statusDesc  = p.regStatusType === "prohibited"
+      ? "该域名被注册局标记为禁止注册字符串，通常无法通过常规渠道注册。当域名注册状态发生变化时，我们将第一时间通知您。"
+      : "该域名目前为注册局保留状态，不对公众开放注册。如域名状态变化或开放注册，我们将立即发送通知。";
+
+    return emailLayout(`
+      ${darkHeader("域名状态变化订阅", domainBadge(p.domain), "域名状态变化时，我们将第一时间通知您")}
+
+      ${section(`
+        <div style="border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;margin-bottom:20px">
+          <div style="padding:12px 18px;background:${statusBg}">
+            <p style="margin:0;font-size:11px;font-weight:700;letter-spacing:1px;color:${statusColor};text-transform:uppercase">当前状态 · ${statusLabel}</p>
+            <p style="margin:6px 0 0;font-size:12px;color:#475569;line-height:1.7">${statusDesc}</p>
+          </div>
+          <div style="padding:12px 18px;border-top:1px solid #e2e8f0;background:#f0f9ff">
+            <p style="margin:0;font-size:11px;font-weight:700;letter-spacing:1px;color:#0284c7;text-transform:uppercase">已订阅的提醒</p>
+            <p style="margin:6px 0 0;font-size:13px;font-weight:700;color:#0c4a6e">✓ 域名状态变化通知</p>
+            <p style="margin:4px 0 0;font-size:12px;color:#64748b;line-height:1.6">当该域名的注册状态发生任何变化（如解禁、开放注册、状态转变）时自动通知。</p>
+          </div>
+        </div>
+      `)}
+
+      ${divider()}
+      ${actionRow(`${BASE_URL()}/${p.domain}`, "查看域名", cancelUrl)}
+    `, siteName);
+  }
+
+  // ── Normal domain email ───────────────────────────────────────────────────
   const expiryStr = p.expirationDate
     ? new Date(p.expirationDate).toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric" })
     : "未知";
@@ -243,20 +277,6 @@ export function subscriptionConfirmHtml(p: SubscriptionEmailParams & { siteName?
           <p style="margin:0;font-size:11px;font-weight:700;letter-spacing:1px;color:${phase.color};text-transform:uppercase">当前状态 · ${phase.label}</p>
           <p style="margin:6px 0 0;font-size:12px;color:#475569;line-height:1.7">${phase.desc}</p>
         </div>
-        ${lc ? `
-        <div style="padding:14px 18px;border-top:1px solid #e2e8f0">
-          <p style="margin:0 0 10px;font-size:11px;font-weight:600;letter-spacing:1px;color:#94a3b8;text-transform:uppercase">生命周期时间表</p>
-          <table cellpadding="0" cellspacing="0" style="width:100%">
-            ${[
-              ["宽限期结束",   lc.graceEnd,      "#d97706"],
-              ["赎回期结束",   lc.redemptionEnd,  "#ea580c"],
-              ["预计释放时间", lc.dropDate,       "#dc2626"],
-            ].map(([l, d, c]) => `<tr>
-              <td style="padding:4px 0;font-size:12px;color:#64748b">${l}</td>
-              <td style="padding:4px 0;font-size:12px;font-weight:700;color:${c};font-family:monospace;text-align:right">${d}</td>
-            </tr>`).join("")}
-          </table>
-        </div>` : ""}
       </div>
 
       <!-- Thresholds -->
