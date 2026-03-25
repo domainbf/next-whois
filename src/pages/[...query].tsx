@@ -2951,6 +2951,21 @@ function DomainReminderDialog({
                         </div>
                       );
                     })()}
+
+                    {/* Feedback row */}
+                    <div className="px-3.5 py-2 border-t border-border/20 bg-background/40 flex items-center justify-between">
+                      <p className="text-[10px] text-muted-foreground/50">
+                        {isZh ? "时间不准确？" : "Timing incorrect?"}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setLcFeedbackOpen(true)}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold border border-border/40 bg-muted/20 text-muted-foreground hover:bg-amber-50 dark:hover:bg-amber-950/30 hover:border-amber-400/40 hover:text-amber-600 dark:hover:text-amber-400 transition-colors cursor-pointer"
+                      >
+                        <RiFlagLine className="w-2.5 h-2.5" />
+                        {isZh ? "反馈纠错" : "Report"}
+                      </button>
+                    </div>
                   </div>
                 ) : !hasExpiry ? (
                   <div className="px-3.5 py-3 rounded-xl border border-border/50 bg-muted/15 flex items-center gap-2.5">
