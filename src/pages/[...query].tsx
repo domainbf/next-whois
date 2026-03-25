@@ -2810,17 +2810,17 @@ function DomainReminderDialog({
                   </div>
                 )}
 
-                {/* Lifecycle card */}
+                {/* Lifecycle card — phase dot + expiry countdown + drop date multi-tz */}
                 {hasExpiry && lc && phaseUI ? (
                   <div className={cn("rounded-xl border overflow-hidden", phaseUI.borderClass)}>
-                    {/* Expiry row */}
+                    {/* Expiry + countdown row */}
                     <div className={cn("flex items-center justify-between px-3.5 py-3", phaseUI.bgClass)}>
                       <div className="min-w-0">
-                        <p className="text-[9px] text-muted-foreground/80 uppercase tracking-wider font-bold mb-1">
-                          {isZh ? "过期日期" : "Expiry date"}
+                        <p className="text-[9px] text-muted-foreground/70 uppercase tracking-wider font-bold mb-1">
+                          {isZh ? "到期日期" : "Expiry date"}
                         </p>
-                        <p className="text-[12px] font-mono font-bold text-foreground leading-none">{fmtDate(lc.expiry)}</p>
-                        <p className="text-[10px] font-mono text-muted-foreground/70 mt-0.5 tabular-nums">
+                        <p className="text-[13px] font-mono font-bold text-foreground leading-none">{fmtDate(lc.expiry)}</p>
+                        <p className="text-[10px] font-mono text-muted-foreground/60 mt-0.5 tabular-nums">
                           {`${String(lc.expiry.getUTCHours()).padStart(2,"0")}:${String(lc.expiry.getUTCMinutes()).padStart(2,"0")}:${String(lc.expiry.getUTCSeconds()).padStart(2,"0")} UTC`}
                         </p>
                       </div>
@@ -2842,141 +2842,106 @@ function DomainReminderDialog({
                         )}
                       </div>
                     </div>
-                    {/* Phase badge */}
-                    <div className="px-3.5 py-2.5 bg-background/70 border-t border-border/30">
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", phaseUI.dotClass)} />
-                        <span className={cn("text-[10px] font-bold uppercase tracking-wider", phaseUI.colorClass)}>{phaseUI.label}</span>
+
+                    {/* Current phase — animated dot + label + advice */}
+                    <div className="px-3.5 py-3 bg-background/60 border-t border-border/25">
+                      <div className="flex items-center gap-2">
+                        <span className="relative flex h-2 w-2 shrink-0">
+                          {lc.phase !== "active" && (
+                            <span className={cn("animate-ping absolute inline-flex h-full w-full rounded-full opacity-60", phaseUI.dotClass)} />
+                          )}
+                          <span className={cn("relative inline-flex rounded-full h-2 w-2", phaseUI.dotClass)} />
+                        </span>
+                        <span className={cn("text-[11px] font-bold tracking-wide", phaseUI.colorClass)}>
+                          {phaseUI.label}
+                        </span>
                         {lc.phaseSource === "epp" && (
                           <span className="ml-auto inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-400/20 text-[9px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wide">
-                            <RiShieldCheckLine className="w-2.5 h-2.5" />
-                            {isZh ? "EPP实时" : "EPP live"}
+                            <RiShieldCheckLine className="w-2 h-2" />EPP
                           </span>
                         )}
                       </div>
-                      <p className="text-[11px] text-muted-foreground leading-relaxed">
+                      <p className="text-[11px] text-muted-foreground leading-relaxed mt-1.5">
                         {isZh ? PHASE_ADVICE[lc.phase]?.zh : PHASE_ADVICE[lc.phase]?.en}
                       </p>
                     </div>
-                    {/* Timeline */}
-                    <div className="px-3.5 py-2.5 border-t border-border/30 bg-muted/20">
-                      <div className="flex items-center justify-between mb-2">
-                        <p className="text-[9px] font-bold text-muted-foreground/70 uppercase tracking-widest">
-                          {isZh ? "生命周期时间表" : "Lifecycle timeline"}
-                        </p>
-                        <div className="flex items-center gap-1.5">
-                          {/* Confidence badge */}
-                          <span className={cn(
-                            "inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[8.5px] font-bold uppercase tracking-wide border",
-                            lc.cfg.confidence === "high"
-                              ? "bg-emerald-500/10 border-emerald-400/20 text-emerald-600 dark:text-emerald-400"
-                              : "bg-yellow-500/10 border-yellow-400/20 text-yellow-600 dark:text-yellow-400"
-                          )}>
-                            {lc.cfg.confidence === "high"
-                              ? (isZh ? "✓ 高可信度" : "✓ Verified")
-                              : (isZh ? "~ 预估数据" : "~ Estimated")}
-                          </span>
-                          {/* Correction feedback button */}
-                          <button
-                            onClick={() => setLcFeedbackOpen(true)}
-                            title={isZh ? "纠正宽限期数据" : "Correct lifecycle data"}
-                            className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[8.5px] font-semibold border border-border/50 bg-muted/30 text-foreground hover:bg-amber-50 dark:hover:bg-amber-950/30 hover:border-amber-400/40 hover:text-amber-600 dark:hover:text-amber-400 transition-colors cursor-pointer"
-                          >
-                            <RiFlagLine className="w-2.5 h-2.5" />
-                            {isZh ? "纠错" : "Correct"}
-                          </button>
-                        </div>
-                      </div>
-                      {/* Shimmer hint text */}
-                      <p className="lc-hint-shimmer text-[9px] leading-relaxed mb-2 select-none">
-                        {isZh
-                          ? "若实际注册局政策与显示数据不符，请填写正确天数并提交，管理员审核后将更新数据。"
-                          : "If the registry policy differs from what's shown, enter correct days and submit for admin review."}
-                      </p>
-                      <div className="space-y-2">
-                        {([
-                          lc.cfg.grace > 0 &&
-                            { key: "grace",   label: isZh ? "宽限期结束" : "Grace ends",      date: lc.graceEnd,      color: "text-amber-600 dark:text-amber-400",  dotColor: "bg-amber-400" },
-                          lc.cfg.redemption > 0 &&
-                            { key: "redemp",  label: isZh ? "赎回期结束" : "Redemption ends",  date: lc.redemptionEnd, color: "text-orange-600 dark:text-orange-400", dotColor: "bg-orange-400" },
-                          (lc.cfg.pendingDelete > 0 || (lc.cfg.grace > 0 || lc.cfg.redemption > 0)) &&
-                            { key: "drop",    label: isZh ? "预计删除"   : "Est. deletion",    date: lc.dropDate,      color: "text-red-600 dark:text-red-400",       dotColor: "bg-red-400" },
-                        ] as (false | { key: string; label: string; date: Date; color: string; dotColor: string })[])
-                          .filter(Boolean)
-                          .map((row) => {
-                            if (!row) return null;
-                            const isPast = new Date() > row.date;
-                            return (
-                              <div key={row.key}>
-                                <div className="flex items-start justify-between gap-2">
-                                  <div className="flex items-center gap-1.5 min-w-0">
-                                    <span className={cn("w-1.5 h-1.5 rounded-full shrink-0 mt-0.5", isPast ? "bg-muted-foreground/30" : row.dotColor)} />
-                                    <span className={cn("text-[10px]", isPast ? "line-through text-muted-foreground/40" : "text-muted-foreground")}>{row.label}</span>
-                                  </div>
-                                  <span className={cn("text-[10px] font-mono font-semibold tabular-nums text-right shrink-0", isPast ? "text-muted-foreground/40" : row.color)}>
-                                    {fmtDateTime(row.date, false)}
-                                  </span>
-                                </div>
-                                {!isPast && (
-                                  <p className="text-[9px] text-muted-foreground/50 pl-3 mt-0.5 tabular-nums font-mono">
-                                    UTC · {fmtCountdown(row.date, isZh)}{isZh ? "后" : " from now"}
-                                  </p>
-                                )}
-                              </div>
-                            );
-                          })}
 
-                        {/* 预期可注册时间 — prominently highlighted */}
-                        {(lc.cfg.pendingDelete > 0 || lc.cfg.grace > 0 || lc.cfg.redemption > 0) && (() => {
-                          const dropIsPast = new Date() > lc.dropDate;
-                          return (
-                            <div className={cn(
-                              "rounded-lg border px-2.5 py-2 mt-1",
-                              dropIsPast
-                                ? "border-emerald-400/50 bg-emerald-500/10"
-                                : "border-sky-400/35 bg-sky-500/8"
-                            )}>
-                              <div className="flex items-start justify-between gap-2">
-                                <div className="flex items-center gap-1.5">
-                                  <RiShoppingCartLine className={cn("w-3 h-3 shrink-0", dropIsPast ? "text-emerald-500" : "text-sky-500")} />
-                                  <span className={cn("text-[11px] font-bold", dropIsPast ? "text-emerald-600 dark:text-emerald-400" : "text-sky-600 dark:text-sky-400")}>
-                                    {isZh ? "预计可注册" : "Est. available"}
-                                  </span>
-                                  {dropIsPast && (
-                                    <span className="inline-flex items-center px-1 py-0 rounded text-[8px] font-bold bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-400/30 uppercase tracking-wide">
-                                      {isZh ? "现在" : "NOW"}
-                                    </span>
-                                  )}
-                                </div>
-                                <span className={cn(
-                                  "text-[11px] font-mono font-bold tabular-nums text-right",
-                                  dropIsPast ? "text-emerald-600 dark:text-emerald-400" : "text-sky-600 dark:text-sky-400"
-                                )}>
-                                  {fmtDateTime(lc.dropDate, false)}
+                    {/* Drop/available date with multi-timezone breakdown */}
+                    {(lc.cfg.pendingDelete > 0 || lc.cfg.grace > 0 || lc.cfg.redemption > 0) && (() => {
+                      const dropIsPast = new Date() > lc.dropDate;
+                      const daysToDropDate = Math.ceil((lc.dropDate.getTime() - Date.now()) / 86_400_000);
+
+                      // Build timezone rows — always UTC, + locale-specific cities
+                      type TzRow = { label: string; tz: string };
+                      const tzRows: TzRow[] = [{ label: "UTC", tz: "UTC" }];
+                      if (isZh) {
+                        tzRows.push({ label: isZh ? "北京时间" : "Beijing", tz: "Asia/Shanghai" });
+                      } else {
+                        tzRows.push({ label: "New York", tz: "America/New_York" });
+                        tzRows.push({ label: "London",   tz: "Europe/London"   });
+                      }
+                      // Always add browser local timezone if it differs from the above
+                      try {
+                        const localTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+                        if (!tzRows.some(r => r.tz === localTz)) {
+                          tzRows.push({ label: isZh ? "本地时间" : "Local", tz: localTz });
+                        }
+                      } catch { /* ignore */ }
+
+                      const fmtInTz = (d: Date, tz: string) => {
+                        try {
+                          return new Intl.DateTimeFormat(isZh ? "zh-CN" : "en-US", {
+                            timeZone: tz,
+                            year: "numeric", month: "2-digit", day: "2-digit",
+                            hour: "2-digit", minute: "2-digit", second: "2-digit",
+                            hour12: false,
+                          }).format(d).replace(/\//g, "/");
+                        } catch { return "—"; }
+                      };
+
+                      return (
+                        <div className={cn(
+                          "border-t px-3.5 py-3",
+                          dropIsPast ? "border-emerald-300/40 bg-emerald-50/40 dark:bg-emerald-950/15" : "border-border/25 bg-muted/20"
+                        )}>
+                          {/* Header row */}
+                          <div className="flex items-center gap-2 mb-2.5">
+                            <RiShoppingCartLine className={cn("w-3.5 h-3.5 shrink-0", dropIsPast ? "text-emerald-500" : "text-sky-500")} />
+                            <span className={cn("text-[11px] font-bold", dropIsPast ? "text-emerald-600 dark:text-emerald-400" : "text-sky-600 dark:text-sky-400")}>
+                              {isZh ? "预计可注册" : "Est. available"}
+                            </span>
+                            {dropIsPast ? (
+                              <span className="ml-auto inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-bold bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-400/30 uppercase tracking-wide">
+                                {isZh ? "现在可注册" : "NOW"}
+                              </span>
+                            ) : (
+                              <span className={cn("ml-auto text-[11px] font-black tabular-nums", urgencyNum === "text-muted-foreground" ? "text-sky-600 dark:text-sky-400" : urgencyNum)}>
+                                {Math.max(0, daysToDropDate)}{isZh ? "天后" : "d"}
+                              </span>
+                            )}
+                          </div>
+                          {/* Timezone rows */}
+                          <div className="space-y-1.5">
+                            {tzRows.map(({ label, tz }) => (
+                              <div key={tz} className="flex items-center justify-between gap-2">
+                                <span className="text-[10px] text-muted-foreground/70 font-medium shrink-0 w-[64px]">{label}</span>
+                                <span className="text-[10px] font-mono font-semibold tabular-nums text-foreground/80 text-right">
+                                  {fmtInTz(lc.dropDate, tz)}
                                 </span>
                               </div>
-                              <p className={cn("text-[9px] pl-4 mt-0.5 leading-relaxed font-mono tabular-nums", dropIsPast ? "text-emerald-600/60" : "text-sky-500/60")}>
-                                {dropIsPast
-                                  ? (isZh ? "UTC · 域名现已可注册，请尽快抢注" : "UTC · Domain may be available for registration now")
-                                  : `UTC · ${fmtCountdown(lc.dropDate, isZh)}${isZh ? "后可抢注" : " until available"}`}
-                              </p>
-                            </div>
-                          );
-                        })()}
-
-                        {lc.cfg.grace === 0 && lc.cfg.redemption === 0 && lc.cfg.pendingDelete === 0 && (
-                          <p className="text-[10px] text-muted-foreground/60 italic">
-                            {isZh
-                              ? `.${tldUpper} 域名到期后通常立即删除，无宽限期`
-                              : `.${tldUpper} domains are typically deleted immediately on expiry`}
-                          </p>
-                        )}
-                      </div>
-                    </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 ) : !hasExpiry ? (
-                  <div className="px-3 py-3 rounded-xl border border-border/50 bg-muted/20">
-                    <p className="text-xs text-muted-foreground text-center">
+                  <div className="px-3.5 py-3 rounded-xl border border-border/50 bg-muted/15 flex items-center gap-2.5">
+                    <span className="relative flex h-2 w-2 shrink-0">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-40 bg-sky-400" />
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-sky-400" />
+                    </span>
+                    <p className="text-[11px] text-muted-foreground">
                       {isZh ? "暂无到期日期，仍可订阅提醒" : "No expiry info yet, but you can still subscribe"}
                     </p>
                   </div>
