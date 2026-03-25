@@ -518,10 +518,14 @@ function SubscribeGuideModal({ onClose }: { onClose: () => void }) {
       </form>
       <button
         type="button"
-        onClick={() => { onClose(); router.push("/stamp"); }}
+        onClick={() => {
+          const q = domain.trim();
+          onClose();
+          router.push(q ? `/stamp?domain=${encodeURIComponent(q)}` : "/stamp");
+        }}
         className="w-full h-9 rounded-xl text-xs touch-manipulation flex items-center justify-center border border-border bg-background hover:bg-muted transition-colors font-medium"
       >
-        <RiCalendarLine className="w-3.5 h-3.5 mr-1" />前往品牌认领页
+        <RiShieldCheckLine className="w-3.5 h-3.5 mr-1" />前往品牌认领页
       </button>
     </GuideModalShell>
   );
