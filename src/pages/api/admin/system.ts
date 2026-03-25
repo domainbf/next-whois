@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { many, one, run } from "@/lib/db-query";
 import { requireAdmin, getAdminEmail } from "@/lib/admin";
+import { isRedisAvailable, redis } from "@/lib/server/redis";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const session = await requireAdmin(req, res);
@@ -10,7 +11,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { action } = req.body ?? {};
     if (action === "clear_rate_limits") {
       try {
+        // Clear expired DB records
         await run(`DELETE FROM rate_limit_records WHERE reset_at < NOW()`);
+        // Also flush Redis rate limit keys
+        if (isRedisAvailable() && redis) {
+          try {
+            const keys = await redis.keys("rl:*");
+            if (keys.length > 0) await redis.del(...keys);
+          } catch { /* ignore */ }
+        }
         return res.json({ ok: true });
       } catch (err: any) {
         return res.status(500).json({ error: err.message });
@@ -76,9 +85,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const dbOk = !!users;
 
+    // Redis health check
+    let redisOk = false;
+    let redisLatencyMs: number | null = null;
+    if (isRedisAvailable() && redis) {
+      try {
+        const t0 = Date.now();
+        await redis.ping();
+        redisLatencyMs = Date.now() - t0;
+        redisOk = true;
+      } catch { /* remain false */ }
+    }
+
     return res.json({
       ok: true,
       db: { ok: dbOk },
+      redis: { ok: redisOk, configured: !!redis, latencyMs: redisLatencyMs },
       adminEmail,
       stats: {
         users: {

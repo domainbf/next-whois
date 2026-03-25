@@ -345,7 +345,17 @@
   },
   "remind": {
     "network_error": "Network error, please try again",
-    "upgrade_now": "Upgrade Now"
+    "upgrade_now": "Upgrade Now",
+    "cancel_title": "Cancel Reminder",
+    "cancel_loading": "Processing cancellation…",
+    "cancel_success_title": "Reminder cancelled",
+    "cancel_success_domain": "Your reminder for {{domain}} has been removed.",
+    "cancel_success_email": "We will no longer send notifications to {{email}}.",
+    "cancel_go_home": "Go back",
+    "cancel_not_found_title": "Reminder not found",
+    "cancel_not_found_desc": "This reminder may have already been cancelled or the link has expired.",
+    "cancel_error_title": "Cancellation failed",
+    "cancel_error_desc": "An error occurred while cancelling your reminder. Please try again later."
   },
   "tools": {
     "page_title": "Domain Toolbox",
@@ -418,7 +428,10 @@
     "platform_wechat": "WeChat Pay",
     "platform_other": "Other",
     "alipay_title": "Alipay",
-    "wechat_title": "WeChat Pay"
+    "wechat_title": "WeChat Pay",
+    "wall_section": "Sponsor Wall",
+    "show_less": "Show less",
+    "show_more": "Show {{n}} more"
   },
   "icp": {
     "page_title": "ICP Filing Lookup",

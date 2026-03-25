@@ -345,7 +345,17 @@
   },
   "remind": {
     "network_error": "網路錯誤，請重試",
-    "upgrade_now": "立即升級"
+    "upgrade_now": "立即升級",
+    "cancel_title": "取消提醒",
+    "cancel_loading": "正在取消…",
+    "cancel_success_title": "提醒已取消",
+    "cancel_success_domain": "{{domain}} 的到期提醒已成功取消。",
+    "cancel_success_email": "我們將不再向 {{email}} 發送通知。",
+    "cancel_go_home": "返回",
+    "cancel_not_found_title": "提醒不存在",
+    "cancel_not_found_desc": "此提醒可能已取消，或連結已失效。",
+    "cancel_error_title": "取消失敗",
+    "cancel_error_desc": "取消提醒時發生錯誤，請稍後再試。"
   },
   "tools": {
     "page_title": "網域工具箱",
@@ -418,7 +428,10 @@
     "platform_wechat": "微信支付",
     "platform_other": "其他",
     "alipay_title": "支付寶",
-    "wechat_title": "微信支付"
+    "wechat_title": "微信支付",
+    "wall_section": "贊助者名單",
+    "show_less": "收起",
+    "show_more": "查看更多 {{n}} 位"
   },
   "icp": {
     "page_title": "ICP 備案查詢",

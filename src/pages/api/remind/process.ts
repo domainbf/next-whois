@@ -13,6 +13,9 @@ import {
 } from "@/lib/lifecycle";
 import { many, run, isDbReady } from "@/lib/db-query";
 import { loadLifecycleOverrides } from "@/lib/server/lifecycle-overrides";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/pages/api/auth/[...nextauth]";
+import { isAdmin } from "@/lib/admin";
 
 const DEFAULT_THRESHOLDS = [60, 30, 10, 5, 1];
 const DROP_SOON_KEY = -4;   // 7 days before drop date
@@ -21,6 +24,7 @@ const DROPPED_KEY   = -5;   // domain just became available
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "GET" && req.method !== "POST") return res.status(405).end();
 
+  // Auth: accept CRON_SECRET (from Vercel cron) OR an admin session (from the dashboard UI)
   const cronSecret = process.env.CRON_SECRET;
   if (cronSecret) {
     const authHeader = req.headers.authorization;
@@ -29,7 +33,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : undefined;
     const provided = bearerToken || legacyHeader || querySecret;
     if (provided !== cronSecret) {
-      return res.status(401).json({ error: "Unauthorized" });
+      // Fall back to admin session auth
+      const session = await getServerSession(req, res, authOptions);
+      if (!session?.user?.email || !isAdmin(session.user.email)) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
     }
   }
 

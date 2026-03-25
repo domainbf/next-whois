@@ -345,7 +345,17 @@
   },
   "remind": {
     "network_error": "Ошибка сети, повторите попытку",
-    "upgrade_now": "Улучшить сейчас"
+    "upgrade_now": "Улучшить сейчас",
+    "cancel_title": "Отменить напоминание",
+    "cancel_loading": "Отмена…",
+    "cancel_success_title": "Напоминание отменено",
+    "cancel_success_domain": "Напоминание для {{domain}} удалено.",
+    "cancel_success_email": "Мы больше не будем отправлять уведомления на {{email}}.",
+    "cancel_go_home": "Назад",
+    "cancel_not_found_title": "Напоминание не найдено",
+    "cancel_not_found_desc": "Это напоминание уже отменено или ссылка устарела.",
+    "cancel_error_title": "Не удалось отменить",
+    "cancel_error_desc": "При отмене напоминания произошла ошибка. Попробуйте позже."
   },
   "tools": {
     "page_title": "Инструменты для доменов",
@@ -418,7 +428,10 @@
     "platform_wechat": "WeChat Pay",
     "platform_other": "Другое",
     "alipay_title": "Alipay",
-    "wechat_title": "WeChat Pay"
+    "wechat_title": "WeChat Pay",
+    "wall_section": "Спонсорская стена",
+    "show_less": "Свернуть",
+    "show_more": "Показать ещё {{n}}"
   },
   "icp": {
     "page_title": "Поиск ICP-регистрации",

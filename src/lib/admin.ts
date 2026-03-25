@@ -6,6 +6,15 @@ import { getAdminEmail, isAdminEmail } from "@/lib/admin-server";
 
 export { ADMIN_EMAIL, getAdminEmail };
 
+/**
+ * Synchronous admin check — compares against the compile-time ADMIN_EMAIL
+ * constant. Use `isAdminEmail()` (async) for the DB-backed check.
+ */
+export function isAdmin(email?: string | null): boolean {
+  if (!email) return false;
+  return email.toLowerCase().trim() === ADMIN_EMAIL.toLowerCase().trim();
+}
+
 export async function requireAdmin(
   req: NextApiRequest,
   res: NextApiResponse,

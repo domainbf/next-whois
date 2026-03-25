@@ -5,24 +5,48 @@ import { many, run } from "@/lib/db-query";
 import { requireAdmin } from "@/lib/admin";
 import { isAdminEmail, invalidateAdminEmailCache } from "@/lib/admin-server";
 import { DEFAULT_SETTINGS, type SiteSettings } from "@/lib/site-settings";
+import {
+  isRedisAvailable,
+  getJsonRedisValue,
+  setJsonRedisValue,
+  deleteRedisValue,
+} from "@/lib/server/redis";
 
 const ALLOWED_KEYS = new Set(Object.keys(DEFAULT_SETTINGS));
 const SERVER_ONLY_KEYS = new Set(["captcha_secret_key", "smtp_pass"]);
 
 let _rowsCache: { rows: { key: string; value: string }[]; ts: number } | null = null;
 const ROWS_CACHE_TTL = 30_000;
+const REDIS_SETTINGS_KEY = "site_settings:rows:v1";
+const REDIS_SETTINGS_TTL = 60; // 60 seconds
 
-async function getCachedRows() {
+async function getCachedRows(): Promise<{ key: string; value: string }[]> {
   const now = Date.now();
+  // L1: in-process
   if (_rowsCache && now - _rowsCache.ts < ROWS_CACHE_TTL) return _rowsCache.rows;
+  // L2: Redis
+  if (isRedisAvailable()) {
+    const cached = await getJsonRedisValue<{ key: string; value: string }[]>(REDIS_SETTINGS_KEY);
+    if (cached) {
+      _rowsCache = { rows: cached, ts: now };
+      return cached;
+    }
+  }
+  // L3: DB
   const rows = await many<{ key: string; value: string }>("SELECT key, value FROM site_settings");
   _rowsCache = { rows, ts: now };
+  if (isRedisAvailable()) {
+    setJsonRedisValue(REDIS_SETTINGS_KEY, rows, REDIS_SETTINGS_TTL).catch(() => {});
+  }
   return rows;
 }
 
 function invalidateCache() {
   _rowsCache = null;
   invalidateAdminEmailCache();
+  if (isRedisAvailable()) {
+    deleteRedisValue(REDIS_SETTINGS_KEY).catch(() => {});
+  }
 }
 
 async function isAdmin(req: NextApiRequest, res: NextApiResponse): Promise<boolean> {

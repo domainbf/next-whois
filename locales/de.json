@@ -345,7 +345,17 @@
   },
   "remind": {
     "network_error": "Netzwerkfehler, bitte erneut versuchen",
-    "upgrade_now": "Jetzt upgraden"
+    "upgrade_now": "Jetzt upgraden",
+    "cancel_title": "Erinnerung abbrechen",
+    "cancel_loading": "Wird abgebrochen…",
+    "cancel_success_title": "Erinnerung abgebrochen",
+    "cancel_success_domain": "Deine Erinnerung für {{domain}} wurde entfernt.",
+    "cancel_success_email": "Wir senden keine Benachrichtigungen mehr an {{email}}.",
+    "cancel_go_home": "Zurück",
+    "cancel_not_found_title": "Erinnerung nicht gefunden",
+    "cancel_not_found_desc": "Diese Erinnerung wurde möglicherweise bereits abgebrochen oder der Link ist abgelaufen.",
+    "cancel_error_title": "Abbruch fehlgeschlagen",
+    "cancel_error_desc": "Beim Abbrechen der Erinnerung ist ein Fehler aufgetreten. Bitte versuche es später erneut."
   },
   "tools": {
     "page_title": "Domain-Werkzeugkasten",
@@ -418,7 +428,10 @@
     "platform_wechat": "WeChat Pay",
     "platform_other": "Sonstiges",
     "alipay_title": "Alipay",
-    "wechat_title": "WeChat Pay"
+    "wechat_title": "WeChat Pay",
+    "wall_section": "Sponsor-Wand",
+    "show_less": "Weniger anzeigen",
+    "show_more": "{{n}} weitere anzeigen"
   },
   "icp": {
     "page_title": "ICP-Registrierungsabfrage",

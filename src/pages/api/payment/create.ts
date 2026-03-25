@@ -53,7 +53,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const stripeKey = process.env.STRIPE_SECRET_KEY ?? await getSetting("payment_stripe_sk_enc");
       if (!stripeKey) return res.status(500).json({ error: "Stripe 未配置私钥" });
 
-      const stripe = new Stripe(stripeKey, { apiVersion: "2024-06-20" });
+      const stripe = new Stripe(stripeKey, { apiVersion: "2026-02-25.clover" });
       const currencyCode = (plan.currency || "CNY").toLowerCase();
       const isZeroDecimal = ["jpy", "krw", "vnd"].includes(currencyCode);
       const unitAmount = isZeroDecimal

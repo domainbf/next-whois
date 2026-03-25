@@ -1,9 +1,16 @@
 import { many, isDbReady } from "@/lib/db-query";
 import type { TldLifecycle } from "@/lib/lifecycle";
+import {
+  isRedisAvailable,
+  getJsonRedisValue,
+  setJsonRedisValue,
+} from "@/lib/server/redis";
 
 let _cache: Record<string, TldLifecycle> | null = null;
 let _cacheExpiry = 0;
-const TTL = 5 * 60 * 1000; // 5 minutes
+const TTL = 5 * 60 * 1000; // 5 minutes in-process
+const REDIS_TTL_S = 5 * 60; // 5 minutes in Redis
+const REDIS_KEY = "lifecycle_overrides:v1";
 
 /**
  * Loads TLD lifecycle overrides from the database.
@@ -17,7 +24,19 @@ const TTL = 5 * 60 * 1000; // 5 minutes
  * from tld_rules for precise drop-time display.
  */
 export async function loadLifecycleOverrides(): Promise<Record<string, TldLifecycle>> {
+  // L1: in-process cache
   if (_cache && Date.now() < _cacheExpiry) return _cache;
+
+  // L2: Redis (survives across Vercel function instances)
+  if (isRedisAvailable()) {
+    const cached = await getJsonRedisValue<Record<string, TldLifecycle>>(REDIS_KEY);
+    if (cached) {
+      _cache = cached;
+      _cacheExpiry = Date.now() + TTL;
+      return cached;
+    }
+  }
+
   if (!(await isDbReady())) return {};
   try {
     const map: Record<string, TldLifecycle> = {};
@@ -77,6 +96,10 @@ export async function loadLifecycleOverrides(): Promise<Record<string, TldLifecy
 
     _cache = map;
     _cacheExpiry = Date.now() + TTL;
+    // Write-through to Redis so other instances can skip the DB query
+    if (isRedisAvailable()) {
+      setJsonRedisValue(REDIS_KEY, map, REDIS_TTL_S).catch(() => {});
+    }
     return map;
   } catch {
     return {};
@@ -86,4 +109,10 @@ export async function loadLifecycleOverrides(): Promise<Record<string, TldLifecy
 export function invalidateLifecycleOverridesCache(): void {
   _cache = null;
   _cacheExpiry = 0;
+  // Also invalidate Redis cache so all instances pick up the change
+  if (isRedisAvailable()) {
+    import("@/lib/server/redis").then(({ deleteRedisValue }) =>
+      deleteRedisValue(REDIS_KEY).catch(() => {})
+    );
+  }
 }

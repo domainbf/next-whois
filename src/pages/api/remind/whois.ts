@@ -1,27 +1,15 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { lookupWhoisWithCache } from "@/lib/whois/lookup";
-
-const RATE_WINDOW = 60_000;
-const RATE_LIMIT   = 10;
-const ipMap = new Map<string, { count: number; resetAt: number }>();
-
-function rateCheck(ip: string): boolean {
-  const now = Date.now();
-  const entry = ipMap.get(ip);
-  if (!entry || now > entry.resetAt) {
-    ipMap.set(ip, { count: 1, resetAt: now + RATE_WINDOW });
-    return true;
-  }
-  if (entry.count >= RATE_LIMIT) return false;
-  entry.count++;
-  return true;
-}
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "GET") return res.status(405).json({ status: false });
 
-  const ip = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ?? "unknown";
-  if (!rateCheck(ip)) return res.status(429).json({ status: false, error: "Too many requests" });
+  const ip = String(
+    (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ?? req.socket?.remoteAddress ?? "unknown"
+  );
+  const rl = await checkRateLimit(ip, 10, 60_000);
+  if (!rl.ok) return res.status(429).json({ status: false, error: "Too many requests" });
 
   const q = req.query.query;
   if (!q || typeof q !== "string" || !q.trim()) {

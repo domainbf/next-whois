@@ -345,7 +345,17 @@
   },
   "remind": {
     "network_error": "Erreur réseau, veuillez réessayer",
-    "upgrade_now": "Mettre à niveau"
+    "upgrade_now": "Mettre à niveau",
+    "cancel_title": "Annuler le rappel",
+    "cancel_loading": "Annulation en cours…",
+    "cancel_success_title": "Rappel annulé",
+    "cancel_success_domain": "Votre rappel pour {{domain}} a été supprimé.",
+    "cancel_success_email": "Nous n'enverrons plus de notifications à {{email}}.",
+    "cancel_go_home": "Retour",
+    "cancel_not_found_title": "Rappel introuvable",
+    "cancel_not_found_desc": "Ce rappel a peut-être déjà été annulé ou le lien a expiré.",
+    "cancel_error_title": "Échec de l'annulation",
+    "cancel_error_desc": "Une erreur s'est produite lors de l'annulation de votre rappel. Veuillez réessayer plus tard."
   },
   "tools": {
     "page_title": "Boîte à outils domaines",
@@ -418,7 +428,10 @@
     "platform_wechat": "WeChat Pay",
     "platform_other": "Autre",
     "alipay_title": "Alipay",
-    "wechat_title": "WeChat Pay"
+    "wechat_title": "WeChat Pay",
+    "wall_section": "Mur des sponsors",
+    "show_less": "Afficher moins",
+    "show_more": "Afficher {{n}} de plus"
   },
   "icp": {
     "page_title": "Recherche d'enregistrement ICP",

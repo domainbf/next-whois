@@ -8,12 +8,13 @@ import {
   RiShieldCheckLine, RiBellLine, RiUserLine, RiCheckLine,
   RiErrorWarningLine, RiFeedbackLine, RiBarChartLine,
   RiCalendarLine, RiServerLine, RiMoneyDollarCircleLine,
-  RiDeleteBinLine, RiTimeLine, RiShieldLine,
+  RiDeleteBinLine, RiTimeLine, RiShieldLine, RiFlashlightLine,
 } from "@remixicon/react";
 
 type SystemData = {
   ok: boolean;
   db: { ok: boolean };
+  redis: { ok: boolean; configured: boolean; latencyMs: number | null };
   adminEmail?: string;
   stats: {
     users: { total: number; disabled: number; subscribed: number };
@@ -63,7 +64,7 @@ export default function AdminSystemPage() {
     if (!confirm("手动触发今日提醒处理？\n系统将查询到期域名并发送邮件通知。")) return;
     setTriggering(true);
     try {
-      const r = await fetch("/api/cron/reminder", { method: "POST" });
+      const r = await fetch("/api/remind/process", { method: "POST" });
       const d = await r.json();
       if (d.error) toast.error(d.error);
       else toast.success("提醒处理完成：已处理 " + (d.processed ?? 0) + " 条");
@@ -122,8 +123,8 @@ export default function AdminSystemPage() {
           </div>
         ) : (
           <div className="space-y-4">
-            {/* DB status + admin config */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* DB / Redis / Admin status row */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="glass-panel border border-border rounded-2xl p-4 flex items-start gap-3">
                 <div className={cn(
                   "w-8 h-8 rounded-xl flex items-center justify-center shrink-0",
@@ -132,7 +133,7 @@ export default function AdminSystemPage() {
                   {data.db.ok ? <RiCheckLine className="w-4 h-4" /> : <RiErrorWarningLine className="w-4 h-4" />}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold">数据库连接</p>
+                  <p className="text-sm font-semibold">Supabase 数据库</p>
                   <p className={cn("text-xs mt-0.5", data.db.ok ? "text-emerald-600 dark:text-emerald-400" : "text-red-600")}>
                     {data.db.ok ? "连接正常" : "连接异常"}
                   </p>
@@ -140,12 +141,38 @@ export default function AdminSystemPage() {
               </div>
 
               <div className="glass-panel border border-border rounded-2xl p-4 flex items-start gap-3">
-                <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 bg-red-100 dark:bg-red-950/40 text-red-600">
+                <div className={cn(
+                  "w-8 h-8 rounded-xl flex items-center justify-center shrink-0",
+                  !data.redis?.configured
+                    ? "bg-muted text-muted-foreground"
+                    : data.redis.ok
+                    ? "bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600"
+                    : "bg-red-100 dark:bg-red-950/40 text-red-600"
+                )}>
+                  <RiFlashlightLine className="w-4 h-4" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold">Redis 缓存</p>
+                  <p className={cn("text-xs mt-0.5",
+                    !data.redis?.configured ? "text-muted-foreground" :
+                    data.redis.ok ? "text-emerald-600 dark:text-emerald-400" : "text-red-600"
+                  )}>
+                    {!data.redis?.configured
+                      ? "未配置（降级为 DB 限速）"
+                      : data.redis.ok
+                      ? `连接正常 · ${data.redis.latencyMs ?? "-"}ms`
+                      : "连接异常"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="glass-panel border border-border rounded-2xl p-4 flex items-start gap-3">
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 bg-violet-100 dark:bg-violet-950/40 text-violet-600">
                   <RiShieldLine className="w-4 h-4" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold">当前管理员账号</p>
-                  <p className="text-xs text-muted-foreground mt-0.5 font-mono truncate">{data.adminEmail || "（使用系统默认）"}</p>
+                  <p className="text-sm font-semibold">管理员账号</p>
+                  <p className="text-xs text-muted-foreground mt-0.5 font-mono truncate">{data.adminEmail || "（系统默认）"}</p>
                   <p className="text-[10px] text-muted-foreground/60 mt-0.5">可在设置→功能开关中修改</p>
                 </div>
               </div>

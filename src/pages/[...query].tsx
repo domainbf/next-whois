@@ -1732,7 +1732,6 @@ const OFFICIAL_DOMAIN_DESC: Record<string, { name: string; zh: string; en: strin
   // Domain/Web infra
   "godaddy.com": { name: "GoDaddy", zh: "全球最大的域名注册商之一，同时提供虚拟主机、建站工具和网络安全服务，管理超过 8000 万个域名。", en: "One of the world's largest domain registrars, also offering web hosting, website builders, and cybersecurity services, managing over 80 million domain names." },
   "namecheap.com": { name: "Namecheap", zh: "全球知名的域名注册商，以低价和优质客服著称，同时提供主机、SSL 证书和隐私保护等配套服务。", en: "A globally known domain registrar renowned for competitive pricing and quality support, also offering hosting, SSL certificates, and privacy protection." },
-  "cloudflare.com": { name: "Cloudflare", zh: "全球领先的网络安全和 CDN 服务商，为超过 2000 万个网站提供 DDoS 防护、WAF、DNS 解析和边缘计算服务。", en: "A global leader in cybersecurity and CDN, providing DDoS protection, WAF, DNS resolution, and edge computing for over 20 million websites." },
   "letsencrypt.org": { name: "Let's Encrypt", zh: "由 ISRG 运营的免费、自动化、开放的 SSL/TLS 证书颁发机构，为全球数亿网站提供 HTTPS 加密证书。", en: "A free, automated, and open Certificate Authority operated by ISRG, issuing HTTPS encryption certificates for hundreds of millions of websites worldwide." },
   // Knowledge
   "wikipedia.org": { name: "Wikipedia", zh: "全球最大的开放式百科全书，由维基媒体基金会运营，支持 300 多种语言，拥有超过 6000 万篇文章，任何人均可编辑。", en: "The world's largest open-content encyclopedia operated by the Wikimedia Foundation, supporting over 300 languages and 60 million articles editable by anyone." },
@@ -2797,7 +2796,7 @@ function DomainReminderDialog({
   renewPriceFmt?: string;
   isPremium?: boolean;
   eppStatuses?: string[];
-  regStatusType?: "active" | "registered" | "unregistered" | "reserved" | "prohibited" | "unknown";
+  regStatusType?: RegistrationStatusType;
 }) {
   const hasExpiry = !!(expirationDate && expirationDate !== "Unknown");
   const [email, setEmail] = React.useState("");

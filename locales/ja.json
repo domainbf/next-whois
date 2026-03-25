@@ -345,7 +345,17 @@
   },
   "remind": {
     "network_error": "ネットワークエラー、再試行してください",
-    "upgrade_now": "今すぐアップグレード"
+    "upgrade_now": "今すぐアップグレード",
+    "cancel_title": "リマインダーをキャンセル",
+    "cancel_loading": "キャンセル処理中…",
+    "cancel_success_title": "リマインダーをキャンセルしました",
+    "cancel_success_domain": "{{domain}} のリマインダーを削除しました。",
+    "cancel_success_email": "{{email}} への通知は送信されなくなります。",
+    "cancel_go_home": "戻る",
+    "cancel_not_found_title": "リマインダーが見つかりません",
+    "cancel_not_found_desc": "このリマインダーはすでにキャンセルされているか、リンクの有効期限が切れています。",
+    "cancel_error_title": "キャンセルに失敗しました",
+    "cancel_error_desc": "リマインダーのキャンセル中にエラーが発生しました。後でもう一度お試しください。"
   },
   "tools": {
     "page_title": "ドメインツールボックス",
@@ -418,7 +428,10 @@
     "platform_wechat": "WeChat Pay",
     "platform_other": "その他",
     "alipay_title": "Alipay",
-    "wechat_title": "WeChat Pay"
+    "wechat_title": "WeChat Pay",
+    "wall_section": "スポンサー一覧",
+    "show_less": "折りたたむ",
+    "show_more": "さらに{{n}}人を表示"
   },
   "icp": {
     "page_title": "ICP登録照会",

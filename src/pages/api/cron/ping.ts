@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { isDbReady } from "@/lib/db-query";
 import { getDbReady } from "@/lib/db";
+import { isRedisAvailable, getRedisValue } from "@/lib/server/redis";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "GET") return res.status(405).end();
@@ -13,19 +14,44 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
   }
 
-  if (!(await isDbReady())) {
+  const dbReady = await isDbReady();
+  if (!dbReady) {
     return res.status(503).json({ ok: false, error: "db unavailable", ts: new Date().toISOString() });
   }
 
   const db = await getDbReady();
-  const start = Date.now();
+  const dbStart = Date.now();
+  let dbLatencyMs: number | null = null;
+  let dbError: string | null = null;
   try {
     await db!.query("SELECT 1");
-    const latencyMs = Date.now() - start;
-    console.log(`[cron/ping] db alive (${latencyMs}ms)`);
-    return res.status(200).json({ ok: true, latencyMs, ts: new Date().toISOString() });
+    dbLatencyMs = Date.now() - dbStart;
+    console.log(`[cron/ping] db alive (${dbLatencyMs}ms)`);
   } catch (err: any) {
+    dbError = err.message;
     console.error("[cron/ping] db query failed:", err.message);
-    return res.status(500).json({ ok: false, error: err.message, ts: new Date().toISOString() });
   }
+
+  let redisOk = false;
+  let redisLatencyMs: number | null = null;
+  if (isRedisAvailable()) {
+    const redisStart = Date.now();
+    try {
+      await getRedisValue("ping:probe");
+      redisLatencyMs = Date.now() - redisStart;
+      redisOk = true;
+      console.log(`[cron/ping] redis alive (${redisLatencyMs}ms)`);
+    } catch (err: any) {
+      console.error("[cron/ping] redis probe failed:", err.message);
+    }
+  }
+
+  const ok = !dbError;
+  const status = ok ? 200 : 500;
+  return res.status(status).json({
+    ok,
+    db: dbError ? { ok: false, error: dbError } : { ok: true, latencyMs: dbLatencyMs },
+    redis: redisOk ? { ok: true, latencyMs: redisLatencyMs } : { ok: false },
+    ts: new Date().toISOString(),
+  });
 }
