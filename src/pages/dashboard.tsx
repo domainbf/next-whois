@@ -481,7 +481,7 @@ function SubscribeGuideModal({ onClose }: { onClose: () => void }) {
     const q = domain.trim();
     if (!q) return;
     onClose();
-    router.push(`/${q}`);
+    router.push(`/${q}?subscribe=1`);
   }
   return (
     <GuideModalShell

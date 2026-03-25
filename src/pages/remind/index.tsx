@@ -131,7 +131,7 @@ export default function RemindPage() {
     e.preventDefault();
     const q = searchQuery.trim();
     if (!q) return;
-    router.push(`/${q}`);
+    router.push(`/${q}?subscribe=1`);
   }
 
   async function cancelSub(id: string) {
@@ -159,7 +159,7 @@ export default function RemindPage() {
       setSubscriptions(prev => prev.map(s => s.id === id ? { ...s, active: true } : s));
       toast.success("已重新激活订阅");
     } catch {
-      router.push(`/${domain}`);
+      router.push(`/${domain}?subscribe=1`);
     } finally {
       setReactivating(null);
     }

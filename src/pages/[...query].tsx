@@ -3849,7 +3849,41 @@ export default function LookupPage({
   const queryType = detectQueryType(target);
   const { status, result, error, time, dnsProbe, registryUrl, cached, cachedAt, cacheTtl } = data as typeof data & { registryUrl?: string };
 
-  const { data: session } = useSession();
+  const { data: session, status: sessionStatus } = useSession();
+
+  // Auto-open the reminder dialog when navigated here with ?subscribe=1
+  const autoOpenedRef = React.useRef(false);
+  // Reset the guard whenever the domain changes so re-visiting with ?subscribe=1 always works
+  const prevTargetRef = React.useRef(target);
+  if (prevTargetRef.current !== target) {
+    prevTargetRef.current = target;
+    autoOpenedRef.current = false;
+  }
+  useEffect(() => {
+    if (router.query.subscribe !== "1") return;
+    if (sessionStatus === "loading") return;
+    if (autoOpenedRef.current) return;
+    autoOpenedRef.current = true;
+
+    // Capture current path with ?subscribe=1 for use in callbacks before we clean the URL
+    const pathWithSubscribe = router.asPath;
+    // Remove the param from the URL cleanly (no re-fetch)
+    const { subscribe: _s, ...rest } = router.query;
+    router.replace({ pathname: router.pathname, query: rest }, undefined, { shallow: true });
+
+    if (!session) {
+      // Keep ?subscribe=1 in callbackUrl so the modal auto-opens after login
+      router.push(`/login?callbackUrl=${encodeURIComponent(pathWithSubscribe)}`);
+      return;
+    }
+    if (!(session?.user as any)?.subscriptionAccess) {
+      toast.info(isChinese ? "需要开通会员才能使用域名订阅提醒" : "Subscription required to use domain reminders.", {
+        action: { label: isChinese ? "去开通" : "Upgrade", onClick: () => router.push("/payment/checkout") },
+      });
+      return;
+    }
+    setReminderDialogOpen(true);
+  }, [router.query.subscribe, sessionStatus]);
 
   const handleSearch = (query: string) => {
     router.push(toSearchURI(query));
