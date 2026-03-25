@@ -10,15 +10,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const session = await getServerSession(req, res, authOptions);
   if (!session?.user?.email) return res.status(401).json({ error: "请先登录" });
 
-  const { message } = req.body;
+  const { message, category } = req.body;
   if (!message || typeof message !== "string" || !message.trim()) {
     return res.status(400).json({ error: "消息内容不能为空" });
   }
+
+  const VALID_CATEGORIES = ["支付问题", "会员问题", "功能问题", "其他问题"];
+  const safeCategory = VALID_CATEGORIES.includes(category) ? category : "其他问题";
 
   const userEmail = session.user.email;
   const userName  = (session.user as any)?.name || userEmail;
   const siteName  = await getSiteLabel().catch(() => "X.RW");
   const isMember  = !!(session.user as any)?.subscriptionAccess;
+
+  const CATEGORY_COLORS: Record<string, string> = {
+    "支付问题": "#0ea5e9",
+    "会员问题": "#8b5cf6",
+    "功能问题": "#f59e0b",
+    "其他问题": "#6b7280",
+  };
+  const catColor = CATEGORY_COLORS[safeCategory] ?? "#6b7280";
 
   const html = `
     <div style="font-family:system-ui,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#1a1a1a">
@@ -35,7 +46,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         </tr>
         <tr>
           <td style="padding:8px 12px;background:#f9fafb;border:1px solid #e5e7eb;font-size:12px;font-weight:600;color:#374151">身份</td>
-          <td style="padding:8px 12px;border:1px solid #e5e7eb;font-size:13px">${isMember ? "会员" : "普通用户"}</td>
+          <td style="padding:8px 12px;border:1px solid #e5e7eb;font-size:13px">${isMember ? "会员 ✓" : "普通用户"}</td>
+        </tr>
+        <tr>
+          <td style="padding:8px 12px;background:#f9fafb;border:1px solid #e5e7eb;font-size:12px;font-weight:600;color:#374151">问题类型</td>
+          <td style="padding:8px 12px;border:1px solid #e5e7eb;font-size:13px">
+            <span style="display:inline-block;padding:2px 8px;border-radius:9999px;background:${catColor}20;color:${catColor};font-size:11px;font-weight:600">${safeCategory}</span>
+          </td>
         </tr>
         <tr>
           <td style="padding:8px 12px;background:#f9fafb;border:1px solid #e5e7eb;font-size:12px;font-weight:600;color:#374151;vertical-align:top">内容</td>
@@ -49,7 +66,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     await sendEmail({
       to: ADMIN_EMAIL,
-      subject: `[客服消息] ${userName} · ${siteName}`,
+      subject: `[客服·${safeCategory}] ${userName} · ${siteName}`,
       html,
     });
     return res.status(200).json({ ok: true });

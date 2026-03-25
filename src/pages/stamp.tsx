@@ -1040,7 +1040,7 @@ export default function StampPage() {
                               </Label>
                               {!isMember && (
                                 <span className="text-[10px] text-amber-600 dark:text-amber-400">
-                                  普通用户限 5 字 · <Link href="/dashboard" className="underline underline-offset-2">升级会员</Link>
+                                  普通用户限 5 字 · <Link href="/payment/checkout" className="underline underline-offset-2">升级会员</Link>
                                 </span>
                               )}
                             </div>
@@ -1149,7 +1149,7 @@ export default function StampPage() {
                                 <p className="text-[11px] font-semibold text-muted-foreground">跳转链接 <span className="text-violet-500">· 会员专属</span></p>
                                 <p className="text-[10px] text-muted-foreground/60">升级会员后可设置个人主页或品牌官网链接</p>
                               </div>
-                              <Link href="/dashboard" className="text-[10px] font-semibold text-violet-600 dark:text-violet-400 shrink-0 hover:underline">升级</Link>
+                              <Link href="/payment/checkout" className="text-[10px] font-semibold text-violet-600 dark:text-violet-400 shrink-0 hover:underline">升级</Link>
                             </div>
                           )}
 
@@ -1178,7 +1178,7 @@ export default function StampPage() {
                                 <p className="text-[11px] font-semibold text-muted-foreground">品牌简介 <span className="text-violet-500">· 会员专属</span></p>
                                 <p className="text-[10px] text-muted-foreground/60">升级会员后可添加品牌介绍或个人说明（最多 300 字）</p>
                               </div>
-                              <Link href="/dashboard" className="text-[10px] font-semibold text-violet-600 dark:text-violet-400 shrink-0 hover:underline">升级</Link>
+                              <Link href="/payment/checkout" className="text-[10px] font-semibold text-violet-600 dark:text-violet-400 shrink-0 hover:underline">升级</Link>
                             </div>
                           )}
 

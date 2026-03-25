@@ -631,6 +631,7 @@ export default function DashboardPage() {
   const [redeemCode, setRedeemCode] = React.useState("");
   const [redeeming, setRedeeming] = React.useState(false);
   const [contactMsg, setContactMsg] = React.useState("");
+  const [contactCategory, setContactCategory] = React.useState("支付问题");
   const [contactSending, setContactSending] = React.useState(false);
   const [contactSent, setContactSent] = React.useState(false);
   const [inviteCodeInput, setInviteCodeInput] = React.useState("");
@@ -1907,10 +1908,31 @@ export default function DashboardPage() {
                       <RiCheckboxCircleLine className="w-8 h-8 text-emerald-500" />
                       <p className="text-xs font-semibold">消息已发送</p>
                       <p className="text-[10px] text-muted-foreground">我们会尽快通过邮件回复您</p>
-                      <button onClick={() => { setContactSent(false); setContactMsg(""); }} className="text-[10px] text-muted-foreground hover:text-foreground mt-1">重新发送</button>
+                      <button onClick={() => { setContactSent(false); setContactMsg(""); setContactCategory("支付问题"); }} className="text-[10px] text-muted-foreground hover:text-foreground mt-1">重新发送</button>
                     </div>
                   ) : (
                     <div className="px-4 py-3 space-y-2.5">
+                      {/* Category selector */}
+                      <div className="space-y-1.5">
+                        <p className="text-[10px] font-medium text-muted-foreground">问题类型</p>
+                        <div className="grid grid-cols-2 gap-1.5">
+                          {["支付问题", "会员问题", "功能问题", "其他问题"].map(cat => (
+                            <button
+                              key={cat}
+                              type="button"
+                              onClick={() => setContactCategory(cat)}
+                              className={cn(
+                                "h-8 rounded-xl text-[11px] font-medium border transition-all",
+                                contactCategory === cat
+                                  ? "bg-foreground text-background border-foreground"
+                                  : "bg-muted/30 text-muted-foreground border-border hover:border-muted-foreground/40"
+                              )}
+                            >
+                              {cat}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                       <textarea
                         value={contactMsg}
                         onChange={e => setContactMsg(e.target.value)}
@@ -1920,7 +1942,7 @@ export default function DashboardPage() {
                         className="w-full text-sm rounded-xl border border-border bg-background px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 transition-shadow placeholder:text-muted-foreground/40"
                       />
                       <div className="flex items-center justify-between gap-2">
-                        <p className="text-[10px] text-muted-foreground/60">回复将发送至账户邮箱</p>
+                        <p className="text-[10px] text-muted-foreground/60">{contactMsg.length}/500 · 回复将发送至账户邮箱</p>
                         <Button
                           size="sm"
                           className="h-8 rounded-xl text-xs gap-1.5 shrink-0"
@@ -1929,11 +1951,12 @@ export default function DashboardPage() {
                             if (!contactMsg.trim()) return;
                             setContactSending(true);
                             try {
-                              await fetch("/api/user/contact", {
+                              const r = await fetch("/api/user/contact", {
                                 method: "POST",
                                 headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({ message: contactMsg }),
+                                body: JSON.stringify({ category: contactCategory, message: contactMsg }),
                               });
+                              if (!r.ok) { toast.error("发送失败，请稍后重试"); return; }
                               setContactSent(true);
                             } catch {
                               toast.error("发送失败，请稍后重试");

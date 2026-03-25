@@ -328,7 +328,7 @@ function DirectSubscribeForm({ domain }: { domain: string }) {
           toast.error(
             `已达到 ${data.limit} 个订阅上限，请升级会员解锁无限订阅`,
             {
-              action: { label: "立即升级", onClick: () => router.push("/dashboard?tab=membership") },
+              action: { label: "立即升级", onClick: () => router.push("/payment/checkout") },
               duration: 6000,
             }
           );
