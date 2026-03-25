@@ -253,6 +253,9 @@ function getConnectionString(): { url: string; source: string } | null {
   if (process.env.POSTGRES_URL_NON_POOLING) {
     return { url: process.env.POSTGRES_URL_NON_POOLING, source: "POSTGRES_URL_NON_POOLING" };
   }
+  if (process.env.DATABASE_URL) {
+    return { url: process.env.DATABASE_URL, source: "DATABASE_URL" };
+  }
   return null;
 }
 

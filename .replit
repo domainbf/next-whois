@@ -1,4 +1,4 @@
-modules = ["nodejs-20", "web", "postgresql-16"]
+modules = ["nodejs-20", "web", "bash"]
 [agent]
 expertMode = true
 
@@ -46,8 +46,8 @@ NEXT_PUBLIC_MAX_WHOIS_FOLLOW = "0"
 NEXT_PUBLIC_HISTORY_LIMIT = "-1"
 
 [userenv.development]
-NEXTAUTH_URL = "https://a24d36aa-663d-4845-8cdb-bf3886fa0ea6-00-2udkc72x46j2m.worf.replit.dev"
-NEXT_PUBLIC_BASE_URL = "https://a24d36aa-663d-4845-8cdb-bf3886fa0ea6-00-2udkc72x46j2m.worf.replit.dev"
+NEXTAUTH_URL = "https://f916df4b-e78d-41cd-9e27-6646776fc493-00-2zrfddb1tisjq.kirk.replit.dev"
+NEXT_PUBLIC_BASE_URL = "https://f916df4b-e78d-41cd-9e27-6646776fc493-00-2zrfddb1tisjq.kirk.replit.dev"
 
 [postMerge]
 path = "scripts/post-merge.sh"
