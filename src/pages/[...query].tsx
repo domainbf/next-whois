@@ -2728,11 +2728,11 @@ function DomainReminderDialog({
                           </button>
                         </div>
                       </div>
-                      {/* Hint text */}
-                      <p className="text-[9px] leading-relaxed mb-2 text-foreground/60">
+                      {/* Shimmer hint text */}
+                      <p className="lc-hint-shimmer text-[9px] leading-relaxed mb-2 select-none">
                         {isZh
-                          ? "数据仅供参考。如与注册局实际政策不符，请点击「纠错」提交修正。"
-                          : "For reference only. If inaccurate, click 'Correct' to report the right values."}
+                          ? "若实际注册局政策与显示数据不符，请填写正确天数并提交，管理员审核后将更新数据。"
+                          : "If the registry policy differs from what's shown, enter correct days and submit for admin review."}
                       </p>
                       <div className="space-y-2">
                         {([
