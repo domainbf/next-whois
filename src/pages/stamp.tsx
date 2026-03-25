@@ -44,15 +44,27 @@ import {
 } from "@remixicon/react";
 import { toast } from "sonner";
 
-const TAG_STYLES: { id: string; label: string; className: string; glow?: string; icon: React.ElementType }[] = [
-  { id: "personal",  label: "Personal",  icon: RiIdCardLine,      className: "bg-teal-500 text-white border-0",                                                                                  glow: "shadow-teal-500/40" },
-  { id: "official",  label: "Official",  icon: RiBuildingLine,  className: "bg-blue-500 text-white border-0",                                                                                  glow: "shadow-blue-500/40" },
-  { id: "brand",     label: "Brand",     icon: RiAwardLine,     className: "bg-violet-500 text-white border-0",                                                                                glow: "shadow-violet-500/40" },
-  { id: "verified",  label: "Verified",  icon: RiShieldCheckLine, className: "bg-emerald-500 text-white border-0",                                                                             glow: "shadow-emerald-500/40" },
-  { id: "partner",   label: "Partner",   icon: RiShakeHandsLine, className: "bg-orange-500 text-white border-0",                                                                                glow: "shadow-orange-500/40" },
-  { id: "dev",       label: "Developer", icon: RiCodeSLine,     className: "bg-sky-500 text-white border-0",                                                                                   glow: "shadow-sky-500/40" },
-  { id: "warning",   label: "Warning",   icon: RiAlertLine,     className: "bg-amber-400 text-white border-0",                                                                                 glow: "shadow-amber-400/40" },
-  { id: "premium",   label: "Premium",   icon: RiVipCrownLine,  className: "bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white border-0",                                             glow: "shadow-fuchsia-500/40" },
+const CARD_THEME_OPTIONS: {
+  id: string; label: string; hero: string; dot: string;
+  shimmer: string; cardBg: string; cardBorder: string; cardText: string; btn: string;
+}[] = [
+  { id: "app",      label: "极简",  hero: "bg-gradient-to-br from-zinc-700 to-zinc-900",                     dot: "bg-zinc-600",   shimmer: "text-shimmer",       cardBg: "bg-background",  cardBorder: "border-border/50",                             cardText: "text-foreground",  btn: "bg-zinc-800 text-white"  },
+  { id: "glow",     label: "流光",  hero: "bg-gradient-to-br from-teal-400 to-teal-600",                     dot: "bg-teal-500",   shimmer: "text-shimmer",       cardBg: "bg-background",  cardBorder: "border-teal-200/60 dark:border-teal-800/40",   cardText: "text-foreground",  btn: "bg-teal-500 text-white"  },
+  { id: "midnight", label: "午夜",  hero: "bg-gradient-to-br from-slate-700 via-blue-900 to-slate-900",      dot: "bg-blue-700",   shimmer: "text-shimmer-white", cardBg: "bg-slate-900",   cardBorder: "border-slate-700",                             cardText: "text-white",       btn: "bg-blue-600 text-white"  },
+  { id: "aurora",   label: "极光",  hero: "bg-gradient-to-br from-violet-500 via-fuchsia-500 to-pink-400",   dot: "bg-fuchsia-500",shimmer: "text-shimmer",       cardBg: "bg-background",  cardBorder: "border-violet-200/60 dark:border-violet-800/40",cardText: "text-foreground",  btn: "bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white" },
+  { id: "solar",    label: "暖阳",  hero: "bg-gradient-to-br from-amber-400 to-orange-600",                  dot: "bg-orange-500", shimmer: "text-shimmer",       cardBg: "bg-background",  cardBorder: "border-amber-200/60 dark:border-amber-800/40", cardText: "text-foreground",  btn: "bg-orange-500 text-white" },
+  { id: "ink",      label: "墨染",  hero: "bg-gradient-to-br from-zinc-800 via-zinc-900 to-black",           dot: "bg-zinc-800",   shimmer: "text-shimmer-white", cardBg: "bg-zinc-950",    cardBorder: "border-zinc-800",                              cardText: "text-white",       btn: "bg-zinc-700 text-white"  },
+];
+
+const TAG_STYLES: { id: string; label: string; zhName: string; className: string; glow?: string; icon: React.ElementType; theme: string }[] = [
+  { id: "personal",  label: "Personal",  zhName: "个人",   icon: RiIdCardLine,      className: "bg-zinc-800 text-white border-0",                                                    glow: "shadow-zinc-700/50",   theme: "app"      },
+  { id: "official",  label: "Official",  zhName: "官方",   icon: RiBuildingLine,    className: "bg-blue-700 text-white border-0",                                                    glow: "shadow-blue-600/50",   theme: "midnight" },
+  { id: "brand",     label: "Brand",     zhName: "品牌",   icon: RiAwardLine,       className: "bg-violet-600 text-white border-0",                                                  glow: "shadow-violet-500/50", theme: "aurora"   },
+  { id: "verified",  label: "Verified",  zhName: "认证",   icon: RiShieldCheckLine, className: "bg-emerald-500 text-white border-0",                                                 glow: "shadow-emerald-500/50",theme: "glow"     },
+  { id: "partner",   label: "Partner",   zhName: "合作",   icon: RiShakeHandsLine,  className: "bg-orange-500 text-white border-0",                                                  glow: "shadow-orange-500/50", theme: "solar"    },
+  { id: "dev",       label: "Developer", zhName: "开发",   icon: RiCodeSLine,       className: "bg-slate-800 text-white border border-slate-600/60",                                 glow: "shadow-slate-700/50",  theme: "midnight" },
+  { id: "warning",   label: "Warning",   zhName: "警示",   icon: RiAlertLine,       className: "bg-amber-500 text-white border-0",                                                   glow: "shadow-amber-400/50",  theme: "solar"    },
+  { id: "premium",   label: "Premium",   zhName: "尊享",   icon: RiVipCrownLine,    className: "bg-gradient-to-r from-violet-600 to-fuchsia-500 text-white border-0",               glow: "shadow-fuchsia-500/50",theme: "aurora"   },
 ];
 
 function TagBadge({ tagName, tagStyle, live = false }: { tagName: string; tagStyle: string; live?: boolean }) {
@@ -145,12 +157,6 @@ type StampKey = keyof (typeof en)["stamp"];
 
 const HOW_STEP_TITLE_KEYS: StampKey[] = ["how_step1_title", "how_step2_title", "how_step3_title"];
 const HOW_STEP_DESC_KEYS: StampKey[] = ["how_step1_desc", "how_step2_desc", "how_step3_desc"];
-const TAG_ID_KEY_MAP: Record<string, StampKey> = {
-  personal: "tag_personal", official: "tag_official", brand: "tag_brand",
-  verified: "tag_verified", partner: "tag_partner", dev: "tag_dev",
-  warning: "tag_warning", premium: "tag_premium",
-};
-
 // ── No-domain landing page ─────────────────────────────────────────────────────
 function StampLandingPage() {
   const router = useRouter();
@@ -484,18 +490,6 @@ export default function StampPage() {
     }
   }, [authStatus, domain, router]);
 
-  const CARD_THEME_OPTIONS: {
-    id: string; label: string; hero: string; dot: string;
-    shimmer: string; cardBg: string; cardBorder: string; cardText: string; btn: string;
-  }[] = [
-    { id: "app",      label: "极简",  hero: "bg-gradient-to-br from-zinc-700 to-zinc-900",                     dot: "bg-zinc-600",   shimmer: "text-shimmer",       cardBg: "bg-background",  cardBorder: "border-border/50",                             cardText: "text-foreground",  btn: "bg-zinc-800 text-white"  },
-    { id: "glow",     label: "流光",  hero: "bg-gradient-to-br from-teal-400 to-teal-600",                     dot: "bg-teal-500",   shimmer: "text-shimmer",       cardBg: "bg-background",  cardBorder: "border-teal-200/60 dark:border-teal-800/40",   cardText: "text-foreground",  btn: "bg-teal-500 text-white"  },
-    { id: "midnight", label: "午夜",  hero: "bg-gradient-to-br from-slate-700 via-blue-900 to-slate-900",      dot: "bg-blue-700",   shimmer: "text-shimmer-white", cardBg: "bg-slate-900",   cardBorder: "border-slate-700",                             cardText: "text-white",       btn: "bg-blue-600 text-white"  },
-    { id: "aurora",   label: "极光",  hero: "bg-gradient-to-br from-violet-500 via-fuchsia-500 to-pink-400",   dot: "bg-fuchsia-500",shimmer: "text-shimmer",       cardBg: "bg-background",  cardBorder: "border-violet-200/60 dark:border-violet-800/40",cardText: "text-foreground",  btn: "bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white" },
-    { id: "solar",    label: "暖阳",  hero: "bg-gradient-to-br from-amber-400 to-orange-600",                  dot: "bg-orange-500", shimmer: "text-shimmer",       cardBg: "bg-background",  cardBorder: "border-amber-200/60 dark:border-amber-800/40", cardText: "text-foreground",  btn: "bg-orange-500 text-white" },
-    { id: "ink",      label: "墨染",  hero: "bg-gradient-to-br from-zinc-800 via-zinc-900 to-black",           dot: "bg-zinc-800",   shimmer: "text-shimmer-white", cardBg: "bg-zinc-950",    cardBorder: "border-zinc-800",                              cardText: "text-white",       btn: "bg-zinc-700 text-white"  },
-  ];
-
   const defaultForm = { tagName: "", tagStyle: "personal", cardTheme: "app", link: "", description: "", nickname: "", email: "" };
 
   const [hydrated, setHydrated] = React.useState(false);
@@ -534,6 +528,9 @@ export default function StampPage() {
   const [vercelCountdown, setVercelCountdown] = React.useState(0);
   const vercelPollRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const vercelCountdownRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // ── Style preview state ──
+  const [previewStyleId, setPreviewStyleId] = React.useState<string | null>(null);
 
   // ── Guide tutorial state ──
   const GUIDE_KEY = "stamp_guide_seen";
@@ -605,7 +602,14 @@ export default function StampPage() {
   }
 
   function update(field: string, value: string) {
-    setForm((prev) => ({ ...prev, [field]: value }));
+    setForm((prev) => {
+      const next = { ...prev, [field]: value };
+      if (field === "tagStyle") {
+        const ts = TAG_STYLES.find(s => s.id === value);
+        if (ts) next.cardTheme = ts.theme;
+      }
+      return next;
+    });
     if (formError) setFormError(null);
   }
 
@@ -1028,57 +1032,57 @@ export default function StampPage() {
                             />
                           </div>
 
-                          {/* Tag style */}
+                          {/* Unified style picker */}
                           <div>
-                            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-2 block">{s("tag_style_label")}</Label>
-                            <div className="grid grid-cols-2 gap-2">
+                            <div className="flex items-center justify-between mb-2.5">
+                              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">{s("tag_style_label")}</Label>
+                              <span className="text-[10px] text-muted-foreground/50">{isZh ? "点击预览效果" : "Tap to preview"}</span>
+                            </div>
+                            <div className="grid grid-cols-4 gap-2">
                               {TAG_STYLES.map((ts) => {
-                                const tagKey = TAG_ID_KEY_MAP[ts.id];
-                                const tagLabel = tagKey ? s(tagKey) : ts.label;
+                                const cardTheme = CARD_THEME_OPTIONS.find(t => t.id === ts.theme) || CARD_THEME_OPTIONS[0];
+                                const isSelected = form.tagStyle === ts.id;
+                                const Icon = ts.icon;
                                 return (
-                                <button
-                                  key={ts.id}
-                                  type="button"
-                                  onClick={() => update("tagStyle", ts.id)}
-                                  className={cn(
-                                    "flex items-center justify-center py-2.5 px-3 rounded-xl transition-all border-2",
-                                    form.tagStyle === ts.id
-                                      ? "border-violet-400 bg-violet-50/50 dark:bg-violet-950/30 ring-2 ring-violet-300/50 dark:ring-violet-700/50"
-                                      : "border-border/60 hover:border-border bg-muted/20"
-                                  )}
-                                >
-                                  <TagBadge tagName={tagLabel} tagStyle={ts.id} />
-                                </button>
+                                  <button
+                                    key={ts.id}
+                                    type="button"
+                                    onClick={() => {
+                                      update("tagStyle", ts.id);
+                                      setPreviewStyleId(ts.id);
+                                    }}
+                                    className={cn(
+                                      "relative flex flex-col overflow-hidden rounded-2xl border-2 transition-all text-left group",
+                                      isSelected
+                                        ? "border-violet-400 dark:border-violet-500 shadow-sm"
+                                        : "border-border/50 hover:border-border"
+                                    )}
+                                  >
+                                    {/* Gradient swatch */}
+                                    <div className={cn("relative h-14 w-full flex items-center justify-center overflow-hidden", cardTheme.hero)}>
+                                      <div className="absolute inset-0 opacity-[0.07]"
+                                        style={{ backgroundImage: "radial-gradient(circle, white 1px, transparent 1px)", backgroundSize: "10px 10px" }} />
+                                      <div className={cn(
+                                        "relative flex items-center justify-center w-8 h-8 rounded-xl shadow-md border border-white/20",
+                                        "bg-white/20"
+                                      )}>
+                                        <Icon className="w-4 h-4 text-white drop-shadow" />
+                                      </div>
+                                      {isSelected && (
+                                        <div className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-white/90 flex items-center justify-center shadow">
+                                          <RiCheckLine className="w-2.5 h-2.5 text-violet-600" />
+                                        </div>
+                                      )}
+                                    </div>
+                                    {/* Label row */}
+                                    <div className={cn("px-2 py-1.5 text-center", isSelected ? "bg-violet-50/60 dark:bg-violet-950/30" : "bg-background")}>
+                                      <p className={cn("text-[11px] font-semibold leading-none", isSelected ? "text-violet-600 dark:text-violet-400" : "text-foreground/80")}>
+                                        {isZh ? ts.zhName : ts.label}
+                                      </p>
+                                    </div>
+                                  </button>
                                 );
                               })}
-                            </div>
-                          </div>
-
-                          {/* Card theme */}
-                          <div>
-                            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-2 block">
-                              卡片主题
-                            </Label>
-                            <div className="grid grid-cols-3 gap-2">
-                              {CARD_THEME_OPTIONS.map((t) => (
-                                <button
-                                  key={t.id}
-                                  type="button"
-                                  onClick={() => update("cardTheme", t.id)}
-                                  className={cn(
-                                    "relative overflow-hidden rounded-xl border-2 transition-all",
-                                    form.cardTheme === t.id
-                                      ? "border-violet-400 ring-2 ring-violet-300/50 dark:ring-violet-700/50"
-                                      : "border-border/60 hover:border-border",
-                                  )}
-                                >
-                                  <div className={cn("h-10 w-full", t.hero)} />
-                                  <div className="py-1.5 text-[11px] font-semibold text-center bg-background text-foreground/80">
-                                    {t.label}
-                                    {t.id === "app" && <span className="ml-1 text-[9px] text-muted-foreground/50">(默认)</span>}
-                                  </div>
-                                </button>
-                              ))}
                             </div>
                           </div>
 
@@ -2127,6 +2131,141 @@ export default function StampPage() {
                     </div>
                   )}
                 </motion.div>
+              </AnimatePresence>
+
+              {/* Style preview bottom sheet */}
+              <AnimatePresence>
+                {previewStyleId && (() => {
+                  const ts = TAG_STYLES.find(t => t.id === previewStyleId) || TAG_STYLES[0];
+                  const cardTheme = CARD_THEME_OPTIONS.find(t => t.id === ts.theme) || CARD_THEME_OPTIONS[0];
+                  const Icon = ts.icon;
+                  const stampLabels: Record<string, string> = {
+                    personal: "个人认领", official: "官方认证", brand: "品牌认领",
+                    verified: "已认证",   partner: "合作伙伴", dev: "开发者",
+                    warning:  "警示",     premium: "高级认证",
+                  };
+                  const badgeLabel = stampLabels[previewStyleId] ?? "已认领";
+                  const previewName = form.tagName.trim() || (isZh ? "品牌名称" : "Brand Name");
+                  const isSelected = form.tagStyle === previewStyleId;
+                  return (
+                    <>
+                      <motion.div
+                        className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px]"
+                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                        onClick={() => setPreviewStyleId(null)}
+                      />
+                      <motion.div
+                        className="fixed inset-x-0 bottom-0 z-50 max-w-lg mx-auto px-3 pb-4"
+                        initial={{ y: 80, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 80, opacity: 0 }}
+                        transition={{ type: "spring", damping: 22, stiffness: 280 }}
+                      >
+                        <div className="bg-background border border-border rounded-2xl shadow-2xl overflow-hidden">
+                          {/* Sheet header */}
+                          <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-border/50">
+                            <div className="flex items-center gap-2">
+                              <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold", ts.className)}>
+                                <Icon className="w-3 h-3" />
+                                {isZh ? ts.zhName : ts.label}
+                              </span>
+                              <span className="text-xs text-muted-foreground">{cardTheme.label}</span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setPreviewStyleId(null)}
+                              className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+                            >
+                              <RiCloseLine className="w-4 h-4" />
+                            </button>
+                          </div>
+                          {/* Card preview */}
+                          <div className="px-4 py-4">
+                            <div className="rounded-[18px] overflow-hidden border border-border/40 shadow-md">
+                              <div className={cn("relative px-3 pt-4 pb-7 text-center select-none overflow-hidden", cardTheme.hero)}>
+                                <div className="absolute inset-0 opacity-[0.06]"
+                                  style={{ backgroundImage: "radial-gradient(circle, white 1px, transparent 1px)", backgroundSize: "14px 14px" }} />
+                                <div className="absolute inset-x-0 bottom-0 h-9 bg-gradient-to-t from-black/30 to-transparent" />
+                                <div className="relative flex flex-col items-center gap-1.5">
+                                  <div className="relative flex items-center justify-center">
+                                    <div className="absolute w-12 h-12 rounded-2xl bg-white/10 blur-md" />
+                                    <div className="relative w-10 h-10 rounded-[13px] bg-white/20 border border-white/30 flex items-center justify-center shadow-lg">
+                                      <Icon className="w-5 h-5 text-white drop-shadow" />
+                                    </div>
+                                  </div>
+                                  <p className="text-shimmer-white text-[9px] font-mono tracking-[0.2em] uppercase">
+                                    {domain || "your-domain.com"}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className={cn("relative -mt-4 mx-2.5 rounded-[14px] border shadow-lg px-3 pt-2.5 pb-2.5", cardTheme.cardBg, cardTheme.cardBorder)}>
+                                <div className="flex items-start justify-between gap-2">
+                                  <span className={cn("text-[13px] font-black leading-tight tracking-tight", cardTheme.shimmer)}>
+                                    {previewName}
+                                  </span>
+                                  <span className={cn("inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0 whitespace-nowrap mt-0.5", ts.className)}>
+                                    <RiShieldCheckLine className="w-2 h-2" />
+                                    {badgeLabel}
+                                  </span>
+                                </div>
+                                {form.description && (
+                                  <p className={cn("text-[10px] leading-relaxed mt-1.5", cardTheme.cardText === "text-white" ? "text-white/60" : "text-muted-foreground")}>
+                                    {form.description}
+                                  </p>
+                                )}
+                              </div>
+                              <div className="px-2.5 pt-2 pb-3">
+                                {form.link ? (() => {
+                                  let h = form.link;
+                                  try { h = new URL(form.link).hostname; } catch {}
+                                  return (
+                                    <div className={cn("flex items-center justify-between w-full px-3 py-2 rounded-xl", cardTheme.btn)}>
+                                      <div className="flex flex-col gap-0.5">
+                                        <span className="text-[10px] font-bold leading-none">{isZh ? "访问主页" : "Visit"}</span>
+                                        <span className="text-[8px] font-normal opacity-55 leading-none">{h}</span>
+                                      </div>
+                                      <RiArrowRightSLine className="w-3 h-3 opacity-70 shrink-0" />
+                                    </div>
+                                  );
+                                })() : (
+                                  <p className="text-[9px] text-muted-foreground/40 font-mono text-center py-0.5">{isZh ? "未设置主页链接" : "No link set"}</p>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          {/* Action */}
+                          <div className="px-4 pb-4 flex gap-2">
+                            {isSelected ? (
+                              <button
+                                type="button"
+                                onClick={() => setPreviewStyleId(null)}
+                                className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity flex items-center justify-center gap-1.5"
+                              >
+                                <RiCheckLine className="w-4 h-4" />
+                                {isZh ? "已选择" : "Selected"}
+                              </button>
+                            ) : (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => setPreviewStyleId(null)}
+                                  className="px-4 py-2.5 rounded-xl border border-border text-sm font-medium text-muted-foreground hover:bg-muted/50 transition-colors"
+                                >
+                                  {isZh ? "取消" : "Cancel"}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => { update("tagStyle", previewStyleId); setPreviewStyleId(null); }}
+                                  className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity"
+                                >
+                                  {isZh ? "使用此样式" : "Use this style"}
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </motion.div>
+                    </>
+                  );
+                })()}
               </AnimatePresence>
 
               {/* Guide modal */}
