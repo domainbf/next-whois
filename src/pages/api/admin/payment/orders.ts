@@ -89,9 +89,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       );
       await run(`UPDATE payment_orders SET status='refunded' WHERE id=$1`, [orderId]);
       if (order?.user_id) {
-        await run(`UPDATE users SET subscription_access=FALSE, updated_at=NOW() WHERE id=$1`, [order.user_id]);
+        await run(
+          `UPDATE users SET subscription_access=FALSE, subscription_expires_at=NULL, updated_at=NOW() WHERE id=$1`,
+          [order.user_id]
+        );
       } else if (order?.user_email) {
-        await run(`UPDATE users SET subscription_access=FALSE, updated_at=NOW() WHERE email=$1`, [order.user_email]);
+        await run(
+          `UPDATE users SET subscription_access=FALSE, subscription_expires_at=NULL, updated_at=NOW() WHERE email=$1`,
+          [order.user_email]
+        );
       }
       return res.json({ ok: true, subscriptionRevoked: !!(order?.user_id || order?.user_email) });
     }

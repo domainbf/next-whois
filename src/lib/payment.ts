@@ -113,16 +113,41 @@ export async function markOrderPaid(params: {
     grantsSubscription = plan?.grants_subscription ?? false;
   }
 
-  if (grantsSubscription && order.user_id) {
-    await run(
-      `UPDATE users SET subscription_access = TRUE, updated_at = NOW() WHERE id = $1`,
-      [order.user_id]
-    );
-  } else if (grantsSubscription && order.user_email) {
-    await run(
-      `UPDATE users SET subscription_access = TRUE, updated_at = NOW() WHERE email = $1`,
-      [order.user_email]
-    );
+  if (grantsSubscription) {
+    const planRow = order.plan_id ? await one<{ duration_days: number | null }>(
+      `SELECT duration_days FROM payment_plans WHERE id = $1`, [order.plan_id]
+    ) : null;
+    const durationDays = planRow?.duration_days ?? null;
+
+    if (order.user_id) {
+      if (durationDays) {
+        await run(
+          `UPDATE users SET subscription_access = TRUE, updated_at = NOW(),
+           subscription_expires_at = GREATEST(COALESCE(subscription_expires_at, NOW()), NOW()) + ($2 || ' days')::INTERVAL
+           WHERE id = $1`,
+          [order.user_id, durationDays]
+        );
+      } else {
+        await run(
+          `UPDATE users SET subscription_access = TRUE, updated_at = NOW(), subscription_expires_at = NULL WHERE id = $1`,
+          [order.user_id]
+        );
+      }
+    } else if (order.user_email) {
+      if (durationDays) {
+        await run(
+          `UPDATE users SET subscription_access = TRUE, updated_at = NOW(),
+           subscription_expires_at = GREATEST(COALESCE(subscription_expires_at, NOW()), NOW()) + ($2 || ' days')::INTERVAL
+           WHERE email = $1`,
+          [order.user_email, durationDays]
+        );
+      } else {
+        await run(
+          `UPDATE users SET subscription_access = TRUE, updated_at = NOW(), subscription_expires_at = NULL WHERE email = $1`,
+          [order.user_email]
+        );
+      }
+    }
   }
 
   await run(

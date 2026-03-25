@@ -569,6 +569,7 @@ export default function DashboardPage() {
   const [stamps, setStamps] = React.useState<Stamp[]>([]);
   // DB-authoritative access flag; initialized from session (fast), then confirmed by API
   const [subscriptionAccessDB, setSubscriptionAccessDB] = React.useState<boolean | null>(null);
+  const [subscriptionExpiresAt, setSubscriptionExpiresAt] = React.useState<string | null>(null);
   const [searchHistory, setSearchHistory] = React.useState<ServerHistoryItem[]>([]);
   const [loadingData, setLoadingData] = React.useState(false);
   const [dashError, setDashError] = React.useState(false);
@@ -621,6 +622,7 @@ export default function DashboardPage() {
     setSubscriptions(d.subscriptions);
     setStamps(d.stamps);
     setSubscriptionAccessDB(d.subscriptionAccess);
+    setSubscriptionExpiresAt((d as any).subscriptionExpiresAt ?? null);
     // Heal the JWT if DB says TRUE but session says FALSE — no re-login needed
     if (d.subscriptionAccess && !(session?.user as any)?.subscriptionAccess) {
       updateSession({ subscriptionAccess: true });
@@ -1147,6 +1149,14 @@ export default function DashboardPage() {
                   </button>
                 </div>
               </div>
+
+              {/* Subscription membership expiry */}
+              {subscriptionExpiresAt && (
+                <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-violet-50 dark:bg-violet-950/20 border border-violet-200/50 dark:border-violet-700/30 text-[11px] text-violet-700 dark:text-violet-400">
+                  <RiVipCrownLine className="w-3 h-3 shrink-0" />
+                  <span>会员有效期至 <span className="font-semibold font-mono">{new Date(subscriptionExpiresAt).toLocaleDateString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit" })}</span></span>
+                </div>
+              )}
 
               {/* In-tab stats chips */}
               {activeSubs.length > 0 && (

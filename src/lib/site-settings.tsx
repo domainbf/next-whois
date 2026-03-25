@@ -19,6 +19,8 @@ export interface SiteSettings {
   og_image_facebook: string;
   og_image_youtube: string;
   twitter_card: string;
+  // Admin
+  admin_email: string;
   // Auth & access control
   allow_registration: string;
   require_login: string;
@@ -115,6 +117,7 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   og_image_facebook: "",
   og_image_youtube: "",
   twitter_card: "summary_large_image",
+  admin_email: "",
   allow_registration: "1",
   require_login: "",
   disable_login: "",

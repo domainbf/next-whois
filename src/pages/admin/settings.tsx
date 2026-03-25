@@ -793,6 +793,34 @@ export default function AdminSettingsPage() {
               {/* Features section */}
               {activeSection === "features" && (
                 <div className="space-y-4">
+                  {/* Admin email config */}
+                  <div className="glass-panel border border-border rounded-2xl overflow-hidden">
+                    <div className="px-5 py-3 flex items-center gap-2.5 border-b border-border bg-muted/30">
+                      <div className="w-6 h-6 rounded-lg flex items-center justify-center bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400">
+                        <RiShieldLine className="w-3.5 h-3.5" />
+                      </div>
+                      <h3 className="text-sm font-bold">管理员配置</h3>
+                    </div>
+                    <div className="p-5 space-y-3">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="admin_email" className="text-xs font-semibold flex items-center gap-1.5">
+                          <RiUserLine className="w-3.5 h-3.5" />管理员邮箱
+                        </Label>
+                        <Input
+                          id="admin_email"
+                          type="email"
+                          value={form.admin_email}
+                          onChange={e => set("admin_email", e.target.value)}
+                          placeholder="admin@example.com（留空使用初始默认管理员）"
+                          className="h-9 rounded-xl text-sm font-mono"
+                        />
+                        <p className="text-[11px] text-muted-foreground">
+                          拥有管理员权限的账户邮箱地址。修改后需使用新邮箱账户登录才能访问后台。留空则使用系统内置默认管理员账号。
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
                   {FEATURE_GROUPS.map(group => {
                     const GroupIcon = group.icon;
                     return (

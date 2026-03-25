@@ -206,6 +206,7 @@ const CREATE_TABLES = [
 ];
 
 const ALTER_COLUMNS = [
+  `ALTER TABLE users         ADD COLUMN IF NOT EXISTS subscription_expires_at TIMESTAMPTZ`,
   `ALTER TABLE reminders    ADD COLUMN IF NOT EXISTS phase_flags          TEXT`,
   `ALTER TABLE search_history ADD COLUMN IF NOT EXISTS reg_status         TEXT`,
   `ALTER TABLE search_history ADD COLUMN IF NOT EXISTS expiration_date    TEXT`,

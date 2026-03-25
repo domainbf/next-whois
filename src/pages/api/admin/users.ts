@@ -30,7 +30,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const q = `
         SELECT
           u.id, u.email, u.name, u.created_at, u.updated_at,
-          u.disabled, u.admin_notes, u.subscription_access, u.email_verified,
+          u.disabled, u.admin_notes, u.subscription_access, u.subscription_expires_at, u.email_verified,
           (SELECT COUNT(*) FROM search_history sh WHERE sh.user_id = u.id)::int AS search_count,
           (SELECT COUNT(*) FROM stamps s WHERE s.email = u.email)::int AS stamp_count,
           (SELECT COUNT(*) FROM reminders r WHERE r.email = u.email AND r.active = true)::int AS reminder_count

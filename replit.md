@@ -964,8 +964,9 @@ Now STATIC_NO_RDAP contains **only genuinely RDAP-less TLDs** (19 total):
 - `src/pages/api/remind/submit.ts` — Subscription submission API
 - `src/pages/api/remind/process.ts` — Cron processor that fires pre-expiry AND phase-event reminders
 - `src/lib/email.ts` — All email templates (welcome, subscription confirm, pre-expiry reminder, phase event)
-- `src/lib/admin-shared.ts` — Client-safe admin helpers: `ADMIN_EMAIL` constant and `isAdmin()` function
-- `src/lib/admin.ts` — Server-only admin middleware: `requireAdmin()` for API route protection
+- `src/lib/admin-shared.ts` — Client-safe admin helpers: `ADMIN_EMAIL` constant and `isAdmin()` function (no Node.js imports)
+- `src/lib/admin-server.ts` — Server-only admin helpers: `getAdminEmail()` (reads DB `site_settings.admin_email`, falls back to `ADMIN_EMAIL`), `isAdminEmail()` (async DB-checked comparison)
+- `src/lib/admin.ts` — Server-only admin middleware: `requireAdmin()` for API route protection (uses `admin-server.ts` for dynamic email check)
 - `src/lib/site-settings.tsx` — Site settings context: `SiteSettingsProvider`, `useSiteSettings()` hook, `DEFAULT_SETTINGS`
 - `src/components/admin-layout.tsx` — Shared admin backend layout with sidebar navigation and auth guard
 - `src/pages/admin/index.tsx` — Admin dashboard with real-time stats (users, stamps, reminders, searches)
@@ -2320,8 +2321,9 @@ Now STATIC_NO_RDAP contains **only genuinely RDAP-less TLDs** (19 total):
 - `src/pages/api/remind/submit.ts` — Subscription submission API
 - `src/pages/api/remind/process.ts` — Cron processor that fires pre-expiry AND phase-event reminders
 - `src/lib/email.ts` — All email templates (welcome, subscription confirm, pre-expiry reminder, phase event)
-- `src/lib/admin-shared.ts` — Client-safe admin helpers: `ADMIN_EMAIL` constant and `isAdmin()` function
-- `src/lib/admin.ts` — Server-only admin middleware: `requireAdmin()` for API route protection
+- `src/lib/admin-shared.ts` — Client-safe admin helpers: `ADMIN_EMAIL` constant and `isAdmin()` function (no Node.js imports)
+- `src/lib/admin-server.ts` — Server-only admin helpers: `getAdminEmail()` (reads DB `site_settings.admin_email`, falls back to `ADMIN_EMAIL`), `isAdminEmail()` (async DB-checked comparison)
+- `src/lib/admin.ts` — Server-only admin middleware: `requireAdmin()` for API route protection (uses `admin-server.ts` for dynamic email check)
 - `src/lib/site-settings.tsx` — Site settings context: `SiteSettingsProvider`, `useSiteSettings()` hook, `DEFAULT_SETTINGS`
 - `src/components/admin-layout.tsx` — Shared admin backend layout with sidebar navigation and auth guard
 - `src/pages/admin/index.tsx` — Admin dashboard with real-time stats (users, stamps, reminders, searches)
@@ -3675,8 +3677,9 @@ Now STATIC_NO_RDAP contains **only genuinely RDAP-less TLDs** (19 total):
 - `src/pages/api/remind/submit.ts` — Subscription submission API
 - `src/pages/api/remind/process.ts` — Cron processor that fires pre-expiry AND phase-event reminders
 - `src/lib/email.ts` — All email templates (welcome, subscription confirm, pre-expiry reminder, phase event)
-- `src/lib/admin-shared.ts` — Client-safe admin helpers: `ADMIN_EMAIL` constant and `isAdmin()` function
-- `src/lib/admin.ts` — Server-only admin middleware: `requireAdmin()` for API route protection
+- `src/lib/admin-shared.ts` — Client-safe admin helpers: `ADMIN_EMAIL` constant and `isAdmin()` function (no Node.js imports)
+- `src/lib/admin-server.ts` — Server-only admin helpers: `getAdminEmail()` (reads DB `site_settings.admin_email`, falls back to `ADMIN_EMAIL`), `isAdminEmail()` (async DB-checked comparison)
+- `src/lib/admin.ts` — Server-only admin middleware: `requireAdmin()` for API route protection (uses `admin-server.ts` for dynamic email check)
 - `src/lib/site-settings.tsx` — Site settings context: `SiteSettingsProvider`, `useSiteSettings()` hook, `DEFAULT_SETTINGS`
 - `src/components/admin-layout.tsx` — Shared admin backend layout with sidebar navigation and auth guard
 - `src/pages/admin/index.tsx` — Admin dashboard with real-time stats (users, stamps, reminders, searches)

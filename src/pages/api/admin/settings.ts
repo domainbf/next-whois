@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
 import { many, run } from "@/lib/db-query";
 import { requireAdmin } from "@/lib/admin";
-import { ADMIN_EMAIL } from "@/lib/admin-shared";
+import { isAdminEmail } from "@/lib/admin-server";
 import { DEFAULT_SETTINGS, type SiteSettings } from "@/lib/site-settings";
 
 const ALLOWED_KEYS = new Set(Object.keys(DEFAULT_SETTINGS));
@@ -12,8 +12,8 @@ const SERVER_ONLY_KEYS = new Set(["captcha_secret_key"]);
 async function isAdmin(req: NextApiRequest, res: NextApiResponse): Promise<boolean> {
   try {
     const session = await getServerSession(req, res, authOptions);
-    const email = (session?.user as any)?.email?.toLowerCase?.()?.trim?.() ?? "";
-    return email === ADMIN_EMAIL.toLowerCase().trim();
+    const email = (session?.user as any)?.email;
+    return await isAdminEmail(email);
   } catch {
     return false;
   }
