@@ -1881,6 +1881,38 @@ function getDomainRegistrationStatus(
     rawContent.includes("reserved for sunrise") ||
     rawContent.includes("reserved for landrush") ||
     rawContent.includes("landrush reserved") ||
+    // Withheld — Donuts, Radix, ICM, Minds + Machines new gTLDs
+    rawContent.includes("withheld") ||
+    rawContent.includes("withheld by registry") ||
+    rawContent.includes("withheld for registry") ||
+    rawContent.includes("registry withheld") ||
+    rawContent.includes("name withheld") ||
+    rawContent.includes("domain withheld") ||
+    /\bstatus\s*:\s*withheld\b/.test(rawContent) ||
+    // IANA / ICANN delegations — "not delegated" / "not assigned"
+    rawContent.includes("not delegated") ||
+    rawContent.includes("not-delegated") ||
+    rawContent.includes("not assigned") ||
+    rawContent.includes("iana reserved") ||
+    rawContent.includes("iana hold") ||
+    rawContent.includes("blocked by iana") ||
+    rawContent.includes("has not been delegated") ||
+    rawContent.includes("this tld has not") ||
+    /\bstatus\s*:\s*not.delegated\b/.test(rawContent) ||
+    // Available only by specific request (some ccTLDs, e.g. .uk)
+    rawContent.includes("available-by-request") ||
+    rawContent.includes("available by request") ||
+    rawContent.includes("registration by request only") ||
+    rawContent.includes("available to specific registrants") ||
+    rawContent.includes("restricted to qualified") ||
+    // "Allocated" (RIPE/RIR context, some country ccTLDs)
+    /\bstatus\s*:\s*allocated\b/.test(rawContent) ||
+    // Blocked by registry (for reserved/sensitive strings — not abuse block)
+    /\bstatus\s*:\s*blocked\b/.test(rawContent) ||
+    rawContent.includes("blocked for registration") ||
+    rawContent.includes("registry block") ||
+    // RDAP "remarks" text: "This domain has not been delegated"
+    rawContent.includes("not been delegated") ||
     // Structured field patterns (EURID .eu, IIS .se/.nu, Donuts, CentralNic, CIRA, etc.)
     /\bstatus\s*:\s*reserved\b/.test(rawContent) ||
     /\bstate\s*:\s*reserved\b/.test(rawContent) ||
@@ -1935,6 +1967,20 @@ function getDomainRegistrationStatus(
     rawContent.includes("alan adı rezerve") ||
     // Greek (ICS.FORTH .gr)
     rawContent.includes("δεσμευμένο") ||
+    rawContent.includes("δεσμεύτηκε") ||
+    // Bulgarian (.bg)
+    rawContent.includes("резервиран") ||
+    // Serbian / Bosnian / Croatian (.rs / .ba / .hr)
+    rawContent.includes("rezervisano") ||
+    rawContent.includes("rezervirano") ||
+    // Latvian (NIC.lv .lv)
+    rawContent.includes("rezervēts") ||
+    // Lithuanian (DOMREG .lt)
+    rawContent.includes("rezervuotas") ||
+    // Estonian (EIS .ee)
+    rawContent.includes("reserveeritud") ||
+    // Slovak (.sk)
+    rawContent.includes("rezervovaný") ||
     // Russian (.ru / .рф) — non-Latin, safe direct includes
     rawContent.includes("зарезервирован") ||
     rawContent.includes("зарезервировано") ||
@@ -1955,6 +2001,7 @@ function getDomainRegistrationStatus(
     // Arabic ccTLDs (.sa / .ae / .eg / .iq / .ly)
     rawContent.includes("محجوز") ||
     rawContent.includes("النطاق محجوز") ||
+    rawContent.includes("مخصص") ||
     // Hebrew (.il — ISOC-IL)
     rawContent.includes("שמור") ||
     rawContent.includes("הדומיין שמור") ||
@@ -1967,6 +2014,7 @@ function getDomainRegistrationStatus(
     rawContent.includes("注册局保留") ||
     rawContent.includes("保留中") ||
     rawContent.includes("该域名已保留") ||
+    rawContent.includes("域名已锁定") ||
     // Standalone "reserved" on its own line (TWNIC / NZRS)
     /(?:^|\n)\s*reserved\s*(?:\n|$)/.test(rawContent);
 
@@ -2034,30 +2082,94 @@ function getDomainRegistrationStatus(
     rawContent.includes("registrar banned") ||
     rawContent.includes("registry banned") ||
     rawContent.includes("blacklisted") ||
+    // Additional English patterns
+    rawContent.includes("registration is blocked") ||
+    rawContent.includes("domain is blocked") ||
+    rawContent.includes("name is blocked") ||
+    rawContent.includes("blackholed") ||
+    rawContent.includes("registration disallowed") ||
+    rawContent.includes("registration is disallowed") ||
+    rawContent.includes("registrations are disallowed") ||
+    rawContent.includes("registration has been blocked") ||
+    rawContent.includes("domain name cannot be registered") ||
+    rawContent.includes("name cannot be registered") ||
+    rawContent.includes("does not allow registrations") ||
+    rawContent.includes("registry does not allow") ||
+    rawContent.includes("ineligible for registration") ||
+    rawContent.includes("registration ineligible") ||
+    rawContent.includes("this string is prohibited") ||
+    rawContent.includes("this label is prohibited") ||
+    rawContent.includes("this domain cannot be registered") ||
+    rawContent.includes("cannot register this domain") ||
+    rawContent.includes("registration of this name is not") ||
+    rawContent.includes("not available at this time") ||
+    rawContent.includes("agency forbidden") ||
+    rawContent.includes("forbidden by") ||
+    /\bstatus\s*:\s*prohibited\b/.test(rawContent) ||
+    /\bstatus\s*:\s*forbidden\b/.test(rawContent) ||
+    /\bstatus\s*:\s*blocked\-prohibited\b/.test(rawContent) ||
+    // Simplified / Traditional Chinese
     rawContent.includes("禁止注册") ||
     rawContent.includes("不开放注册") ||
     rawContent.includes("不可注册") ||
     rawContent.includes("禁止使用") ||
+    rawContent.includes("禁止域名") ||
+    rawContent.includes("限制注册") ||
+    rawContent.includes("禁止") && rawContent.includes("注册") ||
     // Russian / Ukrainian
     rawContent.includes("запрещена регистрация") ||
     rawContent.includes("регистрация запрещена") ||
     rawContent.includes("реєстрація заборонена") ||
+    rawContent.includes("реєстрація не дозволена") ||
+    rawContent.includes("регистрация недоступна") ||
+    // German (.de / .at / .ch)
+    rawContent.includes("registrierung nicht möglich") ||
+    rawContent.includes("nicht registrierbar") ||
+    rawContent.includes("gesperrte zeichenfolge") ||
+    /\bstatus\s*:\s*verboten\b/.test(rawContent) ||
+    // French
+    rawContent.includes("enregistrement interdit") ||
+    rawContent.includes("non disponible à l'enregistrement") ||
+    // Spanish
+    rawContent.includes("registro prohibido") ||
+    rawContent.includes("no se puede registrar") ||
+    rawContent.includes("no disponible para registro") ||
     // Italian
     /\bstatus\s*:\s*vietato\b/.test(rawContent) ||
     rawContent.includes("registrazione vietata") ||
+    rawContent.includes("non registrabile") ||
+    // Portuguese
+    rawContent.includes("registro não permitido") ||
+    rawContent.includes("domínio proibido") ||
+    // Dutch
+    rawContent.includes("registratie niet mogelijk") ||
+    rawContent.includes("niet registreerbaar") ||
+    // Polish
+    rawContent.includes("rejestracja zabroniona") ||
+    rawContent.includes("niedostępne do rejestracji") ||
     // Japanese
     rawContent.includes("登録不可") ||
     rawContent.includes("登録制限") ||
+    rawContent.includes("利用不可") ||
+    rawContent.includes("申請不可") ||
     // Korean
     rawContent.includes("등록불가") ||
     rawContent.includes("등록 금지") ||
+    rawContent.includes("등록 불가능") ||
     // Arabic
     rawContent.includes("محظور") ||
     rawContent.includes("التسجيل محظور") ||
+    rawContent.includes("غير متاح للتسجيل") ||
+    // Hebrew
+    rawContent.includes("אסור לרישום") ||
+    rawContent.includes("חסום לרישום") ||
+    // Turkish
+    rawContent.includes("kayıt yasak") ||
+    rawContent.includes("tescil edilemez") ||
     /\bblocked\s+by\s+(?:registry|registrar)\b/.test(rawContent) ||
     /\bregistration\s+blocked\b/.test(rawContent);
 
-  // ── SUSPENDED — mirrors common_parser.ts syntheticSuspended ─────────────
+  // ── SUSPENDED / HOLD ─────────────────────────────────────────────────────
   const rawHasSuspended =
     rawContent.includes("suspended by registry") ||
     rawContent.includes("suspended by registrar") ||
@@ -2071,46 +2183,247 @@ function getDomainRegistrationStatus(
     rawContent.includes("fraud hold") ||
     rawContent.includes("compliance hold") ||
     rawContent.includes("billing suspension") ||
+    rawContent.includes("billing hold") ||
+    rawContent.includes("payment hold") ||
     rawContent.includes("domain is on hold") ||
+    rawContent.includes("domain on hold") ||
+    rawContent.includes("placed on hold") ||
+    rawContent.includes("put on hold") ||
+    rawContent.includes("account on hold") ||
+    rawContent.includes("account hold") ||
     rawContent.includes("registrar hold") ||
+    rawContent.includes("agency hold") ||
+    rawContent.includes("legal hold") ||
+    rawContent.includes("judicial hold") ||
+    rawContent.includes("government hold") ||
+    rawContent.includes("seized by") ||
+    rawContent.includes("domain seized") ||
+    rawContent.includes("domain has been seized") ||
+    rawContent.includes("confiscated by") ||
+    rawContent.includes("domain confiscated") ||
+    rawContent.includes("law enforcement hold") ||
+    rawContent.includes("enforcement hold") ||
+    rawContent.includes("frozen by") ||
+    rawContent.includes("domain frozen") ||
+    rawContent.includes("domain has been frozen") ||
+    rawContent.includes("domain is frozen") ||
+    rawContent.includes("suspended for") ||
+    rawContent.includes("suspended due to") ||
+    rawContent.includes("temporarily suspended") ||
+    rawContent.includes("domain is temporarily") ||
+    rawContent.includes("temporarily unavailable") ||
+    rawContent.includes("domain is inactive") ||
+    /\bstatus\s*:\s*(?:hold|on-hold|onhold|inactive)\b/.test(rawContent) ||
+    // German (.de / .at / .ch)
     rawContent.includes("gesperrt") ||
+    rawContent.includes("sperrung") ||
+    rawContent.includes("domain gesperrt") ||
+    rawContent.includes("beschlagnahmt") ||
+    rawContent.includes("eingefroren") ||
+    // Spanish (.es / .ar / .mx / ...)
     rawContent.includes("suspendido") ||
+    rawContent.includes("dominio suspendido") ||
+    rawContent.includes("en espera") ||
+    rawContent.includes("confiscado") ||
+    rawContent.includes("embargado") ||
+    // French (.fr / .be / .ch / ...)
     rawContent.includes("suspendu") ||
+    rawContent.includes("domaine suspendu") ||
+    rawContent.includes("bloqué") ||
+    rawContent.includes("saisi") ||
+    rawContent.includes("gelé") ||
     // Portuguese (.pt / .br)
     rawContent.includes("suspenso") ||
     rawContent.includes("domínio suspenso") ||
+    rawContent.includes("congelado") ||
+    rawContent.includes("apreendido") ||
     // Italian (NIC.it .it)
     /\bstatus\s*:\s*sospeso\b/.test(rawContent) ||
     rawContent.includes("dominio sospeso") ||
+    rawContent.includes("bloccato") ||
+    rawContent.includes("sequestrato") ||
     // Dutch (.nl)
     rawContent.includes("opgeschort") ||
     rawContent.includes("domein opgeschort") ||
+    rawContent.includes("bevroren") ||
+    rawContent.includes("in beslag") ||
     // Polish (.pl)
     rawContent.includes("zawieszony") ||
     rawContent.includes("domena zawieszona") ||
+    rawContent.includes("zablokowany") ||
     // Finnish (.fi)
     rawContent.includes("keskeytetty") ||
+    rawContent.includes("jäädytetty") ||
+    // Swedish (.se)
+    rawContent.includes("spärrad") ||
+    rawContent.includes("inaktiv") ||
+    // Norwegian (.no)
+    rawContent.includes("suspendert") ||
+    // Danish (.dk)
+    rawContent.includes("suspenderet") ||
+    rawContent.includes("deaktiveret") ||
+    // Romanian (.ro)
+    rawContent.includes("suspendat") ||
+    // Hungarian (.hu)
+    rawContent.includes("felfüggesztett") ||
+    // Turkish (.tr)
+    rawContent.includes("askıya alındı") ||
+    rawContent.includes("donduruldu") ||
+    // Greek (.gr)
+    rawContent.includes("ανεσταλμένο") ||
+    rawContent.includes("αδρανές") ||
     // Russian (.ru / .рф)
     rawContent.includes("приостановлен") ||
     rawContent.includes("приостановлено") ||
     rawContent.includes("домен заблокирован") ||
+    rawContent.includes("изъят") ||
+    rawContent.includes("заморожен") ||
     // Ukrainian (.ua)
     rawContent.includes("призупинено") ||
+    rawContent.includes("заморожено") ||
     // Japanese (.jp)
     rawContent.includes("停止中") ||
     rawContent.includes("利用停止") ||
+    rawContent.includes("凍結") ||
+    rawContent.includes("差し押さえ") ||
     // Korean (.kr)
     rawContent.includes("정지됨") ||
     rawContent.includes("사용 정지") ||
+    rawContent.includes("동결") ||
     // Arabic
     rawContent.includes("موقوف") ||
     rawContent.includes("معلق") ||
-    // Chinese
+    rawContent.includes("مجمد") ||
+    rawContent.includes("مضبوط") ||
+    // Hebrew
+    rawContent.includes("מושעה") ||
+    rawContent.includes("קפוא") ||
+    // Chinese (Simplified)
     rawContent.includes("已暂停") ||
     rawContent.includes("域名暂停") ||
     rawContent.includes("已停用") ||
     rawContent.includes("暂停使用") ||
+    rawContent.includes("已冻结") ||
+    rawContent.includes("冻结域名") ||
+    rawContent.includes("被扣押") ||
+    rawContent.includes("被没收") ||
     /(?:^|\n)\s*suspended\s*(?:\n|$)/.test(rawContent);
+
+  // ── DISPUTE ─────────────────────────────────────────────────────────────────
+  const rawHasDispute =
+    // UDRP (Uniform Domain-Name Dispute-Resolution Policy) — most common
+    rawContent.includes("udrp") ||
+    rawContent.includes("uniform domain-name dispute") ||
+    rawContent.includes("udrp proceeding") ||
+    rawContent.includes("udrp complaint") ||
+    rawContent.includes("udrp-lock") ||
+    rawContent.includes("udrp lock") ||
+    rawContent.includes("locked-udrp") ||
+    rawContent.includes("locked for udrp") ||
+    rawContent.includes("locked during udrp") ||
+    rawContent.includes("pending udrp") ||
+    rawContent.includes("udrp transfer") ||
+    rawContent.includes("udrp decision") ||
+    // General dispute
+    rawContent.includes("domain dispute") ||
+    rawContent.includes("name dispute") ||
+    rawContent.includes("in dispute") ||
+    rawContent.includes("under dispute") ||
+    rawContent.includes("dispute in progress") ||
+    rawContent.includes("dispute pending") ||
+    rawContent.includes("subject to dispute") ||
+    rawContent.includes("currently disputed") ||
+    rawContent.includes("domain conflict") ||
+    // DRP / ADR variants (EU/ICANN alternative dispute resolution)
+    rawContent.includes("adr proceeding") ||
+    rawContent.includes("alternative dispute") ||
+    rawContent.includes("domain resolution") ||
+    rawContent.includes("drp proceeding") ||
+    rawContent.includes("icann drp") ||
+    // Trademark / legal dispute
+    rawContent.includes("trademark dispute") ||
+    rawContent.includes("trademark conflict") ||
+    rawContent.includes("trademark complaint") ||
+    rawContent.includes("trademark objection") ||
+    rawContent.includes("legal dispute") ||
+    rawContent.includes("legal proceedings") ||
+    rawContent.includes("legal action") ||
+    rawContent.includes("court order") ||
+    rawContent.includes("court ordered") ||
+    rawContent.includes("court proceeding") ||
+    rawContent.includes("arbitration") ||
+    rawContent.includes("pending arbitration") ||
+    rawContent.includes("in arbitration") ||
+    rawContent.includes("dispute resolution") ||
+    rawContent.includes("locked for dispute") ||
+    rawContent.includes("lock for dispute") ||
+    rawContent.includes("locked pending") ||
+    /\bstatus\s*:\s*(?:dispute|disputed|in-dispute)\b/.test(rawContent) ||
+    // German (.de / .at)
+    rawContent.includes("streitfall") ||
+    rawContent.includes("rechtstreit") ||
+    rawContent.includes("widerspruch") ||
+    rawContent.includes("markenstreit") ||
+    rawContent.includes("schiedsverfahren") ||
+    // French (.fr)
+    rawContent.includes("litige") ||
+    rawContent.includes("en litige") ||
+    rawContent.includes("différend") ||
+    rawContent.includes("contentieux") ||
+    rawContent.includes("arbitrage") ||
+    // Spanish
+    rawContent.includes("disputa") ||
+    rawContent.includes("en disputa") ||
+    rawContent.includes("conflicto de dominio") ||
+    rawContent.includes("procedimiento arbitral") ||
+    // Italian
+    rawContent.includes("contesa") ||
+    rawContent.includes("in contesa") ||
+    rawContent.includes("disputa di dominio") ||
+    rawContent.includes("procedimento arbitrale") ||
+    // Portuguese
+    rawContent.includes("disputa de domínio") ||
+    rawContent.includes("arbitragem") ||
+    // Dutch
+    rawContent.includes("geschil") ||
+    rawContent.includes("in geschil") ||
+    rawContent.includes("arbitrage") ||
+    // Polish
+    rawContent.includes("spór domenowy") ||
+    rawContent.includes("postępowanie arbitrażowe") ||
+    // Russian
+    rawContent.includes("спор") ||
+    rawContent.includes("арбитраж") ||
+    rawContent.includes("судебное") ||
+    // Ukrainian
+    rawContent.includes("спір") ||
+    rawContent.includes("арбітраж") ||
+    // Japanese
+    rawContent.includes("係争中") ||
+    rawContent.includes("異議申立") ||
+    rawContent.includes("紛争") ||
+    rawContent.includes("仲裁") ||
+    // Korean
+    rawContent.includes("분쟁 중") ||
+    rawContent.includes("분쟁") ||
+    rawContent.includes("중재") ||
+    // Chinese (Simplified)
+    rawContent.includes("争议中") ||
+    rawContent.includes("域名争议") ||
+    rawContent.includes("商标争议") ||
+    rawContent.includes("仲裁中") ||
+    rawContent.includes("法律纠纷") ||
+    // Arabic
+    rawContent.includes("نزاع") ||
+    rawContent.includes("تحكيم") ||
+    rawContent.includes("في نزاع") ||
+    // Hebrew
+    rawContent.includes("סכסוך") ||
+    rawContent.includes("בוררות") ||
+    // Turkish
+    rawContent.includes("uyuşmazlık") ||
+    rawContent.includes("ihtilaf") ||
+    rawContent.includes("tahkim");
 
   const isProhibited =
     prohibitCheckText.includes("prohibited") ||
@@ -2171,7 +2484,18 @@ function getDomainRegistrationStatus(
   if (isPendingDelete)
     return makeStatus("pending-delete", "text-slate-600 border-slate-400/50 bg-slate-50 dark:bg-slate-950/20", "bg-slate-500");
 
-  // Match both camelCase EPP codes ("serverhold") and hyphenated variants ("server-hold")
+  // ── DISPUTE — check before hold (more specific; UDRP domains often have serverHold too)
+  const isDispute =
+    allStatusText.includes("dispute") ||
+    allStatusText.includes("udrp") ||
+    allStatusText.includes("locked-udrp") ||
+    allStatusText.includes("adr") ||
+    rawHasDispute;
+
+  if (isDispute)
+    return makeStatus("dispute", "text-rose-600 border-rose-400/50 bg-rose-50 dark:bg-rose-950/20", "bg-rose-500");
+
+  // ── HOLD / SUSPENDED — Match EPP codes ("serverhold") and hyphenated / spaced variants
   const hasServerHold =
     allStatusText.includes("serverhold") ||
     allStatusText.includes("server-hold") ||
@@ -2191,20 +2515,15 @@ function getDomainRegistrationStatus(
 
   const hasSuspended =
     allStatusText.includes("suspended") ||
+    allStatusText.includes("hold") ||
+    allStatusText.includes("frozen") ||
+    allStatusText.includes("inactive") ||
     rawHasSuspended;
 
   const isHold = (hasServerHold || hasClientHold || hasSuspended) && !hasOk;
 
   if (isHold)
     return makeStatus("hold", "text-orange-600 border-orange-400/50 bg-orange-50 dark:bg-orange-950/20", "bg-orange-500");
-
-  const isDispute =
-    allStatusText.includes("dispute") ||
-    allStatusText.includes("udrp") ||
-    allStatusText.includes("locked-udrp");
-
-  if (isDispute)
-    return makeStatus("dispute", "text-rose-600 border-rose-400/50 bg-rose-50 dark:bg-rose-950/20", "bg-rose-500");
 
   return {
     type: "registered" as RegistrationStatusType,
@@ -2779,6 +3098,40 @@ function DomainReminderDialog({
                           : (isZh
                               ? "该域名目前为保留状态，不对公众开放注册。仍可订阅，如状态发生变化或域名开放注册时会收到通知。"
                               : "This domain is currently reserved and not available for public registration. You can still subscribe to receive notifications if the status changes.")}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* ── Hold warning banner ───────────────────────────────── */}
+                {regStatusType === "hold" && (
+                  <div className="flex items-start gap-2.5 rounded-xl border px-3.5 py-3 bg-orange-50/60 dark:bg-orange-950/20 border-orange-300/50 dark:border-orange-700/40">
+                    <RiInformationLine className="w-4 h-4 mt-0.5 shrink-0 text-orange-500" />
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold leading-snug text-orange-600 dark:text-orange-400">
+                        {isZh ? "该域名当前处于暂停状态" : "Domain On Hold"}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground leading-snug mt-0.5">
+                        {isZh
+                          ? "该域名已被注册局或注册商暂停（如违规、欠款或政府扣押），目前无法正常解析。仍可订阅到期提醒，以便跟踪续费或状态变化。"
+                          : "This domain has been suspended by the registry or registrar (e.g. policy violation, non-payment, or seizure) and cannot currently resolve. You can still subscribe for expiry and status alerts."}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* ── Dispute warning banner ────────────────────────────── */}
+                {regStatusType === "dispute" && (
+                  <div className="flex items-start gap-2.5 rounded-xl border px-3.5 py-3 bg-rose-50/60 dark:bg-rose-950/20 border-rose-300/50 dark:border-rose-700/40">
+                    <RiInformationLine className="w-4 h-4 mt-0.5 shrink-0 text-rose-500" />
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold leading-snug text-rose-600 dark:text-rose-400">
+                        {isZh ? "该域名正处于争议程序中" : "Domain In Dispute"}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground leading-snug mt-0.5">
+                        {isZh
+                          ? "该域名正处于 UDRP 或其他争议解决程序中，当前被锁定，等待仲裁结果。仍可订阅到期提醒，以便及时获知域名状态变化。"
+                          : "This domain is currently locked in a UDRP or other dispute resolution proceeding. You can still subscribe for expiry and status alerts to stay informed of any outcome."}
                       </p>
                     </div>
                   </div>
