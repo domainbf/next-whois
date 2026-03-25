@@ -31,146 +31,98 @@ type TldRule = {
   updated_at: string;
 };
 
-// Curated batch list: TLDs worth scraping that lack reliable lifecycle data.
-// source_url left blank → API defaults to IANA root-db page.
+// Complete list of all IANA-delegated country code TLDs (ccTLDs).
+// All 2-letter ISO 3166-1 alpha-2 codes currently in IANA root zone.
+// source_url intentionally omitted → API defaults to https://www.iana.org/domains/root/db/{tld}.html
 const BATCH_TLDS: { tld: string; source_url?: string }[] = [
-  { tld: "ac" },
-  { tld: "ae" },
-  { tld: "af" },
-  { tld: "ag" },
-  { tld: "ai" },
-  { tld: "al" },
-  { tld: "am" },
-  { tld: "ao" },
-  { tld: "aq" },
-  { tld: "ar" },
-  { tld: "az" },
-  { tld: "ba" },
-  { tld: "bb" },
-  { tld: "bd" },
-  { tld: "bf" },
-  { tld: "bh" },
-  { tld: "bi" },
-  { tld: "bj" },
-  { tld: "bn" },
-  { tld: "bo" },
-  { tld: "bs" },
-  { tld: "bt" },
-  { tld: "bw" },
-  { tld: "bz" },
-  { tld: "cd" },
-  { tld: "cf" },
-  { tld: "cg" },
-  { tld: "cm" },
-  { tld: "cv" },
-  { tld: "cy" },
-  { tld: "dj" },
-  { tld: "dm" },
+  // A
+  { tld: "ac" }, { tld: "ad" }, { tld: "ae" }, { tld: "af" }, { tld: "ag" },
+  { tld: "ai" }, { tld: "al" }, { tld: "am" }, { tld: "ao" }, { tld: "aq" },
+  { tld: "ar" }, { tld: "as" }, { tld: "at" }, { tld: "au" }, { tld: "aw" },
+  { tld: "ax" }, { tld: "az" },
+  // B
+  { tld: "ba" }, { tld: "bb" }, { tld: "bd" }, { tld: "be" }, { tld: "bf" },
+  { tld: "bg" }, { tld: "bh" }, { tld: "bi" }, { tld: "bj" }, { tld: "bm" },
+  { tld: "bn" }, { tld: "bo" }, { tld: "br" }, { tld: "bs" }, { tld: "bt" },
+  { tld: "bw" }, { tld: "by" }, { tld: "bz" },
+  // C
+  { tld: "ca" }, { tld: "cc" }, { tld: "cd" }, { tld: "cf" }, { tld: "cg" },
+  { tld: "ch" }, { tld: "ci" }, { tld: "ck" }, { tld: "cl" }, { tld: "cm" },
+  { tld: "cn" }, { tld: "co" }, { tld: "cr" }, { tld: "cu" }, { tld: "cv" },
+  { tld: "cw" }, { tld: "cx" }, { tld: "cy" }, { tld: "cz" },
+  // D
+  { tld: "de" }, { tld: "dj" }, { tld: "dk" }, { tld: "dm" }, { tld: "do" },
   { tld: "dz" },
-  { tld: "ec" },
-  { tld: "ee" },
-  { tld: "eg" },
-  { tld: "er" },
-  { tld: "et" },
-  { tld: "fj" },
-  { tld: "fk" },
-  { tld: "fm" },
-  { tld: "fo" },
-  { tld: "ga" },
-  { tld: "gd" },
-  { tld: "ge" },
-  { tld: "gh" },
-  { tld: "gm" },
-  { tld: "gn" },
-  { tld: "gq" },
-  { tld: "gt" },
-  { tld: "gw" },
-  { tld: "gy" },
-  { tld: "hn" },
-  { tld: "ht" },
-  { tld: "iq" },
-  { tld: "ir" },
-  { tld: "je" },
-  { tld: "jo" },
-  { tld: "kg" },
-  { tld: "ki" },
-  { tld: "km" },
-  { tld: "kn" },
-  { tld: "kp" },
-  { tld: "kw" },
+  // E
+  { tld: "ec" }, { tld: "ee" }, { tld: "eg" }, { tld: "er" }, { tld: "es" },
+  { tld: "et" }, { tld: "eu" },
+  // F
+  { tld: "fi" }, { tld: "fj" }, { tld: "fk" }, { tld: "fm" }, { tld: "fo" },
+  { tld: "fr" },
+  // G
+  { tld: "ga" }, { tld: "gd" }, { tld: "ge" }, { tld: "gf" }, { tld: "gg" },
+  { tld: "gh" }, { tld: "gi" }, { tld: "gl" }, { tld: "gm" }, { tld: "gn" },
+  { tld: "gp" }, { tld: "gq" }, { tld: "gr" }, { tld: "gs" }, { tld: "gt" },
+  { tld: "gu" }, { tld: "gw" }, { tld: "gy" },
+  // H
+  { tld: "hk" }, { tld: "hm" }, { tld: "hn" }, { tld: "hr" }, { tld: "ht" },
+  { tld: "hu" },
+  // I
+  { tld: "id" }, { tld: "ie" }, { tld: "il" }, { tld: "im" }, { tld: "in" },
+  { tld: "io" }, { tld: "iq" }, { tld: "ir" }, { tld: "is" }, { tld: "it" },
+  // J
+  { tld: "je" }, { tld: "jm" }, { tld: "jo" }, { tld: "jp" },
+  // K
+  { tld: "ke" }, { tld: "kg" }, { tld: "kh" }, { tld: "ki" }, { tld: "km" },
+  { tld: "kn" }, { tld: "kp" }, { tld: "kr" }, { tld: "kw" }, { tld: "ky" },
   { tld: "kz" },
-  { tld: "la" },
-  { tld: "lb" },
-  { tld: "lc" },
-  { tld: "lk" },
-  { tld: "lr" },
-  { tld: "ls" },
+  // L
+  { tld: "la" }, { tld: "lb" }, { tld: "lc" }, { tld: "li" }, { tld: "lk" },
+  { tld: "lr" }, { tld: "ls" }, { tld: "lt" }, { tld: "lu" }, { tld: "lv" },
   { tld: "ly" },
-  { tld: "ma" },
-  { tld: "md" },
-  { tld: "me" },
-  { tld: "mg" },
-  { tld: "mh" },
-  { tld: "mk" },
-  { tld: "ml" },
-  { tld: "mm" },
-  { tld: "mn" },
-  { tld: "mo" },
-  { tld: "mr" },
-  { tld: "mv" },
-  { tld: "mw" },
-  { tld: "mz" },
-  { tld: "na" },
-  { tld: "ne" },
-  { tld: "ng" },
-  { tld: "ni" },
-  { tld: "np" },
-  { tld: "nr" },
+  // M
+  { tld: "ma" }, { tld: "mc" }, { tld: "md" }, { tld: "me" }, { tld: "mg" },
+  { tld: "mh" }, { tld: "mk" }, { tld: "ml" }, { tld: "mm" }, { tld: "mn" },
+  { tld: "mo" }, { tld: "mp" }, { tld: "mq" }, { tld: "mr" }, { tld: "ms" },
+  { tld: "mt" }, { tld: "mu" }, { tld: "mv" }, { tld: "mw" }, { tld: "mx" },
+  { tld: "my" }, { tld: "mz" },
+  // N
+  { tld: "na" }, { tld: "nc" }, { tld: "ne" }, { tld: "nf" }, { tld: "ng" },
+  { tld: "ni" }, { tld: "nl" }, { tld: "no" }, { tld: "np" }, { tld: "nr" },
+  { tld: "nu" }, { tld: "nz" },
+  // O
   { tld: "om" },
-  { tld: "pa" },
-  { tld: "pg" },
-  { tld: "ph" },
-  { tld: "pk" },
-  { tld: "ps" },
-  { tld: "pw" },
-  { tld: "py" },
+  // P
+  { tld: "pa" }, { tld: "pe" }, { tld: "pf" }, { tld: "pg" }, { tld: "ph" },
+  { tld: "pk" }, { tld: "pl" }, { tld: "pm" }, { tld: "pn" }, { tld: "pr" },
+  { tld: "ps" }, { tld: "pt" }, { tld: "pw" }, { tld: "py" },
+  // Q
   { tld: "qa" },
-  { tld: "rw" },
-  { tld: "sb" },
-  { tld: "sc" },
-  { tld: "sd" },
-  { tld: "sl" },
-  { tld: "sm" },
-  { tld: "sn" },
-  { tld: "so" },
-  { tld: "sr" },
-  { tld: "ss" },
-  { tld: "st" },
-  { tld: "sv" },
-  { tld: "sy" },
+  // R
+  { tld: "re" }, { tld: "ro" }, { tld: "rs" }, { tld: "ru" }, { tld: "rw" },
+  // S
+  { tld: "sa" }, { tld: "sb" }, { tld: "sc" }, { tld: "sd" }, { tld: "se" },
+  { tld: "sg" }, { tld: "sh" }, { tld: "si" }, { tld: "sk" }, { tld: "sl" },
+  { tld: "sm" }, { tld: "sn" }, { tld: "so" }, { tld: "sr" }, { tld: "ss" },
+  { tld: "st" }, { tld: "su" }, { tld: "sv" }, { tld: "sx" }, { tld: "sy" },
   { tld: "sz" },
-  { tld: "td" },
-  { tld: "tg" },
-  { tld: "tj" },
-  { tld: "tl" },
-  { tld: "tm" },
-  { tld: "tn" },
-  { tld: "to" },
-  { tld: "tt" },
-  { tld: "tv" },
+  // T
+  { tld: "tc" }, { tld: "td" }, { tld: "tf" }, { tld: "tg" }, { tld: "th" },
+  { tld: "tj" }, { tld: "tk" }, { tld: "tl" }, { tld: "tm" }, { tld: "tn" },
+  { tld: "to" }, { tld: "tr" }, { tld: "tt" }, { tld: "tv" }, { tld: "tw" },
   { tld: "tz" },
-  { tld: "ua" },
-  { tld: "ug" },
-  { tld: "uy" },
+  // U
+  { tld: "ua" }, { tld: "ug" }, { tld: "uk" }, { tld: "us" }, { tld: "uy" },
   { tld: "uz" },
-  { tld: "va" },
-  { tld: "vc" },
-  { tld: "ve" },
-  { tld: "vu" },
-  { tld: "ws" },
-  { tld: "ye" },
-  { tld: "zm" },
-  { tld: "zw" },
+  // V
+  { tld: "va" }, { tld: "vc" }, { tld: "ve" }, { tld: "vg" }, { tld: "vi" },
+  { tld: "vn" }, { tld: "vu" },
+  // W
+  { tld: "wf" }, { tld: "ws" },
+  // Y
+  { tld: "ye" }, { tld: "yt" },
+  // Z
+  { tld: "za" }, { tld: "zm" }, { tld: "zw" },
 ];
 
 type BatchStatus = "idle" | "running" | "done";
@@ -471,9 +423,9 @@ export default function AdminTldRulesPage() {
           <div className="flex items-center justify-between">
             <h2 className="font-medium flex items-center gap-2">
               <RiPlayCircleLine className="w-4 h-4 text-violet-500" />
-              批量抓取
+              国别域名 (ccTLD) 批量抓取
               <span className="text-xs text-muted-foreground font-normal">
-                — 预置 {BATCH_TLDS.length} 个 TLD，跳过已有数据，自动使用 IANA 页面
+                — 全部 {BATCH_TLDS.length} 个 ISO 3166-1 国别域名，跳过已有数据，自动使用 IANA 页面
               </span>
             </h2>
             <div className="flex items-center gap-2">
@@ -642,7 +594,7 @@ export default function AdminTldRulesPage() {
           <p className="font-medium">使用说明</p>
           <ul className="list-disc list-inside space-y-1 text-xs leading-relaxed">
             <li>单个抓取：只需填写 TLD，URL 可留空（自动用 IANA 官方页）；也可填自定义注册局政策页面 URL</li>
-            <li>批量抓取：一键处理预置 {BATCH_TLDS.length} 个 TLD，已有数据的自动跳过，每条间隔 1.5 秒</li>
+            <li>批量抓取：一键处理全部 {BATCH_TLDS.length} 个 ISO 3166-1 国别域名 (ccTLD)，已有数据的自动跳过，每条间隔 1.5 秒</li>
             <li>系统爬取页面正文，调用 GLM-4-Flash 自动提取宽限期等4个数字</li>
             <li>提取结果自动保存，优先级高于代码内置静态值，直接用于域名释放时间计算和订阅提醒</li>
             <li>同一 TLD 每小时限制抓取一次，防止被注册局封禁</li>
