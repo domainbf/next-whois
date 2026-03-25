@@ -2924,7 +2924,7 @@ function DomainReminderDialog({
     grace:         { label: isZh ? "宽限期"   : "Grace Period",  colorClass: "text-amber-600 dark:text-amber-400",    bgClass: "bg-amber-50/70 dark:bg-amber-950/25",    borderClass: "border-amber-200/60 dark:border-amber-800/40",    dotClass: "bg-amber-500" },
     redemption:    { label: isZh ? "赎回期"   : "Redemption",    colorClass: "text-orange-600 dark:text-orange-400",  bgClass: "bg-orange-50/70 dark:bg-orange-950/25",  borderClass: "border-orange-200/60 dark:border-orange-800/40",  dotClass: "bg-orange-500" },
     pendingDelete: { label: isZh ? "待删除"   : "Pending Delete", colorClass: "text-red-600 dark:text-red-400",        bgClass: "bg-red-50/70 dark:bg-red-950/25",        borderClass: "border-red-200/60 dark:border-red-800/40",        dotClass: "bg-red-500" },
-    dropped:       { label: isZh ? "已释放"   : "Available",     colorClass: "text-sky-600 dark:text-sky-400",        bgClass: "bg-sky-50/70 dark:bg-sky-950/25",        borderClass: "border-sky-200/60 dark:border-sky-800/40",        dotClass: "bg-sky-400" },
+    dropped:       { label: isZh ? "已释放"   : "Available",     colorClass: "text-emerald-600 dark:text-emerald-400",        bgClass: "bg-emerald-50/70 dark:bg-emerald-950/25",        borderClass: "border-emerald-200/60 dark:border-emerald-800/40",        dotClass: "bg-emerald-400" },
   };
 
   const PHASE_ADVICE: Record<string, { zh: string; en: string }> = {
@@ -2964,7 +2964,7 @@ function DomainReminderDialog({
     lc.cfg.grace > 0         && { key: "grace"       as const, label: isZh ? "进入宽限期"   : "Grace Period",    icon: <RiTimeLine className="w-2.5 h-2.5" />,            activeCls: "bg-amber-500/18 border-amber-400/60 text-amber-700 dark:text-amber-300",   inactiveCls: "bg-muted/30 border-border/50 text-muted-foreground/50" },
     lc.cfg.redemption > 0    && { key: "redemption"  as const, label: isZh ? "进入赎回期"   : "Redemption",      icon: <RiExchangeDollarFill className="w-2.5 h-2.5" />,  activeCls: "bg-orange-500/18 border-orange-400/60 text-orange-700 dark:text-orange-300", inactiveCls: "bg-muted/30 border-border/50 text-muted-foreground/50" },
     lc.cfg.pendingDelete > 0 && { key: "pendingDelete" as const, label: isZh ? "进入待删除期" : "Pending Delete",  icon: <RiDeleteBin2Line className="w-2.5 h-2.5" />,     activeCls: "bg-red-500/18 border-red-400/60 text-red-700 dark:text-red-300",          inactiveCls: "bg-muted/30 border-border/50 text-muted-foreground/50" },
-    (lc.cfg.pendingDelete > 0 || lc.cfg.redemption > 0 || lc.cfg.grace > 0) && { key: "dropSoon" as const, always: true, label: isZh ? "即将可注册" : "Drop Soon",       icon: <RiAlertLine className="w-2.5 h-2.5" />,           activeCls: "bg-sky-500/18 border-sky-400/60 text-sky-700 dark:text-sky-300",          inactiveCls: "bg-muted/30 border-border/50 text-muted-foreground/50" },
+    (lc.cfg.pendingDelete > 0 || lc.cfg.redemption > 0 || lc.cfg.grace > 0) && { key: "dropSoon" as const, always: true, label: isZh ? "即将可注册" : "Drop Soon",       icon: <RiAlertLine className="w-2.5 h-2.5" />,           activeCls: "bg-foreground/10 border-foreground/25 text-foreground",                   inactiveCls: "bg-muted/30 border-border/50 text-muted-foreground/50" },
     (lc.cfg.pendingDelete > 0 || lc.cfg.redemption > 0 || lc.cfg.grace > 0) && { key: "dropped"  as const, always: true, label: isZh ? "域名可注册"  : "Available",      icon: <RiShoppingCartLine className="w-2.5 h-2.5" />,    activeCls: "bg-emerald-500/18 border-emerald-400/60 text-emerald-700 dark:text-emerald-300", inactiveCls: "bg-muted/30 border-border/50 text-muted-foreground/50" },
   ].filter(Boolean) as PhaseChip[] : [];
 
@@ -2973,10 +2973,10 @@ function DomainReminderDialog({
       <DialogContent className="max-w-[420px] p-0 overflow-hidden gap-0">
 
         {/* ── Header ── */}
-        <div className="px-5 pt-5 pb-4 border-b border-border/50 bg-gradient-to-br from-sky-500/5 via-transparent to-blue-500/5">
+        <div className="px-5 pt-5 pb-4 border-b border-border/50">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-sky-500/10 border border-sky-400/20 flex items-center justify-center shrink-0">
-              <RiTimerLine className="w-[18px] h-[18px] text-sky-500" />
+            <div className="w-9 h-9 rounded-xl bg-muted border border-border/60 flex items-center justify-center shrink-0">
+              <RiTimerLine className="w-[18px] h-[18px] text-foreground/70" />
             </div>
             <h2 className="text-sm font-bold text-foreground leading-none">
               {isZh ? "域名监控订阅" : "Domain Monitoring"}
@@ -2989,8 +2989,8 @@ function DomainReminderDialog({
 
           {/* ── Domain name card — centered, above pricing ── */}
           <div className="flex flex-col items-center justify-center pt-4 pb-1 gap-1">
-            <div className="px-4 py-2.5 rounded-xl border border-sky-300/40 bg-sky-50/50 dark:bg-sky-950/20 text-center min-w-0 max-w-full">
-              <p className="text-[15px] font-mono font-bold text-sky-600 dark:text-sky-400 truncate tracking-tight">{domain}</p>
+            <div className="px-4 py-2.5 rounded-xl border border-border/60 bg-muted/30 text-center min-w-0 max-w-full">
+              <p className="text-[15px] font-mono font-bold text-foreground truncate tracking-tight">{domain}</p>
               {lc?.cfg.registry && (
                 <p className="text-[10px] text-muted-foreground/55 mt-0.5 truncate">{lc.cfg.registry}</p>
               )}
@@ -3010,9 +3010,9 @@ function DomainReminderDialog({
                 className="py-7 text-center space-y-4"
               >
                 <div className="relative w-16 h-16 mx-auto">
-                  <div className="absolute inset-0 rounded-full bg-sky-500/15 animate-ping" style={{ animationDuration: "1.6s" }} />
-                  <div className="relative w-16 h-16 bg-sky-500/10 border-2 border-sky-400/30 rounded-full flex items-center justify-center">
-                    <RiCheckLine className="w-7 h-7 text-sky-500" />
+                  <div className="absolute inset-0 rounded-full bg-emerald-500/15 animate-ping" style={{ animationDuration: "1.6s" }} />
+                  <div className="relative w-16 h-16 bg-emerald-500/10 border-2 border-emerald-400/30 rounded-full flex items-center justify-center">
+                    <RiCheckLine className="w-7 h-7 text-emerald-500" />
                   </div>
                 </div>
                 <div>
@@ -3029,7 +3029,7 @@ function DomainReminderDialog({
                   </p>
                   {isRestricted ? (
                     <div className="flex items-center gap-1.5">
-                      <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-sky-500/15 border border-sky-400/40 text-sky-700 dark:text-sky-300 text-[10px] font-semibold">
+                      <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-foreground/8 border border-foreground/20 text-foreground/80 text-[10px] font-semibold">
                         <RiCheckboxCircleLine className="w-2.5 h-2.5" />
                         {isZh ? "域名状态变化通知" : "Status change alert"}
                       </span>
@@ -3040,7 +3040,7 @@ function DomainReminderDialog({
                         <p className="text-[10px] text-foreground/60 font-semibold mb-1.5">{isZh ? "到期前提醒" : "Pre-expiry"}</p>
                         <div className="flex flex-wrap gap-1">
                           {[...selectedThresholds].sort((a, b) => b - a).map((d) => (
-                            <span key={d} className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-sky-500/15 border border-sky-400/40 text-sky-700 dark:text-sky-300 text-[10px] font-semibold">
+                            <span key={d} className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-foreground/8 border border-foreground/20 text-foreground/80 text-[10px] font-semibold">
                               <RiTimerLine className="w-2.5 h-2.5" />{isZh ? `提前${d}天` : `${d}d`}
                             </span>
                           ))}
@@ -3281,8 +3281,8 @@ function DomainReminderDialog({
                         )}>
                           {/* Header row */}
                           <div className="flex items-center gap-2 mb-2.5">
-                            <RiShoppingCartLine className={cn("w-3.5 h-3.5 shrink-0", dropIsPast ? "text-emerald-500" : "text-sky-500")} />
-                            <span className={cn("text-[11px] font-bold", dropIsPast ? "text-emerald-600 dark:text-emerald-400" : "text-sky-600 dark:text-sky-400")}>
+                            <RiShoppingCartLine className={cn("w-3.5 h-3.5 shrink-0", dropIsPast ? "text-emerald-500" : "text-foreground/50")} />
+                            <span className={cn("text-[11px] font-bold", dropIsPast ? "text-emerald-600 dark:text-emerald-400" : "text-foreground/70")}>
                               {isZh ? "预计可注册" : "Est. available"}
                             </span>
                             {dropIsPast ? (
@@ -3290,7 +3290,7 @@ function DomainReminderDialog({
                                 {isZh ? "现在可注册" : "NOW"}
                               </span>
                             ) : (
-                              <span className={cn("ml-auto text-[11px] font-black tabular-nums", urgencyNum === "text-muted-foreground" ? "text-sky-600 dark:text-sky-400" : urgencyNum)}>
+                              <span className={cn("ml-auto text-[11px] font-black tabular-nums", urgencyNum === "text-muted-foreground" ? "text-foreground/80" : urgencyNum)}>
                                 {Math.max(0, daysToDropDate)}{isZh ? "天后" : "d"}
                               </span>
                             )}
@@ -3328,8 +3328,8 @@ function DomainReminderDialog({
                 ) : !hasExpiry ? (
                   <div className="px-3.5 py-3 rounded-xl border border-border/50 bg-muted/15 flex items-center gap-2.5">
                     <span className="relative flex h-2 w-2 shrink-0">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-40 bg-sky-400" />
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-sky-400" />
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-40 bg-foreground/40" />
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-foreground/50" />
                     </span>
                     <p className="text-[11px] text-muted-foreground">
                       {isZh ? "暂无到期日期，仍可订阅提醒" : "No expiry info yet, but you can still subscribe"}
@@ -3344,10 +3344,10 @@ function DomainReminderDialog({
                     <p className="text-[10px] font-bold text-foreground/60 uppercase tracking-widest">
                       {isZh ? "提醒计划" : "Reminder plan"}
                     </p>
-                    <div className="flex items-center gap-2.5 rounded-lg border border-sky-300/40 bg-sky-50/40 dark:bg-sky-950/15 px-3 py-2.5">
-                      <RiCheckboxCircleLine className="w-4 h-4 text-sky-500 shrink-0" />
+                    <div className="flex items-center gap-2.5 rounded-lg border border-border/50 bg-muted/30 px-3 py-2.5">
+                      <RiCheckboxCircleLine className="w-4 h-4 text-foreground/60 shrink-0" />
                       <div>
-                        <p className="text-[11px] font-bold text-sky-700 dark:text-sky-300">
+                        <p className="text-[11px] font-bold text-foreground/80">
                           {isZh ? "域名状态变化通知" : "Status change alert"}
                         </p>
                         <p className="text-[10px] text-muted-foreground leading-snug mt-0.5">
@@ -3370,7 +3370,7 @@ function DomainReminderDialog({
                     {/* Pre-expiry day alerts — interactive */}
                     <div>
                       <p className="text-[10px] text-foreground/70 mb-2 flex items-center gap-1.5 font-semibold">
-                        <RiTimerLine className="w-3 h-3 text-sky-500" />
+                        <RiTimerLine className="w-3 h-3 text-foreground/50" />
                         {isZh ? "到期前提醒" : "Pre-expiry alerts"}
                         <span className="ml-auto text-[9px] text-muted-foreground/60 font-normal normal-case">
                           {isZh ? "点击选择" : "tap to toggle"}
@@ -3387,7 +3387,7 @@ function DomainReminderDialog({
                               className={cn(
                                 "inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md border text-[11px] font-semibold transition-all cursor-pointer select-none",
                                 on
-                                  ? "bg-sky-500/15 border-sky-400/60 text-sky-700 dark:text-sky-300"
+                                  ? "bg-foreground/10 border-foreground/30 text-foreground"
                                   : "bg-muted/30 border-border/50 text-muted-foreground/55"
                               )}
                             >
@@ -3458,7 +3458,7 @@ function DomainReminderDialog({
                     onChange={(e) => setEmail(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
                     placeholder="your@email.com"
-                    className="w-full text-sm rounded-xl border border-border bg-background px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-sky-400/40 transition-shadow font-mono"
+                    className="w-full text-sm rounded-xl border border-border bg-background px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-ring/30 transition-shadow font-mono"
                   />
                   {userEmail && email === userEmail && (
                     <p className="text-[10px] text-muted-foreground/60 mt-1 flex items-center gap-1">
@@ -3472,7 +3472,7 @@ function DomainReminderDialog({
                 <Button
                   onClick={handleSubmit}
                   disabled={submitting}
-                  className="w-full gap-2 h-10 bg-sky-500 hover:bg-sky-600 active:bg-sky-700 text-white border-0 rounded-xl font-semibold text-sm shadow-sm shadow-sky-500/20 transition-all"
+                  className="w-full gap-2 h-10 bg-primary hover:bg-primary/90 active:bg-primary/80 text-primary-foreground border-0 rounded-xl font-semibold text-sm transition-all"
                 >
                   {submitting
                     ? <><RiLoader4Line className="w-4 h-4 animate-spin" />{isZh ? "订阅中…" : "Subscribing…"}</>
