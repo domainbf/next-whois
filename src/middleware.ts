@@ -69,22 +69,35 @@ export function middleware(request: NextRequest) {
   const isDashboardRoute = pathWithoutLocale.startsWith("/dashboard");
   if (isDashboardRoute) return;
 
+  // URLs embedded in the path (e.g. /https://x.com or /https:/x.com after browser
+  // normalization of double-slashes) — let through; getServerSideProps will
+  // extract the real domain and redirect to the canonical URL.
+  const pathBody = pathWithoutLocale.replace(/^\/+/, "");
+  if (/^[a-zA-Z][a-zA-Z0-9+\-.]*:\/+/.test(pathBody)) return;
+
   const querySegment = pathWithoutLocale.split("/")[1] || "";
+  // Strip spaces before testing (handles URL-encoded spaces like %20 decoded to " ")
+  const cleanedSegment = querySegment.replace(/\s+/g, "");
+
   const isDomainQuery =
     pathWithoutLocale.split("/").length === 2 &&
     pathWithoutLocale !== "/" &&
-    (/[.]/.test(querySegment) || /^[0-9a-fA-F:]+:[0-9a-fA-F:]+$/.test(querySegment));
+    (
+      /[.]/.test(cleanedSegment) ||
+      /^[0-9a-fA-F:]+:[0-9a-fA-F:]+$/.test(cleanedSegment) ||
+      /^AS\d+$/i.test(cleanedSegment) ||
+      /^\d{1,3}\.\d/.test(cleanedSegment)
+    );
   if (isDomainQuery) return;
 
-  // Bare-word paths (e.g. /gouniy) don't match any page and have no locale
-  // prefix yet. Pass them through without locale redirect so Next.js can
-  // serve the 404 page cleanly — avoiding the middleware ↔ notFound redirect loop.
+  // Bare-word paths (e.g. /gouniy) — pass through so Next.js can serve the matched page
+  // or let [...query].tsx handle/redirect them gracefully.
   const isBareNavPath =
     !currentLocale &&
     pathWithoutLocale.split("/").filter(Boolean).length === 1 &&
-    !querySegment.includes(".") &&
-    !/^AS\d+$/i.test(querySegment) &&
-    !/^\d/.test(querySegment);
+    !cleanedSegment.includes(".") &&
+    !/^AS\d+$/i.test(cleanedSegment) &&
+    !/^\d/.test(cleanedSegment);
   if (isBareNavPath) return;
 
   const isStaticRoute =

@@ -1321,11 +1321,37 @@ export async function getServerSideProps(context: GetServerSidePropsContext) {
   const querySegments: string[] = (context.params?.query as string[]) ?? [];
   const origin = getOrigin(context.req);
 
+  // ── Smart URL cleaning + canonical redirect ──────────────────────────────
+  // Strip spaces first (handles URL-encoded spaces like %20 decoded to " ")
+  // then run cleanDomain which strips protocols, paths, ports, auth, etc.
+  const rawPath = querySegments.join("/");
+  const spacelessPath = rawPath.replace(/\s+/g, "");
+  const target = cleanDomain(spacelessPath);
+  const displayTarget = targetToDisplayName(target);
+
+  const looksLikeQuery = (t: string) =>
+    t.includes(".") ||
+    /^AS\d+$/i.test(t) ||
+    /^([0-9a-fA-F]{0,4}:){1,7}[0-9a-fA-F]{0,4}/.test(t);
+
+  // If cleaning changed the URL (spaces removed, protocol stripped, path trimmed…),
+  // redirect to the canonical clean URL to avoid duplicate/broken results.
+  if (looksLikeQuery(target) && `/${target}` !== `/${rawPath}`) {
+    return { redirect: { destination: `/${target}`, permanent: false } };
+  }
+
+  // If it still doesn't look like any known query type, redirect to home
+  // instead of a hard 404 — real app routes (/admin, /zh/about, etc.) are
+  // handled by their own pages before they ever reach this catch-all.
+  if (!looksLikeQuery(target)) {
+    return { redirect: { destination: "/", permanent: false } };
+  }
+
   // ── CN Reserved SLD early-return (before cleanDomain rewrites the query) ──
   // Some .cn functional SLDs (gov.cn, edu.cn, etc.) are mapped by the WHOIS
   // lib to their www.* equivalents so the lookup works.  We must intercept
   // BEFORE that mapping so the user sees "保留域名" instead of www.gov.cn data.
-  const rawQuery = querySegments.join("/").toLowerCase().trim();
+  const rawQuery = target.toLowerCase();
   const cnReservedSsr = getCnReservedSldInfo(rawQuery);
   if (cnReservedSsr) {
     const syntheticData: WhoisResult = {
@@ -1348,19 +1374,6 @@ export async function getServerSideProps(context: GetServerSidePropsContext) {
         origin,
       },
     };
-  }
-
-  const target = cleanDomain(querySegments.join("/"));
-  const displayTarget = targetToDisplayName(target);
-
-  // If the path is a single bare word (no dots, not an IP/ASN/CIDR), it's a
-  // navigation path that doesn't match any page — show the real 404 page.
-  const looksLikeQuery =
-    target.includes(".") ||
-    /^AS\d+$/i.test(target) ||
-    /^([0-9a-fA-F]{0,4}:){1,7}[0-9a-fA-F]{0,4}/.test(target);
-  if (!looksLikeQuery) {
-    return { notFound: true };
   }
 
   // Server-side TLD validation — reject clearly invalid domains before lookup
