@@ -163,6 +163,8 @@ export function stripUrlToHostname(input: string): string {
  */
 export function sanitizeInput(raw: string): string {
   let s = raw.trim();
+  // 0. Remove all whitespace (e.g. "x .com" → "x.com", "https:// x.com" → "https://x.com")
+  s = s.replace(/\s+/g, "");
   // 1. Strip full protocol (https://, http://, ftp://, //, …)
   s = s.replace(/^[a-zA-Z][a-zA-Z0-9+\-.]*:\/\//i, "");
   s = s.replace(/^\/\//, "");

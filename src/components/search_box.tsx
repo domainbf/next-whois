@@ -11,7 +11,7 @@ import {
   RiCloseLine,
 } from "@remixicon/react";
 import { motion, AnimatePresence } from "framer-motion";
-import { cn, isEnter, validateAndSanitizeInput } from "@/lib/utils";
+import { cn, isEnter, validateAndSanitizeInput, sanitizeInput } from "@/lib/utils";
 import { listHistory, HistoryItem } from "@/lib/history";
 import { Badge } from "@/components/ui/badge";
 import { useTranslation } from "@/lib/i18n";
@@ -391,7 +391,8 @@ export function SearchBox({
     const value = e.target.value;
     setInputValue(value);
     if (validationError) setValidationError(null);
-    const newSuggestions = generateSuggestions(value);
+    const cleaned = sanitizeInput(value);
+    const newSuggestions = generateSuggestions(cleaned || value);
     setShowSuggestions(newSuggestions.length > 0);
     setSelectedIndex(-1);
   };
