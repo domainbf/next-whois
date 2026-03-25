@@ -109,6 +109,36 @@ function UrgencyBar({ daysLeft, phase }: { daysLeft: number | null; phase: strin
 const ALL_THRESHOLDS = [60, 30, 10, 5, 1];
 
 // ── Direct-subscribe form (shown when ?domain= is in the URL) ──────────────
+type WhoisInfo = {
+  creationDate: string | null;
+  expirationDate: string | null;
+  remainingDays: number | null;
+  registrar: string | null;
+};
+
+function formatDate(raw: string | null): string {
+  if (!raw || raw === "Unknown") return "—";
+  const d = new Date(raw);
+  if (isNaN(d.getTime())) return raw;
+  return d.toLocaleDateString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit" });
+}
+
+function RemainingBadge({ days }: { days: number | null }) {
+  if (days === null) return <span className="text-[10px] text-muted-foreground">—</span>;
+  const urgent   = days <= 30;
+  const warning  = days <= 90;
+  return (
+    <span className={cn(
+      "inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-md",
+      urgent  ? "bg-red-500/10 text-red-500"
+              : warning ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+              : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+    )}>
+      {days > 0 ? `${days} 天后到期` : `已过期 ${Math.abs(days)} 天`}
+    </span>
+  );
+}
+
 function DirectSubscribeForm({ domain }: { domain: string }) {
   const router = useRouter();
   const { data: session, status } = useSession();
@@ -116,6 +146,8 @@ function DirectSubscribeForm({ domain }: { domain: string }) {
   const [thresholds, setThresholds] = React.useState<number[]>([60, 30, 1]);
   const [submitting, setSubmitting] = React.useState(false);
   const [done, setDone] = React.useState(false);
+  const [whois, setWhois] = React.useState<WhoisInfo | null>(null);
+  const [whoisLoading, setWhoisLoading] = React.useState(true);
 
   // Redirect unauthenticated users to login, preserving ?domain=
   React.useEffect(() => {
@@ -128,6 +160,26 @@ function DirectSubscribeForm({ domain }: { domain: string }) {
   React.useEffect(() => {
     if (session?.user?.email) setEmail(prev => prev || session.user!.email!);
   }, [session]);
+
+  // Fetch lightweight WHOIS data to show domain info
+  React.useEffect(() => {
+    if (!domain) return;
+    setWhoisLoading(true);
+    fetch(`/api/lookup?query=${encodeURIComponent(domain)}`)
+      .then(r => r.ok ? r.json() : null)
+      .then((data: any) => {
+        if (!data) return;
+        const r = data.result ?? data;
+        setWhois({
+          creationDate:   r.creationDate   ?? null,
+          expirationDate: r.expirationDate ?? null,
+          remainingDays:  r.remainingDays  ?? null,
+          registrar:      r.registrar      ?? null,
+        });
+      })
+      .catch(() => {})
+      .finally(() => setWhoisLoading(false));
+  }, [domain]);
 
   function toggleThreshold(d: number) {
     setThresholds(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d].sort((a, b) => b - a));
@@ -145,7 +197,7 @@ function DirectSubscribeForm({ domain }: { domain: string }) {
         body: JSON.stringify({
           domain: domain.toLowerCase().trim(),
           email,
-          expirationDate: null,
+          expirationDate: (whois?.expirationDate && whois.expirationDate !== "Unknown") ? whois.expirationDate : null,
           phaseAlerts: { grace: true, redemption: true, pendingDelete: true, dropSoon: true, dropped: true },
           thresholds,
           regStatusType: null,
@@ -161,8 +213,9 @@ function DirectSubscribeForm({ domain }: { domain: string }) {
       <div className="min-h-[calc(100vh-64px)] bg-background">
         <div className="max-w-lg mx-auto px-4 py-5 space-y-4 animate-pulse">
           <div className="h-5 w-32 rounded-lg bg-muted/50" />
+          <div className="h-32 rounded-2xl bg-muted/40" />
+          <div className="h-24 rounded-2xl bg-muted/40" />
           <div className="h-28 rounded-2xl bg-muted/40" />
-          <div className="h-48 rounded-2xl bg-muted/40" />
           <div className="h-12 rounded-xl bg-muted/35" />
         </div>
       </div>
@@ -203,6 +256,16 @@ function DirectSubscribeForm({ domain }: { domain: string }) {
                     确认邮件已发送至 <span className="font-semibold">{email}</span>
                   </p>
                 </div>
+                {whois?.expirationDate && whois.expirationDate !== "Unknown" && (
+                  <div className="bg-muted/40 rounded-xl px-4 py-2.5 text-[11px] text-muted-foreground">
+                    域名到期时间：<span className="font-semibold text-foreground">{formatDate(whois.expirationDate)}</span>
+                    {whois.remainingDays !== null && (
+                      <span className="ml-2">
+                        <RemainingBadge days={whois.remainingDays} />
+                      </span>
+                    )}
+                  </div>
+                )}
                 <div className="flex gap-2 justify-center pt-1">
                   <Button size="sm" variant="outline" className="rounded-xl text-xs h-8 gap-1" onClick={() => router.push("/dashboard")}>
                     前往用户中心
@@ -217,20 +280,74 @@ function DirectSubscribeForm({ domain }: { domain: string }) {
             /* ── Subscription form ── */
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Header */}
-              <div className="flex items-center gap-2 mb-5">
+              <div className="flex items-center gap-2 mb-1">
                 <RiCalendarLine className="w-4 h-4 text-sky-500 shrink-0" />
                 <h1 className="text-sm font-bold">域名到期提醒</h1>
               </div>
 
-              {/* Domain display */}
-              <div className="glass-panel border border-border rounded-2xl p-4 flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-sky-500/10 flex items-center justify-center shrink-0">
-                  <RiGlobalLine className="w-4.5 h-4.5 text-sky-500" />
+              {/* Domain + WHOIS info card */}
+              <div className="glass-panel border border-border rounded-2xl overflow-hidden">
+                {/* Domain header row */}
+                <div className="px-4 pt-4 pb-3 flex items-center gap-3 border-b border-border/60">
+                  <div className="w-9 h-9 rounded-xl bg-sky-500/10 flex items-center justify-center shrink-0">
+                    <RiGlobalLine className="w-4.5 h-4.5 text-sky-500" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50 mb-0.5">域名</p>
+                    <p className="text-sm font-bold font-mono truncate">{domain.toUpperCase()}</p>
+                  </div>
+                  <Link
+                    href={`/${domain}`}
+                    className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                    onClick={e => e.stopPropagation()}
+                  >
+                    WHOIS <RiExternalLinkLine className="w-3 h-3" />
+                  </Link>
                 </div>
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50">域名</p>
-                  <p className="text-sm font-bold font-mono">{domain.toUpperCase()}</p>
-                </div>
+
+                {/* Date info rows */}
+                {whoisLoading ? (
+                  <div className="px-4 py-3 space-y-2 animate-pulse">
+                    <div className="h-3.5 w-48 rounded bg-muted/50" />
+                    <div className="h-3.5 w-40 rounded bg-muted/40" />
+                    <div className="h-3.5 w-32 rounded bg-muted/35" />
+                  </div>
+                ) : (
+                  <div className="px-4 py-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] text-muted-foreground flex items-center gap-1.5">
+                        <RiTimeLine className="w-3 h-3" /> 注册时间
+                      </span>
+                      <span className="text-[11px] font-medium font-mono">
+                        {formatDate(whois?.creationDate ?? null)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] text-muted-foreground flex items-center gap-1.5">
+                        <RiCalendarLine className="w-3 h-3" /> 到期时间
+                      </span>
+                      <span className="text-[11px] font-medium font-mono">
+                        {formatDate(whois?.expirationDate ?? null)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] text-muted-foreground flex items-center gap-1.5">
+                        <RiTimerLine className="w-3 h-3" /> 剩余时间
+                      </span>
+                      <RemainingBadge days={whois?.remainingDays ?? null} />
+                    </div>
+                    {whois?.registrar && (
+                      <div className="flex items-center justify-between gap-4">
+                        <span className="text-[10px] text-muted-foreground flex items-center gap-1.5 shrink-0">
+                          <RiInformationLine className="w-3 h-3" /> 注册商
+                        </span>
+                        <span className="text-[10px] text-muted-foreground/80 text-right truncate max-w-[60%]">
+                          {whois.registrar}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Email */}
