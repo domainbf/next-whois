@@ -35,6 +35,31 @@ export interface TldLifecycle {
   registry?: string;
   /** Data confidence: "high" = verified from registry docs, "est" = estimated */
   confidence?: "high" | "est";
+
+  // ── Precise drop-time fields ──────────────────────────────────────────────
+  /** Hour (0-23) in dropTimezone when pending-delete domains are released */
+  dropHour?: number;
+  /** Minute (0-59) of drop time */
+  dropMinute?: number;
+  /** Second (0-59) of drop time */
+  dropSecond?: number;
+  /** IANA timezone for dropHour/dropMinute (default: "UTC") */
+  dropTimezone?: string;
+  /** Days the registry deletes the domain BEFORE nominal expiry date (e.g. .nl=3, .au=10) */
+  preExpiryDays?: number;
+}
+
+/**
+ * Format a TldLifecycle drop time as "HH:MM:SS TZ" or null.
+ * Used to display the estimated moment a pending-delete domain becomes available.
+ */
+export function formatDropTime(lc: TldLifecycle): string | null {
+  if (lc.dropHour === undefined || lc.dropHour === null) return null;
+  const h = String(lc.dropHour).padStart(2, "0");
+  const m = String(lc.dropMinute ?? 0).padStart(2, "0");
+  const s = String(lc.dropSecond ?? 0).padStart(2, "0");
+  const tz = lc.dropTimezone ?? "UTC";
+  return `${h}:${m}:${s} ${tz}`;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -53,12 +78,20 @@ const AFNIC: TldLifecycle = { grace: 0, redemption: 30, pendingDelete: 5, regist
 const IMMEDIATE: TldLifecycle = { grace: 0, redemption: 0, pendingDelete: 0, confidence: "high" };
 
 /** Nominet-style (UK): ~90-day total renewal window, no separate RGP fee, 5-day pendingDelete.
+ *  Drop time: 00:00 UTC on the suspension date.
  *  Dynadot: Grace=85, Delete=5; Namecheap: 90d total. Using 90/5 as rounded policy values. */
-const NOMINET: TldLifecycle = { grace: 90, redemption: 0, pendingDelete: 5, registry: "Nominet", confidence: "high" };
+const NOMINET: TldLifecycle = {
+  grace: 90, redemption: 0, pendingDelete: 5, registry: "Nominet", confidence: "high",
+  dropHour: 0, dropMinute: 0, dropSecond: 0, dropTimezone: "UTC",
+};
 
 /** CNNIC (.cn and its second-level variants): no registry grace, 15-day RGP, 5-day pendingDelete.
+ *  Drop batch typically runs ~00:00 CST (Asia/Shanghai).
  *  Dynadot: Grace=38 (registrar grace), Restore=15d; registry-level grace=0. Using restore=15. */
-const CNNIC: TldLifecycle = { grace: 0, redemption: 15, pendingDelete: 5, registry: "CNNIC", confidence: "high" };
+const CNNIC: TldLifecycle = {
+  grace: 0, redemption: 15, pendingDelete: 5, registry: "CNNIC", confidence: "high",
+  dropHour: 0, dropMinute: 0, dropSecond: 0, dropTimezone: "Asia/Shanghai",
+};
 
 /** HKIRC (.hk and its second-level variants): 30-day grace, 60-day RGP, no pendingDelete.
  *  Dynadot verified: Grace=30, Restore=60, Delete=0 (2026-03); total renewal window 90 days. */
@@ -105,6 +138,7 @@ const JPRS: TldLifecycle = { ...IMMEDIATE, registry: "JPRS" };
 export const LIFECYCLE_TABLE: Record<string, TldLifecycle> = {
 
   // ── Tier-1 gTLDs ─────────────────────────────────────────────────────────
+  // Verisign runs 5 deletion cycles through the day; no single fixed time
   com:    { ...STD, registry: "Verisign" },
   net:    { ...STD, registry: "Verisign" },
   org:    { ...STD, registry: "Public Interest Registry" },
@@ -470,7 +504,7 @@ export const LIFECYCLE_TABLE: Record<string, TldLifecycle> = {
   // .sc: Afilias (Seychelles) — IMMEDIATE, no grace or redemption (Enom 2026-03: N/N)
   sc:     { ...IMMEDIATE,                                  registry: "Afilias (Seychelles)" },
   // .mn: Afilias (Mongolia) — IMMEDIATE, deleted 2 days before expiry (Enom 2026-03: N/N)
-  mn:     { ...IMMEDIATE,                                  registry: "Afilias (Mongolia)" },
+  mn:     { ...IMMEDIATE, preExpiryDays: 2,                registry: "Afilias (Mongolia)" },
   // .fm: CentralNic (Fed. States of Micronesia) — IMMEDIATE, no grace or redemption (Enom 2026-03: N/N)
   fm:     { ...IMMEDIATE,                                  registry: "CentralNic (Micronesia)" },
   gl:     { grace: 30, redemption: 30, pendingDelete: 5,  registry: "TELE Greenland", confidence: "est" },
@@ -478,7 +512,7 @@ export const LIFECYCLE_TABLE: Record<string, TldLifecycle> = {
   // .ms: MNI Networks (Montserrat) — IMMEDIATE, no grace or redemption (Enom 2026-03: N/N)
   ms:     { ...IMMEDIATE,                                  registry: "MNI Networks (Montserrat)" },
   // .gs: CoCCA (South Georgia) — IMMEDIATE, deleted 3 days before expiry (Enom 2026-03: N/N)
-  gs:     { ...IMMEDIATE,                                  registry: "CoCCA (South Georgia)" },
+  gs:     { ...IMMEDIATE, preExpiryDays: 3,                registry: "CoCCA (South Georgia)" },
   // .bz: Identity Digital (Belize) — IMMEDIATE, no grace or redemption (Enom 2026-03: N/N)
   bz:     { ...IMMEDIATE,                                  registry: "Identity Digital (Belize)" },
   ag:     { grace: 30, redemption: 30, pendingDelete: 5,  registry: "UHSA (Antigua)", confidence: "est" },
@@ -492,7 +526,7 @@ export const LIFECYCLE_TABLE: Record<string, TldLifecycle> = {
   vi:     { grace: 30, redemption: 30, pendingDelete: 5,  registry: "US VI NIC", confidence: "est" },
   pr:     { grace: 30, redemption: 30, pendingDelete: 5,  registry: "Puerto Rico NIC", confidence: "est" },
   // .tk: Freenom (Tokelau) — IMMEDIATE, deleted 3 days before expiry (Enom 2026-03: N/N)
-  tk:     { ...IMMEDIATE,                                  registry: "Freenom (Tokelau)" },
+  tk:     { ...IMMEDIATE, preExpiryDays: 3,                registry: "Freenom (Tokelau)" },
   ml:     { grace: 30, redemption: 30, pendingDelete: 5,  registry: "SOTELMA (Mali)", confidence: "est" },
   ga:     { grace: 30, redemption: 30, pendingDelete: 5,  registry: "Gabon NIC", confidence: "est" },
   cf:     { grace: 30, redemption: 30, pendingDelete: 5,  registry: "CAF NIC (Cent. Africa)", confidence: "est" },
@@ -508,7 +542,8 @@ export const LIFECYCLE_TABLE: Record<string, TldLifecycle> = {
   jp:     { ...JPRS },
   kr:     { grace: 30, redemption: 30, pendingDelete: 5,  registry: "KISA",   confidence: "high" },
   // .sg: SGNIC (Singapore) — no grace, 14-day RGP, no pendingDelete (Enom 2026-03: N/14; 10d pre-expiry deletion)
-  sg:     { grace: 0,  redemption: 14, pendingDelete: 0,  registry: "SGNIC",  confidence: "high" },
+  sg:     { grace: 0,  redemption: 14, pendingDelete: 0,  registry: "SGNIC",  confidence: "high",
+            preExpiryDays: 10, dropHour: 0, dropMinute: 0, dropSecond: 0, dropTimezone: "Asia/Singapore" },
   my:     { grace: 30, redemption: 30, pendingDelete: 5,  registry: "MYNIC",  confidence: "high" },
   // .ph: PH Domains Foundation — 50-day grace, no redemption, no pendingDelete (Dynadot 2026-03)
   ph:     { grace: 50, redemption: 0,  pendingDelete: 0,  registry: "PH Domains", confidence: "high" },
@@ -521,11 +556,14 @@ export const LIFECYCLE_TABLE: Record<string, TldLifecycle> = {
   bn:     { grace: 30, redemption: 0,  pendingDelete: 0,  registry: "BNNIC",  confidence: "est" },
   tl:     { grace: 30, redemption: 0,  pendingDelete: 0,  registry: "NIC.TL (Timor-Leste)", confidence: "est" },
   // .au: auDA — no grace, 31-day RGP, 5-day pendingDelete (Enom 2026-03: N/31; 10d pre-expiry deletion)
-  au:     { grace: 0,  redemption: 31, pendingDelete: 5,  registry: "auDA",   confidence: "high" },
+  au:     { grace: 0,  redemption: 31, pendingDelete: 5,  registry: "auDA",   confidence: "high",
+            preExpiryDays: 10, dropHour: 0, dropMinute: 0, dropSecond: 0, dropTimezone: "Australia/Sydney" },
   // .nz: InternetNZ — no grace, 90-day RGP, 5-day pendingDelete (Enom 2026-03: N/90; 3d pre-expiry deletion)
-  nz:     { grace: 0,  redemption: 90, pendingDelete: 5,  registry: "InternetNZ", confidence: "high" },
+  nz:     { grace: 0,  redemption: 90, pendingDelete: 5,  registry: "InternetNZ", confidence: "high",
+            preExpiryDays: 3, dropHour: 0, dropMinute: 0, dropSecond: 0, dropTimezone: "Pacific/Auckland" },
   // .in: NIXI — 30-day grace, 30-day RGP, 5-day pendingDelete (Enom 2026-03: 30/30; Deleted 30d before expiry)
-  in:     { grace: 30, redemption: 30, pendingDelete: 5,  registry: "NIXI",   confidence: "high" },
+  in:     { grace: 30, redemption: 30, pendingDelete: 5,  registry: "NIXI",   confidence: "high",
+            preExpiryDays: 30 },
   pk:     { grace: 30, redemption: 0,  pendingDelete: 0,  registry: "PKNIC",  confidence: "est" },
   bd:     { grace: 30, redemption: 0,  pendingDelete: 0,  registry: "BTCL",   confidence: "est" },
   lk:     { grace: 30, redemption: 0,  pendingDelete: 0,  registry: "LK Domain Registry", confidence: "est" },
@@ -559,7 +597,9 @@ export const LIFECYCLE_TABLE: Record<string, TldLifecycle> = {
   // ── Europe ccTLD ──────────────────────────────────────────────────────────
   uk:     { ...NOMINET },
   // .de: DENIC — no grace, 30-day RGP, 25-day pendingDelete (Enom 2026-03: N/30; 1d pre-expiry deletion)
-  de:     { grace: 0,  redemption: 30, pendingDelete: 25, registry: "DENIC",  confidence: "high" },
+  // Drop: 05:00 Europe/Berlin on day 1 of pendingDelete phase (DENIC documented schedule)
+  de:     { grace: 0,  redemption: 30, pendingDelete: 25, registry: "DENIC",  confidence: "high",
+            preExpiryDays: 1, dropHour: 5, dropMinute: 0, dropSecond: 0, dropTimezone: "Europe/Berlin" },
   fr:     { ...AFNIC },
   pm:     { ...AFNIC },
   re:     { ...AFNIC },
@@ -568,11 +608,14 @@ export const LIFECYCLE_TABLE: Record<string, TldLifecycle> = {
   gp:     { ...AFNIC,  registry: "AFNIC (Guadeloupe)" },
   mq:     { ...AFNIC,  registry: "AFNIC (Martinique)" },
   // .nl: SIDN — no grace, 30-day RGP, no pendingDelete (Enom 2026-03; 3d pre-expiry deletion)
-  nl:     { grace: 0,  redemption: 30, pendingDelete: 0,  registry: "SIDN",   confidence: "high" },
+  nl:     { grace: 0,  redemption: 30, pendingDelete: 0,  registry: "SIDN",   confidence: "high",
+            preExpiryDays: 3, dropHour: 0, dropMinute: 0, dropSecond: 0, dropTimezone: "UTC" },
   // .eu: EURid — no grace, 30-day RGP, no pendingDelete (Enom 2026-03; 3d pre-expiry deletion)
-  eu:     { grace: 0,  redemption: 30, pendingDelete: 0,  registry: "EURid",  confidence: "high" },
+  eu:     { grace: 0,  redemption: 30, pendingDelete: 0,  registry: "EURid",  confidence: "high",
+            preExpiryDays: 3 },
   // .es: Red.es — no grace, 14-day RGP only, no pendingDelete (Enom 2026-03; 12d pre-expiry deletion)
-  es:     { grace: 0,  redemption: 14, pendingDelete: 0,  registry: "Red.es", confidence: "high" },
+  es:     { grace: 0,  redemption: 14, pendingDelete: 0,  registry: "Red.es", confidence: "high",
+            preExpiryDays: 12 },
   // .it: Registro.it — grace=10d, 30-day RGP, no pendingDelete (Dynadot 2026-03; NOT immediate)
   it:     { grace: 10, redemption: 30, pendingDelete: 0,  registry: "Registro.it", confidence: "high" },
   // .pl: NASK — no grace, 30-day RGP, no pendingDelete (Dynadot 2026-03; NOT immediate)
@@ -583,10 +626,12 @@ export const LIFECYCLE_TABLE: Record<string, TldLifecycle> = {
   fi:     { ...IMMEDIATE,                                  registry: "Traficom" },
   dk:     { ...IMMEDIATE,                                  registry: "DK Hostmaster" },
   // .be: DNS Belgium — no grace, 30-day RGP, no pendingDelete (Enom 2026-03: N/30; 3d pre-expiry deletion)
-  be:     { grace: 0,  redemption: 30, pendingDelete: 0,  registry: "DNS Belgium", confidence: "high" },
+  be:     { grace: 0,  redemption: 30, pendingDelete: 0,  registry: "DNS Belgium", confidence: "high",
+            preExpiryDays: 3 },
   at:     { ...IMMEDIATE,                                  registry: "nic.at"  },
   // .ch: SWITCH — no grace, 14-day RGP, no pendingDelete (Enom 2026-03: N/14; 10d pre-expiry deletion)
-  ch:     { grace: 0,  redemption: 14, pendingDelete: 0,  registry: "SWITCH", confidence: "high" },
+  ch:     { grace: 0,  redemption: 14, pendingDelete: 0,  registry: "SWITCH", confidence: "high",
+            preExpiryDays: 10 },
   // .li: NIC.LI — no grace, 14-day RGP, no pendingDelete (Enom 2026-03: N/14; 10d pre-expiry deletion)
   li:     { grace: 0,  redemption: 14, pendingDelete: 0,  registry: "NIC.LI (Liechtenstein)", confidence: "high" },
   // .pt: DNS.PT — 29-day grace, no RGP, no pendingDelete (Dynadot 2026-03)

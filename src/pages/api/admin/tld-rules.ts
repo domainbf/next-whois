@@ -78,6 +78,11 @@ interface ExtractedLifecycle {
   grace_period_days: number;
   redemption_period_days: number;
   pending_delete_days: number;
+  drop_hour: number | null;
+  drop_minute: number | null;
+  drop_second: number | null;
+  drop_timezone: string | null;
+  pre_expiry_days: number | null;
   reasoning: string;
 }
 
@@ -88,14 +93,21 @@ async function extractWithAI(
 ): Promise<ExtractedLifecycle | null> {
   if (!ZHIPU_API_KEY) throw new Error("ZHIPU_API_KEY not configured");
 
-  const systemPrompt = `你是域名注册局政策专家。用户会提供一段来自域名注册局官网的文字，你需要从中精准提取以下4个数字（单位：天）：
-1. grace_period_days — 宽限期（域名过期后可正常续费的天数，也叫 grace period / renewal grace period）
-2. redemption_period_days — 赎回期（宽限期后的赎回窗口，也叫 redemption grace period / RGP）
-3. pending_delete_days — 待删除期（赎回期后待删除的天数，也叫 pending delete / purge period）
-4. 如果页面中找不到某个数字，使用行业默认值（grace=30, redemption=30, pending_delete=5），并在reasoning中说明。
+  const systemPrompt = `你是域名注册局政策专家。从注册局官网文字中精准提取以下字段：
 
-严格只输出以下格式的JSON（不要加 markdown 代码块，不要任何额外文字）：
-{"grace_period_days":30,"redemption_period_days":30,"pending_delete_days":5,"reasoning":"简短说明数据来源或估算依据"}`;
+1. grace_period_days — 宽限期天数（域名过期后可续费，grace period）
+2. redemption_period_days — 赎回期天数（RGP，redemption grace period）
+3. pending_delete_days — 待删除期天数（pending delete/purge period）
+4. pre_expiry_days — 注册局在到期日【之前】多少天开始删除流程（如 .nl 提前3天、.in 提前30天）；若无此规定填0
+5. drop_hour — 域名释放/删除的具体时刻（小时，0-23，UTC换算后）；若页面未提及填null
+6. drop_minute — 释放时刻的分钟（0-59）；未知填null
+7. drop_second — 释放时刻的秒（0-59）；未知填null
+8. drop_timezone — 释放时刻的原始时区（IANA格式，如 Europe/Berlin、Asia/Shanghai、UTC）；未知填null
+
+找不到的天数字段用行业默认值（grace=30, redemption=30, pending_delete=5）。
+
+严格输出JSON，不加任何额外文字或代码块：
+{"grace_period_days":30,"redemption_period_days":30,"pending_delete_days":5,"pre_expiry_days":0,"drop_hour":null,"drop_minute":null,"drop_second":null,"drop_timezone":null,"reasoning":"数据来源说明"}`;
 
   const userMessage = `TLD: .${tld}\n来源页面: ${sourceUrl}\n\n页面内容（节选）：\n${pageText}`;
 
@@ -114,7 +126,7 @@ async function extractWithAI(
           { role: "user", content: userMessage },
         ],
         temperature: 0.1,
-        max_tokens: 300,
+        max_tokens: 500,
       }),
     }
   );
@@ -137,16 +149,22 @@ async function extractWithAI(
 
   try {
     const parsed = JSON.parse(cleaned);
+    const toInt = (v: unknown, min = 0) => Math.max(min, parseInt(String(v)) || 0);
+    const toNullInt = (v: unknown, lo: number, hi: number): number | null => {
+      if (v === null || v === undefined || v === "") return null;
+      const n = parseInt(String(v));
+      return isNaN(n) ? null : Math.min(hi, Math.max(lo, n));
+    };
     return {
-      grace_period_days: Math.max(0, parseInt(parsed.grace_period_days) || 0),
-      redemption_period_days: Math.max(
-        0,
-        parseInt(parsed.redemption_period_days) || 0
-      ),
-      pending_delete_days: Math.max(
-        0,
-        parseInt(parsed.pending_delete_days) || 0
-      ),
+      grace_period_days: toInt(parsed.grace_period_days),
+      redemption_period_days: toInt(parsed.redemption_period_days),
+      pending_delete_days: toInt(parsed.pending_delete_days),
+      pre_expiry_days: toNullInt(parsed.pre_expiry_days, 0, 365),
+      drop_hour:   toNullInt(parsed.drop_hour,   0, 23),
+      drop_minute: toNullInt(parsed.drop_minute, 0, 59),
+      drop_second: toNullInt(parsed.drop_second, 0, 59),
+      drop_timezone: typeof parsed.drop_timezone === "string" && parsed.drop_timezone
+        ? parsed.drop_timezone.slice(0, 50) : null,
       reasoning: String(parsed.reasoning || "").slice(0, 500),
     };
   } catch {
@@ -163,7 +181,9 @@ export default async function handler(
   if (req.method === "GET") {
     const rows = await many(
       `SELECT tld, grace_period_days, redemption_period_days, pending_delete_days,
-              total_release_days, source_url, confidence, scraped_at, updated_at
+              total_release_days, source_url, confidence,
+              drop_hour, drop_minute, drop_second, drop_timezone, pre_expiry_days,
+              scraped_at, updated_at
        FROM tld_rules ORDER BY tld`
     );
     return res.json({ rules: rows });
@@ -209,12 +229,14 @@ export default async function handler(
         return res.status(500).json({ error: "AI extraction failed" });
       }
 
-      // 3. Save to DB
+      // 3. Save to DB (includes new drop-time and pre_expiry_days fields)
       await run(
         `INSERT INTO tld_rules
            (tld, grace_period_days, redemption_period_days, pending_delete_days,
-            source_url, confidence, raw_excerpt, ai_reasoning, scraped_at, updated_at)
-         VALUES ($1,$2,$3,$4,$5,'ai',$6,$7,NOW(),NOW())
+            source_url, confidence, raw_excerpt, ai_reasoning,
+            drop_hour, drop_minute, drop_second, drop_timezone, pre_expiry_days,
+            scraped_at, updated_at)
+         VALUES ($1,$2,$3,$4,$5,'ai',$6,$7,$8,$9,$10,$11,$12,NOW(),NOW())
          ON CONFLICT (tld) DO UPDATE SET
            grace_period_days      = EXCLUDED.grace_period_days,
            redemption_period_days = EXCLUDED.redemption_period_days,
@@ -223,6 +245,11 @@ export default async function handler(
            confidence             = 'ai',
            raw_excerpt            = EXCLUDED.raw_excerpt,
            ai_reasoning           = EXCLUDED.ai_reasoning,
+           drop_hour              = EXCLUDED.drop_hour,
+           drop_minute            = EXCLUDED.drop_minute,
+           drop_second            = EXCLUDED.drop_second,
+           drop_timezone          = EXCLUDED.drop_timezone,
+           pre_expiry_days        = EXCLUDED.pre_expiry_days,
            scraped_at             = NOW(),
            updated_at             = NOW()`,
         [
@@ -233,6 +260,11 @@ export default async function handler(
           cleanUrl,
           pageText.slice(0, 1000),
           extracted.reasoning,
+          extracted.drop_hour,
+          extracted.drop_minute,
+          extracted.drop_second,
+          extracted.drop_timezone,
+          extracted.pre_expiry_days,
         ]
       );
 

@@ -15,9 +15,14 @@ import {
   RiErrorWarningLine,
   RiPlayCircleLine,
   RiStopCircleLine,
+  RiTimeLine,
+  RiBarChartLine,
+  RiGlobalLine,
+  RiMapPin2Line,
 } from "@remixicon/react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import type { CompareRow } from "@/pages/api/admin/tld-lifecycle-compare";
 
 type TldRule = {
   tld: string;
@@ -27,14 +32,17 @@ type TldRule = {
   total_release_days: number;
   source_url: string | null;
   confidence: "high" | "ai" | "est";
+  drop_hour: number | null;
+  drop_minute: number | null;
+  drop_second: number | null;
+  drop_timezone: string | null;
+  pre_expiry_days: number | null;
   scraped_at: string | null;
   updated_at: string;
 };
 
-// Complete list of all IANA-delegated country code TLDs (ccTLDs).
-// All 2-letter ISO 3166-1 alpha-2 codes currently in IANA root zone.
-// source_url intentionally omitted → API defaults to https://www.iana.org/domains/root/db/{tld}.html
-const BATCH_TLDS: { tld: string; source_url?: string }[] = [
+// ── ccTLD batch list: all IANA-delegated 2-letter country codes ──────────────
+const CC_TLDS: { tld: string }[] = [
   // A
   { tld: "ac" }, { tld: "ad" }, { tld: "ae" }, { tld: "af" }, { tld: "ag" },
   { tld: "ai" }, { tld: "al" }, { tld: "am" }, { tld: "ao" }, { tld: "aq" },
@@ -125,6 +133,60 @@ const BATCH_TLDS: { tld: string; source_url?: string }[] = [
   { tld: "za" }, { tld: "zm" }, { tld: "zw" },
 ];
 
+// ── gTLD batch list: major generic TLDs from LIFECYCLE_TABLE ─────────────────
+const G_TLDS: { tld: string; source_url?: string }[] = [
+  // Tier-1
+  { tld: "com", source_url: "https://www.verisign.com/en_US/domain-names/com-domain-names/index.xhtml" },
+  { tld: "net", source_url: "https://www.verisign.com/en_US/domain-names/com-domain-names/index.xhtml" },
+  { tld: "org", source_url: "https://www.pir.org/resources/org-policies/" },
+  { tld: "info" }, { tld: "biz" }, { tld: "name" }, { tld: "mobi" }, { tld: "tel" },
+  { tld: "pro" }, { tld: "jobs" }, { tld: "travel" }, { tld: "museum" },
+  { tld: "coop" }, { tld: "aero" }, { tld: "int" }, { tld: "edu" }, { tld: "gov" },
+  { tld: "mil" }, { tld: "xxx" }, { tld: "post" }, { tld: "cat" },
+  // Google / popular new gTLDs
+  { tld: "app", source_url: "https://get.app/intl/en/domain-information/" },
+  { tld: "dev", source_url: "https://get.dev/intl/en/domain-information/" },
+  { tld: "page" }, { tld: "zip" }, { tld: "dad" }, { tld: "phd" }, { tld: "nexus" },
+  { tld: "web" },
+  // Very popular new gTLDs
+  { tld: "xyz" }, { tld: "club" }, { tld: "fun" }, { tld: "icu" }, { tld: "top" },
+  { tld: "vip" }, { tld: "wiki" }, { tld: "ink" }, { tld: "buzz" }, { tld: "website" },
+  { tld: "uno" }, { tld: "bio" }, { tld: "ski" }, { tld: "ltd" }, { tld: "llc" },
+  { tld: "srl" }, { tld: "gmbh" }, { tld: "inc" }, { tld: "bar" }, { tld: "fit" },
+  { tld: "fan" }, { tld: "bet" }, { tld: "best" }, { tld: "cash" }, { tld: "deal" },
+  // Business & professional
+  { tld: "shop" }, { tld: "blog" }, { tld: "cloud" }, { tld: "tech" },
+  { tld: "online" }, { tld: "site" }, { tld: "store" }, { tld: "live" },
+  { tld: "link" }, { tld: "media" }, { tld: "news" }, { tld: "email" },
+  { tld: "space" }, { tld: "world" }, { tld: "work" }, { tld: "tools" },
+  { tld: "run" }, { tld: "team" }, { tld: "digital" }, { tld: "global" },
+  { tld: "network" }, { tld: "host" }, { tld: "studio" }, { tld: "design" },
+  { tld: "agency" }, { tld: "group" }, { tld: "plus" }, { tld: "guru" },
+  { tld: "expert" }, { tld: "solutions" }, { tld: "systems" }, { tld: "services" },
+  { tld: "support" }, { tld: "help" }, { tld: "guide" }, { tld: "review" },
+  { tld: "reviews" }, { tld: "social" }, { tld: "photos" }, { tld: "video" },
+  { tld: "audio" }, { tld: "music" }, { tld: "art" }, { tld: "gallery" },
+  { tld: "sale" }, { tld: "deals" }, { tld: "events" }, { tld: "fashion" },
+  { tld: "sport" }, { tld: "health" }, { tld: "care" }, { tld: "yoga" },
+  { tld: "finance" }, { tld: "money" }, { tld: "fund" }, { tld: "capital" },
+  { tld: "bank" }, { tld: "law" }, { tld: "legal" }, { tld: "academy" },
+  { tld: "school" }, { tld: "university" }, { tld: "college" }, { tld: "mba" },
+  { tld: "doctor" }, { tld: "dental" }, { tld: "healthcare" }, { tld: "clinic" },
+  // Geographic / city
+  { tld: "london" }, { tld: "tokyo" }, { tld: "nyc" }, { tld: "paris" },
+  { tld: "berlin" }, { tld: "amsterdam" }, { tld: "dubai" }, { tld: "moscow" },
+  { tld: "osaka" }, { tld: "nagoya" }, { tld: "yokohama" }, { tld: "vegas" },
+  { tld: "miami" }, { tld: "boston" }, { tld: "quebec" }, { tld: "barcelona" },
+  { tld: "brussels" }, { tld: "istanbul" }, { tld: "capetown" }, { tld: "rio" },
+  { tld: "wien" }, { tld: "koeln" }, { tld: "cologne" }, { tld: "zuerich" },
+  { tld: "tirol" }, { tld: "saarland" }, { tld: "nrw" },
+  { tld: "wales" }, { tld: "scot" }, { tld: "irish" }, { tld: "eus" },
+  { tld: "africa" }, { tld: "arab" }, { tld: "asia" },
+  // Amazon registry
+  { tld: "free" }, { tld: "fast" }, { tld: "hot" }, { tld: "spot" },
+  { tld: "talk" }, { tld: "you" },
+];
+
 type BatchStatus = "idle" | "running" | "done";
 type BatchItem = {
   tld: string;
@@ -132,7 +194,17 @@ type BatchItem = {
   msg?: string;
 };
 
+type Tab = "cc" | "gtld" | "compare";
+
+type CompareData = {
+  total: number;
+  scraped: number;
+  conflicts: number;
+  rows: CompareRow[];
+};
+
 export default function AdminTldRulesPage() {
+  const [tab, setTab] = React.useState<Tab>("cc");
   const [rules, setRules] = React.useState<TldRule[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [search, setSearch] = React.useState("");
@@ -145,7 +217,15 @@ export default function AdminTldRulesPage() {
   const [batchStatus, setBatchStatus] = React.useState<BatchStatus>("idle");
   const [batchItems, setBatchItems] = React.useState<BatchItem[]>([]);
   const [batchIdx, setBatchIdx] = React.useState(0);
+  const [batchList, setBatchList] = React.useState<{ tld: string; source_url?: string }[]>([]);
   const batchAbortRef = React.useRef(false);
+
+  // Compare state
+  const [compareData, setCompareData] = React.useState<CompareData | null>(null);
+  const [compareLoading, setCompareLoading] = React.useState(false);
+  const [compareSearch, setCompareSearch] = React.useState("");
+  const [showOnlyConflicts, setShowOnlyConflicts] = React.useState(false);
+  const [showOnlyScraped, setShowOnlyScraped] = React.useState(false);
 
   async function load() {
     setLoading(true);
@@ -161,15 +241,27 @@ export default function AdminTldRulesPage() {
     }
   }
 
+  async function loadCompare() {
+    setCompareLoading(true);
+    try {
+      const res = await fetch("/api/admin/tld-lifecycle-compare");
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "加载失败");
+      setCompareData(data);
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "对比数据加载失败");
+    } finally {
+      setCompareLoading(false);
+    }
+  }
+
   React.useEffect(() => { load(); }, []);
+  React.useEffect(() => { if (tab === "compare" && !compareData) loadCompare(); }, [tab]);
 
   async function handleScrape(e: React.FormEvent) {
     e.preventDefault();
     const tld = form.tld.toLowerCase().replace(/^\./, "").trim();
-    if (!tld) {
-      toast.error("请填写 TLD");
-      return;
-    }
+    if (!tld) { toast.error("请填写 TLD"); return; }
     setScraping(true);
     setLastResult(null);
     try {
@@ -214,15 +306,12 @@ export default function AdminTldRulesPage() {
   }
 
   // ── Batch scrape ──────────────────────────────────────────────────────────
-  function startBatch() {
-    // Only scrape TLDs not already in DB
+  function startBatch(list: typeof batchList) {
     const existing = new Set(rules.map(r => r.tld));
-    const todo = BATCH_TLDS.filter(t => !existing.has(t.tld));
-    if (todo.length === 0) {
-      toast.info("所有预置 TLD 已抓取完毕，无需重复");
-      return;
-    }
+    const todo = list.filter(t => !existing.has(t.tld));
+    if (todo.length === 0) { toast.info("所有预置 TLD 已抓取完毕"); return; }
     batchAbortRef.current = false;
+    setBatchList(list);
     setBatchItems(todo.map(t => ({ tld: t.tld, status: "pending" })));
     setBatchIdx(0);
     setBatchStatus("running");
@@ -234,61 +323,42 @@ export default function AdminTldRulesPage() {
     toast.info("已停止批量抓取");
   }
 
-  // Drive batch processing via effect
   React.useEffect(() => {
     if (batchStatus !== "running") return;
     if (batchIdx >= batchItems.length) {
       setBatchStatus("done");
-      toast.success(`批量抓取完成，共处理 ${batchItems.length} 个 TLD`);
+      toast.success(`批量抓取完成，共 ${batchItems.length} 个`);
       load();
       return;
     }
     if (batchAbortRef.current) return;
 
     const item = batchItems[batchIdx];
-    const batchTld = BATCH_TLDS.find(t => t.tld === item.tld);
+    const meta = batchList.find(t => t.tld === item.tld);
 
     (async () => {
-      setBatchItems(prev =>
-        prev.map((it, i) => i === batchIdx ? { ...it, status: "pending" } : it)
-      );
       try {
         const res = await fetch("/api/admin/tld-rules", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            tld: item.tld,
-            source_url: batchTld?.source_url,
-          }),
+          body: JSON.stringify({ tld: item.tld, source_url: meta?.source_url }),
         });
         const data = await res.json();
         if (!res.ok) {
-          const isRateLimit = res.status === 429;
-          setBatchItems(prev =>
-            prev.map((it, i) =>
-              i === batchIdx
-                ? { ...it, status: isRateLimit ? "skipped" : "error", msg: data.error }
-                : it
-            )
-          );
+          setBatchItems(prev => prev.map((it, i) =>
+            i === batchIdx ? { ...it, status: res.status === 429 ? "skipped" : "error", msg: data.error } : it
+          ));
         } else {
-          setBatchItems(prev =>
-            prev.map((it, i) =>
-              i === batchIdx
-                ? { ...it, status: "ok", msg: `总${data.total_release_days}天` }
-                : it
-            )
-          );
+          setBatchItems(prev => prev.map((it, i) =>
+            i === batchIdx ? { ...it, status: "ok", msg: `${data.total_release_days}d` } : it
+          ));
         }
       } catch (err: any) {
-        setBatchItems(prev =>
-          prev.map((it, i) =>
-            i === batchIdx ? { ...it, status: "error", msg: err.message } : it
-          )
-        );
+        setBatchItems(prev => prev.map((it, i) =>
+          i === batchIdx ? { ...it, status: "error", msg: err.message } : it
+        ));
       } finally {
         if (!batchAbortRef.current) {
-          // 1.5s delay between requests to be polite to external servers
           await new Promise(r => setTimeout(r, 1500));
           setBatchIdx(i => i + 1);
         }
@@ -303,215 +373,370 @@ export default function AdminTldRulesPage() {
     return rules.filter(r => r.tld.includes(q));
   }, [rules, search]);
 
+  const filteredCompare = React.useMemo(() => {
+    if (!compareData) return [];
+    let rows = compareData.rows;
+    if (showOnlyConflicts) rows = rows.filter(r => r.hasConflict);
+    if (showOnlyScraped) rows = rows.filter(r => r.db_grace !== null);
+    const q = compareSearch.toLowerCase().trim();
+    if (q) rows = rows.filter(r => r.tld.includes(q));
+    return rows;
+  }, [compareData, showOnlyConflicts, showOnlyScraped, compareSearch]);
+
   function confidenceBadge(c: string) {
     if (c === "high") return <span className="text-xs px-1.5 py-0.5 rounded bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">官方</span>;
     if (c === "ai") return <span className="text-xs px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">AI</span>;
     return <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">估算</span>;
   }
 
+  function formatDropTime(r: TldRule | CompareRow, prefix: "db_" | "" = "") {
+    const h = prefix === "db_" ? (r as CompareRow).db_dropHour : (r as TldRule).drop_hour;
+    const m = prefix === "db_" ? null : (r as TldRule).drop_minute;
+    const tz = prefix === "db_" ? (r as CompareRow).db_dropTimezone : (r as TldRule).drop_timezone;
+    if (h === null || h === undefined) return null;
+    return `${String(h).padStart(2,"0")}:${String(m??0).padStart(2,"0")} ${tz ?? "UTC"}`;
+  }
+
   const batchDone = batchItems.filter(i => i.status === "ok").length;
   const batchErr = batchItems.filter(i => i.status === "error").length;
   const batchSkip = batchItems.filter(i => i.status === "skipped").length;
   const batchPct = batchItems.length
-    ? Math.round(((batchDone + batchErr + batchSkip) / batchItems.length) * 100)
-    : 0;
+    ? Math.round(((batchDone + batchErr + batchSkip) / batchItems.length) * 100) : 0;
+
+  function BatchPanel({ list, label }: { list: typeof batchList; label: string }) {
+    return (
+      <div className="border rounded-xl p-5 space-y-4 bg-card">
+        <div className="flex items-center justify-between">
+          <h2 className="font-medium flex items-center gap-2">
+            <RiPlayCircleLine className="w-4 h-4 text-violet-500" />
+            {label}
+            <span className="text-xs text-muted-foreground font-normal">
+              — {list.length} 个，跳过已有，自动用 IANA 页面
+            </span>
+          </h2>
+          <div className="flex items-center gap-2">
+            {batchStatus === "running" ? (
+              <Button variant="outline" size="sm" onClick={stopBatch} className="gap-1.5 text-red-600 border-red-300 hover:bg-red-50">
+                <RiStopCircleLine className="w-4 h-4" />停止
+              </Button>
+            ) : (
+              <Button variant="outline" size="sm" onClick={() => startBatch(list)} className="gap-1.5">
+                <RiPlayCircleLine className="w-4 h-4" />
+                {batchStatus === "done" ? "重新批量" : "开始批量抓取"}
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {batchItems.length > 0 && (
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>
+                  {batchStatus === "running"
+                    ? `正在处理 .${batchItems[batchIdx]?.tld ?? "…"} (${batchIdx + 1}/${batchItems.length})`
+                    : `完成 ${batchDone}  失败 ${batchErr}  跳过 ${batchSkip}`}
+                </span>
+                <span>{batchPct}%</span>
+              </div>
+              <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
+                <div className="h-full bg-violet-500 transition-all duration-300" style={{ width: `${batchPct}%` }} />
+              </div>
+            </div>
+            <div className="max-h-48 overflow-y-auto grid grid-cols-3 sm:grid-cols-6 gap-1">
+              {batchItems.map((it, i) => (
+                <div key={it.tld} title={it.msg} className={cn(
+                  "text-xs px-2 py-1 rounded flex items-center gap-1",
+                  it.status === "ok" && "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+                  it.status === "error" && "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+                  it.status === "skipped" && "bg-yellow-100 text-yellow-700",
+                  it.status === "pending" && i === batchIdx && batchStatus === "running" && "bg-violet-100 text-violet-700 dark:bg-violet-900/30",
+                  it.status === "pending" && i !== batchIdx && "bg-muted text-muted-foreground",
+                )}>
+                  {it.status === "pending" && i === batchIdx && batchStatus === "running"
+                    ? <RiLoader4Line className="w-3 h-3 animate-spin shrink-0" />
+                    : it.status === "ok" ? <RiCheckboxCircleLine className="w-3 h-3 shrink-0" />
+                    : it.status === "error" ? <RiErrorWarningLine className="w-3 h-3 shrink-0" />
+                    : null}
+                  .{it.tld}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {batchItems.length === 0 && (
+          <p className="text-xs text-muted-foreground">
+            点击"开始批量抓取"，系统会依次处理（已存在的自动跳过），每条间隔 1.5 秒。
+            {label.includes("gTLD") && ` 共 ${G_TLDS.length} 个，预计约 ${Math.ceil(G_TLDS.length * 1.5 / 60)} 分钟。`}
+          </p>
+        )}
+      </div>
+    );
+  }
 
   return (
     <AdminLayout>
       <Head><title>TLD 生命周期规则 - AI 抓取</title></Head>
 
-      <div className="space-y-6 max-w-5xl">
+      <div className="space-y-6 max-w-6xl">
         <div>
           <h1 className="text-xl font-semibold">TLD 生命周期规则 — AI 自动抓取</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            从注册局官网爬取域名宽限期规则，通过 GLM-4-Flash 精准提取天数，用于域名释放时间计算。
+            爬取注册局页面，GLM-4-Flash 提取宽限期、赎回期、精确掉落时间和时区，与本地静态数据对比验证。
           </p>
         </div>
 
-        {/* Single scrape form */}
-        <div className="border rounded-xl p-5 space-y-4 bg-card">
-          <h2 className="font-medium flex items-center gap-2">
-            <RiRobot2Line className="w-4 h-4 text-blue-500" />
-            抓取单个 TLD
-          </h2>
-          <form onSubmit={handleScrape} className="grid grid-cols-1 sm:grid-cols-[120px_1fr_auto] gap-3 items-end">
-            <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">TLD（不含点）</Label>
-              <Input
-                placeholder="如 mk"
-                value={form.tld}
-                onChange={e => setForm(f => ({ ...f, tld: e.target.value }))}
-                className="h-9"
-              />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">
-                注册局页面 URL
-                <span className="ml-1 text-muted-foreground/60">（可选，留空自动用 IANA 官方页）</span>
-              </Label>
-              <Input
-                placeholder={form.tld
-                  ? `https://www.iana.org/domains/root/db/${form.tld.toLowerCase().replace(/^\./, "")}.html`
-                  : "留空则自动使用 IANA 官方页面"}
-                value={form.source_url}
-                onChange={e => setForm(f => ({ ...f, source_url: e.target.value }))}
-                className="h-9"
-              />
-            </div>
-            <Button type="submit" disabled={scraping} className="h-9 gap-1.5 shrink-0">
-              {scraping ? (
-                <><RiLoader4Line className="w-4 h-4 animate-spin" />抓取中…</>
-              ) : (
-                <><RiRobot2Line className="w-4 h-4" />抓取</>
+        {/* Tab bar */}
+        <div className="flex gap-1 border-b">
+          {([
+            { id: "cc", label: "国别域名 (ccTLD)", icon: RiMapPin2Line },
+            { id: "gtld", label: "通用顶级域 (gTLD)", icon: RiGlobalLine },
+            { id: "compare", label: "对比分析", icon: RiBarChartLine },
+          ] as const).map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              onClick={() => setTab(id)}
+              className={cn(
+                "flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors",
+                tab === id
+                  ? "border-primary text-primary"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
               )}
-            </Button>
-          </form>
+            >
+              <Icon className="w-4 h-4" />
+              {label}
+            </button>
+          ))}
+        </div>
 
-          {scraping && (
-            <p className="text-xs text-muted-foreground animate-pulse">
-              正在爬取页面，调用 GLM-4-Flash 提取规则，请稍等 5-15 秒…
-            </p>
-          )}
-
-          {lastResult && (
-            <div className={cn(
-              "rounded-lg p-4 text-sm border",
-              lastResult.error
-                ? "bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800"
-                : "bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800"
-            )}>
-              {lastResult.error ? (
-                <div className="flex items-start gap-2 text-red-700 dark:text-red-400">
-                  <RiErrorWarningLine className="w-4 h-4 mt-0.5 shrink-0" />
-                  {lastResult.error}
+        {/* ── ccTLD tab ────────────────────────────────────────────────────── */}
+        {tab === "cc" && (
+          <>
+            {/* Single scrape form */}
+            <div className="border rounded-xl p-5 space-y-4 bg-card">
+              <h2 className="font-medium flex items-center gap-2">
+                <RiRobot2Line className="w-4 h-4 text-blue-500" />
+                抓取单个 TLD
+              </h2>
+              <form onSubmit={handleScrape} className="grid grid-cols-1 sm:grid-cols-[120px_1fr_auto] gap-3 items-end">
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">TLD（不含点）</Label>
+                  <Input placeholder="如 mk" value={form.tld}
+                    onChange={e => setForm(f => ({ ...f, tld: e.target.value }))} className="h-9" />
                 </div>
-              ) : (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 font-medium text-green-700 dark:text-green-400">
-                    <RiCheckboxCircleLine className="w-4 h-4" />
-                    .{lastResult.tld} 提取成功
-                  </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                    <div className="bg-white dark:bg-black/20 rounded px-3 py-2">
-                      <div className="text-muted-foreground">宽限期</div>
-                      <div className="font-bold text-lg">{lastResult.grace_period_days}天</div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">
+                    注册局页面 URL
+                    <span className="ml-1 text-muted-foreground/60">（可选，留空自动用 IANA 页）</span>
+                  </Label>
+                  <Input
+                    placeholder={form.tld
+                      ? `https://www.iana.org/domains/root/db/${form.tld.toLowerCase().replace(/^\./, "")}.html`
+                      : "留空则自动使用 IANA 官方页面"}
+                    value={form.source_url}
+                    onChange={e => setForm(f => ({ ...f, source_url: e.target.value }))}
+                    className="h-9"
+                  />
+                </div>
+                <Button type="submit" disabled={scraping} className="h-9 gap-1.5 shrink-0">
+                  {scraping ? <><RiLoader4Line className="w-4 h-4 animate-spin" />抓取中…</>
+                    : <><RiRobot2Line className="w-4 h-4" />抓取</>}
+                </Button>
+              </form>
+
+              {scraping && <p className="text-xs text-muted-foreground animate-pulse">正在爬取页面，调用 GLM-4-Flash 提取规则，请稍等 5-15 秒…</p>}
+
+              {lastResult && (
+                <div className={cn("rounded-lg p-4 text-sm border",
+                  lastResult.error
+                    ? "bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800"
+                    : "bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800"
+                )}>
+                  {lastResult.error ? (
+                    <div className="flex items-start gap-2 text-red-700 dark:text-red-400">
+                      <RiErrorWarningLine className="w-4 h-4 mt-0.5 shrink-0" />{lastResult.error}
                     </div>
-                    <div className="bg-white dark:bg-black/20 rounded px-3 py-2">
-                      <div className="text-muted-foreground">赎回期</div>
-                      <div className="font-bold text-lg">{lastResult.redemption_period_days}天</div>
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 font-medium text-green-700 dark:text-green-400">
+                        <RiCheckboxCircleLine className="w-4 h-4" />.{lastResult.tld} 提取成功
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                        {[
+                          ["宽限期", `${lastResult.grace_period_days}天`],
+                          ["赎回期", `${lastResult.redemption_period_days}天`],
+                          ["待删期", `${lastResult.pending_delete_days}天`],
+                          ["总天数", `${lastResult.total_release_days}天`],
+                        ].map(([label, val]) => (
+                          <div key={label} className="bg-white dark:bg-black/20 rounded px-3 py-2">
+                            <div className="text-muted-foreground">{label}</div>
+                            <div className="font-bold text-lg">{val}</div>
+                          </div>
+                        ))}
+                      </div>
+                      {(lastResult.drop_hour !== null && lastResult.drop_hour !== undefined) && (
+                        <div className="flex items-center gap-1.5 text-xs text-blue-700 dark:text-blue-400">
+                          <RiTimeLine className="w-3.5 h-3.5" />
+                          掉落时间: {String(lastResult.drop_hour).padStart(2,"0")}:{String(lastResult.drop_minute??0).padStart(2,"0")} {lastResult.drop_timezone ?? "UTC"}
+                          {lastResult.pre_expiry_days > 0 && ` · 提前 ${lastResult.pre_expiry_days} 天删除`}
+                        </div>
+                      )}
+                      {lastResult.reasoning && <p className="text-xs text-muted-foreground italic">{lastResult.reasoning}</p>}
                     </div>
-                    <div className="bg-white dark:bg-black/20 rounded px-3 py-2">
-                      <div className="text-muted-foreground">待删除期</div>
-                      <div className="font-bold text-lg">{lastResult.pending_delete_days}天</div>
-                    </div>
-                    <div className="bg-white dark:bg-black/20 rounded px-3 py-2">
-                      <div className="text-muted-foreground">总释放天数</div>
-                      <div className="font-bold text-lg">{lastResult.total_release_days}天</div>
-                    </div>
-                  </div>
-                  {lastResult.reasoning && (
-                    <p className="text-xs text-muted-foreground italic">{lastResult.reasoning}</p>
                   )}
                 </div>
               )}
             </div>
-          )}
-        </div>
 
-        {/* Batch scrape */}
-        <div className="border rounded-xl p-5 space-y-4 bg-card">
-          <div className="flex items-center justify-between">
-            <h2 className="font-medium flex items-center gap-2">
-              <RiPlayCircleLine className="w-4 h-4 text-violet-500" />
-              国别域名 (ccTLD) 批量抓取
-              <span className="text-xs text-muted-foreground font-normal">
-                — 全部 {BATCH_TLDS.length} 个 ISO 3166-1 国别域名，跳过已有数据，自动使用 IANA 页面
-              </span>
-            </h2>
-            <div className="flex items-center gap-2">
-              {batchStatus === "running" ? (
-                <Button variant="outline" size="sm" onClick={stopBatch} className="gap-1.5 text-red-600 border-red-300 hover:bg-red-50">
-                  <RiStopCircleLine className="w-4 h-4" />停止
-                </Button>
-              ) : (
-                <Button variant="outline" size="sm" onClick={startBatch} className="gap-1.5">
-                  <RiPlayCircleLine className="w-4 h-4" />
-                  {batchStatus === "done" ? "重新批量" : "开始批量抓取"}
-                </Button>
+            <BatchPanel list={CC_TLDS} label={`国别域名 (ccTLD) 批量 — 全部 ${CC_TLDS.length} 个`} />
+          </>
+        )}
+
+        {/* ── gTLD tab ─────────────────────────────────────────────────────── */}
+        {tab === "gtld" && (
+          <BatchPanel list={G_TLDS} label={`通用顶级域 (gTLD) 批量 — ${G_TLDS.length} 个`} />
+        )}
+
+        {/* ── Compare tab ──────────────────────────────────────────────────── */}
+        {tab === "compare" && (
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <Button variant="outline" size="sm" onClick={loadCompare} disabled={compareLoading} className="gap-1.5">
+                {compareLoading ? <RiLoader4Line className="w-4 h-4 animate-spin" /> : <RiRefreshLine className="w-4 h-4" />}
+                刷新对比
+              </Button>
+              {compareData && (
+                <div className="flex gap-2 text-xs text-muted-foreground">
+                  <span>静态库: <strong>{compareData.total}</strong> 条</span>
+                  <span>已抓取: <strong>{compareData.scraped}</strong> 条</span>
+                  <span className={compareData.conflicts > 0 ? "text-orange-600 font-medium" : ""}>
+                    数据冲突: <strong>{compareData.conflicts}</strong> 条
+                  </span>
+                </div>
               )}
+              <label className="flex items-center gap-1.5 text-xs cursor-pointer">
+                <input type="checkbox" checked={showOnlyConflicts} onChange={e => setShowOnlyConflicts(e.target.checked)} />
+                仅显示冲突
+              </label>
+              <label className="flex items-center gap-1.5 text-xs cursor-pointer">
+                <input type="checkbox" checked={showOnlyScraped} onChange={e => setShowOnlyScraped(e.target.checked)} />
+                仅显示已抓取
+              </label>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <RiSearchLine className="w-4 h-4 text-muted-foreground shrink-0" />
+              <Input placeholder="搜索 TLD…" value={compareSearch}
+                onChange={e => setCompareSearch(e.target.value)}
+                className="h-8 text-sm max-w-xs" />
+              <span className="text-xs text-muted-foreground">{filteredCompare.length} 条</span>
+            </div>
+
+            {compareLoading ? (
+              <div className="flex items-center gap-2 py-12 justify-center text-muted-foreground">
+                <RiLoader4Line className="w-5 h-5 animate-spin" />加载对比数据…
+              </div>
+            ) : !compareData ? (
+              <div className="text-center py-12 text-sm text-muted-foreground">点击"刷新对比"加载数据</div>
+            ) : (
+              <div className="border rounded-xl overflow-hidden bg-card">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead className="bg-muted/50 text-muted-foreground">
+                      <tr>
+                        <th className="text-left px-3 py-2.5 font-medium">TLD</th>
+                        <th className="text-center px-2 py-2.5 font-medium" colSpan={3}>静态数据（宽/赎/删）</th>
+                        <th className="text-center px-2 py-2.5 font-medium" colSpan={3}>AI 数据（宽/赎/删）</th>
+                        <th className="text-left px-2 py-2.5 font-medium">掉落时间</th>
+                        <th className="text-left px-2 py-2.5 font-medium">差异</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {filteredCompare.map(r => (
+                        <tr key={r.tld} className={cn(
+                          "hover:bg-muted/30 transition-colors",
+                          r.hasConflict && "bg-orange-50/50 dark:bg-orange-950/20"
+                        )}>
+                          <td className="px-3 py-2 font-mono font-medium">
+                            .{r.tld}
+                            <div className="text-muted-foreground text-[10px]">{r.s_registry ?? ""}</div>
+                          </td>
+                          {/* Static */}
+                          <td className="px-2 py-2 text-center">{r.s_grace}d</td>
+                          <td className="px-2 py-2 text-center">{r.s_redemption}d</td>
+                          <td className="px-2 py-2 text-center">{r.s_pending}d</td>
+                          {/* DB */}
+                          {r.db_grace !== null ? (
+                            <>
+                              <td className={cn("px-2 py-2 text-center", r.db_grace !== r.s_grace && "text-orange-600 font-medium")}>{r.db_grace}d</td>
+                              <td className={cn("px-2 py-2 text-center", r.db_redemption !== r.s_redemption && "text-orange-600 font-medium")}>{r.db_redemption}d</td>
+                              <td className={cn("px-2 py-2 text-center", r.db_pending !== r.s_pending && "text-orange-600 font-medium")}>{r.db_pending}d</td>
+                            </>
+                          ) : (
+                            <td className="px-2 py-2 text-center text-muted-foreground" colSpan={3}>未抓取</td>
+                          )}
+                          {/* Drop time */}
+                          <td className="px-2 py-2">
+                            {r.s_dropHour !== null ? (
+                              <span className="flex items-center gap-1 text-blue-600">
+                                <RiTimeLine className="w-3 h-3" />
+                                {String(r.s_dropHour).padStart(2,"0")}:00 {r.s_dropTimezone ?? "UTC"}
+                                <span className="text-muted-foreground">(静)</span>
+                              </span>
+                            ) : r.db_dropHour !== null ? (
+                              <span className="flex items-center gap-1 text-violet-600">
+                                <RiTimeLine className="w-3 h-3" />
+                                {String(r.db_dropHour).padStart(2,"0")}:00 {r.db_dropTimezone ?? "UTC"}
+                                <span className="text-muted-foreground">(AI)</span>
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
+                          </td>
+                          {/* Diffs */}
+                          <td className="px-2 py-2 max-w-[180px]">
+                            {r.hasConflict ? (
+                              <div className="space-y-0.5">
+                                {r.diffs.map((d, i) => (
+                                  <div key={i} className="text-orange-700 dark:text-orange-400 text-[10px]">{d}</div>
+                                ))}
+                              </div>
+                            ) : r.db_grace !== null ? (
+                              <span className="text-green-600 text-[10px]">一致</span>
+                            ) : (
+                              <span className="text-muted-foreground text-[10px]">—</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            <div className="rounded-xl border bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-900 p-4 text-xs text-blue-800 dark:text-blue-300 space-y-1">
+              <p className="font-medium text-sm">如何处理冲突？</p>
+              <ul className="list-disc list-inside space-y-0.5 leading-relaxed">
+                <li>橙色行表示 AI 抓取数据与本地静态数据存在差异</li>
+                <li>若 AI 数据来自注册局官方政策页面（confidence=high），建议以 AI 数据为准并更新 lifecycle.ts</li>
+                <li>若 AI 数据仅为估算（confidence=ai），仍以本地静态数据为基准</li>
+                <li>掉落时间（蓝色）精确到分秒，是域名进入公开抢注阶段的时刻</li>
+                <li>优先级: 手动覆盖表 &gt; AI 抓取 (tld_rules) &gt; 静态 lifecycle.ts &gt; 默认值</li>
+              </ul>
             </div>
           </div>
+        )}
 
-          {batchItems.length > 0 && (
-            <div className="space-y-3">
-              {/* Progress bar */}
-              <div className="space-y-1">
-                <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>
-                    {batchStatus === "running"
-                      ? `正在处理 .${batchItems[batchIdx]?.tld ?? "…"} (${batchIdx + 1}/${batchItems.length})`
-                      : `完成 ${batchDone} ✓  失败 ${batchErr} ✗  跳过 ${batchSkip}`}
-                  </span>
-                  <span>{batchPct}%</span>
-                </div>
-                <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
-                  <div
-                    className="h-full bg-violet-500 transition-all duration-300"
-                    style={{ width: `${batchPct}%` }}
-                  />
-                </div>
-              </div>
-
-              {/* Item list */}
-              <div className="max-h-48 overflow-y-auto grid grid-cols-3 sm:grid-cols-5 gap-1">
-                {batchItems.map((it, i) => (
-                  <div
-                    key={it.tld}
-                    title={it.msg}
-                    className={cn(
-                      "text-xs px-2 py-1 rounded flex items-center gap-1",
-                      it.status === "ok" && "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
-                      it.status === "error" && "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
-                      it.status === "skipped" && "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
-                      it.status === "pending" && i === batchIdx && batchStatus === "running" && "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400",
-                      it.status === "pending" && i !== batchIdx && "bg-muted text-muted-foreground",
-                    )}
-                  >
-                    {it.status === "pending" && i === batchIdx && batchStatus === "running"
-                      ? <RiLoader4Line className="w-3 h-3 animate-spin shrink-0" />
-                      : it.status === "ok"
-                      ? <RiCheckboxCircleLine className="w-3 h-3 shrink-0" />
-                      : it.status === "error"
-                      ? <RiErrorWarningLine className="w-3 h-3 shrink-0" />
-                      : null}
-                    .{it.tld}
-                    {it.msg && it.status === "ok" && (
-                      <span className="text-muted-foreground ml-auto">{it.msg}</span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {batchItems.length === 0 && (
-            <p className="text-xs text-muted-foreground">
-              点击"开始批量抓取"，系统会依次处理所有预置 TLD（已存在的自动跳过），每条间隔 1.5 秒避免对注册局造成压力。
-            </p>
-          )}
-        </div>
-
-        {/* Rules table */}
+        {/* ── Rules table (all tabs) ───────────────────────────────────────── */}
         <div className="border rounded-xl overflow-hidden bg-card">
           <div className="flex items-center gap-3 px-4 py-3 border-b">
             <RiSearchLine className="w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="搜索 TLD…"
-              value={search}
+            <Input placeholder="搜索已抓取的 TLD…" value={search}
               onChange={e => setSearch(e.target.value)}
-              className="h-8 border-0 shadow-none focus-visible:ring-0 p-0 text-sm"
-            />
-            <span className="text-xs text-muted-foreground whitespace-nowrap">{filtered.length} 条</span>
+              className="h-8 border-0 shadow-none focus-visible:ring-0 p-0 text-sm" />
+            <span className="text-xs text-muted-foreground whitespace-nowrap">{filtered.length} 条已抓取</span>
             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={load}>
               <RiRefreshLine className="w-3.5 h-3.5" />
             </Button>
@@ -523,7 +748,7 @@ export default function AdminTldRulesPage() {
             </div>
           ) : filtered.length === 0 ? (
             <div className="text-center py-12 text-sm text-muted-foreground">
-              {rules.length === 0 ? "暂无规则，请在上方抓取第一个 TLD 或批量抓取" : "无匹配结果"}
+              {rules.length === 0 ? "暂无数据，请先抓取" : "无匹配结果"}
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -531,74 +756,66 @@ export default function AdminTldRulesPage() {
                 <thead className="bg-muted/50 text-xs text-muted-foreground">
                   <tr>
                     <th className="text-left px-4 py-2.5 font-medium">TLD</th>
-                    <th className="text-right px-3 py-2.5 font-medium">宽限期</th>
-                    <th className="text-right px-3 py-2.5 font-medium">赎回期</th>
-                    <th className="text-right px-3 py-2.5 font-medium">待删期</th>
-                    <th className="text-right px-3 py-2.5 font-medium">总天数</th>
+                    <th className="text-right px-3 py-2.5 font-medium">宽限</th>
+                    <th className="text-right px-3 py-2.5 font-medium">赎回</th>
+                    <th className="text-right px-3 py-2.5 font-medium">待删</th>
+                    <th className="text-right px-3 py-2.5 font-medium">总天</th>
+                    <th className="text-left px-3 py-2.5 font-medium">掉落时间</th>
+                    <th className="text-right px-3 py-2.5 font-medium">提前删</th>
                     <th className="text-left px-3 py-2.5 font-medium">来源</th>
-                    <th className="text-left px-3 py-2.5 font-medium">置信度</th>
-                    <th className="text-left px-3 py-2.5 font-medium">更新时间</th>
+                    <th className="text-left px-3 py-2.5 font-medium">置信</th>
+                    <th className="text-left px-3 py-2.5 font-medium">更新</th>
                     <th className="px-3 py-2.5" />
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {filtered.map(r => (
-                    <tr key={r.tld} className="hover:bg-muted/30 transition-colors">
-                      <td className="px-4 py-2.5 font-mono font-medium">.{r.tld}</td>
-                      <td className="px-3 py-2.5 text-right">{r.grace_period_days}d</td>
-                      <td className="px-3 py-2.5 text-right">{r.redemption_period_days}d</td>
-                      <td className="px-3 py-2.5 text-right">{r.pending_delete_days}d</td>
-                      <td className="px-3 py-2.5 text-right font-medium">{r.total_release_days}d</td>
-                      <td className="px-3 py-2.5">
-                        {r.source_url ? (
-                          <a
-                            href={r.source_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-1 text-xs text-blue-600 hover:underline max-w-[160px] truncate"
-                          >
-                            <RiExternalLinkLine className="w-3 h-3 shrink-0" />
-                            <span className="truncate">{new URL(r.source_url).hostname}</span>
-                          </a>
-                        ) : (
-                          <span className="text-muted-foreground text-xs">—</span>
-                        )}
-                      </td>
-                      <td className="px-3 py-2.5">{confidenceBadge(r.confidence)}</td>
-                      <td className="px-3 py-2.5 text-xs text-muted-foreground">
-                        {r.updated_at ? new Date(r.updated_at).toLocaleDateString("zh-CN") : "—"}
-                      </td>
-                      <td className="px-3 py-2.5">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 text-red-500 hover:text-red-600 hover:bg-red-50"
-                          disabled={deleting === r.tld}
-                          onClick={() => handleDelete(r.tld)}
-                        >
-                          {deleting === r.tld
-                            ? <RiLoader4Line className="w-3.5 h-3.5 animate-spin" />
-                            : <RiDeleteBinLine className="w-3.5 h-3.5" />}
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
+                  {filtered.map(r => {
+                    const dt = formatDropTime(r);
+                    return (
+                      <tr key={r.tld} className="hover:bg-muted/30 transition-colors">
+                        <td className="px-4 py-2.5 font-mono font-medium">.{r.tld}</td>
+                        <td className="px-3 py-2.5 text-right">{r.grace_period_days}d</td>
+                        <td className="px-3 py-2.5 text-right">{r.redemption_period_days}d</td>
+                        <td className="px-3 py-2.5 text-right">{r.pending_delete_days}d</td>
+                        <td className="px-3 py-2.5 text-right font-medium">{r.total_release_days}d</td>
+                        <td className="px-3 py-2.5">
+                          {dt ? (
+                            <span className="flex items-center gap-1 text-xs text-blue-600">
+                              <RiTimeLine className="w-3 h-3 shrink-0" />{dt}
+                            </span>
+                          ) : <span className="text-muted-foreground text-xs">—</span>}
+                        </td>
+                        <td className="px-3 py-2.5 text-right text-xs">
+                          {r.pre_expiry_days ? `${r.pre_expiry_days}d` : "—"}
+                        </td>
+                        <td className="px-3 py-2.5">
+                          {r.source_url ? (
+                            <a href={r.source_url} target="_blank" rel="noopener noreferrer"
+                              className="flex items-center gap-1 text-xs text-blue-600 hover:underline max-w-[120px] truncate">
+                              <RiExternalLinkLine className="w-3 h-3 shrink-0" />
+                              <span className="truncate">{new URL(r.source_url).hostname}</span>
+                            </a>
+                          ) : <span className="text-muted-foreground text-xs">—</span>}
+                        </td>
+                        <td className="px-3 py-2.5">{confidenceBadge(r.confidence)}</td>
+                        <td className="px-3 py-2.5 text-xs text-muted-foreground">
+                          {r.updated_at ? new Date(r.updated_at).toLocaleDateString("zh-CN") : "—"}
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500 hover:text-red-600 hover:bg-red-50"
+                            disabled={deleting === r.tld} onClick={() => handleDelete(r.tld)}>
+                            {deleting === r.tld
+                              ? <RiLoader4Line className="w-3.5 h-3.5 animate-spin" />
+                              : <RiDeleteBinLine className="w-3.5 h-3.5" />}
+                          </Button>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
           )}
-        </div>
-
-        {/* Info box */}
-        <div className="rounded-xl border bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-900 p-4 text-sm text-blue-800 dark:text-blue-300 space-y-1.5">
-          <p className="font-medium">使用说明</p>
-          <ul className="list-disc list-inside space-y-1 text-xs leading-relaxed">
-            <li>单个抓取：只需填写 TLD，URL 可留空（自动用 IANA 官方页）；也可填自定义注册局政策页面 URL</li>
-            <li>批量抓取：一键处理全部 {BATCH_TLDS.length} 个 ISO 3166-1 国别域名 (ccTLD)，已有数据的自动跳过，每条间隔 1.5 秒</li>
-            <li>系统爬取页面正文，调用 GLM-4-Flash 自动提取宽限期等4个数字</li>
-            <li>提取结果自动保存，优先级高于代码内置静态值，直接用于域名释放时间计算和订阅提醒</li>
-            <li>同一 TLD 每小时限制抓取一次，防止被注册局封禁</li>
-          </ul>
         </div>
       </div>
     </AdminLayout>

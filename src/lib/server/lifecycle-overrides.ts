@@ -13,6 +13,8 @@ const TTL = 5 * 60 * 1000; // 5 minutes
  *   2. tld_rules               — AI-scraped rules (confidence: ai/high)
  *
  * Both tables are merged so the admin table can override any AI-scraped value.
+ * Now also loads drop_hour/drop_minute/drop_second/drop_timezone/pre_expiry_days
+ * from tld_rules for precise drop-time display.
  */
 export async function loadLifecycleOverrides(): Promise<Record<string, TldLifecycle>> {
   if (_cache && Date.now() < _cacheExpiry) return _cache;
@@ -27,19 +29,31 @@ export async function loadLifecycleOverrides(): Promise<Record<string, TldLifecy
       redemption_period_days: number;
       pending_delete_days: number;
       confidence: string;
+      drop_hour: number | null;
+      drop_minute: number | null;
+      drop_second: number | null;
+      drop_timezone: string | null;
+      pre_expiry_days: number | null;
     }>(
-      `SELECT tld, grace_period_days, redemption_period_days, pending_delete_days, confidence
+      `SELECT tld, grace_period_days, redemption_period_days, pending_delete_days, confidence,
+              drop_hour, drop_minute, drop_second, drop_timezone, pre_expiry_days
        FROM tld_rules
        ORDER BY tld`,
     ).catch(() => []);
 
     for (const r of aiRows) {
-      map[r.tld] = {
+      const lc: TldLifecycle = {
         grace: r.grace_period_days,
         redemption: r.redemption_period_days,
         pendingDelete: r.pending_delete_days,
         confidence: r.confidence === "high" ? "high" : "est",
       };
+      if (r.drop_hour !== null) lc.dropHour = r.drop_hour;
+      if (r.drop_minute !== null) lc.dropMinute = r.drop_minute;
+      if (r.drop_second !== null) lc.dropSecond = r.drop_second;
+      if (r.drop_timezone) lc.dropTimezone = r.drop_timezone;
+      if (r.pre_expiry_days !== null) lc.preExpiryDays = r.pre_expiry_days;
+      map[r.tld] = lc;
     }
 
     // Layer 2: Manually curated overrides (highest priority — overwrite AI data)
