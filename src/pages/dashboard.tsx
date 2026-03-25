@@ -430,8 +430,8 @@ function ClaimGuideModal({ onClose }: { onClose: () => void }) {
     e.preventDefault();
     const q = domain.trim();
     if (!q) return;
+    router.push(`/stamp?domain=${encodeURIComponent(q)}`);
     onClose();
-    router.push(`/${q}`);
   }
   return (
     <GuideModalShell
