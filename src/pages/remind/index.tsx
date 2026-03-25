@@ -111,9 +111,15 @@ const ALL_THRESHOLDS = [60, 30, 10, 5, 1];
 // ── Direct-subscribe form (shown when ?domain= is in the URL) ──────────────
 type WhoisInfo = {
   creationDate: string | null;
+  updatedDate: string | null;
   expirationDate: string | null;
   remainingDays: number | null;
+  domainAge: number | null;
   registrar: string | null;
+  nameServers: string[];
+  statusFlags: string[];
+  dnssec: string | null;
+  regStatus: "registered" | "unregistered" | "reserved" | "unknown";
   hasData: boolean;
 };
 
@@ -234,23 +240,59 @@ function DirectSubscribeForm({ domain }: { domain: string }) {
     if (!domain) return;
     setWhoisLoading(true);
     setWhoisError(false);
-    fetch(`/api/lookup?query=${encodeURIComponent(domain)}`)
-      .then(r => r.ok ? r.json() : Promise.reject(new Error("fetch_failed")))
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 20_000);
+
+    fetch(`/api/remind/whois?query=${encodeURIComponent(domain)}`, { signal: controller.signal })
+      .then(r => r.json())   // Always parse JSON regardless of status code
       .then((data: any) => {
-        const r = data.result ?? data;
-        const creation   = r.creationDate   && r.creationDate   !== "Unknown" ? r.creationDate   : null;
-        const expiration = r.expirationDate && r.expirationDate !== "Unknown" ? r.expirationDate : null;
+        clearTimeout(timer);
+        // If lookup truly failed with no result at all, show error
+        if (!data || (!data.result && data.status === false)) {
+          setWhoisError(true);
+          return;
+        }
+        const r: any = data.result ?? data;
+
+        const clean = (v: any) => (v && v !== "Unknown" && v !== "N/A" ? String(v) : null);
+        const creation   = clean(r.creationDate);
+        const updated    = clean(r.updatedDate);
+        const expiration = clean(r.expirationDate);
         const remaining  = typeof r.remainingDays === "number" ? r.remainingDays : null;
-        const registrar  = r.registrar && r.registrar !== "Unknown" ? r.registrar : null;
+        const domainAge  = typeof r.domainAge === "number" ? r.domainAge : null;
+        const registrar  = clean(r.registrar);
+        const dnssec     = clean(r.dnssec);
+        const nameServers: string[] = Array.isArray(r.nameServers)
+          ? r.nameServers.filter((ns: any) => ns && ns !== "Unknown").slice(0, 4)
+          : [];
+        const statusFlags: string[] = Array.isArray(r.status)
+          ? r.status.map((s: any) => s.status || s).filter((s: any) => s && s !== "Unknown").slice(0, 3)
+          : [];
+
+        // Derive regStatus from lookup API fields
+        let regStatus: WhoisInfo["regStatus"] = "unknown";
+        if (data.status === true && r.registrar && r.registrar !== "Unknown") regStatus = "registered";
+        else if (expiration || creation) regStatus = "registered";
+
         setWhois({
-          creationDate:   creation,
+          creationDate: creation,
+          updatedDate:  updated,
           expirationDate: expiration,
           remainingDays:  remaining,
+          domainAge,
           registrar,
-          hasData: !!(creation || expiration || remaining !== null),
+          nameServers,
+          statusFlags,
+          dnssec,
+          regStatus,
+          hasData: !!(creation || expiration || remaining !== null || registrar || nameServers.length > 0),
         });
       })
-      .catch(() => setWhoisError(true))
+      .catch((err: any) => {
+        clearTimeout(timer);
+        if (err?.name !== "AbortError") setWhoisError(true);
+      })
       .finally(() => setWhoisLoading(false));
   }, [domain]);
 
@@ -421,19 +463,37 @@ function DirectSubscribeForm({ domain }: { domain: string }) {
                   </div>
                 ) : whoisError ? (
                   /* Error state */
-                  <div className="px-4 py-4 flex items-start gap-3">
-                    <RiAlertLine className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
-                    <div className="flex-1">
-                      <p className="text-[11px] font-semibold text-foreground">WHOIS 查询失败</p>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">网络错误或服务暂时不可用</p>
+                  <div className="px-4 py-4 space-y-3">
+                    <div className="flex items-start gap-3">
+                      <RiAlertLine className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
+                      <div className="flex-1">
+                        <p className="text-[11px] font-semibold text-foreground">WHOIS 数据暂时不可用</p>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">
+                          无法获取域名信息，但仍可填写邮箱完成订阅
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={fetchWhois}
+                        className="text-[10px] font-semibold text-sky-600 dark:text-sky-400 hover:underline shrink-0"
+                      >
+                        重试
+                      </button>
                     </div>
-                    <button
-                      type="button"
-                      onClick={fetchWhois}
-                      className="text-[10px] font-semibold text-sky-600 dark:text-sky-400 hover:underline shrink-0"
-                    >
-                      重试
-                    </button>
+                    <div className="flex items-center gap-2 sm:hidden">
+                      <Link
+                        href="/"
+                        className="flex-1 flex items-center justify-center gap-1.5 h-7 rounded-lg border border-border bg-muted/30 text-[10px] text-muted-foreground hover:text-foreground font-medium"
+                      >
+                        <RiSearchLine className="w-3 h-3" /> 去首页查询
+                      </Link>
+                      <Link
+                        href="/guide"
+                        className="flex-1 flex items-center justify-center gap-1.5 h-7 rounded-lg border border-sky-200 dark:border-sky-800 bg-sky-50/60 dark:bg-sky-950/20 text-[10px] text-sky-600 dark:text-sky-400 font-medium"
+                      >
+                        <RiArrowRightLine className="w-3 h-3" /> 查看使用引导
+                      </Link>
+                    </div>
                   </div>
                 ) : !whois?.hasData ? (
                   /* No date data */
@@ -450,48 +510,121 @@ function DirectSubscribeForm({ domain }: { domain: string }) {
                     </div>
                   </div>
                 ) : (
-                  /* Has data */
-                  <div className="px-4 py-3 space-y-2.5">
-                    {/* Creation date row */}
-                    {whois.creationDate && (
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] text-muted-foreground flex items-center gap-1.5">
-                          <RiTimeLine className="w-3 h-3" /> 注册时间
-                        </span>
-                        <div className="text-right">
-                          <span className="text-[11px] font-medium font-mono">{fmtDate(whois.creationDate)}</span>
-                          {fmtRelative(whois.creationDate) && (
-                            <span className="text-[9px] text-muted-foreground ml-1.5">
-                              {fmtRelative(whois.creationDate)}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                    {/* Expiration date row */}
-                    {whois.expirationDate && (
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] text-muted-foreground flex items-center gap-1.5">
-                          <RiCalendarLine className="w-3 h-3" /> 到期时间
-                        </span>
-                        <span className="text-[11px] font-medium font-mono">{fmtDate(whois.expirationDate)}</span>
-                      </div>
-                    )}
-                    {/* Registrar */}
-                    {whois.registrar && (
-                      <div className="flex items-center justify-between gap-4">
-                        <span className="text-[10px] text-muted-foreground flex items-center gap-1.5 shrink-0">
-                          <RiInformationLine className="w-3 h-3" /> 注册商
-                        </span>
-                        <span className="text-[10px] text-muted-foreground/80 text-right truncate max-w-[55%]">
-                          {whois.registrar}
-                        </span>
-                      </div>
-                    )}
-                    {/* Prominent days remaining bar */}
+                  /* Has data — simplified WHOIS key info */
+                  <div className="px-4 pb-4 space-y-3">
+
+                    {/* Days remaining bar (most prominent) */}
                     {whois.remainingDays !== null && (
                       <DaysRemainingBar days={whois.remainingDays} />
                     )}
+
+                    {/* Grid of key dates */}
+                    <div className="grid grid-cols-2 gap-2">
+                      {whois.creationDate && (
+                        <div className="rounded-xl bg-muted/30 dark:bg-muted/20 px-3 py-2 space-y-0.5">
+                          <div className="flex items-center gap-1 text-[9px] text-muted-foreground font-medium uppercase tracking-wide">
+                            <RiTimeLine className="w-2.5 h-2.5" /> 注册日期
+                          </div>
+                          <div className="text-[11px] font-mono font-semibold text-foreground">{fmtDate(whois.creationDate)}</div>
+                          {whois.domainAge !== null && (
+                            <div className="text-[9px] text-muted-foreground">已注册 {whois.domainAge} 天</div>
+                          )}
+                        </div>
+                      )}
+                      {whois.expirationDate && (
+                        <div className={cn(
+                          "rounded-xl px-3 py-2 space-y-0.5",
+                          whois.remainingDays !== null && whois.remainingDays <= 30
+                            ? "bg-red-50/70 dark:bg-red-950/20 border border-red-200/50 dark:border-red-800/30"
+                            : "bg-muted/30 dark:bg-muted/20"
+                        )}>
+                          <div className={cn(
+                            "flex items-center gap-1 text-[9px] font-medium uppercase tracking-wide",
+                            whois.remainingDays !== null && whois.remainingDays <= 30
+                              ? "text-red-500 dark:text-red-400"
+                              : "text-muted-foreground"
+                          )}>
+                            <RiCalendarLine className="w-2.5 h-2.5" /> 到期日期
+                          </div>
+                          <div className="text-[11px] font-mono font-semibold text-foreground">{fmtDate(whois.expirationDate)}</div>
+                          {whois.updatedDate && (
+                            <div className="text-[9px] text-muted-foreground">更新 {fmtDate(whois.updatedDate)}</div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Registrar + DNSSEC row */}
+                    {(whois.registrar || whois.dnssec) && (
+                      <div className="space-y-1.5">
+                        {whois.registrar && (
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="text-[10px] text-muted-foreground flex items-center gap-1.5 shrink-0">
+                              <RiInformationLine className="w-3 h-3" /> 注册商
+                            </span>
+                            <span className="text-[10px] font-medium text-foreground/80 text-right truncate max-w-[60%]">
+                              {whois.registrar}
+                            </span>
+                          </div>
+                        )}
+                        {whois.dnssec && whois.dnssec !== "unsigned" && (
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="text-[10px] text-muted-foreground flex items-center gap-1.5 shrink-0">
+                              <RiShieldCheckLine className="w-3 h-3" /> DNSSEC
+                            </span>
+                            <span className="text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
+                              已签名
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Name servers */}
+                    {whois.nameServers.length > 0 && (
+                      <div className="space-y-1">
+                        <div className="text-[9px] text-muted-foreground font-medium uppercase tracking-wide flex items-center gap-1">
+                          <RiGlobalLine className="w-2.5 h-2.5" /> DNS 服务器
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          {whois.nameServers.map((ns, i) => (
+                            <span key={i} className="text-[9px] font-mono bg-muted/40 dark:bg-muted/25 rounded-md px-1.5 py-0.5 text-muted-foreground lowercase">
+                              {ns.toLowerCase()}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Status flags */}
+                    {whois.statusFlags.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {whois.statusFlags.map((sf, i) => {
+                          const short = sf.split(/\s+/)[0];
+                          const ok = short.toLowerCase().startsWith("ok") || short.toLowerCase().includes("active");
+                          return (
+                            <span key={i} className={cn(
+                              "text-[8px] font-mono rounded-md px-1.5 py-0.5 font-medium",
+                              ok
+                                ? "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400"
+                                : "bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400"
+                            )}>
+                              {short}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {/* View full WHOIS link */}
+                    <a
+                      href={`/${domain}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-[10px] text-sky-600 dark:text-sky-400 hover:underline font-medium"
+                    >
+                      查看完整 WHOIS 信息 <RiExternalLinkLine className="w-2.5 h-2.5" />
+                    </a>
                   </div>
                 )}
               </div>
@@ -752,6 +885,33 @@ export default function RemindPage() {
               <span className="sm:hidden">↑ 点击圆形订阅图标（计时器）</span>
               <span className="hidden sm:inline">↑ 在域名查询结果顶部点击「域名订阅」</span>
             </p>
+          </div>
+
+          {/* Mobile guide CTA — only shown on small screens */}
+          <div className="sm:hidden mt-4 rounded-2xl border border-sky-200 dark:border-sky-800 bg-sky-50/60 dark:bg-sky-950/20 p-4">
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-xl bg-sky-100 dark:bg-sky-900/40 border border-sky-200 dark:border-sky-800 flex items-center justify-center shrink-0">
+                <RiBellLine className="w-4.5 h-4.5 text-sky-600 dark:text-sky-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-foreground">初次使用？</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">
+                  查看图文引导，了解如何在手机上查询域名并订阅到期提醒。
+                </p>
+              </div>
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <Link href="/guide">
+                <Button variant="outline" size="sm" className="w-full h-9 rounded-xl text-xs gap-1.5 border-sky-200 dark:border-sky-700 text-sky-700 dark:text-sky-400">
+                  <RiArrowRightLine className="w-3 h-3" /> 查看使用引导
+                </Button>
+              </Link>
+              <Link href="/">
+                <Button size="sm" className="w-full h-9 rounded-xl text-xs gap-1.5">
+                  <RiSearchLine className="w-3 h-3" /> 去查询域名
+                </Button>
+              </Link>
+            </div>
           </div>
         </div>
 
