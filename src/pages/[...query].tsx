@@ -4740,7 +4740,7 @@ export default function LookupPage({
                     </div>
                   </>
                 ) : dnsProbe?.registrationStatus === "unregistered" ? (
-                  <AvailableDomainCard domain={target} locale={locale} isPremiumByWhois={rawHasPremiumReserved} />
+                  <AvailableDomainCard domain={target} locale={locale} isPremiumByWhois={result ? getDomainRegistrationStatus(result, locale).isPremiumReserved : false} />
                 ) : (
                   <>
                     <div className="glass-panel border border-border rounded-xl p-8 sm:p-12 text-center">
