@@ -1,6 +1,11 @@
 import Redis from "ioredis";
 
+// Support both unprefixed (REDIS_URL, KV_URL) and Vercel integration prefixed variants.
+// Upstash for Vercel adds a custom prefix (e.g. xrw_, wr_) based on the database name.
 export const REDIS_URL =
+  (process.env.xrw_REDIS_URL as string | undefined) ||
+  (process.env.wr_REDIS_URL as string | undefined) ||
+  (process.env.wr_KV_URL as string | undefined) ||
   (process.env.KV_URL as string | undefined) ||
   (process.env.REDIS_URL as string | undefined);
 
@@ -11,14 +16,17 @@ export const REDIS_DB      = parseInt(process.env.REDIS_DB      || "0");
 
 export const redis = createRedisConn();
 
-let _available = !!redis;
+// Start unavailable — only flip to true once the "ready" event fires.
+// Eager connect (lazyConnect:false) ensures the "ready" event fires
+// reliably at module init. Commands are rejected until then via _available.
+let _available = false;
 
 function createRedisConn(): Redis | undefined {
   const opts = {
     maxRetriesPerRequest: 1,
     connectTimeout:       3_000,
     commandTimeout:       2_000,
-    lazyConnect:          true,
+    lazyConnect:          false,   // Eager connect — "ready" event fires reliably
     enableReadyCheck:     false,
     enableOfflineQueue:   false,
     keepAlive:            10_000,
@@ -49,7 +57,7 @@ function createRedisConn(): Redis | undefined {
 
   if (!client) return undefined;
 
-  client.on("ready",        ()    => { _available = true; });
+  client.on("ready",        ()    => { _available = true;  console.log("[Redis] Connected and ready"); });
   client.on("error",        (err) => { console.error("[Redis]", err.message); });
   client.on("close",        ()    => { _available = false; });
   client.on("reconnecting", ()    => { _available = false; });
