@@ -220,6 +220,11 @@ export default function AdminTldRulesPage() {
   const [batchList, setBatchList] = React.useState<{ tld: string; source_url?: string }[]>([]);
   const batchAbortRef = React.useRef(false);
 
+  // IANA gTLD list (dynamically fetched, 1000+)
+  const [ianaGtlds, setIanaGtlds] = React.useState<{ tld: string }[]>([]);
+  const [ianaLoading, setIanaLoading] = React.useState(false);
+  const [ianaFetchedAt, setIanaFetchedAt] = React.useState<string | null>(null);
+
   // Compare state
   const [compareData, setCompareData] = React.useState<CompareData | null>(null);
   const [compareLoading, setCompareLoading] = React.useState(false);
@@ -257,6 +262,32 @@ export default function AdminTldRulesPage() {
 
   React.useEffect(() => { load(); }, []);
   React.useEffect(() => { if (tab === "compare" && !compareData) loadCompare(); }, [tab]);
+
+  // Load full IANA gTLD list when gtld tab opens (1000+)
+  React.useEffect(() => {
+    if (tab !== "gtld" || ianaGtlds.length > 0) return;
+    setIanaLoading(true);
+    fetch("/api/admin/tld-list")
+      .then(r => r.json())
+      .then(d => {
+        if (d.tlds) {
+          setIanaGtlds((d.tlds as string[]).map(t => ({ tld: t })));
+          setIanaFetchedAt(d.fetched_at ?? null);
+        } else {
+          throw new Error(d.error || "加载失败");
+        }
+      })
+      .catch(e => toast.error(`IANA 列表加载失败: ${e.message}`))
+      .finally(() => setIanaLoading(false));
+  }, [tab]);
+
+  // Export helpers
+  function exportAs(format: "json" | "csv") {
+    const link = document.createElement("a");
+    link.href = `/api/admin/tld-rules?format=${format}`;
+    link.download = "";
+    link.click();
+  }
 
   async function handleScrape(e: React.FormEvent) {
     e.preventDefault();
@@ -311,11 +342,11 @@ export default function AdminTldRulesPage() {
   }
 
   // ── Batch scrape ──────────────────────────────────────────────────────────
-  // Freshness thresholds: ccTLD (2-letter) = 60 days, gTLD = 30 days
+  // Freshness thresholds: ccTLD (2-letter) = 60 days, gTLD = 180 days (stable)
   function isTldFresh(tld: string): boolean {
     const rule = rules.find(r => r.tld === tld);
     if (!rule?.scraped_at) return false;
-    const validityDays = tld.length === 2 ? 60 : 30;
+    const validityDays = tld.length === 2 ? 60 : 180;
     const freshUntil = new Date(rule.scraped_at).getTime() + validityDays * 86_400_000;
     return Date.now() < freshUntil;
   }
@@ -325,7 +356,7 @@ export default function AdminTldRulesPage() {
     const items: BatchItem[] = list.map(t => {
       if (isTldFresh(t.tld)) {
         const rule = rules.find(r => r.tld === t.tld)!;
-        const validityDays = t.tld.length === 2 ? 60 : 30;
+        const validityDays = t.tld.length === 2 ? 60 : 180;
         const freshUntil = new Date(new Date(rule.scraped_at!).getTime() + validityDays * 86_400_000);
         return { tld: t.tld, status: "skipped" as const, msg: `数据有效至 ${freshUntil.toISOString().slice(0, 10)}` };
       }
@@ -450,7 +481,7 @@ export default function AdminTldRulesPage() {
             <RiPlayCircleLine className="w-4 h-4 text-violet-500" />
             {label}
             <span className="text-xs text-muted-foreground font-normal">
-              — {list.length} 个 · 国别域名60天有效期 / 通用域名30天 · 新鲜数据自动跳过
+              — {list.length} 个 · 国别60天 / 通用180天有效期 · 新鲜数据自动跳过
             </span>
           </h2>
           <div className="flex items-center gap-2">
@@ -506,9 +537,7 @@ export default function AdminTldRulesPage() {
 
         {batchItems.length === 0 && (
           <p className="text-xs text-muted-foreground">
-            点击"开始批量抓取"——新鲜数据（国别60天/通用30天内已爬）直接跳过，过期或缺失的才会重新抓取，每条间隔 1.2 秒。
-            {label.includes("gTLD") && ` 共 ${G_TLDS.length} 个通用域名。`}
-            {label.includes("国别") && ` 共 ${CC_TLDS.length} 个国别域名。`}
+            点击"开始批量抓取"——新鲜数据（国别60天/通用180天内已爬）直接跳过，过期或缺失的才会重新抓取，每条间隔 1.2 秒。每次成功抓取同时写入数据库和本地 JSON 文件备份。
           </p>
         )}
       </div>
@@ -649,7 +678,30 @@ export default function AdminTldRulesPage() {
 
         {/* ── gTLD tab ─────────────────────────────────────────────────────── */}
         {tab === "gtld" && (
-          <BatchPanel list={G_TLDS} label={`通用顶级域 (gTLD) 批量 — ${G_TLDS.length} 个`} />
+          <div className="space-y-4">
+            {ianaLoading && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <RiLoader4Line className="w-4 h-4 animate-spin" />
+                正在从 IANA 获取完整 gTLD 列表…
+              </div>
+            )}
+            {!ianaLoading && ianaGtlds.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                <RiGlobalLine className="w-3.5 h-3.5" />
+                IANA 列表：<strong className="text-foreground">{ianaGtlds.length} 个 gTLD</strong>
+                {ianaFetchedAt && <span>· 获取时间 {ianaFetchedAt.slice(0,10)} （24小时缓存）</span>}
+              </div>
+            )}
+            {!ianaLoading && ianaGtlds.length === 0 && (
+              <div className="text-sm text-muted-foreground">
+                IANA 列表加载失败，使用内置列表（{G_TLDS.length} 个）作为回退
+              </div>
+            )}
+            <BatchPanel
+              list={ianaGtlds.length > 0 ? ianaGtlds : G_TLDS}
+              label={`通用顶级域 (gTLD) 批量 — ${ianaGtlds.length > 0 ? ianaGtlds.length : G_TLDS.length} 个`}
+            />
+          </div>
         )}
 
         {/* ── Compare tab ──────────────────────────────────────────────────── */}
@@ -659,6 +711,12 @@ export default function AdminTldRulesPage() {
               <Button variant="outline" size="sm" onClick={loadCompare} disabled={compareLoading} className="gap-1.5">
                 {compareLoading ? <RiLoader4Line className="w-4 h-4 animate-spin" /> : <RiRefreshLine className="w-4 h-4" />}
                 刷新对比
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => exportAs("json")} className="gap-1.5 text-blue-600 border-blue-300 hover:bg-blue-50">
+                <RiExternalLinkLine className="w-3.5 h-3.5" />导出 JSON
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => exportAs("csv")} className="gap-1.5 text-green-700 border-green-300 hover:bg-green-50">
+                <RiExternalLinkLine className="w-3.5 h-3.5" />导出 CSV
               </Button>
               {compareData && (
                 <div className="flex gap-2 text-xs text-muted-foreground">

@@ -8,6 +8,30 @@ import {
   deleteRedisValue,
 } from "@/lib/server/redis";
 import * as cheerio from "cheerio";
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from "fs";
+import { join } from "path";
+
+// ─── Local JSON file cache (best-effort, fails silently in read-only envs) ────
+const LOCAL_CACHE_PATH = join(process.cwd(), "data", "tld-rules.json");
+
+function updateLocalCache(tld: string, data: Record<string, unknown>): void {
+  try {
+    const dir = join(process.cwd(), "data");
+    if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+    let cache: { generated_at: string; count: number; rules: Record<string, unknown> } =
+      { generated_at: "", count: 0, rules: {} };
+    if (existsSync(LOCAL_CACHE_PATH)) {
+      try { cache = JSON.parse(readFileSync(LOCAL_CACHE_PATH, "utf8")); } catch {}
+    }
+    cache.rules[tld] = { ...data, saved_at: new Date().toISOString() };
+    cache.count = Object.keys(cache.rules).length;
+    cache.generated_at = new Date().toISOString();
+    writeFileSync(LOCAL_CACHE_PATH, JSON.stringify(cache, null, 2), "utf8");
+  } catch (e) {
+    // Silent: production (Vercel) has read-only FS; local backup is best-effort
+    console.warn("[tld-rules] local-cache write skipped:", (e as Error).message);
+  }
+}
 
 const ZHIPU_API_KEY = process.env.ZHIPU_API_KEY ?? "";
 
@@ -176,17 +200,52 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  // GET — list all saved rules (admin only)
+  // GET — list all saved rules (admin only); ?format=json|csv → download
   if (req.method === "GET") {
     const session = await requireAdmin(req, res);
     if (!session) return;
-    const rows = await many(
+    const rows = await many<{
+      tld: string; grace_period_days: number; redemption_period_days: number;
+      pending_delete_days: number; total_release_days: number; source_url: string | null;
+      confidence: string; drop_hour: number | null; drop_minute: number | null;
+      drop_second: number | null; drop_timezone: string | null; pre_expiry_days: number | null;
+      scraped_at: string | null; updated_at: string;
+    }>(
       `SELECT tld, grace_period_days, redemption_period_days, pending_delete_days,
               total_release_days, source_url, confidence,
               drop_hour, drop_minute, drop_second, drop_timezone, pre_expiry_days,
               scraped_at, updated_at
        FROM tld_rules ORDER BY tld`
     );
+
+    const format = req.query.format as string | undefined;
+
+    if (format === "json") {
+      const date = new Date().toISOString().slice(0, 10);
+      res.setHeader("Content-Type", "application/json; charset=utf-8");
+      res.setHeader("Content-Disposition", `attachment; filename="tld-rules-${date}.json"`);
+      return res.json({
+        generated_at: new Date().toISOString(),
+        count: rows.length,
+        source: "x.rw tld_rules DB",
+        rules: Object.fromEntries(rows.map((r) => [r.tld, r])),
+      });
+    }
+
+    if (format === "csv") {
+      const date = new Date().toISOString().slice(0, 10);
+      res.setHeader("Content-Type", "text/csv; charset=utf-8");
+      res.setHeader("Content-Disposition", `attachment; filename="tld-rules-${date}.csv"`);
+      const header = "tld,grace_period_days,redemption_period_days,pending_delete_days,total_release_days,drop_hour,drop_minute,drop_second,drop_timezone,pre_expiry_days,confidence,source_url,scraped_at";
+      const lines = rows.map((r) =>
+        [r.tld, r.grace_period_days, r.redemption_period_days, r.pending_delete_days,
+         r.total_release_days, r.drop_hour ?? "", r.drop_minute ?? "", r.drop_second ?? "",
+         r.drop_timezone ?? "", r.pre_expiry_days ?? "", r.confidence,
+         `"${r.source_url ?? ""}"`, r.scraped_at ?? ""].join(",")
+      );
+      return res.send([header, ...lines].join("\n"));
+    }
+
     return res.json({ rules: rows });
   }
 
@@ -209,7 +268,7 @@ export default async function handler(
       `https://www.iana.org/domains/root/db/${cleanTld}.html`;
 
     // ── Freshness check ───────────────────────────────────────────────────
-    // ccTLD (2-letter) = 60-day validity; gTLD = 30-day validity.
+    // ccTLD (2-letter) = 60-day validity; gTLD = 180-day validity (stable).
     // Skip re-scraping if data is still fresh, unless force=true.
     if (!force) {
       const existing = await one<{ scraped_at: Date | null; grace_period_days: number; redemption_period_days: number; pending_delete_days: number; drop_hour: number | null; drop_timezone: string | null }>(
@@ -221,7 +280,7 @@ export default async function handler(
 
       if (existing?.scraped_at) {
         const isCcTld = cleanTld.length === 2;
-        const validityDays = isCcTld ? 60 : 30;
+        const validityDays = isCcTld ? 60 : 180;
         const freshUntil = new Date(existing.scraped_at.getTime() + validityDays * 86_400_000);
         if (freshUntil > new Date()) {
           return res.status(200).json({
@@ -301,14 +360,32 @@ export default async function handler(
         ]
       );
 
+      const total_release_days =
+        extracted.grace_period_days +
+        extracted.redemption_period_days +
+        extracted.pending_delete_days;
+
+      // ── Also persist to local JSON file (dual storage / backup) ──────────
+      updateLocalCache(cleanTld, {
+        grace_period_days: extracted.grace_period_days,
+        redemption_period_days: extracted.redemption_period_days,
+        pending_delete_days: extracted.pending_delete_days,
+        total_release_days,
+        drop_hour: extracted.drop_hour,
+        drop_minute: extracted.drop_minute,
+        drop_second: extracted.drop_second,
+        drop_timezone: extracted.drop_timezone,
+        pre_expiry_days: extracted.pre_expiry_days,
+        confidence: "ai",
+        source_url: cleanUrl,
+        reasoning: extracted.reasoning,
+      });
+
       return res.json({
         ok: true,
         tld: cleanTld,
         ...extracted,
-        total_release_days:
-          extracted.grace_period_days +
-          extracted.redemption_period_days +
-          extracted.pending_delete_days,
+        total_release_days,
         source_url: cleanUrl,
       });
     } catch (err: any) {
