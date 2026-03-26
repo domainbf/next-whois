@@ -37,12 +37,12 @@ outputType = "webview"
 name = "Batch Scrape TLDs"
 author = "agent"
 
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "node scripts/batch-scrape.mjs --type cc --concurrency 2 --delay 2000"
-
 [workflows.workflow.metadata]
 outputType = "console"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "node scripts/batch-scrape.mjs --type cc --force --concurrency 2 --delay 2500"
 
 [[ports]]
 localPort = 5000

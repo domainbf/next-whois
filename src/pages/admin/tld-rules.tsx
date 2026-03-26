@@ -273,6 +273,7 @@ export default function AdminTldRulesPage() {
   const [compareSearch, setCompareSearch] = React.useState("");
   const [showOnlyConflicts, setShowOnlyConflicts] = React.useState(false);
   const [showOnlyScraped, setShowOnlyScraped] = React.useState(false);
+  const [showOnlyDefaults, setShowOnlyDefaults] = React.useState(false);
 
   async function load() {
     setLoading(true);
@@ -549,9 +550,12 @@ export default function AdminTldRulesPage() {
 
   const filtered = React.useMemo(() => {
     const q = search.toLowerCase().trim();
-    if (!q) return rules;
-    return rules.filter(r => r.tld.includes(q));
-  }, [rules, search]);
+    let rows = q ? rules.filter(r => r.tld.includes(q)) : rules;
+    if (showOnlyDefaults) rows = rows.filter(r =>
+      !r.manually_edited && r.grace_period_days === 30 && r.redemption_period_days === 30 && r.pending_delete_days === 5
+    );
+    return rows;
+  }, [rules, search, showOnlyDefaults]);
 
   const filteredCompare = React.useMemo(() => {
     if (!compareData) return [];
@@ -563,10 +567,33 @@ export default function AdminTldRulesPage() {
     return rows;
   }, [compareData, showOnlyConflicts, showOnlyScraped, compareSearch]);
 
-  function confidenceBadge(c: string) {
-    if (c === "high") return <span className="text-xs px-1.5 py-0.5 rounded bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">官方</span>;
-    if (c === "ai") return <span className="text-xs px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">AI</span>;
-    return <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">估算</span>;
+  // Is this record using all-default values (likely means no real data found)?
+  function isDefaultValues(r: TldRule) {
+    return r.grace_period_days === 30 && r.redemption_period_days === 30 && r.pending_delete_days === 5;
+  }
+
+  function confidenceBadge(r: TldRule) {
+    const c = r.confidence;
+    let badge: React.ReactNode;
+    if (c === "high") badge = <span className="text-xs px-1.5 py-0.5 rounded bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">官方</span>;
+    else if (c === "ai") badge = <span className="text-xs px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">AI</span>;
+    else badge = <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">估算</span>;
+    const modelTip = r.model_used ? ` · ${r.model_used}` : "";
+    return <span title={`置信度: ${c}${modelTip}`}>{badge}</span>;
+  }
+
+  function qualityBadge(r: TldRule) {
+    if (r.manually_edited) return null; // manually edited is always trustworthy
+    if (!r.scraped_at) return null;
+    if (isDefaultValues(r) && r.confidence !== "high") {
+      return (
+        <span className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 font-medium"
+          title={r.ai_reasoning ?? "AI 未找到具体政策数据，使用行业默认值"}>
+          <RiErrorWarningLine className="w-2.5 h-2.5" />默认值
+        </span>
+      );
+    }
+    return null;
   }
 
   function sourceBadge(r: TldRule) {
@@ -578,10 +605,14 @@ export default function AdminTldRulesPage() {
       );
     }
     if (r.scraped_at) {
+      const quality = qualityBadge(r);
       return (
-        <span className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 font-medium">
-          <RiRobot2Line className="w-2.5 h-2.5" />已爬取
-        </span>
+        <div className="flex flex-wrap gap-0.5">
+          <span className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 font-medium">
+            <RiRobot2Line className="w-2.5 h-2.5" />已爬取
+          </span>
+          {quality}
+        </div>
       );
     }
     return null;
@@ -1037,7 +1068,18 @@ export default function AdminTldRulesPage() {
             <Input placeholder="搜索已抓取的 TLD…" value={search}
               onChange={e => setSearch(e.target.value)}
               className="h-8 border-0 shadow-none focus-visible:ring-0 p-0 text-sm" />
-            <span className="text-xs text-muted-foreground whitespace-nowrap">{filtered.length} 条已抓取</span>
+            <button
+              onClick={() => setShowOnlyDefaults(v => !v)}
+              title="仅显示使用默认值 (30/30/5) 的条目"
+              className={cn(
+                "flex items-center gap-1 text-xs px-2 py-1 rounded-md border whitespace-nowrap transition-colors",
+                showOnlyDefaults
+                  ? "bg-orange-100 text-orange-700 border-orange-300 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-700"
+                  : "text-muted-foreground border-transparent hover:border-border hover:bg-muted/50"
+              )}>
+              <RiErrorWarningLine className="w-3.5 h-3.5" />仅显示默认值
+            </button>
+            <span className="text-xs text-muted-foreground whitespace-nowrap">{filtered.length} 条</span>
             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={load}>
               <RiRefreshLine className="w-3.5 h-3.5" />
             </Button>
@@ -1078,6 +1120,7 @@ export default function AdminTldRulesPage() {
                         <tr className={cn(
                           "hover:bg-muted/30 transition-colors",
                           r.manually_edited && "bg-amber-50/40 dark:bg-amber-950/10",
+                          !r.manually_edited && isDefaultValues(r) && r.scraped_at && "bg-orange-50/30 dark:bg-orange-950/10",
                           isEditing && "bg-blue-50/60 dark:bg-blue-950/20"
                         )}>
                           <td className="px-4 py-2.5">
@@ -1109,7 +1152,7 @@ export default function AdminTldRulesPage() {
                               </a>
                             ) : <span className="text-muted-foreground text-xs">—</span>}
                           </td>
-                          <td className="px-3 py-2.5">{confidenceBadge(r.confidence)}</td>
+                          <td className="px-3 py-2.5">{confidenceBadge(r)}</td>
                           <td className="px-3 py-2.5 text-xs text-muted-foreground">
                             {r.updated_at ? new Date(r.updated_at).toLocaleDateString("zh-CN") : "—"}
                           </td>
