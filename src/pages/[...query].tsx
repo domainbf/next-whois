@@ -63,7 +63,28 @@ import {
   RiArrowRightSLine,
   RiFlagLine,
   RiInformationLine,
+  RiRobot2Line,
+  RiSparklingLine,
+  RiBarChartLine,
+  RiLightbulbLine,
+  RiPriceTag3Line,
 } from "@remixicon/react";
+import { scoreDomain } from "@/lib/domain-value";
+
+// Client-side type mirror of DomainAiAnalysis (avoids server-only bundle pollution)
+interface DomainAiAnalysis {
+  domain: string;
+  marketValue: { low: number; mid: number; high: number; currency: "USD"; note: string };
+  useCases: Array<{ title: string; desc: string }>;
+  brandPotential: number;
+  memorability: number;
+  summary: string;
+  investmentVerdict: "强烈推荐" | "值得关注" | "一般" | "不推荐";
+  verdictColor: string;
+  model: string;
+  cached: boolean;
+  analyzedAt: string;
+}
 import { getTopRegistrars, DomainPricing } from "@/lib/pricing/client";
 import { useSiteSettings } from "@/lib/site-settings";
 import { computeLifecycle, fmtDate, fmtDateTime, fmtCountdown } from "@/lib/lifecycle";
@@ -3657,6 +3678,12 @@ function AvailableDomainCard({ domain, locale }: { domain: string; locale: strin
   const [rawPrices, setRawPrices] = React.useState<DomainPricing[]>([]);
   const [registrars, setRegistrars] = React.useState<DomainPricing[]>([]);
   const [loadingPrices, setLoadingPrices] = React.useState(true);
+  // AI analysis state
+  const [aiAnalysis, setAiAnalysis] = React.useState<DomainAiAnalysis | null>(null);
+  const [aiLoading, setAiLoading] = React.useState(false);
+  const [aiError, setAiError] = React.useState<string | null>(null);
+  const [aiExpanded, setAiExpanded] = React.useState(false);
+  const domainScore = React.useMemo(() => scoreDomain(domain, "domain"), [domain]);
   const CARD_FALLBACK_RATES: Record<string, number> = {
     AUD: 1.65, CAD: 1.49, CHF: 0.94, CNY: 7.82, DKK: 7.46,
     GBP: 0.85, HKD: 8.50, JPY: 162, KRW: 1520, NOK: 11.7,
@@ -3722,9 +3749,37 @@ function AvailableDomainCard({ domain, locale }: { domain: string; locale: strin
     return `USD ${(eurAmount * usdRate).toFixed(2)}`;
   }
 
+  async function fetchAiAnalysis() {
+    if (aiLoading || aiAnalysis) return;
+    setAiLoading(true);
+    setAiError(null);
+    try {
+      const res = await fetch("/api/domain-value-ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ domain }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "AI 分析失败");
+      setAiAnalysis(data);
+    } catch (e) {
+      setAiError(e instanceof Error ? e.message : "AI 分析失败，请稍后重试");
+    } finally {
+      setAiLoading(false);
+    }
+  }
+
+  function handleAiExpand() {
+    setAiExpanded(v => !v);
+    if (!aiAnalysis && !aiLoading) fetchAiAnalysis();
+  }
+
   const tldForDisplay = domain.substring(domain.lastIndexOf(".")).toLowerCase();
   const sldForDisplay = domain.substring(0, domain.lastIndexOf("."));
   const bestRegistrar = registrars[0] ?? null;
+
+  // Only show AI panel for domains with some value
+  const showAiPanel = domainScore !== null && domainScore.score >= 20;
 
   return (
     <div className="glass-panel border border-emerald-300/50 dark:border-emerald-700/40 rounded-xl overflow-hidden">
@@ -3886,6 +3941,178 @@ function AvailableDomainCard({ domain, locale }: { domain: string; locale: strin
           </p>
         )}
       </div>
+
+      {/* ── Domain Value Score Strip ──────────────────────────────────────── */}
+      {domainScore && domainScore.score >= 20 && (
+        <div className="border-t border-emerald-200/50 dark:border-emerald-700/30 px-4 sm:px-6 py-3 flex flex-wrap items-center gap-2">
+          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1">
+            <RiBarChartLine className="w-3.5 h-3.5" />
+            {isZh ? "域名价值" : "Domain Value"}
+          </span>
+          <span
+            className="inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full"
+            style={{ background: domainScore.tierColor + "18", color: domainScore.tierColor, border: `1px solid ${domainScore.tierColor}40` }}
+          >
+            {domainScore.tier} · {domainScore.score}/100
+          </span>
+          {domainScore.reasons.map((r, i) => (
+            <span key={i} className="text-[11px] px-2 py-0.5 rounded bg-muted/60 text-muted-foreground">{r}</span>
+          ))}
+        </div>
+      )}
+
+      {/* ── AI Deep Analysis Panel ────────────────────────────────────────── */}
+      {showAiPanel && (
+        <div className="border-t border-emerald-200/50 dark:border-emerald-700/30">
+          {/* Toggle button */}
+          <button
+            onClick={handleAiExpand}
+            className={cn(
+              "w-full flex items-center justify-between px-4 sm:px-6 py-3 text-left transition-colors",
+              aiExpanded
+                ? "bg-violet-50/60 dark:bg-violet-950/20"
+                : "hover:bg-muted/30"
+            )}
+          >
+            <span className="flex items-center gap-2 text-sm font-semibold">
+              <span className="flex items-center justify-center w-6 h-6 rounded-full bg-violet-100 dark:bg-violet-900/40">
+                <RiRobot2Line className="w-3.5 h-3.5 text-violet-600 dark:text-violet-400" />
+              </span>
+              <span className="text-violet-700 dark:text-violet-300">
+                {isZh ? "AI 深度价值分析" : "AI Value Analysis"}
+              </span>
+              {aiAnalysis?.cached && (
+                <span className="text-[10px] text-muted-foreground/60 font-normal">(缓存)</span>
+              )}
+            </span>
+            <span className="flex items-center gap-1 text-xs text-muted-foreground">
+              {aiLoading
+                ? <RiLoader4Line className="w-3.5 h-3.5 animate-spin text-violet-500" />
+                : aiExpanded
+                ? <RiArrowRightSLine className="w-4 h-4 rotate-90 transition-transform" />
+                : <RiArrowRightSLine className="w-4 h-4 transition-transform" />}
+              {!aiExpanded && !aiLoading && (
+                <span className="text-violet-600 dark:text-violet-400 font-medium">
+                  {isZh ? "查看分析" : "Analyze"}
+                </span>
+              )}
+            </span>
+          </button>
+
+          {/* Analysis content */}
+          {aiExpanded && (
+            <div className="px-4 sm:px-6 pb-5 pt-1">
+              {aiLoading && (
+                <div className="space-y-3 py-4">
+                  {[1, 2, 3].map(i => (
+                    <div key={i} className="h-3 rounded bg-muted/50 animate-pulse" style={{ width: `${70 + i * 8}%` }} />
+                  ))}
+                  <p className="text-xs text-muted-foreground/60 pt-1 flex items-center gap-1.5">
+                    <RiRobot2Line className="w-3 h-3" />
+                    {isZh ? "AI 正在分析该域名价值…" : "AI is analyzing this domain…"}
+                  </p>
+                </div>
+              )}
+
+              {aiError && (
+                <div className="py-3 flex items-center gap-2 text-sm text-red-500">
+                  <RiErrorWarningLine className="w-4 h-4 shrink-0" />
+                  {aiError}
+                  <button onClick={fetchAiAnalysis} className="ml-auto text-xs underline text-muted-foreground">重试</button>
+                </div>
+              )}
+
+              {aiAnalysis && !aiLoading && (
+                <div className="space-y-4 pt-2">
+                  {/* Investment verdict */}
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-muted-foreground font-medium">{isZh ? "投资建议" : "Verdict"}</span>
+                    <span
+                      className="text-xs font-bold px-2.5 py-1 rounded-full"
+                      style={{ background: aiAnalysis.verdictColor + "18", color: aiAnalysis.verdictColor, border: `1px solid ${aiAnalysis.verdictColor}40` }}
+                    >
+                      {aiAnalysis.investmentVerdict}
+                    </span>
+                    <span className="ml-auto text-[10px] text-muted-foreground/50 flex items-center gap-1">
+                      <RiRobot2Line className="w-3 h-3" />{aiAnalysis.model}
+                    </span>
+                  </div>
+
+                  {/* Market value estimate */}
+                  <div className="rounded-lg bg-muted/40 p-3 space-y-1.5">
+                    <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+                      <RiPriceTag3Line className="w-3.5 h-3.5" />
+                      {isZh ? "估值区间（转手价）" : "Estimated Market Value"}
+                    </p>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-lg font-bold text-foreground">
+                        ${aiAnalysis.marketValue.low.toLocaleString()} – ${aiAnalysis.marketValue.high.toLocaleString()}
+                      </span>
+                      <span className="text-xs text-muted-foreground">USD</span>
+                    </div>
+                    {aiAnalysis.marketValue.note && (
+                      <p className="text-[11px] text-muted-foreground/70 leading-relaxed">{aiAnalysis.marketValue.note}</p>
+                    )}
+                  </div>
+
+                  {/* Scores */}
+                  <div className="grid grid-cols-2 gap-3">
+                    {[
+                      { label: isZh ? "品牌潜力" : "Brand Potential", val: aiAnalysis.brandPotential },
+                      { label: isZh ? "易记程度" : "Memorability", val: aiAnalysis.memorability },
+                    ].map(({ label, val }) => (
+                      <div key={label} className="rounded-lg bg-muted/40 p-3">
+                        <p className="text-[11px] text-muted-foreground mb-1.5">{label}</p>
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+                            <div
+                              className="h-full rounded-full bg-violet-500 transition-all duration-500"
+                              style={{ width: `${val * 10}%` }}
+                            />
+                          </div>
+                          <span className="text-xs font-bold text-violet-600 dark:text-violet-400 tabular-nums">{val}/10</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Use cases */}
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5 mb-2">
+                      <RiLightbulbLine className="w-3.5 h-3.5" />
+                      {isZh ? "适用场景" : "Use Cases"}
+                    </p>
+                    <div className="space-y-1.5">
+                      {aiAnalysis.useCases.map((uc, i) => (
+                        <div key={i} className="flex gap-2 text-xs">
+                          <span className="shrink-0 w-4 h-4 rounded-full bg-violet-100 dark:bg-violet-900/40 text-violet-600 dark:text-violet-400 flex items-center justify-center text-[10px] font-bold mt-0.5">{i + 1}</span>
+                          <div>
+                            <span className="font-semibold text-foreground">{uc.title}</span>
+                            <span className="text-muted-foreground"> — {uc.desc}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Summary */}
+                  <div className="rounded-lg bg-violet-50/50 dark:bg-violet-950/20 border border-violet-200/50 dark:border-violet-700/30 p-3">
+                    <p className="text-xs font-semibold text-violet-700 dark:text-violet-300 flex items-center gap-1.5 mb-1.5">
+                      <RiSparklingLine className="w-3.5 h-3.5" />
+                      {isZh ? "AI 综合评估" : "AI Assessment"}
+                    </p>
+                    <p className="text-xs text-muted-foreground leading-relaxed">{aiAnalysis.summary}</p>
+                  </div>
+
+                  <p className="text-[10px] text-muted-foreground/40 text-right">
+                    {isZh ? "以上为 AI 辅助分析，仅供参考，不构成投资建议" : "AI-generated analysis for reference only, not investment advice"}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
