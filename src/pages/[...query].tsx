@@ -3760,101 +3760,106 @@ function AvailableDomainCard({ domain, locale, isPremiumByWhois = false }: { dom
     <div className={cn(
       "glass-panel rounded-xl overflow-hidden",
       isPremium
-        ? "border border-amber-300/60 dark:border-amber-600/40"
-        : "border border-emerald-300/50 dark:border-emerald-700/40"
+        ? "border border-amber-300/50 dark:border-amber-700/40"
+        : "border border-emerald-300/40 dark:border-emerald-700/35"
     )}>
-      {/* Hero header */}
+      {/* Hero section */}
       <div className={cn(
-        "relative pt-10 pb-8 px-6 sm:px-10 text-center bg-gradient-to-b to-transparent",
+        "relative p-6 sm:p-8",
         isPremium
-          ? "from-amber-50/60 via-amber-50/20 dark:from-amber-950/30 dark:via-amber-950/10"
-          : "from-emerald-50/60 via-emerald-50/20 dark:from-emerald-950/30 dark:via-emerald-950/10"
+          ? "bg-amber-50/25 dark:bg-amber-950/12"
+          : "bg-emerald-50/20 dark:bg-emerald-950/12"
       )}>
         {!isPremium && <ConfettiPieces />}
-        <div className="relative z-10 flex flex-col items-center">
-          {/* Animated ring + icon */}
-          <div className="relative mb-5">
-            <motion.div
-              className={cn("w-20 h-20 rounded-full border-2 absolute -inset-2",
-                isPremium ? "border-amber-400/40 dark:border-amber-500/30" : "border-emerald-400/40 dark:border-emerald-500/30"
-              )}
-              animate={{ scale: [1, 1.12, 1], opacity: [0.5, 0.2, 0.5] }}
-              transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
-            />
-            <motion.div
-              className={cn("w-20 h-20 rounded-full border absolute -inset-4",
-                isPremium ? "border-amber-300/30 dark:border-amber-600/20" : "border-emerald-300/30 dark:border-emerald-600/20"
-              )}
-              animate={{ scale: [1, 1.18, 1], opacity: [0.3, 0.08, 0.3] }}
-              transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut", delay: 0.3 }}
-            />
-            <div className={cn(
-              "w-20 h-20 rounded-full flex items-center justify-center shadow-lg",
-              isPremium
-                ? "bg-gradient-to-br from-amber-400 to-amber-600 dark:from-amber-500 dark:to-amber-700 shadow-amber-500/30"
-                : "bg-gradient-to-br from-emerald-400 to-emerald-600 dark:from-emerald-500 dark:to-emerald-700 shadow-emerald-500/30"
-            )}>
-              {isPremium
-                ? <RiVipCrownLine className="w-9 h-9 text-white" />
-                : <RiCheckLine className="w-10 h-10 text-white" />}
-            </div>
-          </div>
-
-          {/* Status badge */}
-          <div className="mb-4">
-            {isPremium ? (
-              <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/50 border border-amber-300/60 dark:border-amber-600/40 rounded-full px-3 py-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-                {isZh ? "溢价域名" : "Premium Domain"}
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/50 border border-emerald-300/60 dark:border-emerald-600/40 rounded-full px-3 py-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                {isZh ? "可注册" : "Available"}
-              </span>
-            )}
-          </div>
-
-          {/* Domain name display */}
-          <div className="mb-3">
-            <div className="flex items-baseline justify-center flex-wrap gap-0">
-              <span className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground break-all">
-                {sldForDisplay}
-              </span>
-              <span className={cn(
-                "text-3xl sm:text-4xl font-bold tracking-tight",
-                isPremium ? "text-amber-500 dark:text-amber-400" : "text-emerald-500 dark:text-emerald-400"
+        <div className="relative z-10">
+          {/* Top row: icon + domain name + badge */}
+          <div className="flex items-start gap-4 mb-4">
+            {/* Fixed-size container so rings are always centered */}
+            <div className="relative w-12 h-12 shrink-0">
+              <div className={cn(
+                "w-12 h-12 rounded-xl flex items-center justify-center shadow-sm",
+                isPremium
+                  ? "bg-gradient-to-br from-amber-400 to-amber-600 shadow-amber-500/20"
+                  : "bg-gradient-to-br from-emerald-400 to-emerald-600 shadow-emerald-500/20"
               )}>
-                {tldForDisplay}
-              </span>
+                {isPremium
+                  ? <RiVipCrownLine className="w-6 h-6 text-white" />
+                  : <RiCheckLine className="w-6 h-6 text-white" />}
+              </div>
+              {/* Ring 1 — inset-0 + scale so it stays perfectly centered */}
+              <motion.span
+                className={cn("absolute inset-0 rounded-xl border-2 pointer-events-none",
+                  isPremium ? "border-amber-400/55 dark:border-amber-500/40" : "border-emerald-400/55 dark:border-emerald-500/40"
+                )}
+                animate={{ scale: [1, 1.55, 1], opacity: [0.7, 0, 0.7] }}
+                transition={{ duration: 2.3, repeat: Infinity, ease: "easeInOut" }}
+              />
+              {/* Ring 2 */}
+              <motion.span
+                className={cn("absolute inset-0 rounded-xl border pointer-events-none",
+                  isPremium ? "border-amber-300/30 dark:border-amber-600/25" : "border-emerald-300/30 dark:border-emerald-600/25"
+                )}
+                animate={{ scale: [1, 1.95, 1], opacity: [0.4, 0, 0.4] }}
+                transition={{ duration: 2.3, repeat: Infinity, ease: "easeInOut", delay: 0.45 }}
+              />
+            </div>
+
+            <div className="flex-1 min-w-0">
+              {/* Badge */}
+              <div className="mb-1.5">
+                {isPremium ? (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/40 border border-amber-300/50 dark:border-amber-700/40 rounded-full px-2.5 py-0.5">
+                    <span className="w-1 h-1 rounded-full bg-amber-500 animate-pulse" />
+                    {isZh ? "溢价域名" : "Premium Domain"}
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/40 border border-emerald-300/50 dark:border-emerald-700/40 rounded-full px-2.5 py-0.5">
+                    <span className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
+                    {isZh ? "可注册" : "Available"}
+                  </span>
+                )}
+              </div>
+              {/* Domain name */}
+              <div className="flex items-baseline flex-wrap gap-0 leading-tight">
+                <span className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground break-all">
+                  {sldForDisplay}
+                </span>
+                <span className={cn(
+                  "text-2xl sm:text-3xl font-bold tracking-tight",
+                  isPremium ? "text-amber-500 dark:text-amber-400" : "text-emerald-500 dark:text-emerald-400"
+                )}>
+                  {tldForDisplay}
+                </span>
+              </div>
             </div>
           </div>
 
+          {/* Description */}
           {isPremium ? (
-            <p className="text-sm text-muted-foreground max-w-sm">
+            <p className="text-sm text-muted-foreground leading-relaxed mb-4">
               {isZh
                 ? "该域名为溢价域名，注册价格高于普通域名，以下展示的为标准 TLD 参考价，实际溢价需以注册商报价为准。"
                 : "This is a premium domain. Registration costs are above standard rates. Prices shown are standard TLD references — the actual premium price may differ."}
             </p>
           ) : (
-            <p className="text-sm text-muted-foreground max-w-sm">
+            <p className="text-sm text-muted-foreground leading-relaxed mb-4">
               {isZh
                 ? "该域名尚未被注册，抢先注册属于你的域名！"
                 : "This domain is unregistered. Grab it before someone else does!"}
             </p>
           )}
 
-          {/* Quick register CTA */}
+          {/* CTA */}
           {!loadingPrices && bestRegistrar && (
             <a
               href={bestRegistrar.registrarweb}
               target="_blank"
               rel="noopener noreferrer"
               className={cn(
-                "mt-5 inline-flex items-center gap-2 text-white font-semibold text-sm px-6 py-2.5 rounded-lg shadow-md transition-colors duration-150",
+                "inline-flex items-center gap-2 text-white font-semibold text-sm px-5 py-2.5 rounded-lg shadow-sm transition-all duration-150 hover:opacity-90 active:scale-[0.98]",
                 isPremium
-                  ? "bg-amber-500 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-500 shadow-amber-500/25"
-                  : "bg-emerald-500 hover:bg-emerald-600 dark:bg-emerald-600 dark:hover:bg-emerald-500 shadow-emerald-500/25"
+                  ? "bg-amber-500 dark:bg-amber-600 shadow-amber-500/20"
+                  : "bg-emerald-500 dark:bg-emerald-600 shadow-emerald-500/20"
               )}
             >
               <RiShoppingCartLine className="w-4 h-4" />
@@ -3863,17 +3868,20 @@ function AvailableDomainCard({ domain, locale, isPremiumByWhois = false }: { dom
                 : `${isPremium ? "Check Price" : "Register Now"} · ${formatPrice(bestRegistrar.new as number, bestRegistrar.currency)}/yr`}
             </a>
           )}
+          {loadingPrices && (
+            <div className="h-9 w-48 rounded-lg bg-muted/40 animate-pulse" />
+          )}
         </div>
       </div>
 
       {/* Pricing section */}
       <div className={cn(
         "border-t",
-        isPremium ? "border-amber-200/50 dark:border-amber-700/30" : "border-emerald-200/50 dark:border-emerald-700/30"
+        isPremium ? "border-amber-200/40 dark:border-amber-800/30" : "border-emerald-200/40 dark:border-emerald-800/30"
       )}>
-        {/* Premium warning banner */}
+        {/* Premium warning */}
         {isPremium && !loadingPrices && (
-          <div className="mx-4 sm:mx-6 mt-4 flex items-start gap-2 rounded-lg border border-amber-300/50 bg-amber-50/60 dark:bg-amber-950/20 dark:border-amber-700/40 px-3 py-2.5">
+          <div className="mx-4 sm:mx-6 mt-4 flex items-start gap-2 rounded-lg border border-amber-200/60 bg-amber-50/40 dark:bg-amber-950/15 dark:border-amber-800/40 px-3 py-2.5">
             <RiInformationLine className="w-3.5 h-3.5 text-amber-500 mt-0.5 shrink-0" />
             <p className="text-[11px] text-amber-700 dark:text-amber-300 leading-snug">
               {isZh
