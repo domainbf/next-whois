@@ -57,15 +57,15 @@ const CARD_THEME_OPTIONS: {
   { id: "ink",      label: "墨染",  enLabel: "Ink",      hero: "bg-gradient-to-br from-zinc-800 via-zinc-900 to-black",           dot: "bg-zinc-800",   shimmer: "text-shimmer-white", cardBg: "bg-zinc-950",    cardBorder: "border-zinc-800",                              cardText: "text-white",       btn: "bg-zinc-700 text-white"  },
 ];
 
-const TAG_STYLES: { id: string; label: string; zhName: string; className: string; glow?: string; icon: React.ElementType; theme: string }[] = [
-  { id: "personal",  label: "Personal",  zhName: "个人",   icon: RiIdCardLine,      className: "bg-zinc-800 text-white border-0",                                                    glow: "shadow-zinc-700/50",   theme: "app"      },
-  { id: "official",  label: "Official",  zhName: "官方",   icon: RiBuildingLine,    className: "bg-blue-700 text-white border-0",                                                    glow: "shadow-blue-600/50",   theme: "midnight" },
-  { id: "brand",     label: "Brand",     zhName: "品牌",   icon: RiAwardLine,       className: "bg-violet-600 text-white border-0",                                                  glow: "shadow-violet-500/50", theme: "aurora"   },
-  { id: "verified",  label: "Verified",  zhName: "认证",   icon: RiShieldCheckLine, className: "bg-emerald-500 text-white border-0",                                                 glow: "shadow-emerald-500/50",theme: "glow"     },
-  { id: "partner",   label: "Partner",   zhName: "合作",   icon: RiShakeHandsLine,  className: "bg-orange-500 text-white border-0",                                                  glow: "shadow-orange-500/50", theme: "solar"    },
-  { id: "dev",       label: "Developer", zhName: "开发",   icon: RiCodeSLine,       className: "bg-slate-800 text-white border border-slate-600/60",                                 glow: "shadow-slate-700/50",  theme: "midnight" },
-  { id: "warning",   label: "Warning",   zhName: "警示",   icon: RiAlertLine,       className: "bg-amber-500 text-white border-0",                                                   glow: "shadow-amber-400/50",  theme: "solar"    },
-  { id: "premium",   label: "Premium",   zhName: "尊享",   icon: RiVipCrownLine,    className: "bg-gradient-to-r from-violet-600 to-fuchsia-500 text-white border-0",               glow: "shadow-fuchsia-500/50",theme: "aurora"   },
+const TAG_STYLES: { id: string; label: string; zhName: string; className: string; glow?: string; icon: React.ElementType; theme: string; accent: string }[] = [
+  { id: "personal",  label: "Personal",  zhName: "个人",   icon: RiIdCardLine,      className: "bg-zinc-900 text-zinc-100 ring-1 ring-white/[0.07]",                                        glow: "shadow-zinc-800/50",   theme: "app",      accent: "from-zinc-500 via-zinc-700 to-zinc-900"                },
+  { id: "official",  label: "Official",  zhName: "官方",   icon: RiBuildingLine,    className: "bg-gradient-to-r from-blue-600 to-blue-800 text-white",                                     glow: "shadow-blue-700/50",   theme: "midnight", accent: "from-blue-500 via-blue-700 to-slate-900"               },
+  { id: "brand",     label: "Brand",     zhName: "品牌",   icon: RiAwardLine,       className: "bg-gradient-to-r from-violet-600 to-violet-900 text-white",                                 glow: "shadow-violet-600/50", theme: "aurora",   accent: "from-violet-500 via-fuchsia-600 to-pink-600"           },
+  { id: "verified",  label: "Verified",  zhName: "认证",   icon: RiShieldCheckLine, className: "bg-gradient-to-r from-emerald-500 to-teal-600 text-white",                                  glow: "shadow-emerald-500/50",theme: "glow",     accent: "from-emerald-400 via-teal-500 to-teal-700"             },
+  { id: "partner",   label: "Partner",   zhName: "合作",   icon: RiShakeHandsLine,  className: "bg-gradient-to-r from-orange-500 to-amber-400 text-white",                                  glow: "shadow-orange-500/50", theme: "solar",    accent: "from-amber-400 via-orange-500 to-orange-600"           },
+  { id: "dev",       label: "Dev",       zhName: "开发",   icon: RiCodeSLine,       className: "bg-[#0d1117] text-[#58a6ff] ring-1 ring-[#30363d] font-mono",                               glow: "shadow-slate-900/60",  theme: "midnight", accent: "from-slate-600 via-slate-800 to-black"                 },
+  { id: "warning",   label: "Warning",   zhName: "警示",   icon: RiAlertLine,       className: "bg-amber-400 text-amber-950 font-bold ring-1 ring-amber-300/50",                             glow: "shadow-amber-400/50",  theme: "solar",    accent: "from-yellow-300 via-amber-400 to-orange-400"           },
+  { id: "premium",   label: "Premium",   zhName: "尊享",   icon: RiVipCrownLine,    className: "bg-gradient-to-r from-purple-600 via-fuchsia-500 to-rose-500 text-white",                   glow: "shadow-fuchsia-500/60",theme: "aurora",   accent: "from-purple-500 via-fuchsia-500 to-rose-500"           },
 ];
 
 function TagBadge({ tagName, tagStyle, live = false }: { tagName: string; tagStyle: string; live?: boolean }) {
@@ -1071,7 +1071,6 @@ export default function StampPage() {
                             </div>
                             <div className="grid grid-cols-4 gap-2">
                               {TAG_STYLES.map((ts) => {
-                                const cardTheme = CARD_THEME_OPTIONS.find(t => t.id === ts.theme) || CARD_THEME_OPTIONS[0];
                                 const isSelected = form.tagStyle === ts.id;
                                 const Icon = ts.icon;
                                 const isFree = ts.id === "personal";
@@ -1081,47 +1080,56 @@ export default function StampPage() {
                                     key={ts.id}
                                     type="button"
                                     onClick={() => {
-                                      if (locked) {
-                                        toast.info(s("upgrade_to_unlock"));
-                                        return;
-                                      }
+                                      if (locked) { toast.info(s("upgrade_to_unlock")); return; }
                                       update("tagStyle", ts.id);
                                       setPreviewStyleId(ts.id);
                                     }}
                                     className={cn(
-                                      "relative flex flex-col overflow-hidden rounded-2xl border-2 transition-all text-left group",
-                                      locked ? "opacity-50 cursor-not-allowed border-border/30"
-                                        : isSelected ? "border-violet-400 dark:border-violet-500 shadow-sm"
-                                        : "border-border/50 hover:border-border"
+                                      "relative flex flex-col overflow-hidden rounded-2xl border-2 transition-all duration-150 text-left",
+                                      locked ? "opacity-45 cursor-not-allowed border-border/20"
+                                        : isSelected ? "border-violet-400 dark:border-violet-500 shadow-md shadow-violet-500/10"
+                                        : "border-border/40 hover:border-border/70 hover:shadow-sm"
                                     )}
                                   >
-                                    {/* Gradient swatch */}
-                                    <div className={cn("relative h-14 w-full flex items-center justify-center overflow-hidden", cardTheme.hero)}>
-                                      <div className="absolute inset-0 opacity-[0.07]"
-                                        style={{ backgroundImage: "radial-gradient(circle, white 1px, transparent 1px)", backgroundSize: "10px 10px" }} />
-                                      <div className={cn(
-                                        "relative flex items-center justify-center w-8 h-8 rounded-xl shadow-md border border-white/20",
-                                        "bg-white/20"
-                                      )}>
+                                    {/* Gradient accent swatch */}
+                                    <div className={cn("relative h-[68px] w-full flex flex-col items-center justify-center gap-1.5 overflow-hidden bg-gradient-to-br", ts.accent)}>
+                                      <div className="absolute inset-0 opacity-[0.06]"
+                                        style={{ backgroundImage: "radial-gradient(circle, white 1px, transparent 1px)", backgroundSize: "9px 9px" }} />
+                                      <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/20" />
+                                      {/* Icon */}
+                                      <div className="relative w-7 h-7 rounded-xl bg-white/20 border border-white/25 flex items-center justify-center shadow-sm">
                                         {locked
-                                          ? <RiVipCrownLine className="w-4 h-4 text-white/70 drop-shadow" />
-                                          : <Icon className="w-4 h-4 text-white drop-shadow" />
-                                        }
+                                          ? <RiVipCrownLine className="w-3.5 h-3.5 text-white/75 drop-shadow" />
+                                          : <Icon className="w-3.5 h-3.5 text-white drop-shadow" />}
                                       </div>
+                                      {/* Mini tag pill */}
+                                      {!locked && (
+                                        <span className={cn(
+                                          "relative inline-flex items-center gap-0.5 px-1.5 py-[2px] rounded text-[6.5px] font-bold overflow-hidden max-w-[calc(100%-8px)] truncate",
+                                          ts.className
+                                        )}>
+                                          <Icon className="w-1.5 h-1.5 shrink-0" />
+                                          <span className="truncate">{isZh ? ts.zhName : ts.label}</span>
+                                        </span>
+                                      )}
+                                      {/* Selected check */}
                                       {isSelected && !locked && (
-                                        <div className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-white/90 flex items-center justify-center shadow">
-                                          <RiCheckLine className="w-2.5 h-2.5 text-violet-600" />
+                                        <div className="absolute top-1.5 right-1.5 w-3.5 h-3.5 rounded-full bg-white/95 flex items-center justify-center shadow-sm">
+                                          <RiCheckLine className="w-2 h-2 text-violet-600" />
                                         </div>
                                       )}
+                                      {/* Free chip */}
                                       {isFree && !isMember && (
-                                        <div className="absolute bottom-1 left-1/2 -translate-x-1/2 text-[7px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-500 text-white whitespace-nowrap leading-tight shadow-sm">
-                                          {s("limited_time_free")}
+                                        <div className="absolute top-1.5 left-1.5 text-[5.5px] font-bold px-1 py-[2px] rounded-full bg-emerald-500 text-white leading-tight shadow-sm whitespace-nowrap">
+                                          FREE
                                         </div>
                                       )}
                                     </div>
-                                    {/* Label row */}
-                                    <div className={cn("px-2 py-1.5 text-center", isSelected && !locked ? "bg-violet-50/60 dark:bg-violet-950/30" : "bg-background")}>
-                                      <p className={cn("text-[11px] font-semibold leading-none", isSelected && !locked ? "text-violet-600 dark:text-violet-400" : "text-foreground/80")}>
+                                    {/* Label */}
+                                    <div className={cn("px-1.5 py-1.5 text-center",
+                                      isSelected && !locked ? "bg-violet-50 dark:bg-violet-950/40" : "bg-background")}>
+                                      <p className={cn("text-[10px] font-semibold leading-none tracking-tight",
+                                        isSelected && !locked ? "text-violet-600 dark:text-violet-400" : "text-foreground/70")}>
                                         {isZh ? ts.zhName : ts.label}
                                       </p>
                                     </div>

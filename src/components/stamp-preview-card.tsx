@@ -78,10 +78,13 @@ export function StampPreviewCard({
   const linkHost = (() => { try { return new URL(link).hostname; } catch { return link; } })();
 
   const CtaBtn = ({ extra }: { extra?: string }) => (
-    <div className={cn("flex items-center justify-between w-full px-3 py-2 rounded-xl text-[10px] font-bold", t.btn, extra)}>
+    <span className={cn(
+      "inline-flex items-center gap-1 px-4 py-1.5 rounded-full text-[9px] font-bold tracking-wide cursor-pointer",
+      t.btn, extra
+    )}>
       <span>访问主页</span>
-      <RiArrowRightSLine className="w-3 h-3 opacity-70" />
-    </div>
+      <RiArrowRightSLine className="w-2.5 h-2.5 opacity-75" />
+    </span>
   );
 
   /* ── celebrate — 中国红·节庆 ── */
@@ -113,12 +116,16 @@ export function StampPreviewCard({
           </svg>
         </div>
       </div>
-      <div className="px-4 pb-2 text-center">
+      <div className="px-4 pb-3 text-center">
         <p className="text-[14px] font-black text-gray-900 leading-tight">{tagName}</p>
         <p className="text-[8px] text-gray-400 mt-0.5 mb-3 leading-relaxed">{desc}</p>
-        <div className="w-full py-2.5 rounded-full text-white text-[9px] font-bold text-center mb-2"
-          style={{background:"linear-gradient(135deg,#D4AF37,#B8860B)",boxShadow:"0 3px 10px rgba(180,140,30,0.3)"}}>访问主页</div>
-        <p className="text-[8px] text-gray-400 pb-2">关闭</p>
+        <div className="flex justify-center mb-2">
+          <span className="inline-flex items-center gap-1 px-4 py-1.5 rounded-full text-white text-[9px] font-bold"
+            style={{background:"linear-gradient(135deg,#D4AF37,#B8860B)",boxShadow:"0 3px 10px rgba(180,140,30,0.3)"}}>
+            访问主页 <RiArrowRightSLine style={{width:10,height:10,opacity:0.8}} />
+          </span>
+        </div>
+        <p className="text-[8px] text-gray-400 pb-1">关闭</p>
       </div>
     </div>
   );
@@ -142,11 +149,12 @@ export function StampPreviewCard({
         <p className="text-white text-[13px] font-black leading-tight mb-1">{tagName}</p>
         <p className="text-[8px] leading-relaxed" style={{color:"#4a5568"}}>{desc}</p>
       </div>
-      <div className="px-4 pb-4 pt-2 space-y-1.5">
-        <div className="w-full py-2 rounded-xl text-[9px] font-bold text-white text-center"
-          style={{background:"linear-gradient(135deg,#00D2FF,#7B2FBE)"}}>访问主页</div>
-        <div className="w-full py-2 rounded-xl text-[9px] font-bold text-center"
-          style={{border:"1.5px solid rgba(255,255,255,0.1)",color:"rgba(255,255,255,0.35)"}}>关闭</div>
+      <div className="px-4 pb-4 pt-1 flex flex-col items-center gap-1.5">
+        <span className="inline-flex items-center gap-1 px-4 py-1.5 rounded-full text-[9px] font-bold text-white"
+          style={{background:"linear-gradient(135deg,#00D2FF,#7B2FBE)",boxShadow:"0 0 14px rgba(0,210,255,0.3)"}}>
+          访问主页 <RiArrowRightSLine style={{width:10,height:10,opacity:0.8}} />
+        </span>
+        <span className="text-[8px] font-medium" style={{color:"rgba(255,255,255,0.25)"}}>关闭</span>
       </div>
     </div>
   );
@@ -164,12 +172,12 @@ export function StampPreviewCard({
         <p className="text-[8.5px] leading-relaxed" style={{color:"rgba(30,30,30,0.7)",textShadow:"0 1px 2px rgba(255,255,255,0.4)"}}>{desc}</p>
       </div>
       <div className="px-3 pb-4">
-        <div className="rounded-2xl px-3 py-2 mb-1" style={{background:"rgba(255,255,255,0.88)",backdropFilter:"blur(16px)"}}>
-          <div className="flex items-center justify-between w-full px-2.5 py-2 rounded-xl text-white text-[9px] font-bold"
+        <div className="rounded-2xl px-3 py-2.5 flex flex-col items-center gap-1.5" style={{background:"rgba(255,255,255,0.85)",backdropFilter:"blur(16px)"}}>
+          <span className="inline-flex items-center gap-1 px-4 py-1.5 rounded-full text-white text-[9px] font-bold"
             style={{background:"rgba(8,8,20,0.88)"}}>
-            <span>访问主页</span><span style={{opacity:0.5}}>→</span>
-          </div>
-          <p className="text-[7px] text-center font-mono mt-1" style={{color:"rgba(80,80,80,0.5)"}}>{linkHost}</p>
+            访问主页 <RiArrowRightSLine style={{width:10,height:10,opacity:0.6}} />
+          </span>
+          <p className="text-[7px] font-mono" style={{color:"rgba(80,80,80,0.5)"}}>{linkHost}</p>
         </div>
       </div>
     </div>
@@ -245,8 +253,12 @@ export function StampPreviewCard({
             <p className="font-black text-gray-900 leading-none" style={{fontSize:16}}>{tagName}</p>
             <p className="text-[6.5px] font-bold uppercase tracking-widest mt-0.5" style={{color:"#FF3800"}}>域名认领</p>
           </div>
-          <div className="w-full py-1.5 rounded-lg text-[8px] font-bold text-white text-center"
-            style={{background:"linear-gradient(135deg,#FF3800,#FF6B00)"}}>访问主页</div>
+          <div className="flex justify-center">
+            <span className="inline-flex items-center gap-0.5 px-3 py-1 rounded-full text-[8px] font-bold text-white"
+              style={{background:"linear-gradient(135deg,#FF3800,#FF6B00)"}}>
+              访问主页 <RiArrowRightSLine style={{width:9,height:9,opacity:0.8}} />
+            </span>
+          </div>
         </div>
       </div>
     </div>
@@ -275,8 +287,8 @@ export function StampPreviewCard({
           <p className={cn("text-[8px] mt-1 leading-relaxed", t.cardText === "text-white" ? "text-white/60" : "text-gray-500")}>{desc}</p>
         )}
       </div>
-      <div className={cn("px-2.5 pt-2 pb-3", t.cardBg)}>
-        <CtaBtn extra="text-[9px] py-1.5 rounded-xl" />
+      <div className={cn("px-2.5 pt-2 pb-3 flex justify-center", t.cardBg)}>
+        <CtaBtn />
       </div>
     </div>
   );
