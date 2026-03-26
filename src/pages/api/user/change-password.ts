@@ -4,9 +4,17 @@ import { authOptions } from "@/pages/api/auth/[...nextauth]";
 import { compare, hash } from "bcryptjs";
 import { one, run, isDbReady } from "@/lib/db-query";
 import { sendEmail, passwordChangedHtml, getSiteLabel } from "@/lib/email";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).end();
+
+  // Strict rate limit: 5 attempts per 15 minutes per IP
+  const ip = String(
+    req.headers["x-forwarded-for"] || req.socket?.remoteAddress || "unknown"
+  ).split(",")[0].trim();
+  const rl = await checkRateLimit(`changepwd:${ip}`, 5, 15 * 60 * 1000);
+  if (!rl.ok) return res.status(429).json({ error: "Too many attempts, please try again later" });
 
   const session = await getServerSession(req, res, authOptions);
   if (!session?.user?.email) return res.status(401).json({ error: "请先登录" });

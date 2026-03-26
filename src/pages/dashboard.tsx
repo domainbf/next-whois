@@ -682,7 +682,7 @@ export default function DashboardPage() {
     setMembershipPlan((d as any).membershipPlan ?? null);
     // Heal the JWT if DB says TRUE but session says FALSE — no re-login needed
     if (d.subscriptionAccess && !(session?.user as any)?.subscriptionAccess) {
-      updateSession({ subscriptionAccess: true });
+      updateSession({ refreshSubscription: true });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session, updateSession]);
@@ -761,7 +761,7 @@ export default function DashboardPage() {
         setSubscriptionExpiresAt(data.subscriptionExpiresAt ?? subscriptionExpiresAt);
         setMembershipPlan(data.membershipPlan ?? membershipPlan);
         setBalanceCents(data.balanceCents ?? balanceCents);
-        if (data.subscriptionAccess) updateSession({ subscriptionAccess: true });
+        if (data.subscriptionAccess) updateSession({ refreshSubscription: true });
       } else {
         toast.error(data.error || t("dashboard.redeem_failed"));
       }
@@ -988,7 +988,7 @@ export default function DashboardPage() {
         const errMsg = data.error || t("dashboard.invite_code_invalid");
         if (errMsg === "你已拥有订阅权限") {
           setSubscriptionAccessDB(true);
-          await updateSession({ subscriptionAccess: true });
+          await updateSession({ refreshSubscription: true });
           setInviteCodeInput("");
           setTab("subscriptions");
           toast.success(t("dashboard.already_has_access"));
@@ -999,7 +999,7 @@ export default function DashboardPage() {
       }
       toast.success(t("dashboard.invite_code_success"));
       setSubscriptionAccessDB(true);
-      await updateSession({ subscriptionAccess: true });
+      await updateSession({ refreshSubscription: true });
       setInviteCodeInput("");
       setTab("subscriptions");
     } catch {

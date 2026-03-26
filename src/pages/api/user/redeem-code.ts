@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
 import { one, run, isDbReady } from "@/lib/db-query";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 type ActivationCode = {
   id: number;
@@ -18,6 +19,13 @@ type ActivationCode = {
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).end();
   if (!(await isDbReady())) return res.status(503).json({ error: "数据库暂不可用" });
+
+  // Rate-limit activation code redemptions: 10 per hour per IP (prevents brute-force)
+  const ip = String(
+    req.headers["x-forwarded-for"] || req.socket?.remoteAddress || "unknown"
+  ).split(",")[0].trim();
+  const rl = await checkRateLimit(`redeem:${ip}`, 10, 60 * 60 * 1000);
+  if (!rl.ok) return res.status(429).json({ error: "Too many attempts, please try again later" });
 
   const session = await getServerSession(req, res, authOptions);
   if (!session?.user?.email) return res.status(401).json({ error: "请先登录" });

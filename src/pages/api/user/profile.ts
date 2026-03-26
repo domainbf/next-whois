@@ -2,10 +2,20 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
 import { one, run, isDbReady } from "@/lib/db-query";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const session = await getServerSession(req, res, authOptions);
   if (!session?.user?.email) return res.status(401).json({ error: "请先登录" });
+
+  // Rate-limit write operations
+  if (req.method === "PATCH") {
+    const ip = String(
+      req.headers["x-forwarded-for"] || req.socket?.remoteAddress || "unknown"
+    ).split(",")[0].trim();
+    const rl = await checkRateLimit(`profile:update:${ip}`, 10, 60 * 1000);
+    if (!rl.ok) return res.status(429).json({ error: "Too many requests" });
+  }
 
   if (!(await isDbReady())) return res.status(503).json({ error: "数据库暂不可用" });
 

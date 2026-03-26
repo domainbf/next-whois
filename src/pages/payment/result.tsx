@@ -17,11 +17,11 @@ type Order = {
   plan_name: string; provider: string; paid_at: string | null;
 };
 
-const CURRENCY_SYMBOL: Record<string, string> = { CNY: "¥", USD: "$", EUR: "€", HKD: "HK$" };
+const CURRENCY_SYMBOL: Record<string, string> = { CNY: "¥", USD: "$", EUR: "€", HKD: "HK$", GBP: "£", JPY: "¥" };
 
 export default function PaymentResult() {
   const router = useRouter();
-  const { status: authStatus } = useSession();
+  const { status: authStatus, update: updateSession } = useSession();
   const settings = useSiteSettings();
   const { t } = useTranslation();
 
@@ -31,6 +31,7 @@ export default function PaymentResult() {
   const [order, setOrder] = React.useState<Order | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [pollCount, setPollCount] = React.useState(0);
+  const sessionHealedRef = React.useRef(false);
 
   React.useEffect(() => {
     if (!orderId || authStatus !== "authenticated") {
@@ -53,6 +54,7 @@ export default function PaymentResult() {
     fetchOrder();
   }, [orderId, authStatus]);
 
+  // Poll for payment confirmation (max 8 × 2.5s = 20s)
   React.useEffect(() => {
     if (!order || order.status === "paid" || urlStatus === "cancel") return;
     if (pollCount >= 8) return;
@@ -66,6 +68,14 @@ export default function PaymentResult() {
     }, 2500);
     return () => clearTimeout(timer);
   }, [order, pollCount, orderId, urlStatus]);
+
+  // Heal the JWT subscription status when payment is confirmed paid
+  React.useEffect(() => {
+    if (order?.status === "paid" && !sessionHealedRef.current && updateSession) {
+      sessionHealedRef.current = true;
+      updateSession({ refreshSubscription: true }).catch(() => {});
+    }
+  }, [order?.status, updateSession]);
 
   if (authStatus === "loading" || loading) {
     return (
@@ -126,6 +136,10 @@ export default function PaymentResult() {
                       <span>{new Date(order.paid_at).toLocaleString()}</span>
                     </div>
                   )}
+                  <div className="flex justify-between text-[11px]">
+                    <span className="text-muted-foreground">{t("payment.result_order_id_label") || "Order ID"}</span>
+                    <span className="font-mono text-[10px] bg-muted px-1.5 py-0.5 rounded">{order.id}</span>
+                  </div>
                 </div>
               )}
               <div className="flex flex-col gap-2">
@@ -170,10 +184,17 @@ export default function PaymentResult() {
                 </p>
               </div>
               {pollCount >= 8 && (
-                <p className="text-xs text-muted-foreground">
-                  {t("payment.result_contact_support")}
-                  <br /><code className="font-mono text-[10px] bg-muted px-1 rounded">{orderId}</code>
-                </p>
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground">
+                    {t("payment.result_contact_support")}
+                  </p>
+                  <code className="block font-mono text-[10px] bg-muted px-2 py-1 rounded text-center">{orderId}</code>
+                  <Link href="/dashboard">
+                    <Button variant="outline" size="sm" className="w-full rounded-xl text-xs">
+                      {t("payment.result_go_dashboard")}
+                    </Button>
+                  </Link>
+                </div>
               )}
             </>
           )}

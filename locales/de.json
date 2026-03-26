@@ -1204,7 +1204,8 @@
     "result_contact_support": "Falls gezahlt, aber Seite nicht aktualisiert, aktualisieren Sie die Seite oder kontaktieren Sie den Support mit der Bestell-ID:",
     "result_title_paid": "Zahlung erfolgreich",
     "result_title_cancelled": "Abgebrochen",
-    "result_title_result": "Zahlungsergebnis"
+    "result_title_result": "Zahlungsergebnis",
+    "result_order_id_label": "Bestellnummer"
   },
   "dashboard": {
     "phase_active": "Aktiv",

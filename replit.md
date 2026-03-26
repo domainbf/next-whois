@@ -45,6 +45,42 @@ A fast, modern WHOIS and RDAP lookup tool supporting domains, IPv4/IPv6, ASN, an
 
 ## Changelog
 
+### Security & Feature Hardening (2026-03-26)
+
+**Scope:** Comprehensive security audit and feature completeness pass across all API and page layers.
+
+#### Critical Security Fixes
+- **Session manipulation closed** — NextAuth JWT callback no longer trusts client-provided subscriptionAccess. Uses DB-validated refreshSubscription signal instead.
+- **stamp/submit.ts** — Enforces member restrictions server-side (DB re-validated): free = 5-char tags, personal style, app theme only; members = 20-char, all styles/themes.
+- **remind/submit.ts** — Validates membership from DB (not JWT) before enforcing the free-tier 5-domain limit.
+- **Login brute-force** — Per-IP (20/10min) and per-email (10 failures = 30-min lockout) in NextAuth authorize callback.
+
+#### Rate Limiting Added to All Sensitive APIs
+- /api/payment/create: 5/min per IP
+- /api/user/change-password: 5/15min per IP
+- /api/user/apply-invite-code: 10/hr per IP (prevents code enumeration)
+- /api/user/redeem-code: 10/hr per IP
+- /api/user/contact: 3/hr per IP
+- /api/sponsors/submit: 3/hr per IP
+- /api/user/profile PATCH: 10/min per IP
+- requireAdmin() on all admin APIs: 60/min per IP
+
+#### Security Headers (next.config.js)
+- X-Frame-Options: SAMEORIGIN
+- X-Content-Type-Options: nosniff
+- X-XSS-Protection: 1; mode=block
+- Referrer-Policy: strict-origin-when-cross-origin
+- Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
+
+#### Payment Flow Improvements
+- Payment result page now auto-heals session subscription after confirmed payment
+- Added order ID display on success; "Go to Dashboard" link on timeout
+- sponsors/submit.ts: added rate limiting, currency/amount validation
+
+#### Subscription Expiry Correctness
+- apply-invite-code.ts: expired subscribers can now apply new codes correctly
+- Login sets initial JWT subscriptionAccess respecting subscription_expires_at
+
 ### i18n Completion Pass (2026-03-26)
 
 **Scope:** Full i18n audit and fix across all pages. All hardcoded Chinese UI text has been converted to use the translation system.

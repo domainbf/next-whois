@@ -2,6 +2,14 @@
 
 const setupPWA = require('next-pwa');
 
+const SECURITY_HEADERS = [
+  { key: 'X-Frame-Options',           value: 'SAMEORIGIN' },
+  { key: 'X-Content-Type-Options',    value: 'nosniff' },
+  { key: 'X-XSS-Protection',          value: '1; mode=block' },
+  { key: 'Referrer-Policy',           value: 'strict-origin-when-cross-origin' },
+  { key: 'Permissions-Policy',        value: 'camera=(), microphone=(), geolocation=(), payment=()' },
+];
+
 const nextConfig = {
   typescript: { ignoreBuildErrors: true },
   reactStrictMode: true,
@@ -18,6 +26,11 @@ const nextConfig = {
   },
   async headers() {
     return [
+      {
+        // Apply security headers to all pages and API routes
+        source: '/(.*)',
+        headers: SECURITY_HEADERS,
+      },
       {
         // Next.js build artifacts are content-addressed — safe to cache forever
         source: '/_next/static/(.*)',

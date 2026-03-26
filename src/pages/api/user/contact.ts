@@ -3,9 +3,17 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
 import { sendEmail, getSiteLabel } from "@/lib/email";
 import { ADMIN_EMAIL } from "@/lib/admin-shared";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).end();
+
+  // Rate-limit: 3 messages per hour per IP to prevent spam
+  const ip = String(
+    req.headers["x-forwarded-for"] || req.socket?.remoteAddress || "unknown"
+  ).split(",")[0].trim();
+  const rl = await checkRateLimit(`contact:${ip}`, 3, 60 * 60 * 1000);
+  if (!rl.ok) return res.status(429).json({ error: "Too many messages, please try again later" });
 
   const session = await getServerSession(req, res, authOptions);
   if (!session?.user?.email) return res.status(401).json({ error: "请先登录" });

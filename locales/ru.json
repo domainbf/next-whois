@@ -1204,7 +1204,8 @@
     "result_contact_support": "Если оплата прошла, но страница не обновилась, обновите страницу или обратитесь в поддержку с ID заказа:",
     "result_title_paid": "Оплата успешна",
     "result_title_cancelled": "Отменено",
-    "result_title_result": "Результат оплаты"
+    "result_title_result": "Результат оплаты",
+    "result_order_id_label": "Номер заказа"
   },
   "dashboard": {
     "phase_active": "Активный",

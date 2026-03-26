@@ -1204,7 +1204,8 @@
     "result_contact_support": "Si payé mais la page n'est pas mise à jour, actualisez ou contactez le support avec l'ID de commande :",
     "result_title_paid": "Paiement réussi",
     "result_title_cancelled": "Annulé",
-    "result_title_result": "Résultat du paiement"
+    "result_title_result": "Résultat du paiement",
+    "result_order_id_label": "Numéro de commande"
   },
   "dashboard": {
     "phase_active": "Actif",

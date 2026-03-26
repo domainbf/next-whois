@@ -1204,7 +1204,8 @@
     "result_contact_support": "お支払い済みなのにページが更新されない場合は、更新するか注文IDを添えてサポートにお問い合わせください：",
     "result_title_paid": "お支払い完了",
     "result_title_cancelled": "キャンセル済み",
-    "result_title_result": "支払い結果"
+    "result_title_result": "支払い結果",
+    "result_order_id_label": "注文番号"
   },
   "dashboard": {
     "phase_active": "有効",

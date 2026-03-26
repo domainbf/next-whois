@@ -1204,7 +1204,8 @@
     "result_contact_support": "如已付款但頁面未更新，請重新整理或聯絡客服，附上訂單號：",
     "result_title_paid": "付款成功",
     "result_title_cancelled": "已取消",
-    "result_title_result": "付款結果"
+    "result_title_result": "付款結果",
+    "result_order_id_label": "訂單號"
   },
   "dashboard": {
     "phase_active": "有效",

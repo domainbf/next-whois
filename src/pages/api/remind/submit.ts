@@ -43,9 +43,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const cleanDomain  = String(domain).toLowerCase().trim();
 
-  // ── Enforce free-tier subscription limit ─────────────────────────────────
+  // ── Enforce free-tier subscription limit (re-validate from DB, not JWT) ─────
   const session = await getServerSession(req, res, authOptions);
-  const isMember = !!(session?.user as any)?.subscriptionAccess;
+  let isMember = false;
+  if (session?.user?.email) {
+    const userRow = await one<{ subscription_access: boolean; subscription_expires_at: string | null }>(
+      "SELECT subscription_access, subscription_expires_at FROM users WHERE email = $1",
+      [session.user.email],
+    ).catch(() => null);
+    const expired = userRow?.subscription_expires_at
+      ? new Date(userRow.subscription_expires_at) < new Date()
+      : false;
+    isMember = !!(userRow?.subscription_access && !expired);
+  }
   if (!isMember) {
     const countRow = await one<{ count: string }>(
       "SELECT COUNT(*) as count FROM reminders WHERE email = $1 AND active = true",

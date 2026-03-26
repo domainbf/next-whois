@@ -4,6 +4,7 @@ import { authOptions } from "@/pages/api/auth/[...nextauth]";
 import { createOrder, type PaymentProvider } from "@/lib/payment";
 import { isDbReady, one } from "@/lib/db-query";
 import { many } from "@/lib/db-query";
+import { checkRateLimit } from "@/lib/rate-limit";
 import Stripe from "stripe";
 
 export const config = { maxDuration: 15 };
@@ -18,6 +19,13 @@ async function getSetting(key: string): Promise<string> {
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).end();
   if (!(await isDbReady())) return res.status(503).json({ error: "数据库暂不可用" });
+
+  // Rate-limit order creation: 5 per minute per IP
+  const ip = String(
+    req.headers["x-forwarded-for"] || req.socket?.remoteAddress || "unknown"
+  ).split(",")[0].trim();
+  const rl = await checkRateLimit(`payment:create:${ip}`, 5, 60 * 1000);
+  if (!rl.ok) return res.status(429).json({ error: "请求过于频繁，请稍后再试" });
 
   const session = await getServerSession(req, res, authOptions);
   if (!session?.user) return res.status(401).json({ error: "请先登录" });

@@ -1204,7 +1204,8 @@
     "result_contact_support": "If paid but page not updated, refresh or contact support with order ID:",
     "result_title_paid": "Payment Successful",
     "result_title_cancelled": "Cancelled",
-    "result_title_result": "Payment Result"
+    "result_title_result": "Payment Result",
+    "result_order_id_label": "Order ID"
   },
   "dashboard": {
     "phase_active": "Active",

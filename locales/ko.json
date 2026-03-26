@@ -1204,7 +1204,8 @@
     "result_contact_support": "결제했지만 페이지가 업데이트되지 않으면 페이지를 새로 고침하거나 주문 ID와 함께 지원팀에 문의하세요:",
     "result_title_paid": "결제 완료",
     "result_title_cancelled": "취소됨",
-    "result_title_result": "결제 결과"
+    "result_title_result": "결제 결과",
+    "result_order_id_label": "주문 번호"
   },
   "dashboard": {
     "phase_active": "활성",
