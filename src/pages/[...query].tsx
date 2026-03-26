@@ -130,16 +130,16 @@ const CARD_CONTAINER_VARIANTS = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
-    transition: { staggerChildren: 0.09, delayChildren: 0 },
+    transition: { staggerChildren: 0.06, delayChildren: 0 },
   },
 };
 
 const CARD_ITEM_VARIANTS = {
-  hidden: { opacity: 0, y: 10 },
+  hidden: { opacity: 0, y: 8 },
   visible: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.32, ease: [0.22, 1, 0.36, 1] },
+    transition: { duration: 0.28, ease: [0.22, 1, 0.36, 1] },
   },
 };
 
@@ -4573,14 +4573,13 @@ export default function LookupPage({
             <SearchHotkeysText className="hidden sm:flex mt-2 px-1 justify-end" />
           </div>
 
-          <AnimatePresence mode="wait" initial={false}>
+          <AnimatePresence initial={false}>
             {loading && (
               <motion.div
                 key="skeleton"
-                initial={{ opacity: 0 }}
+                initial={{ opacity: 1 }}
                 animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.15 }}
+                exit={{ opacity: 0, transition: { duration: 0.12 } }}
               >
                 <ResultSkeleton />
               </motion.div>
@@ -4591,7 +4590,7 @@ export default function LookupPage({
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ duration: 0.25 }}
+              transition={{ duration: 0.2 }}
               className="flex items-center flex-wrap gap-2 mb-4 sm:mb-6"
             >
               {result.registerPrice &&

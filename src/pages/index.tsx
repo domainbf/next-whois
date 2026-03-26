@@ -123,9 +123,8 @@ export default function HomePage({ origin }: { origin: string }) {
 
         {loading && (
           <motion.div
-            initial={{ opacity: 0 }}
+            initial={{ opacity: 1 }}
             animate={{ opacity: 1 }}
-            transition={{ duration: 0.2 }}
             className="space-y-6 mt-2"
           >
             <div className="text-center py-4">

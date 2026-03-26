@@ -161,30 +161,103 @@ function MaintenanceGate({ children }: { children: React.ReactNode }) {
   );
 }
 
-// Tool pages that use shallow routing (router.replace) to update the URL
-// without triggering a full page re-render — they must share the same key
-// so their internal result updates don't trigger the page-level animation.
-const SHALLOW_TOOL_PAGES = new Set([
+// Pages that manage their own internal loading state via router events.
+// They share a stable animation key so intra-page result updates don't
+// trigger the global page-level enter/exit animation.
+const STABLE_KEY_PAGES = new Set([
   "/dns", "/ip", "/ssl", "/icp", "/tools", "/feedback",
+  "/[...query]",  // domain WHOIS results — skeleton handles loading feedback
 ]);
 
 const pageVariants = {
-  initial: { opacity: 0 },
-  animate: { opacity: 1 },
-  exit:    { opacity: 0 },
+  initial: { opacity: 0, y: 7 },
+  animate: {
+    opacity: 1, y: 0,
+    transition: { duration: 0.22, ease: [0.22, 1, 0.36, 1] as const },
+  },
+  exit: {
+    opacity: 0, y: -3,
+    transition: { duration: 0.08, ease: "easeIn" as const },
+  },
 };
-const pageTransition = { duration: 0.2, ease: [0.22, 1, 0.36, 1] };
+
+// ── Top route-progress bar (like YouTube / GitHub) ──────────────────────────
+type BarPhase = "idle" | "loading" | "done";
+
+function RouteProgressBar() {
+  const router = useRouter();
+  const [phase, setPhase] = React.useState<BarPhase>("idle");
+  const [width, setWidth]   = React.useState(0);
+  const slowTimer  = React.useRef<ReturnType<typeof setTimeout>  | null>(null);
+  const doneTimer  = React.useRef<ReturnType<typeof setTimeout>  | null>(null);
+
+  React.useEffect(() => {
+    const start = () => {
+      if (slowTimer.current)  clearTimeout(slowTimer.current);
+      if (doneTimer.current)  clearTimeout(doneTimer.current);
+      setPhase("loading");
+      setWidth(28);
+      slowTimer.current = setTimeout(() => setWidth(72), 120);
+    };
+    const finish = () => {
+      if (slowTimer.current) clearTimeout(slowTimer.current);
+      setWidth(100);
+      setPhase("done");
+      doneTimer.current = setTimeout(() => {
+        setPhase("idle");
+        setWidth(0);
+      }, 380);
+    };
+    router.events.on("routeChangeStart",    start);
+    router.events.on("routeChangeComplete", finish);
+    router.events.on("routeChangeError",    finish);
+    return () => {
+      router.events.off("routeChangeStart",    start);
+      router.events.off("routeChangeComplete", finish);
+      router.events.off("routeChangeError",    finish);
+      if (slowTimer.current) clearTimeout(slowTimer.current);
+      if (doneTimer.current) clearTimeout(doneTimer.current);
+    };
+  }, [router]);
+
+  if (phase === "idle") return null;
+
+  const barTransition =
+    width === 100 ? "width 0.15s ease-in" :
+    width === 28  ? "width 0.1s ease-out" :
+                    "width 9s cubic-bezier(0.04, 0.6, 0.22, 1)";
+
+  return (
+    <div
+      className="fixed top-0 left-0 right-0 z-[9999] h-[2.5px] pointer-events-none"
+      style={{
+        opacity: phase === "done" ? 0 : 1,
+        transition: phase === "done" ? "opacity 0.25s ease-out 0.12s" : undefined,
+      }}
+    >
+      <div
+        style={{
+          height: "100%",
+          width: `${width}%`,
+          background: "linear-gradient(90deg, hsl(var(--primary)) 0%, hsl(var(--primary) / 0.75) 100%)",
+          transition: barTransition,
+          boxShadow: "0 0 8px hsl(var(--primary) / 0.5)",
+        }}
+      />
+    </div>
+  );
+}
 
 export default function App({ Component, pageProps: { session, ...pageProps } }: AppProps) {
   const origin: string = pageProps.origin || process.env.NEXT_PUBLIC_SITE_URL || "";
   const router = useRouter();
   const isAdminPage = router.pathname.startsWith("/admin");
 
-  // Shallow-routing tool pages share a stable key so internal result updates
-  // don't trigger the page animation. Every other page (including domain WHOIS
-  // results at /[...query]) uses router.asPath so each unique URL gets its own
-  // key and triggers the enter/exit animation on navigation.
-  const animationKey = SHALLOW_TOOL_PAGES.has(router.pathname)
+  // Pages in STABLE_KEY_PAGES manage their own loading feedback internally
+  // (skeleton screens, spinners, etc.) and don't need the global page-level
+  // enter/exit animation for intra-page navigations. Every other page gets
+  // a unique key per URL, triggering the slide-up enter / fade-out exit.
+  const animationKey = STABLE_KEY_PAGES.has(router.pathname)
     ? router.pathname
     : router.asPath;
 
@@ -205,10 +278,11 @@ export default function App({ Component, pageProps: { session, ...pageProps } }:
           <div className="absolute inset-0 bg-gradient-to-b from-transparent via-background/20 to-background" />
         </div>
         <MaintenanceGate>
+        <RouteProgressBar />
         <div className="relative w-full min-h-screen font-sans">
           {!isAdminPage && <AnnouncementBanner />}
           {!isAdminPage && <Navbar />}
-          <main className={isAdminPage ? undefined : undefined} style={!isAdminPage ? { paddingTop: "calc(4rem + var(--ann-h, 0px))" } : undefined}>
+          <main style={!isAdminPage ? { paddingTop: "calc(4rem + var(--ann-h, 0px))" } : undefined}>
             {isAdminPage ? (
               <Component {...pageProps} />
             ) : (
@@ -219,7 +293,7 @@ export default function App({ Component, pageProps: { session, ...pageProps } }:
                   initial="initial"
                   animate="animate"
                   exit="exit"
-                  transition={pageTransition}
+                  style={{ willChange: "opacity, transform" }}
                 >
                   <Component {...pageProps} />
                 </motion.div>
