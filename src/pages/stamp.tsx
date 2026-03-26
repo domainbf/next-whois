@@ -2150,11 +2150,12 @@ export default function StampPage() {
                         onClick={() => setPreviewStyleId(null)}
                       />
                       <motion.div
-                        className="fixed inset-x-0 bottom-0 z-50 max-w-lg mx-auto px-3 pb-4"
-                        initial={{ y: 80, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 80, opacity: 0 }}
-                        transition={{ type: "spring", damping: 22, stiffness: 280 }}
+                        className="fixed inset-0 z-50 flex items-center justify-center px-4"
+                        initial={{ scale: 0.93, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.93, opacity: 0 }}
+                        transition={{ type: "spring", damping: 24, stiffness: 300 }}
+                        onClick={(e) => { if (e.target === e.currentTarget) setPreviewStyleId(null); }}
                       >
-                        <div className="bg-background border border-border rounded-2xl shadow-2xl overflow-hidden">
+                        <div className="bg-background border border-border rounded-2xl shadow-2xl overflow-hidden w-full max-w-sm">
                           {/* Sheet header */}
                           <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-border/50">
                             <div className="flex items-center gap-2">
@@ -2237,13 +2238,14 @@ export default function StampPage() {
                       onClick={dismissGuide}
                     />
                     <motion.div
-                      className="fixed inset-x-0 bottom-0 z-50 max-w-lg mx-auto px-3 pb-4"
-                      initial={{ y: 80, opacity: 0 }}
-                      animate={{ y: 0, opacity: 1 }}
-                      exit={{ y: 80, opacity: 0 }}
-                      transition={{ type: "spring", damping: 22, stiffness: 280 }}
+                      className="fixed inset-0 z-50 flex items-center justify-center px-4"
+                      initial={{ scale: 0.93, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      exit={{ scale: 0.93, opacity: 0 }}
+                      transition={{ type: "spring", damping: 24, stiffness: 300 }}
+                      onClick={(e) => { if (e.target === e.currentTarget) dismissGuide(); }}
                     >
-                      <div className="bg-background border border-border rounded-2xl shadow-2xl overflow-hidden">
+                      <div className="bg-background border border-border rounded-2xl shadow-2xl overflow-hidden w-full max-w-sm">
                         {/* Header */}
                         <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-border/60">
                           <div className="flex items-center gap-2">

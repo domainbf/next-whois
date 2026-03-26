@@ -170,13 +170,13 @@ const STABLE_KEY_PAGES = new Set([
 ]);
 
 const pageVariants = {
-  initial: { opacity: 0, y: 7 },
+  initial: { opacity: 0 },
   animate: {
-    opacity: 1, y: 0,
+    opacity: 1,
     transition: { duration: 0.22, ease: [0.22, 1, 0.36, 1] as const },
   },
   exit: {
-    opacity: 0, y: -3,
+    opacity: 0,
     transition: { duration: 0.08, ease: "easeIn" as const },
   },
 };
@@ -293,7 +293,7 @@ export default function App({ Component, pageProps: { session, ...pageProps } }:
                   initial="initial"
                   animate="animate"
                   exit="exit"
-                  style={{ willChange: "opacity, transform" }}
+                  style={{ willChange: "opacity" }}
                 >
                   <Component {...pageProps} />
                 </motion.div>
