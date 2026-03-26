@@ -23,9 +23,24 @@ When IANA page has no lifecycle keywords, the scraper:
 4. Falls back to IANA page if registry lifecycle page not found
 5. Combines IANA + registry text when both have relevant info
 
-### Keywords for lifecycle detection
-`grace period`, `redemption`, `pending delete`, `rgp`, `lifecycle`, `宽限期`, `赎回期`, etc.
-Text extraction prioritizes lines containing these keywords (up to 70% of the 6k char limit).
+### Smart URL Discovery (3-strategy cascade)
+1. **Homepage check**: Fetch registry homepage → check for lifecycle keywords
+2. **Path probing**: Try 21 common lifecycle URL patterns (`/lifecycle`, `/domain-lifecycle`, `/policies`, etc.)
+3. **Link crawling**: Parse homepage + linked pages for lifecycle-looking links → follow them (depth=2)
+   - Detected .jp JPRS: found `ライフサイクル` page via homepage
+   - Detected .au auDA: found via policy links
+   - JS-rendered sites (.de DENIC, .fr, .uk nic.uk): fall back to ICANN defaults
+4. Discovery cache: Redis 7 days; combined text = IANA header (1.5k) + lifecycle page (7.5k)
+
+### Keywords for lifecycle detection (multilingual)
+- **English**: grace, redemption, pending delete, lifecycle, renewal period, rgp, etc.
+- **Chinese**: 宽限期, 赎回期, 待删除, 续费, 到期, etc.
+- **Japanese**: ライフサイクル, 猶予期間, 回復期間, 削除待ち, 更新期間, 削除
+- **Korean**: 갱신유예, 복구기간, 삭제대기, 라이프사이클
+- **German**: löschfrist, kündigungsfrist, löschung
+- **French**: période de grâce, rédemption
+- Link keywords: same languages + URL path keywords (lifecycle, renewal, expir, policy, delete)
+Text extraction prioritizes keyword-containing lines (70/30 split) within 10k char limit.
 
 ### Admin UI
 - Model status badges in single-scrape form (✓/✗ per configured model)

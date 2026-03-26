@@ -47,10 +47,25 @@ const REGISTRY_URL_TTL_S = 60 * 60 * 24 * 7; // registry URL cached 7 days
 
 // Lifecycle keywords that signal a page has actual policy info
 const LIFECYCLE_KEYWORDS = [
+  // English
   "grace period", "grace", "redemption", "pending delete", "pendingdelete",
   "rgp", "autorenew", "auto-renew", "purge", "drop time", "drop date",
-  "release time", "deletion", "lifecycle", "expiry period", "expiration period",
+  "release time", "deletion", "lifecycle", "life cycle", "expiry period",
+  "expiration period", "renewal period", "registry grace", "add grace",
+  // Chinese (Simplified + Traditional)
   "宽限期", "赎回期", "待删除", "掉落时间", "释放时间", "删除时间",
+  "续费", "到期", "宽限", "赎回", "注销", "删除期",
+  // Japanese
+  "ライフサイクル", "猶予期間", "回復期間", "削除待ち", "更新期間",
+  "有効期限", "削除", "廃止",
+  // Korean
+  "갱신유예", "복구기간", "삭제대기", "라이프사이클",
+  // German
+  "löschfrist", "kündigungsfrist", "löschung", "wiederherstellung",
+  // French
+  "période de grâce", "rédemption", "suppression en attente",
+  // Russian
+  "период льготы", "период выкупа",
 ];
 
 function hasLifecycleInfo(text: string): boolean {
@@ -115,35 +130,195 @@ function extractText(html: string, maxChars = 10_000): string {
   return (priority + "\n\n" + rest).trim().slice(0, maxChars);
 }
 
-/** Extract registry URL from IANA page text */
-function extractRegistryUrl(ianaText: string): string | null {
-  const m = ianaText.match(/URL for registration services:\s*(https?:\/\/[^\s\n]+)/i);
-  if (!m) return null;
-  return m[1].replace(/\/$/, "").replace(/[)\]>]+$/, "");
+/**
+ * Extract the registry's official URL from an IANA root-db page.
+ * Works on both raw HTML (preferred) and extracted plain text.
+ */
+function extractRegistryUrl(htmlOrText: string): string | null {
+  // First try: find the <a> href right after "URL for registration services"
+  // IANA HTML: <b>URL for registration services:</b><br/> <a href="https://...">...</a>
+  const hrefMatch = htmlOrText.match(
+    /URL for registration services[^<]*<[^>]+>\s*<a[^>]+href=["']?(https?:\/\/[^"'\s>]+)["']?/i
+  );
+  if (hrefMatch) {
+    return hrefMatch[1].replace(/\/$/, "").replace(/[)\]>]+$/, "");
+  }
+
+  // Second try: plain-text URL (full http:// form)
+  const urlMatch = htmlOrText.match(
+    /URL for registration services[^\n]*\n?\s*(https?:\/\/[^\s\n<>]+)/i
+  );
+  if (urlMatch) {
+    return urlMatch[1].replace(/\/$/, "").replace(/[)\]>]+$/, "");
+  }
+
+  // Third try: "www." style (no scheme) — add https://
+  const wwwMatch = htmlOrText.match(
+    /URL for registration services[^\n]*\n?\s*(www\.[^\s\n<>]+)/i
+  );
+  if (wwwMatch) {
+    return `https://${wwwMatch[1]}`.replace(/\/$/, "");
+  }
+
+  return null;
 }
 
-/** Common lifecycle path suffixes to try on a registry domain */
+/**
+ * Extract registry URL from raw IANA HTML (more reliable than text).
+ * Falls back to text-based extraction.
+ */
+function extractRegistryUrlFromHtml(html: string): string | null {
+  // IANA page structure: the link after "URL for registration services"
+  const $ = cheerio.load(html);
+  let found: string | null = null;
+
+  $("*").each((_, el) => {
+    const text = $(el).clone().children().remove().end().text();
+    if (/URL for registration services/i.test(text)) {
+      // Look for next sibling or nested <a>
+      const nextA = $(el).next("a").attr("href") ??
+        $(el).parent().find("a").first().attr("href") ?? null;
+      if (nextA?.match(/^https?:\/\//)) {
+        found = nextA.replace(/\/$/, "");
+        return false; // break
+      }
+    }
+  });
+
+  if (found) return found;
+
+  // Also try: find any <a> whose href is near the string in the page
+  const blockMatch = html.match(
+    /URL for registration services[\s\S]{0,200}?href=["']?(https?:\/\/[^"'\s>]+)/i
+  );
+  if (blockMatch) return blockMatch[1].replace(/\/$/, "");
+
+  // Fall back to text parsing
+  return extractRegistryUrl($.text());
+}
+
+/** Common lifecycle path suffixes to probe on a registry domain */
 const LIFECYCLE_PATHS = [
   "/domain-lifecycle", "/domains/lifecycle", "/en/domains/lifecycle",
   "/lifecycle", "/en/lifecycle", "/policies/lifecycle",
   "/domain-names/lifecycle", "/support/lifecycle", "/faq/lifecycle",
   "/about/lifecycle", "/en/domain-lifecycle", "/domains/domain-lifecycle",
   "/en/domains/domain-lifecycle", "/registrar/lifecycle",
+  "/policies", "/en/policies", "/domains/policies", "/domains",
+  "/en/domains", "/en/domain-names", "/domain-names",
+  "/registrar-information", "/registrar-resources",
 ];
 
-/** Try to find a registry lifecycle page from the registry's base URL */
-async function findRegistryLifecyclePage(registryUrl: string): Promise<string | null> {
-  const base = new URL(registryUrl).origin;
-  for (const path of LIFECYCLE_PATHS) {
-    const url = base + path;
+/** Link href keywords that indicate a lifecycle/renewal policy page */
+const LIFECYCLE_LINK_KEYWORDS = [
+  // English
+  "lifecycle", "life-cycle", "grace", "redemption", "renewal", "expir",
+  "policy", "policies", "domain-rules", "domain-policy", "rgp", "purge", "delete",
+  // Chinese
+  "待删", "宽限", "赎回", "续费", "政策", "规则", "生命周期", "到期",
+  // Japanese
+  "ライフサイクル", "猶予", "削除", "更新", "有効期限", "ルール",
+  // Korean
+  "라이프사이클", "갱신", "삭제",
+  // German
+  "lebenszyklus", "lösch", "kündig",
+  // French
+  "cycle", "suppression", "rédem",
+];
+
+function hasLifecycleLinkKeyword(href: string, text: string): boolean {
+  const combined = `${href} ${text}`.toLowerCase();
+  return LIFECYCLE_LINK_KEYWORDS.some(kw => combined.includes(kw.toLowerCase()));
+}
+
+/**
+ * Parse all <a> hrefs from an HTML page that look like lifecycle policy links.
+ * Returns absolute URLs, deduped, capped at 20.
+ */
+function extractLifecycleLinks(html: string, baseUrl: string): string[] {
+  const $ = cheerio.load(html);
+  const base = new URL(baseUrl).origin;
+  const seen = new Set<string>();
+  const links: string[] = [];
+
+  $("a[href]").each((_, el) => {
+    const href = $(el).attr("href") ?? "";
+    const text = $(el).text().trim();
+    if (!hasLifecycleLinkKeyword(href, text)) return;
+
+    let abs: string;
     try {
-      const html = await fetchRawHtml(url);
-      const text = extractText(html, 10_000);
-      if (hasLifecycleInfo(text)) {
-        return url;
-      }
-    } catch { /* try next */ }
-  }
+      abs = new URL(href, baseUrl).href;
+    } catch { return; }
+
+    // Only follow links on the same domain or subdomains
+    if (!abs.startsWith(base)) return;
+    if (seen.has(abs)) return;
+    seen.add(abs);
+    links.push(abs);
+    if (links.length >= 20) return false; // stop iteration
+  });
+
+  return links;
+}
+
+/**
+ * Multi-strategy registry lifecycle page finder.
+ * Strategy 1: Try the registry URL itself (homepage may have lifecycle info)
+ * Strategy 2: Try common path suffixes
+ * Strategy 3: Crawl homepage + linked pages for lifecycle keywords
+ * Returns { url, text } of the best page found, or null.
+ */
+async function findRegistryLifecyclePage(
+  registryUrl: string
+): Promise<{ url: string; text: string } | null> {
+  const base = new URL(registryUrl).origin;
+
+  // ── Strategy 1: Try registry root URL directly ──────────────────────────────
+  try {
+    const html = await fetchRawHtml(registryUrl);
+    const text = extractText(html, 10_000);
+    if (hasLifecycleInfo(text)) {
+      return { url: registryUrl, text };
+    }
+
+    // ── Strategy 2: Try common path suffixes ──────────────────────────────────
+    for (const path of LIFECYCLE_PATHS) {
+      const url = base + path;
+      try {
+        const pHtml = await fetchRawHtml(url);
+        const pText = extractText(pHtml, 10_000);
+        if (hasLifecycleInfo(pText)) {
+          return { url, text: pText };
+        }
+      } catch { /* try next path */ }
+    }
+
+    // ── Strategy 3: Follow lifecycle-looking links from the homepage ──────────
+    const linkedUrls = extractLifecycleLinks(html, registryUrl);
+    for (const linkedUrl of linkedUrls) {
+      try {
+        const lHtml = await fetchRawHtml(linkedUrl);
+        const lText = extractText(lHtml, 10_000);
+        if (hasLifecycleInfo(lText)) {
+          return { url: linkedUrl, text: lText };
+        }
+        // If the linked page itself has MORE lifecycle links, follow one level deeper
+        const deepLinks = extractLifecycleLinks(lHtml, linkedUrl).slice(0, 5);
+        for (const deepUrl of deepLinks) {
+          if (deepUrl === linkedUrl || deepUrl === registryUrl) continue;
+          try {
+            const dHtml = await fetchRawHtml(deepUrl);
+            const dText = extractText(dHtml, 10_000);
+            if (hasLifecycleInfo(dText)) {
+              return { url: deepUrl, text: dText };
+            }
+          } catch { /* skip */ }
+        }
+      } catch { /* try next link */ }
+    }
+  } catch { /* registry unreachable */ }
+
   return null;
 }
 
@@ -163,35 +338,51 @@ async function fetchPageText(url: string): Promise<{ text: string; finalUrl: str
   }
 
   let html = await fetchRawHtml(url);
-  let text = extractText(html, 10_000);
+  const ianaText = extractText(html, 10_000);
+  let text = ianaText;
   let finalUrl = url;
 
-  // If no lifecycle info found AND this looks like an IANA page, try to discover real registry page
-  if (!hasLifecycleInfo(text) && url.includes("iana.org")) {
-    const registryUrl = extractRegistryUrl(text);
+  // ── Smart URL discovery: if IANA page has no lifecycle data, find registry page ──
+  if (!hasLifecycleInfo(ianaText) && url.includes("iana.org")) {
+    // Extract from raw HTML first (gets the <a href="..."> link directly)
+    const registryUrl = extractRegistryUrlFromHtml(html) ?? extractRegistryUrl(ianaText);
     if (registryUrl) {
-      // Check cached registry lifecycle URL
-      const cacheKey2 = REGISTRY_URL_CACHE_KEY(new URL(url).pathname.split("/").pop() ?? "");
-      let lifecycleUrl: string | null = null;
+      const tldKey = new URL(url).pathname.split("/").pop()?.replace(/\.html$/, "") ?? "";
+      const cacheKey2 = REGISTRY_URL_CACHE_KEY(tldKey);
+
+      // Try cached result first
+      let cachedPayload: string | null = null;
       if (isRedisAvailable()) {
-        lifecycleUrl = await getRedisValue(cacheKey2);
+        cachedPayload = await getRedisValue(cacheKey2);
       }
-      if (!lifecycleUrl) {
-        lifecycleUrl = await findRegistryLifecyclePage(registryUrl).catch(() => null);
-        if (lifecycleUrl && isRedisAvailable()) {
-          await setRedisValue(cacheKey2, lifecycleUrl, REGISTRY_URL_TTL_S);
+
+      let found: { url: string; text: string } | null = null;
+      if (cachedPayload) {
+        try {
+          const parsed = JSON.parse(cachedPayload);
+          found = { url: parsed.url, text: parsed.text };
+        } catch {
+          // stale cache with just URL — re-fetch its text
+          try {
+            const fHtml = await fetchRawHtml(cachedPayload);
+            found = { url: cachedPayload, text: extractText(fHtml, 10_000) };
+          } catch { /* ignore */ }
         }
       }
-      if (lifecycleUrl) {
-        try {
-          const lHtml = await fetchRawHtml(lifecycleUrl);
-          const lText = extractText(lHtml, 10_000);
-          if (hasLifecycleInfo(lText)) {
-            // Combine: IANA context + registry lifecycle page
-            text = `[来源: IANA页面]\n${text.slice(0, 2000)}\n\n[来源: 注册局生命周期页面 ${lifecycleUrl}]\n${lText.slice(0, 7000)}`;
-            finalUrl = lifecycleUrl;
-          }
-        } catch { /* fallback to IANA text */ }
+
+      if (!found) {
+        // Full multi-strategy discovery (may take several HTTP requests)
+        found = await findRegistryLifecyclePage(registryUrl).catch(() => null);
+        if (found && isRedisAvailable()) {
+          // Cache the URL + a snippet of text (text too large to cache fully — just URL)
+          await setRedisValue(cacheKey2, found.url, REGISTRY_URL_TTL_S);
+        }
+      }
+
+      if (found && hasLifecycleInfo(found.text)) {
+        // Combine: IANA context (registry name etc.) + registry lifecycle page
+        text = `[IANA 页面 — 注册局信息]\n${ianaText.slice(0, 1500)}\n\n[注册局生命周期政策页 ${found.url}]\n${found.text.slice(0, 7500)}`;
+        finalUrl = found.url;
       }
     }
   }
