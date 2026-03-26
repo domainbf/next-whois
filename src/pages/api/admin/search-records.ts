@@ -84,28 +84,39 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const page = Math.max(1, parseInt((req.query.page as string) ?? "1"));
+    const page   = Math.max(1, parseInt((req.query.page   as string) ?? "1"));
     const filter = (req.query.filter as string) ?? "all";
+    const search = ((req.query.search as string) ?? "").trim().toLowerCase();
     const offset = (page - 1) * PAGE_SIZE;
 
-    // WHERE clause (no table alias – search_history columns are unambiguous in the join)
-    let whereClause = "1=1";
+    // Base filter clause (uses sh alias for columns shared with join)
+    let baseClause = "1=1";
     if (filter === "available") {
-      whereClause = "query_type = 'domain' AND reg_status = 'unregistered'";
+      baseClause = "sh.query_type = 'domain' AND sh.reg_status = 'unregistered'";
     } else if (filter === "expiring") {
-      whereClause = "query_type = 'domain' AND reg_status = 'registered' AND remaining_days IS NOT NULL AND remaining_days >= 0 AND remaining_days <= 90";
+      baseClause = "sh.query_type = 'domain' AND sh.reg_status = 'registered' AND sh.remaining_days IS NOT NULL AND sh.remaining_days >= 0 AND sh.remaining_days <= 90";
     } else if (filter === "high_value") {
-      whereClause = HIGH_VALUE_SQL;
+      baseClause = HIGH_VALUE_SQL;
     } else if (filter === "anonymous") {
-      whereClause = "sh.user_id IS NULL";
+      baseClause = "sh.user_id IS NULL";
     } else if (filter === "logged") {
-      whereClause = "sh.user_id IS NOT NULL";
+      baseClause = "sh.user_id IS NOT NULL";
     }
 
+    // Search clause: match query domain or user email
+    const searchClause = search
+      ? `AND (LOWER(sh.query) LIKE $3 OR LOWER(u.email) LIKE $3 OR LOWER(u.name) LIKE $3)`
+      : "";
+    const searchParam = search ? [`%${search}%`] : [];
+
+    const countSql = `
+      SELECT COUNT(*) AS count
+      FROM search_history sh
+      LEFT JOIN users u ON sh.user_id = u.id
+      WHERE ${baseClause} ${searchClause}`;
+
     const [totalRow, todayRow, statsCounts] = await Promise.all([
-      one<{ count: string }>(
-        `SELECT COUNT(*) AS count FROM search_history sh WHERE ${whereClause}`
-      ),
+      one<{ count: string }>(countSql, searchParam),
       one<{ count: string }>(
         `SELECT COUNT(*) AS count FROM search_history WHERE created_at >= NOW() - INTERVAL '1 day'`
       ),
@@ -117,10 +128,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         one<{ count: string }>("SELECT COUNT(*) AS count FROM search_history WHERE query_type = 'domain' AND reg_status = 'registered'"),
         one<{ count: string }>("SELECT COUNT(*) AS count FROM search_history WHERE user_id IS NULL"),
         one<{ count: string }>("SELECT COUNT(*) AS count FROM search_history WHERE user_id IS NOT NULL"),
+        one<{ count: string }>("SELECT COUNT(DISTINCT user_id) AS count FROM search_history WHERE user_id IS NOT NULL"),
+        one<{ count: string }>("SELECT COUNT(DISTINCT LOWER(query)) AS count FROM search_history"),
       ]),
     ]);
 
-    const [allCount, availableCount, expiringCount, highValueCount, registeredCount, anonCount, loggedCount] = statsCounts;
+    const [allCount, availableCount, expiringCount, highValueCount, registeredCount, anonCount, loggedCount, uniqueUsersCount, uniqueQueriesCount] = statsCounts;
 
     const rows = await many(
       `SELECT sh.id, sh.query, sh.query_type, sh.reg_status, sh.expiration_date,
@@ -128,20 +141,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               u.email AS user_email, u.name AS user_name
        FROM search_history sh
        LEFT JOIN users u ON sh.user_id = u.id
-       WHERE ${whereClause}
+       WHERE ${baseClause} ${searchClause}
        ORDER BY sh.created_at DESC
        LIMIT $1 OFFSET $2`,
-      [PAGE_SIZE, offset],
+      [PAGE_SIZE, offset, ...searchParam],
     );
 
     // Daily stats (30 days) with anon breakdown
-    const dailyStats = await many<{ day: string; count: string; available: string; registered: string; anon: string }>(
+    const dailyStats = await many<{ day: string; count: string; available: string; registered: string; anon: string; logged: string }>(
       `SELECT
          DATE(created_at) AS day,
          COUNT(*) AS count,
          COUNT(*) FILTER (WHERE reg_status = 'unregistered') AS available,
          COUNT(*) FILTER (WHERE reg_status = 'registered') AS registered,
-         COUNT(*) FILTER (WHERE user_id IS NULL) AS anon
+         COUNT(*) FILTER (WHERE user_id IS NULL) AS anon,
+         COUNT(*) FILTER (WHERE user_id IS NOT NULL) AS logged
        FROM search_history
        WHERE created_at >= NOW() - INTERVAL '30 days'
        GROUP BY day ORDER BY day ASC`
@@ -153,11 +167,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
        GROUP BY query_type ORDER BY count DESC`
     );
 
-    // Top queried domains (30 days)
+    // Top queried domains (30 days, by total search count)
     const topQueries = await many<{ query: string; query_type: string; count: string }>(
       `SELECT query, query_type, COUNT(*) AS count FROM search_history
        WHERE created_at >= NOW() - INTERVAL '30 days'
        GROUP BY query, query_type ORDER BY count DESC LIMIT 20`
+    );
+
+    // Most active users (30 days)
+    const topUsers = await many<{ user_email: string; user_name: string | null; count: string }>(
+      `SELECT u.email AS user_email, u.name AS user_name, COUNT(*) AS count
+       FROM search_history sh
+       JOIN users u ON sh.user_id = u.id
+       WHERE sh.created_at >= NOW() - INTERVAL '30 days'
+       GROUP BY u.email, u.name ORDER BY count DESC LIMIT 10`
     );
 
     const records = rows.map(r => ({
@@ -182,24 +205,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         totalPages: Math.ceil(parseInt(totalRow?.count ?? "0") / PAGE_SIZE),
       },
       stats: {
-        all: parseInt(allCount?.count ?? "0"),
-        today: parseInt(todayRow?.count ?? "0"),
-        available: parseInt(availableCount?.count ?? "0"),
-        expiring: parseInt(expiringCount?.count ?? "0"),
-        highValue: parseInt(highValueCount?.count ?? "0"),
-        registered: parseInt(registeredCount?.count ?? "0"),
-        anonymous: parseInt(anonCount?.count ?? "0"),
-        logged: parseInt(loggedCount?.count ?? "0"),
+        all:           parseInt(allCount?.count          ?? "0"),
+        today:         parseInt(todayRow?.count          ?? "0"),
+        available:     parseInt(availableCount?.count    ?? "0"),
+        expiring:      parseInt(expiringCount?.count     ?? "0"),
+        highValue:     parseInt(highValueCount?.count    ?? "0"),
+        registered:    parseInt(registeredCount?.count   ?? "0"),
+        anonymous:     parseInt(anonCount?.count         ?? "0"),
+        logged:        parseInt(loggedCount?.count       ?? "0"),
+        uniqueUsers:   parseInt(uniqueUsersCount?.count  ?? "0"),
+        uniqueQueries: parseInt(uniqueQueriesCount?.count ?? "0"),
       },
       dailyStats: dailyStats.map(r => ({
-        day: r.day,
-        count: parseInt(r.count),
-        available: parseInt(r.available),
+        day:        r.day,
+        count:      parseInt(r.count),
+        available:  parseInt(r.available),
         registered: parseInt(r.registered),
-        anon: parseInt(r.anon),
+        anon:       parseInt(r.anon),
+        logged:     parseInt((r as any).logged ?? "0"),
       })),
-      topByType: topByType.map(r => ({ type: r.query_type, count: parseInt(r.count) })),
+      topByType:  topByType.map(r  => ({ type: r.query_type, count: parseInt(r.count) })),
       topQueries: topQueries.map(r => ({ query: r.query, type: r.query_type, count: parseInt(r.count) })),
+      topUsers:   topUsers.map(r   => ({ email: r.user_email, name: r.user_name ?? null, count: parseInt(r.count) })),
     });
   } catch (err: any) {
     return res.status(500).json({ error: err.message });

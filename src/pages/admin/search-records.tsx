@@ -8,7 +8,7 @@ import {
   RiGlobalLine, RiCheckboxCircleLine, RiTimeLine, RiBarChartLine,
   RiCalendarLine, RiArrowLeftLine, RiArrowRightLine, RiUserLine,
   RiFireLine, RiAlertLine, RiFlashlightLine, RiExternalLinkLine,
-  RiGhostLine, RiDeleteBinLine,
+  RiGhostLine, RiDeleteBinLine, RiCloseLine, RiGroupLine, RiDatabase2Line,
 } from "@remixicon/react";
 
 type SearchRecord = {
@@ -30,10 +30,12 @@ type PageData = {
   stats: {
     all: number; today: number; available: number; expiring: number;
     highValue: number; registered: number; anonymous: number; logged: number;
+    uniqueUsers: number; uniqueQueries: number;
   };
-  dailyStats: { day: string; count: number; available: number; registered: number; anon: number }[];
+  dailyStats: { day: string; count: number; available: number; registered: number; anon: number; logged: number }[];
   topByType: { type: string; count: number }[];
   topQueries: { query: string; type: string; count: number }[];
+  topUsers: { email: string; name: string | null; count: number }[];
 };
 
 type FilterType = "all" | "available" | "expiring" | "high_value" | "anonymous" | "logged";
@@ -100,13 +102,17 @@ export default function AdminSearchRecordsPage() {
   const [loading, setLoading] = React.useState(true);
   const [filter, setFilter] = React.useState<FilterType>("all");
   const [page, setPage] = React.useState(1);
+  const [search, setSearch] = React.useState("");
+  const [searchInput, setSearchInput] = React.useState("");
   const [deleting, setDeleting] = React.useState<string | null>(null);
   const [deletingRow, setDeletingRow] = React.useState<string | null>(null);
   const [showStats, setShowStats] = React.useState(true);
 
-  function load(f = filter, p = page) {
+  function load(f = filter, p = page, s = search) {
     setLoading(true);
-    fetch(`/api/admin/search-records?filter=${f}&page=${p}`)
+    const params = new URLSearchParams({ filter: f, page: String(p) });
+    if (s) params.set("search", s);
+    fetch(`/api/admin/search-records?${params}`)
       .then(r => r.json())
       .then(d => {
         if (d.error) { toast.error(d.error); return; }
@@ -121,12 +127,27 @@ export default function AdminSearchRecordsPage() {
   function changeFilter(f: FilterType) {
     setFilter(f);
     setPage(1);
-    load(f, 1);
+    load(f, 1, search);
   }
 
   function changePage(p: number) {
     setPage(p);
-    load(filter, p);
+    load(filter, p, search);
+  }
+
+  function submitSearch(e: React.FormEvent) {
+    e.preventDefault();
+    const s = searchInput.trim();
+    setSearch(s);
+    setPage(1);
+    load(filter, 1, s);
+  }
+
+  function clearSearch() {
+    setSearchInput("");
+    setSearch("");
+    setPage(1);
+    load(filter, 1, "");
   }
 
   async function deletePeriod(period: string, label: string) {
@@ -190,10 +211,10 @@ export default function AdminSearchRecordsPage() {
           <div>
             <h2 className="text-lg font-bold">查询记录管理</h2>
             <p className="text-xs text-muted-foreground mt-0.5">
-              所有用户搜索记录统计与分类管理
-              {data && data.stats.anonymous > 0 && (
+              所有用户搜索记录统计与分类管理（用户端仅见本地记录）
+              {data && (
                 <span className="ml-2 text-muted-foreground/60">
-                  · 匿名 {data.stats.anonymous} / 登录 {data.stats.logged}
+                  · 独立用户 {data.stats.uniqueUsers} / 独立查询 {data.stats.uniqueQueries}
                 </span>
               )}
             </p>
@@ -212,16 +233,18 @@ export default function AdminSearchRecordsPage() {
 
         {/* Stats summary cards */}
         {data && (
-          <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
+          <div className="grid grid-cols-5 sm:grid-cols-10 gap-2">
             {[
-              { label: "总记录", value: data.stats.all, color: "text-foreground" },
-              { label: "今日新增", value: data.stats.today, color: "text-blue-500" },
-              { label: "可用域名", value: data.stats.available, color: "text-emerald-500" },
-              { label: "即将到期", value: data.stats.expiring, color: "text-orange-500" },
-              { label: "高价值", value: data.stats.highValue, color: "text-violet-500" },
-              { label: "已注册", value: data.stats.registered, color: "text-muted-foreground" },
-              { label: "匿名查询", value: data.stats.anonymous, color: "text-muted-foreground/70" },
-              { label: "已登录", value: data.stats.logged, color: "text-primary" },
+              { label: "总记录",   value: data.stats.all,           color: "text-foreground" },
+              { label: "今日新增", value: data.stats.today,         color: "text-blue-500" },
+              { label: "独立用户", value: data.stats.uniqueUsers,   color: "text-primary" },
+              { label: "独立域名", value: data.stats.uniqueQueries, color: "text-cyan-500" },
+              { label: "可用域名", value: data.stats.available,     color: "text-emerald-500" },
+              { label: "即将到期", value: data.stats.expiring,      color: "text-orange-500" },
+              { label: "高价值",   value: data.stats.highValue,     color: "text-violet-500" },
+              { label: "已注册",   value: data.stats.registered,    color: "text-muted-foreground" },
+              { label: "匿名查询", value: data.stats.anonymous,     color: "text-muted-foreground/70" },
+              { label: "已登录",   value: data.stats.logged,        color: "text-primary" },
             ].map(({ label, value, color }) => (
               <div key={label} className="glass-panel border border-border rounded-xl p-2.5 text-center">
                 <p className={cn("text-lg font-bold tabular-nums leading-tight", color)}>{value.toLocaleString()}</p>
@@ -229,6 +252,40 @@ export default function AdminSearchRecordsPage() {
               </div>
             ))}
           </div>
+        )}
+
+        {/* Search bar */}
+        <form onSubmit={submitSearch} className="flex gap-2">
+          <div className="relative flex-1">
+            <RiSearchLine className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+            <input
+              type="text"
+              value={searchInput}
+              onChange={e => setSearchInput(e.target.value)}
+              placeholder="搜索域名 / 用户邮箱 / 用户名…"
+              className="w-full pl-9 pr-8 h-9 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-1 focus:ring-primary/40"
+            />
+            {searchInput && (
+              <button type="button" onClick={clearSearch} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                <RiCloseLine className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+          <Button type="submit" size="sm" className="rounded-xl h-9 px-4 gap-1.5" disabled={loading}>
+            <RiSearchLine className="w-3.5 h-3.5" />
+            搜索
+          </Button>
+          {search && (
+            <Button type="button" variant="outline" size="sm" className="rounded-xl h-9 gap-1.5" onClick={clearSearch}>
+              <RiCloseLine className="w-3.5 h-3.5" />
+              清除
+            </Button>
+          )}
+        </form>
+        {search && (
+          <p className="text-xs text-muted-foreground -mt-2">
+            搜索"{search}"，共 {data?.pagination.total ?? 0} 条结果
+          </p>
         )}
 
         {/* Statistics panel */}
@@ -263,11 +320,13 @@ export default function AdminSearchRecordsPage() {
                 </div>
               )}
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {/* Type breakdown */}
                 {data.topByType.length > 0 && (
                   <div>
-                    <p className="text-xs text-muted-foreground mb-2">查询类型分布</p>
+                    <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
+                      <RiDatabase2Line className="w-3 h-3" />查询类型分布
+                    </p>
                     <div className="space-y-1.5">
                       {data.topByType.map(t => {
                         const total = data.topByType.reduce((s, x) => s + x.count, 0);
@@ -278,55 +337,81 @@ export default function AdminSearchRecordsPage() {
                             <div className="flex-1 bg-muted rounded-full h-1.5">
                               <div className="bg-primary h-1.5 rounded-full" style={{ width: `${pct}%` }} />
                             </div>
-                            <span className="text-[10px] text-muted-foreground tabular-nums w-8 text-right">{pct}%</span>
+                            <span className="text-[10px] text-muted-foreground tabular-nums w-14 text-right">{t.count.toLocaleString()} ({pct}%)</span>
                           </div>
                         );
                       })}
+                    </div>
+
+                    {/* Anon vs logged */}
+                    <div className="mt-3 pt-3 border-t border-border/50">
+                      <p className="text-xs text-muted-foreground mb-2">用户类型分布</p>
+                      <div className="space-y-1.5">
+                        {[
+                          { label: "已登录", value: data.stats.logged,   color: "bg-primary" },
+                          { label: "匿名",   value: data.stats.anonymous, color: "bg-muted-foreground/40" },
+                        ].map(item => {
+                          const total = data.stats.all || 1;
+                          const pct = Math.round((item.value / total) * 100);
+                          return (
+                            <div key={item.label} className="flex items-center gap-2">
+                              <span className="text-[10px] w-10 text-muted-foreground">{item.label}</span>
+                              <div className="flex-1 bg-muted rounded-full h-1.5">
+                                <div className={cn("h-1.5 rounded-full", item.color)} style={{ width: `${pct}%` }} />
+                              </div>
+                              <span className="text-[10px] text-muted-foreground tabular-nums w-14 text-right">{item.value.toLocaleString()} ({pct}%)</span>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   </div>
                 )}
 
-                {/* Anon vs logged breakdown */}
-                {data && (
+                {/* Top queries */}
+                {data.topQueries.length > 0 && (
                   <div>
-                    <p className="text-xs text-muted-foreground mb-2">用户类型分布</p>
-                    <div className="space-y-1.5">
-                      {[
-                        { label: "已登录用户", value: data.stats.logged, color: "bg-primary" },
-                        { label: "匿名查询", value: data.stats.anonymous, color: "bg-muted-foreground/40" },
-                      ].map(item => {
-                        const total = data.stats.all || 1;
-                        const pct = Math.round((item.value / total) * 100);
-                        return (
-                          <div key={item.label} className="flex items-center gap-2">
-                            <span className="text-[10px] w-16 text-muted-foreground truncate">{item.label}</span>
-                            <div className="flex-1 bg-muted rounded-full h-1.5">
-                              <div className={cn("h-1.5 rounded-full", item.color)} style={{ width: `${pct}%` }} />
-                            </div>
-                            <span className="text-[10px] text-muted-foreground tabular-nums w-8 text-right">{pct}%</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    {/* Top queries */}
-                    {data.topQueries.length > 0 && (
-                      <div className="mt-3">
-                        <p className="text-xs text-muted-foreground mb-2">热门查询（30天 Top 10）</p>
-                        <div className="space-y-1">
-                          {data.topQueries.slice(0, 10).map((q, i) => (
-                            <div key={`${q.query}-${i}`} className="flex items-center gap-2">
-                              <span className={cn(
-                                "w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0",
-                                i === 0 ? "bg-amber-400 text-white" : i === 1 ? "bg-zinc-300 dark:bg-zinc-600 text-zinc-700 dark:text-zinc-200" : i === 2 ? "bg-orange-400 text-white" : "bg-muted text-muted-foreground"
-                              )}>{i + 1}</span>
-                              <span className="flex-1 text-xs font-mono truncate">{q.query}</span>
-                              <span className="text-[10px] text-muted-foreground tabular-nums shrink-0">{q.count}次</span>
-                            </div>
-                          ))}
+                    <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
+                      <RiFireLine className="w-3 h-3" />热门查询（30天 Top 10）
+                    </p>
+                    <div className="space-y-1">
+                      {data.topQueries.slice(0, 10).map((q, i) => (
+                        <div key={`${q.query}-${i}`} className="flex items-center gap-2">
+                          <span className={cn(
+                            "w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0",
+                            i === 0 ? "bg-amber-400 text-white" : i === 1 ? "bg-zinc-300 dark:bg-zinc-600 text-zinc-700 dark:text-zinc-200" : i === 2 ? "bg-orange-400 text-white" : "bg-muted text-muted-foreground"
+                          )}>{i + 1}</span>
+                          <a
+                            href={`/${q.query}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex-1 text-xs font-mono truncate hover:text-primary hover:underline"
+                          >{q.query}</a>
+                          <span className="text-[10px] text-muted-foreground tabular-nums shrink-0">{q.count}次</span>
                         </div>
-                      </div>
-                    )}
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Top active users */}
+                {data.topUsers && data.topUsers.length > 0 && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
+                      <RiGroupLine className="w-3 h-3" />活跃用户（30天 Top 10）
+                    </p>
+                    <div className="space-y-1">
+                      {data.topUsers.slice(0, 10).map((u, i) => (
+                        <div key={u.email} className="flex items-center gap-2">
+                          <span className={cn(
+                            "w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0",
+                            i === 0 ? "bg-amber-400 text-white" : i === 1 ? "bg-zinc-300 dark:bg-zinc-600 text-zinc-700 dark:text-zinc-200" : i === 2 ? "bg-orange-400 text-white" : "bg-muted text-muted-foreground"
+                          )}>{i + 1}</span>
+                          <span className="flex-1 text-xs truncate text-muted-foreground">{u.name || u.email}</span>
+                          <span className="text-[10px] text-muted-foreground tabular-nums shrink-0">{u.count}次</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>

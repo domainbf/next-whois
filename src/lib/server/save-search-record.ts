@@ -136,6 +136,7 @@ export async function saveSearchRecord(
     }
 
     if (userId) {
+      // Logged-in users: upsert (keep latest per user+domain, so their dashboard is clean)
       await run(
         `DELETE FROM search_history WHERE user_id = $1 AND LOWER(query) = $2`,
         [userId, cleanQuery],
@@ -147,10 +148,9 @@ export async function saveSearchRecord(
         [randomBytes(8).toString("hex"), userId, cleanQuery, queryType, regStatus, expDate, remDays, valueTier],
       );
     } else {
-      await run(
-        `DELETE FROM search_history WHERE user_id IS NULL AND LOWER(query) = $1`,
-        [cleanQuery],
-      );
+      // Anonymous users: always insert a fresh record — no deduplication.
+      // This gives the admin a complete log of every individual search event,
+      // since anonymous users have no history dashboard to show duplicates on.
       await run(
         `INSERT INTO search_history
            (id, user_id, query, query_type, reg_status, expiration_date, remaining_days, value_tier)
