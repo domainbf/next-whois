@@ -1,5 +1,5 @@
 import { isDbReady, one, run } from "@/lib/db-query";
-import { isRedisAvailable, getRedisValue, setRedisValue } from "@/lib/server/redis";
+import { isRedisAvailable, incrRedisValue } from "@/lib/server/redis";
 
 const DEFAULT_WINDOW_MS = 60_000;
 
@@ -14,6 +14,7 @@ setInterval(() => {
 }, 120_000);
 
 // ─── Redis backend (preferred for Vercel — survives across function instances) ─
+// Uses atomic INCR to avoid GET→SET race conditions under concurrent requests.
 
 async function checkRedisRateLimit(
   ip: string,
@@ -23,16 +24,11 @@ async function checkRedisRateLimit(
   if (!isRedisAvailable()) return null;
   const windowKey = Math.floor(Date.now() / windowMs);
   const key = `rl:${ip}:${windowKey}`;
-  try {
-    const raw = await getRedisValue(key);
-    const count = raw ? parseInt(raw, 10) : 0;
-    if (count >= maxRequests) return { ok: false, remaining: 0 };
-    const newCount = count + 1;
-    await setRedisValue(key, String(newCount), Math.ceil(windowMs / 1000));
-    return { ok: true, remaining: Math.max(0, maxRequests - newCount) };
-  } catch {
-    return null;
-  }
+  const ttlSeconds = Math.ceil(windowMs / 1000);
+  const count = await incrRedisValue(key, ttlSeconds);
+  if (count === null) return null;
+  if (count > maxRequests) return { ok: false, remaining: 0 };
+  return { ok: true, remaining: Math.max(0, maxRequests - count) };
 }
 
 // ─── Supabase DB backend (fallback when Redis unavailable) ────────────────────

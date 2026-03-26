@@ -18,7 +18,7 @@ const SERVER_ONLY_KEYS = new Set(["captcha_secret_key", "smtp_pass"]);
 let _rowsCache: { rows: { key: string; value: string }[]; ts: number } | null = null;
 const ROWS_CACHE_TTL = 30_000;
 const REDIS_SETTINGS_KEY = "site_settings:rows:v1";
-const REDIS_SETTINGS_TTL = 60; // 60 seconds
+const REDIS_SETTINGS_TTL = 300; // 5 minutes — settings rarely change
 
 async function getCachedRows(): Promise<{ key: string; value: string }[]> {
   const now = Date.now();

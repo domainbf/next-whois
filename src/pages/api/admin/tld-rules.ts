@@ -2,10 +2,10 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { requireAdmin } from "@/lib/admin";
 import { one, run, many } from "@/lib/db-query";
 import {
-  redis,
   isRedisAvailable,
   getRedisValue,
   setRedisValue,
+  deleteRedisValue,
 } from "@/lib/server/redis";
 import * as cheerio from "cheerio";
 
@@ -17,8 +17,7 @@ const SCRAPE_CACHE_KEY = (url: string) =>
   `tld_rules_scrape:${Buffer.from(url).toString("base64").slice(0, 60)}`;
 
 // TTLs
-const CACHE_TTL_S = 60 * 60 * 24 * 7; // 7 days for scraped+AI result
-const RATE_LIMIT_TTL_S = 60 * 60; // 1 request per TLD per hour
+const RATE_LIMIT_TTL_S = 60 * 60;     // 1 request per TLD per hour
 const SCRAPE_CACHE_TTL_S = 60 * 60 * 6; // raw page text cached 6 h
 
 // ─── Rate limiting ────────────────────────────────────────────────────────────
@@ -177,8 +176,10 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  // GET — list all saved rules
+  // GET — list all saved rules (admin only)
   if (req.method === "GET") {
+    const session = await requireAdmin(req, res);
+    if (!session) return;
     const rows = await many(
       `SELECT tld, grace_period_days, redemption_period_days, pending_delete_days,
               total_release_days, source_url, confidence,
@@ -268,15 +269,6 @@ export default async function handler(
         ]
       );
 
-      // 4. Cache final result in Redis (7 days)
-      if (isRedisAvailable()) {
-        await setRedisValue(
-          `tld_rules:${cleanTld}`,
-          JSON.stringify(extracted),
-          CACHE_TTL_S
-        );
-      }
-
       return res.json({
         ok: true,
         tld: cleanTld,
@@ -288,10 +280,8 @@ export default async function handler(
         source_url: cleanUrl,
       });
     } catch (err: any) {
-      // Release rate limit token on error so retries are possible
-      if (isRedisAvailable() && redis) {
-        redis.del(RATE_LIMIT_KEY(cleanTld)).catch(() => {});
-      }
+      // Release the rate-limit token on error so retries are possible
+      deleteRedisValue(RATE_LIMIT_KEY(cleanTld)).catch(() => {});
       return res.status(500).json({ error: err.message ?? "Unknown error" });
     }
   }
@@ -305,9 +295,10 @@ export default async function handler(
     if (!tld) return res.status(400).json({ error: "tld is required" });
     const cleanTld = tld.toLowerCase().replace(/^\./, "");
     await run("DELETE FROM tld_rules WHERE tld=$1", [cleanTld]);
-    if (isRedisAvailable() && redis) {
-      redis.del(`tld_rules:${cleanTld}`).catch(() => {});
-    }
+    // Also clear the raw-page scrape cache so a fresh re-scrape fetches live data
+    deleteRedisValue(SCRAPE_CACHE_KEY(
+      `https://www.iana.org/domains/root/db/${cleanTld}.html`
+    )).catch(() => {});
     return res.json({ ok: true });
   }
 

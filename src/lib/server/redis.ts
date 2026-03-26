@@ -110,6 +110,26 @@ export async function deleteRedisValue(key: string): Promise<boolean> {
   }
 }
 
+/**
+ * Atomically increments a counter key and sets its TTL on first increment.
+ * Returns the new count, or null if Redis is unavailable.
+ * Safe from race conditions: uses Redis INCR (single atomic operation).
+ */
+export async function incrRedisValue(key: string, ttlSeconds: number): Promise<number | null> {
+  if (!redis || !_available) return null;
+  try {
+    const count = await redis.incr(key);
+    if (count === 1) {
+      // Only set expire on first increment to avoid resetting the window
+      await redis.expire(key, ttlSeconds);
+    }
+    return count;
+  } catch (err) {
+    console.error(`[Redis] INCR error for ${key}:`, (err as Error).message);
+    return null;
+  }
+}
+
 export async function getRemainingTtl(key: string): Promise<number | null> {
   if (!redis || !_available) return null;
   try {
