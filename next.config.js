@@ -16,7 +16,6 @@ const nextConfig = {
   poweredByHeader: false,
   compress: true,
   optimizeFonts: true,
-  allowedDevOrigins: ['*.replit.dev', '*.kirk.replit.dev', '*.repl.co'],
   i18n: {
     locales: ['en', 'zh', 'zh-tw', 'de', 'ru', 'ja', 'fr', 'ko'],
     defaultLocale: 'en',
