@@ -191,7 +191,7 @@ function DaysRemainingBar({ days }: { days: number }) {
             : "text-emerald-700 dark:text-emerald-400"
         )}>
           <RiTimerLine className="w-3 h-3" />
-          {fmtDaysRemaining(days, t)}
+          {fmtDaysRemaining(days, t as (k: string) => string)}
         </span>
         <span className={cn(
           "text-[10px] font-bold tabular-nums",
@@ -928,7 +928,7 @@ export default function RemindPage() {
         <div className="space-y-3">
           <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{t("remind.how_to_use")}</p>
           <div className="grid gap-3">
-            {getSteps(t).map((step, i) => (
+            {getSteps(t as (k: string) => string).map((step, i) => (
               <div key={i} className="glass-panel border border-border rounded-2xl p-4 flex items-start gap-4">
                 <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center shrink-0", step.color)}>
                   <step.icon className="w-4.5 h-4.5" />

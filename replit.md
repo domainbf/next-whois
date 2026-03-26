@@ -45,6 +45,19 @@ A fast, modern WHOIS and RDAP lookup tool supporting domains, IPv4/IPv6, ASN, an
 
 ## Changelog
 
+### i18n Completion Pass (2026-03-26)
+
+**Scope:** Full i18n audit and fix across all pages. All hardcoded Chinese UI text has been converted to use the translation system.
+
+**Changes:**
+- `admin-layout.tsx` fully converted to `useTranslation()` — "No Access" screen, nav items, tab labels all i18n'd; 39 new `admin.*` keys added to all 8 locale files
+- `stamp.tsx` — `CARD_THEME_OPTIONS` gained `enLabel` field; 5 new `stamp.*` keys added; all remaining hardcoded Chinese JSX strings replaced with `s()` helpers
+- `dashboard.tsx` — TypeScript errors fixed (`AVATAR_COLORS` missing `label`, `days ?? 0` fallback for number interpolation)
+- `remind/index.tsx` — `t` callback cast fixed for TypeScript
+- `common.*` locale section added: `common.retry` and `common.cancel` in all 8 locale files
+- Intentionally retained: `zhLabel`/`enLabel` data fields, `isChinese ? "zh" : "en"` inline bilingual patterns in tlds.tsx/links.tsx/sponsor.tsx/tools.tsx (these already handle both languages correctly)
+- TypeScript: clean compile (`tsc --noEmit --skipLibCheck` exits 0)
+
 ### v3.22.2 — RDAP Coverage Expansion: 168 ccTLDs + Conflict Fixes + Per-TLD Timeouts (2026-03-24)
 
 **Scope:** Largest single RDAP coverage expansion yet. Fixed 15 blocking conflicts in `STATIC_NO_RDAP`, added 40+ new ccTLD RDAP servers confirmed by live probing, introduced per-TLD timeout map for slow registries, and set up automated monthly bootstrap refresh via GitHub Actions.

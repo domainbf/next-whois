@@ -4,6 +4,7 @@ import { useRouter } from "next/router";
 import { useSession } from "next-auth/react";
 import { cn } from "@/lib/utils";
 import { ADMIN_EMAIL } from "@/lib/admin-shared";
+import { useTranslation } from "@/lib/i18n";
 import {
   RiDashboardLine, RiDashboardFill,
   RiSettings4Line, RiSettings4Fill,
@@ -26,60 +27,60 @@ import {
 
 type NavItem = {
   href: string;
-  label: string;
+  labelKey: string;
   icon: React.ElementType;
   activeIcon: React.ElementType;
   exact?: boolean;
 };
 
-const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
+const NAV_GROUPS: { titleKey: string; items: NavItem[] }[] = [
   {
-    title: "核心",
+    titleKey: "admin.nav_core",
     items: [
-      { href: "/admin",       label: "概览", icon: RiDashboardLine,   activeIcon: RiDashboardFill,   exact: true },
-      { href: "/admin/users", label: "用户", icon: RiUserLine,        activeIcon: RiUserFill },
-      { href: "/admin/stamps",       label: "品牌", icon: RiShieldCheckLine,  activeIcon: RiShieldCheckFill },
-      { href: "/admin/stamp-styles", label: "样式", icon: RiLayoutGridLine,    activeIcon: RiLayoutGridLine },
+      { href: "/admin",       labelKey: "admin.nav_overview",     icon: RiDashboardLine,   activeIcon: RiDashboardFill,   exact: true },
+      { href: "/admin/users", labelKey: "admin.nav_users",        icon: RiUserLine,        activeIcon: RiUserFill },
+      { href: "/admin/stamps",       labelKey: "admin.nav_stamps",      icon: RiShieldCheckLine,  activeIcon: RiShieldCheckFill },
+      { href: "/admin/stamp-styles", labelKey: "admin.nav_stamp_styles",icon: RiLayoutGridLine,    activeIcon: RiLayoutGridLine },
     ],
   },
   {
-    title: "内容",
+    titleKey: "admin.nav_content",
     items: [
-      { href: "/admin/reminders",      label: "提醒", icon: RiBellLine,      activeIcon: RiBellFill },
-      { href: "/admin/notify",         label: "通知", icon: RiMailSendLine,  activeIcon: RiMailSendLine },
-      { href: "/admin/search-records", label: "查询", icon: RiSearchLine,    activeIcon: RiSearchFill },
-      { href: "/admin/feedback",       label: "反馈", icon: RiFeedbackLine,  activeIcon: RiFeedbackFill },
-      { href: "/admin/changelog",      label: "日志", icon: RiHistoryLine,   activeIcon: RiHistoryLine },
-      { href: "/admin/sponsors",       label: "赞助", icon: RiHeart3Line,    activeIcon: RiHeart3Fill },
+      { href: "/admin/reminders",      labelKey: "admin.nav_reminders",      icon: RiBellLine,      activeIcon: RiBellFill },
+      { href: "/admin/notify",         labelKey: "admin.nav_notify",         icon: RiMailSendLine,  activeIcon: RiMailSendLine },
+      { href: "/admin/search-records", labelKey: "admin.nav_search_records", icon: RiSearchLine,    activeIcon: RiSearchFill },
+      { href: "/admin/feedback",       labelKey: "admin.nav_feedback",       icon: RiFeedbackLine,  activeIcon: RiFeedbackFill },
+      { href: "/admin/changelog",      labelKey: "admin.nav_changelog",      icon: RiHistoryLine,   activeIcon: RiHistoryLine },
+      { href: "/admin/sponsors",       labelKey: "admin.nav_sponsors",       icon: RiHeart3Line,    activeIcon: RiHeart3Fill },
     ],
   },
   {
-    title: "支付",
+    titleKey: "admin.nav_payment",
     items: [
-      { href: "/admin/payment/plans",  label: "套餐",   icon: RiPriceTag3Line, activeIcon: RiPriceTag3Line },
-      { href: "/admin/payment/orders", label: "订单",   icon: RiBankCardLine,  activeIcon: RiBankCardFill },
+      { href: "/admin/payment/plans",  labelKey: "admin.nav_plans",  icon: RiPriceTag3Line, activeIcon: RiPriceTag3Line },
+      { href: "/admin/payment/orders", labelKey: "admin.nav_orders", icon: RiBankCardLine,  activeIcon: RiBankCardFill },
     ],
   },
   {
-    title: "配置",
+    titleKey: "admin.nav_config",
     items: [
-      { href: "/admin/tld-fallback",  label: "兜底",   icon: RiRadarLine,    activeIcon: RiRadarLine },
-      { href: "/admin/invite-codes",    label: "邀请码", icon: RiKeyLine,    activeIcon: RiKeyFill },
-      { href: "/admin/activation-codes", label: "激活码", icon: RiGiftLine,  activeIcon: RiGiftLine },
-      { href: "/admin/access-keys",   label: "密钥",   icon: RiShieldUserLine, activeIcon: RiShieldUserLine },
-      { href: "/admin/links",         label: "链接",   icon: RiLinksLine,    activeIcon: RiLinksLine },
-      { href: "/admin/tld-lifecycle", label: "TLD规则",icon: RiTimeLine,     activeIcon: RiTimeLine },
-      { href: "/admin/tld-rules",     label: "AI抓取", icon: RiRobot2Line,   activeIcon: RiRobot2Line },
-      { href: "/admin/tld-lifecycle-feedback", label: "TLD纠错", icon: RiFlagLine, activeIcon: RiFlagLine },
-      { href: "/admin/og-styles",     label: "OG卡片", icon: RiImageLine,    activeIcon: RiImageLine },
+      { href: "/admin/tld-fallback",  labelKey: "admin.nav_tld_fallback",          icon: RiRadarLine,    activeIcon: RiRadarLine },
+      { href: "/admin/invite-codes",    labelKey: "admin.nav_invite_codes",         icon: RiKeyLine,    activeIcon: RiKeyFill },
+      { href: "/admin/activation-codes", labelKey: "admin.nav_activation_codes",   icon: RiGiftLine,  activeIcon: RiGiftLine },
+      { href: "/admin/access-keys",   labelKey: "admin.nav_access_keys",            icon: RiShieldUserLine, activeIcon: RiShieldUserLine },
+      { href: "/admin/links",         labelKey: "admin.nav_links",                  icon: RiLinksLine,    activeIcon: RiLinksLine },
+      { href: "/admin/tld-lifecycle", labelKey: "admin.nav_tld_lifecycle",          icon: RiTimeLine,     activeIcon: RiTimeLine },
+      { href: "/admin/tld-rules",     labelKey: "admin.nav_tld_rules",              icon: RiRobot2Line,   activeIcon: RiRobot2Line },
+      { href: "/admin/tld-lifecycle-feedback", labelKey: "admin.nav_tld_lifecycle_feedback", icon: RiFlagLine, activeIcon: RiFlagLine },
+      { href: "/admin/og-styles",     labelKey: "admin.nav_og_styles",              icon: RiImageLine,    activeIcon: RiImageLine },
     ],
   },
   {
-    title: "系统",
+    titleKey: "admin.nav_system",
     items: [
-      { href: "/admin/system",   label: "系统", icon: RiServerLine,  activeIcon: RiServerFill },
-      { href: "/admin/api",      label: "API",  icon: RiPlugLine,    activeIcon: RiPlugFill },
-      { href: "/admin/settings", label: "设置", icon: RiSettings4Line, activeIcon: RiSettings4Fill },
+      { href: "/admin/system",   labelKey: "admin.nav_system_label", icon: RiServerLine,  activeIcon: RiServerFill },
+      { href: "/admin/api",      labelKey: "admin.nav_api",          icon: RiPlugLine,    activeIcon: RiPlugFill },
+      { href: "/admin/settings", labelKey: "admin.nav_settings",     icon: RiSettings4Line, activeIcon: RiSettings4Fill },
     ],
   },
 ];
@@ -87,15 +88,16 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
 const NAV_FLAT: NavItem[] = NAV_GROUPS.flatMap(g => g.items);
 
 const BOTTOM_PINNED: NavItem[] = [
-  { href: "/admin",        label: "概览", icon: RiDashboardLine,   activeIcon: RiDashboardFill, exact: true },
-  { href: "/admin/users",  label: "用户", icon: RiUserLine,        activeIcon: RiUserFill },
-  { href: "/admin/stamps", label: "品牌", icon: RiShieldCheckLine, activeIcon: RiShieldCheckFill },
-  { href: "/admin/settings",label: "设置",icon: RiSettings4Line,  activeIcon: RiSettings4Fill },
+  { href: "/admin",        labelKey: "admin.nav_overview", icon: RiDashboardLine,   activeIcon: RiDashboardFill, exact: true },
+  { href: "/admin/users",  labelKey: "admin.nav_users",    icon: RiUserLine,        activeIcon: RiUserFill },
+  { href: "/admin/stamps", labelKey: "admin.nav_stamps",   icon: RiShieldCheckLine, activeIcon: RiShieldCheckFill },
+  { href: "/admin/settings",labelKey: "admin.nav_settings",icon: RiSettings4Line,  activeIcon: RiSettings4Fill },
 ];
 
 export function AdminLayout({ children, title }: { children: React.ReactNode; title?: string }) {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const { t } = useTranslation();
   const email = (session?.user as any)?.email;
   const isAdmin = email?.toLowerCase().trim() === ADMIN_EMAIL;
   const [drawerOpen, setDrawerOpen] = React.useState(false);
@@ -124,19 +126,19 @@ export function AdminLayout({ children, title }: { children: React.ReactNode; ti
   if (status === "unauthenticated" || !isAdmin) {
     return (
       <>
-        <Head><title>无权限 · Admin</title></Head>
+        <Head><title>{t("admin.page_title_no_access")}</title></Head>
         <div className="min-h-screen flex items-center justify-center px-4">
           <div className="text-center space-y-4 max-w-sm">
             <div className="w-14 h-14 rounded-2xl bg-red-100 dark:bg-red-950/40 flex items-center justify-center mx-auto">
               <RiShieldUserLine className="w-7 h-7 text-red-500" />
             </div>
-            <h1 className="text-xl font-bold">无访问权限</h1>
-            <p className="text-sm text-muted-foreground">此页面仅限管理员访问。</p>
+            <h1 className="text-xl font-bold">{t("admin.no_access_title")}</h1>
+            <p className="text-sm text-muted-foreground">{t("admin.no_access_desc")}</p>
             <button
               onClick={() => router.push("/")}
               className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline font-semibold"
             >
-              <RiArrowLeftLine className="w-4 h-4" />返回首页
+              <RiArrowLeftLine className="w-4 h-4" />{t("admin.back_to_home")}
             </button>
           </div>
         </div>
@@ -154,12 +156,12 @@ export function AdminLayout({ children, title }: { children: React.ReactNode; ti
     router.push(href, undefined, { locale: false });
   }
 
-  const currentLabel = title || NAV_FLAT.find(n => isActive(n.href, n.exact))?.label || "管理后台";
+  const currentLabel = title || t((NAV_FLAT.find(n => isActive(n.href, n.exact))?.labelKey || "admin.panel_title") as any);
 
   return (
     <>
       <Head>
-        <title key="site-title">{title ? `${title} · 管理后台` : "管理后台 · X.RW"}</title>
+        <title key="site-title">{title ? `${title} · ${t("admin.panel_title")}` : t("admin.page_title")}</title>
       </Head>
 
       {/* ── Desktop layout ──────────────────────────────── */}
@@ -170,17 +172,17 @@ export function AdminLayout({ children, title }: { children: React.ReactNode; ti
               <RiShieldUserLine className="w-4 h-4 text-white" />
             </div>
             <div className="min-w-0">
-              <p className="text-xs font-bold leading-none">管理后台</p>
+              <p className="text-xs font-bold leading-none">{t("admin.panel_title")}</p>
               <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{email}</p>
             </div>
           </div>
 
           {NAV_GROUPS.map(group => (
-            <div key={group.title} className="mb-2">
+            <div key={group.titleKey} className="mb-2">
               <p className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-widest px-3 py-1.5">
-                {group.title}
+                {t(group.titleKey as any)}
               </p>
-              {group.items.map(({ href, label, icon: Icon, activeIcon: ActiveIcon, exact }) => {
+              {group.items.map(({ href, labelKey, icon: Icon, activeIcon: ActiveIcon, exact }) => {
                 const active = isActive(href, exact);
                 return (
                   <button
@@ -194,7 +196,7 @@ export function AdminLayout({ children, title }: { children: React.ReactNode; ti
                     )}
                   >
                     {active ? <ActiveIcon className="w-4 h-4 shrink-0" /> : <Icon className="w-4 h-4 shrink-0" />}
-                    {label}
+                    {t(labelKey as any)}
                   </button>
                 );
               })}
@@ -206,7 +208,7 @@ export function AdminLayout({ children, title }: { children: React.ReactNode; ti
               onClick={() => navigate("/")}
               className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-all"
             >
-              <RiArrowLeftLine className="w-3.5 h-3.5" />返回前台
+              <RiArrowLeftLine className="w-3.5 h-3.5" />{t("admin.back_to_site")}
             </button>
           </div>
         </aside>
@@ -231,12 +233,12 @@ export function AdminLayout({ children, title }: { children: React.ReactNode; ti
             className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors px-2.5 py-1.5 rounded-lg hover:bg-muted"
           >
             <RiArrowLeftLine className="w-3.5 h-3.5" />
-            <span>前台</span>
+            <span>{t("admin.frontend")}</span>
           </button>
           <button
             onClick={() => setDrawerOpen(true)}
             className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-muted transition-colors"
-            aria-label="打开菜单"
+            aria-label={t("admin.open_menu")}
           >
             <RiMenuLine className="w-5 h-5" />
           </button>
@@ -252,7 +254,7 @@ export function AdminLayout({ children, title }: { children: React.ReactNode; ti
         {/* Bottom bar — pinned items + more button */}
         <nav className="fixed bottom-0 inset-x-0 z-40 bg-background/95 backdrop-blur-md border-t border-border">
           <div className="flex items-stretch h-16">
-            {BOTTOM_PINNED.map(({ href, label, icon: Icon, activeIcon: ActiveIcon, exact }) => {
+            {BOTTOM_PINNED.map(({ href, labelKey, icon: Icon, activeIcon: ActiveIcon, exact }) => {
               const active = isActive(href, exact);
               return (
                 <button
@@ -265,7 +267,7 @@ export function AdminLayout({ children, title }: { children: React.ReactNode; ti
                 >
                   {active ? <ActiveIcon className="w-5 h-5" /> : <Icon className="w-5 h-5" />}
                   <span className={cn("text-[10px] font-semibold leading-none", active ? "text-primary" : "text-muted-foreground/70")}>
-                    {label}
+                    {t(labelKey as any)}
                   </span>
                 </button>
               );
@@ -279,7 +281,7 @@ export function AdminLayout({ children, title }: { children: React.ReactNode; ti
               )}
             >
               <RiMenuLine className="w-5 h-5" />
-              <span className="text-[10px] font-semibold leading-none text-muted-foreground/70">更多</span>
+              <span className="text-[10px] font-semibold leading-none text-muted-foreground/70">{t("admin.more")}</span>
             </button>
           </div>
           {/* safe area inset */}
@@ -305,7 +307,7 @@ export function AdminLayout({ children, title }: { children: React.ReactNode; ti
               <RiShieldUserLine className="w-3.5 h-3.5 text-white" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-bold leading-none">管理后台</p>
+              <p className="text-xs font-bold leading-none">{t("admin.panel_title")}</p>
               <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{email}</p>
             </div>
             <button
@@ -319,12 +321,12 @@ export function AdminLayout({ children, title }: { children: React.ReactNode; ti
           {/* Drawer nav — scrollable */}
           <div className="flex-1 overflow-y-auto py-4 px-3 space-y-4">
             {NAV_GROUPS.map(group => (
-              <div key={group.title}>
+              <div key={group.titleKey}>
                 <p className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-widest px-3 mb-1.5">
-                  {group.title}
+                  {t(group.titleKey as any)}
                 </p>
                 <div className="space-y-0.5">
-                  {group.items.map(({ href, label, icon: Icon, activeIcon: ActiveIcon, exact }) => {
+                  {group.items.map(({ href, labelKey, icon: Icon, activeIcon: ActiveIcon, exact }) => {
                     const active = isActive(href, exact);
                     return (
                       <button
@@ -338,7 +340,7 @@ export function AdminLayout({ children, title }: { children: React.ReactNode; ti
                         )}
                       >
                         {active ? <ActiveIcon className="w-4 h-4 shrink-0" /> : <Icon className="w-4 h-4 shrink-0" />}
-                        {label}
+                        {t(labelKey as any)}
                         {active && (
                           <span className="ml-auto w-1.5 h-1.5 rounded-full bg-primary" />
                         )}
@@ -357,7 +359,7 @@ export function AdminLayout({ children, title }: { children: React.ReactNode; ti
               className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-all"
             >
               <RiArrowLeftLine className="w-4 h-4 shrink-0" />
-              返回前台
+              {t("admin.back_to_site")}
             </button>
           </div>
         </div>

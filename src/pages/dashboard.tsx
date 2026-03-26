@@ -871,15 +871,15 @@ export default function DashboardPage() {
     return sub.days_to_expiry ?? null;
   }
 
-  const AVATAR_COLORS: { key: string; bg: string; text: string }[] = [
-    { key: "violet", bg: "bg-violet-500", text: "text-white" },
-    { key: "blue",   bg: "bg-blue-500",   text: "text-white" },
-    { key: "emerald",bg: "bg-emerald-500",text: "text-white" },
-    { key: "orange", bg: "bg-orange-500", text: "text-white" },
-    { key: "pink",   bg: "bg-pink-500",   text: "text-white" },
-    { key: "red",    bg: "bg-red-500",    text: "text-white" },
-    { key: "yellow", bg: "bg-yellow-400", text: "text-black" },
-    { key: "slate",  bg: "bg-slate-600",  text: "text-white" },
+  const AVATAR_COLORS: { key: string; bg: string; text: string; label: string }[] = [
+    { key: "violet", bg: "bg-violet-500", text: "text-white", label: "Aa" },
+    { key: "blue",   bg: "bg-blue-500",   text: "text-white", label: "Aa" },
+    { key: "emerald",bg: "bg-emerald-500",text: "text-white", label: "Aa" },
+    { key: "orange", bg: "bg-orange-500", text: "text-white", label: "Aa" },
+    { key: "pink",   bg: "bg-pink-500",   text: "text-white", label: "Aa" },
+    { key: "red",    bg: "bg-red-500",    text: "text-white", label: "Aa" },
+    { key: "yellow", bg: "bg-yellow-400", text: "text-black", label: "Aa" },
+    { key: "slate",  bg: "bg-slate-600",  text: "text-white", label: "Aa" },
   ];
 
   React.useEffect(() => {
@@ -1416,12 +1416,12 @@ export default function DashboardPage() {
                           {!sub.active && <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{t("dashboard.cancelled")}</span>}
                           {isUrgent && (
                             <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400 font-semibold border border-red-300/50">
-                              {days === 0 ? t("dashboard.expires_today") : t("dashboard.expires_in_days", { days })}
+                              {days === 0 ? t("dashboard.expires_today") : t("dashboard.expires_in_days", { days: days ?? 0 })}
                             </span>
                           )}
                           {isWarn && !isUrgent && !isPostExpiry && (
                             <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 font-semibold border border-amber-300/50">
-                              {t("dashboard.expires_in_days", { days })}
+                              {t("dashboard.expires_in_days", { days: days ?? 0 })}
                             </span>
                           )}
                           {isDropSoon && (
@@ -1435,7 +1435,7 @@ export default function DashboardPage() {
                               phase === "redemption" ? "bg-orange-50 dark:bg-orange-950/30 border-orange-300/50" :
                               phase === "pendingDelete" ? "bg-purple-50 dark:bg-purple-950/30 border-purple-300/50" :
                               "bg-muted border-border/50"
-                            )}>{t("dashboard.phase_" + phase)}</span>
+                            )}>{t(("dashboard.phase_" + phase) as any)}</span>
                           )}
                         </div>
                         <p className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1">
@@ -1729,7 +1729,7 @@ export default function DashboardPage() {
                       {subscriptionAccessDB ? (
                         <p className="text-[10px] text-muted-foreground">
                           {isLifetime ? t("dashboard.lifetime_member") : expiresDate
-                            ? t("dashboard.valid_until_details", { date: expiresDate.toLocaleDateString(), days: remainingDays })
+                            ? t("dashboard.valid_until_details", { date: expiresDate.toLocaleDateString(), days: remainingDays ?? 0 })
                             : t("dashboard.in_membership")}
                         </p>
                       ) : (

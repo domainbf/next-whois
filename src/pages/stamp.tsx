@@ -45,15 +45,15 @@ import {
 import { toast } from "sonner";
 
 const CARD_THEME_OPTIONS: {
-  id: string; label: string; hero: string; dot: string;
+  id: string; label: string; enLabel: string; hero: string; dot: string;
   shimmer: string; cardBg: string; cardBorder: string; cardText: string; btn: string;
 }[] = [
-  { id: "app",      label: "极简",  hero: "bg-gradient-to-br from-zinc-700 to-zinc-900",                     dot: "bg-zinc-600",   shimmer: "text-shimmer",       cardBg: "bg-background",  cardBorder: "border-border/50",                             cardText: "text-foreground",  btn: "bg-zinc-800 text-white"  },
-  { id: "glow",     label: "流光",  hero: "bg-gradient-to-br from-teal-400 to-teal-600",                     dot: "bg-teal-500",   shimmer: "text-shimmer",       cardBg: "bg-background",  cardBorder: "border-teal-200/60 dark:border-teal-800/40",   cardText: "text-foreground",  btn: "bg-teal-500 text-white"  },
-  { id: "midnight", label: "午夜",  hero: "bg-gradient-to-br from-slate-700 via-blue-900 to-slate-900",      dot: "bg-blue-700",   shimmer: "text-shimmer-white", cardBg: "bg-slate-900",   cardBorder: "border-slate-700",                             cardText: "text-white",       btn: "bg-blue-600 text-white"  },
-  { id: "aurora",   label: "极光",  hero: "bg-gradient-to-br from-violet-500 via-fuchsia-500 to-pink-400",   dot: "bg-fuchsia-500",shimmer: "text-shimmer",       cardBg: "bg-background",  cardBorder: "border-violet-200/60 dark:border-violet-800/40",cardText: "text-foreground",  btn: "bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white" },
-  { id: "solar",    label: "暖阳",  hero: "bg-gradient-to-br from-amber-400 to-orange-600",                  dot: "bg-orange-500", shimmer: "text-shimmer",       cardBg: "bg-background",  cardBorder: "border-amber-200/60 dark:border-amber-800/40", cardText: "text-foreground",  btn: "bg-orange-500 text-white" },
-  { id: "ink",      label: "墨染",  hero: "bg-gradient-to-br from-zinc-800 via-zinc-900 to-black",           dot: "bg-zinc-800",   shimmer: "text-shimmer-white", cardBg: "bg-zinc-950",    cardBorder: "border-zinc-800",                              cardText: "text-white",       btn: "bg-zinc-700 text-white"  },
+  { id: "app",      label: "极简",  enLabel: "Minimal",  hero: "bg-gradient-to-br from-zinc-700 to-zinc-900",                     dot: "bg-zinc-600",   shimmer: "text-shimmer",       cardBg: "bg-background",  cardBorder: "border-border/50",                             cardText: "text-foreground",  btn: "bg-zinc-800 text-white"  },
+  { id: "glow",     label: "流光",  enLabel: "Glow",     hero: "bg-gradient-to-br from-teal-400 to-teal-600",                     dot: "bg-teal-500",   shimmer: "text-shimmer",       cardBg: "bg-background",  cardBorder: "border-teal-200/60 dark:border-teal-800/40",   cardText: "text-foreground",  btn: "bg-teal-500 text-white"  },
+  { id: "midnight", label: "午夜",  enLabel: "Midnight", hero: "bg-gradient-to-br from-slate-700 via-blue-900 to-slate-900",      dot: "bg-blue-700",   shimmer: "text-shimmer-white", cardBg: "bg-slate-900",   cardBorder: "border-slate-700",                             cardText: "text-white",       btn: "bg-blue-600 text-white"  },
+  { id: "aurora",   label: "极光",  enLabel: "Aurora",   hero: "bg-gradient-to-br from-violet-500 via-fuchsia-500 to-pink-400",   dot: "bg-fuchsia-500",shimmer: "text-shimmer",       cardBg: "bg-background",  cardBorder: "border-violet-200/60 dark:border-violet-800/40",cardText: "text-foreground",  btn: "bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white" },
+  { id: "solar",    label: "暖阳",  enLabel: "Solar",    hero: "bg-gradient-to-br from-amber-400 to-orange-600",                  dot: "bg-orange-500", shimmer: "text-shimmer",       cardBg: "bg-background",  cardBorder: "border-amber-200/60 dark:border-amber-800/40", cardText: "text-foreground",  btn: "bg-orange-500 text-white" },
+  { id: "ink",      label: "墨染",  enLabel: "Ink",      hero: "bg-gradient-to-br from-zinc-800 via-zinc-900 to-black",           dot: "bg-zinc-800",   shimmer: "text-shimmer-white", cardBg: "bg-zinc-950",    cardBorder: "border-zinc-800",                              cardText: "text-white",       btn: "bg-zinc-700 text-white"  },
 ];
 
 const TAG_STYLES: { id: string; label: string; zhName: string; className: string; glow?: string; icon: React.ElementType; theme: string }[] = [
@@ -825,7 +825,7 @@ export default function StampPage() {
       setVercelTxtValue(data.txtValue ?? null);
       setVercelTxtFullDomain(data.txtFullDomain ?? `_vercel.${domain}`);
     } catch {
-      setVercelApiError("网络错误，请重试");
+      setVercelApiError(s("network_error_retry"));
     } finally {
       setVercelInitLoading(false);
     }
@@ -1114,7 +1114,7 @@ export default function StampPage() {
                                       )}
                                       {isFree && !isMember && (
                                         <div className="absolute bottom-1 left-1/2 -translate-x-1/2 text-[7px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-500 text-white whitespace-nowrap leading-tight shadow-sm">
-                                          限时免费
+                                          {s("limited_time_free")}
                                         </div>
                                       )}
                                     </div>
@@ -1240,14 +1240,14 @@ export default function StampPage() {
                                       return (
                                         <div className={cn("flex items-center justify-between w-full px-3 py-2 rounded-xl", curTheme.btn)}>
                                           <div className="flex flex-col gap-0.5">
-                                            <span className="text-[10px] font-bold leading-none">访问主页</span>
+                                            <span className="text-[10px] font-bold leading-none">{s("visit_homepage")}</span>
                                             <span className="text-[8px] font-normal opacity-55 leading-none">{h}</span>
                                           </div>
                                           <RiArrowRightSLine className="w-3 h-3 opacity-70 shrink-0" />
                                         </div>
                                       );
                                     })() : (
-                                      <p className="text-[9px] text-muted-foreground/40 font-mono text-center py-0.5">未设置主页链接</p>
+                                      <p className="text-[9px] text-muted-foreground/40 font-mono text-center py-0.5">{s("no_homepage_link")}</p>
                                     )}
                                   </div>
                                 </div>
@@ -1500,7 +1500,7 @@ export default function StampPage() {
                                                   : "text-muted-foreground"
                                               )}>{r.name}</p>
                                               <p className="text-[10px] text-muted-foreground/50 mt-0.5">
-                                                {hasRecords ? `${r.latencyMs}ms · ${recCount} 条`
+                                                {hasRecords ? `${r.latencyMs}ms · ${s("records_count", { count: recCount })}`
                                                   : r.error === "timeout" ? s("timeout_label")
                                                   : r.error === "no_record" ? s("no_record_label")
                                                   : r.error ? r.error
@@ -2205,7 +2205,7 @@ export default function StampPage() {
                                 <Icon className="w-3 h-3" />
                                 {isZh ? ts.zhName : ts.label}
                               </span>
-                              <span className="text-xs text-muted-foreground">{cardTheme.label}</span>
+                              <span className="text-xs text-muted-foreground">{isZh ? cardTheme.label : cardTheme.enLabel}</span>
                             </div>
                             <button
                               type="button"
