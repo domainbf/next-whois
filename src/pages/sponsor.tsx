@@ -438,7 +438,7 @@ export default function SponsorPage() {
 
   function handlePlanClick(plan: Plan) {
     if (!session) {
-      router.push(`/login?redirect=/payment/checkout`);
+      router.push(`/login?callbackUrl=${encodeURIComponent("/payment/checkout?plan=" + plan.id)}`);
       return;
     }
     router.push(`/payment/checkout?plan=${plan.id}`);
@@ -530,8 +530,8 @@ export default function SponsorPage() {
                   <p className="text-[11px] text-muted-foreground flex items-center gap-1 pt-1">
                     <RiLockLine className="w-3.5 h-3.5" />
                     {isChinese
-                      ? <>需要<Link href="/login?redirect=/payment/checkout" className="text-primary hover:underline">登录</Link>才能在线支付</>
-                      : <><Link href="/login?redirect=/payment/checkout" className="text-primary hover:underline">Login</Link> required to pay online</>}
+                      ? <>需要<Link href="/login?callbackUrl=%2Fpayment%2Fcheckout" className="text-primary hover:underline">登录</Link>才能在线支付</>
+                      : <><Link href="/login?callbackUrl=%2Fpayment%2Fcheckout" className="text-primary hover:underline">Login</Link> required to pay online</>}
                   </p>
                 )}
 

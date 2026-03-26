@@ -80,7 +80,7 @@ export default function PaymentCheckout() {
       return;
     }
     if (authStatus !== "authenticated") {
-      router.push(`/login?redirect=/payment/checkout`);
+      router.push(`/login?callbackUrl=${encodeURIComponent("/payment/checkout")}`);
       return;
     }
     setPaying(true);
@@ -118,7 +118,7 @@ export default function PaymentCheckout() {
   }
 
   if (authStatus === "unauthenticated") {
-    router.push(`/login?redirect=/payment/checkout`);
+    router.push(`/login?callbackUrl=${encodeURIComponent("/payment/checkout")}`);
     return null;
   }
 
