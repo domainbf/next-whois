@@ -4232,41 +4232,41 @@ export default function LookupPage({
     /* ── Special layouts ── */
     celebrate: {
       layout: "celebrate",
-      hero: "bg-sky-400",
-      shimmer: "text-shimmer-white", badge: "bg-white text-blue-700 border-0",
-      btn: "bg-indigo-600 text-white hover:bg-indigo-700",
-      cardBg: "bg-white", cardBorder: "border-blue-100", cardText: "text-gray-900",
-      accent: "bg-indigo-600", accentText: "text-white",
+      hero: "bg-gradient-to-br from-red-700 to-red-900",
+      shimmer: "text-shimmer-white", badge: "bg-amber-400 text-amber-900 border-0",
+      btn: "bg-amber-500 text-white hover:bg-amber-600",
+      cardBg: "bg-white", cardBorder: "border-amber-100", cardText: "text-gray-900",
+      accent: "bg-amber-500", accentText: "text-white",
     },
     neon: {
       layout: "neon",
-      hero: "bg-[#1a1a1a]",
-      shimmer: "text-shimmer-white", badge: "bg-emerald-400 text-slate-900 border-0",
-      btn: "bg-emerald-400 text-slate-900 hover:bg-emerald-300 font-bold",
-      cardBg: "bg-[#1a1a1a]", cardBorder: "border-slate-700", cardText: "text-white",
-      accent: "text-emerald-400", accentText: "text-emerald-400",
+      hero: "bg-[#050d18]",
+      shimmer: "text-shimmer-white", badge: "bg-cyan-400 text-slate-900 border-0",
+      btn: "bg-gradient-to-r from-cyan-400 to-violet-600 text-white",
+      cardBg: "bg-[#050d18]", cardBorder: "border-slate-800", cardText: "text-white",
+      accent: "text-cyan-400", accentText: "text-cyan-400",
     },
     gradient: {
       layout: "gradient",
-      hero: "bg-gradient-to-br from-sky-200 via-rose-200 to-amber-200",
-      shimmer: "text-shimmer", badge: "bg-black/10 text-gray-800 border border-black/15",
+      hero: "bg-gradient-to-br from-rose-300 via-sky-300 to-emerald-300",
+      shimmer: "text-shimmer", badge: "bg-black/10 text-gray-800 border border-black/20",
       btn: "bg-gray-900 text-white hover:bg-gray-800",
       cardBg: "bg-transparent", cardBorder: "border-0", cardText: "text-gray-900",
       accent: "bg-gray-900", accentText: "text-white",
     },
     split: {
       layout: "split",
-      hero: "bg-gradient-to-b from-slate-700 to-slate-900",
-      shimmer: "text-shimmer", badge: "bg-white/20 text-white border-0",
+      hero: "bg-black",
+      shimmer: "text-shimmer", badge: "bg-blue-500 text-white border-0",
       btn: "bg-gray-900 text-white hover:bg-black",
       cardBg: "bg-white", cardBorder: "border-border/50", cardText: "text-foreground",
-      accent: "bg-gray-900", accentText: "text-white",
+      accent: "bg-blue-600", accentText: "text-white",
     },
     flash: {
       layout: "flash" as any,
-      hero: "bg-violet-500",
-      shimmer: "text-shimmer", badge: "bg-violet-500 text-white border-0",
-      btn: "bg-violet-500 text-white hover:bg-violet-600",
+      hero: "bg-[#FF3800]",
+      shimmer: "text-shimmer", badge: "bg-[#FF3800] text-white border-0",
+      btn: "bg-gradient-to-r from-orange-500 to-red-600 text-white",
       cardBg: "bg-white", cardBorder: "border-0", cardText: "text-gray-900",
       accent: "bg-yellow-300", accentText: "text-black",
     },
@@ -5608,41 +5608,44 @@ export default function LookupPage({
                             );
 
                             /* ════════════════════════════════════════
-                               Layout: celebrate — IMG_9083
+                               Layout: celebrate — 中国红·节庆
                             ════════════════════════════════════════ */
                             if (theme.layout === "celebrate") return (
                               <div key={stamp.id} className="relative overflow-hidden bg-white">
-                                {/* ── Hero: reference image (sky blue + confetti + circle built in) ── */}
-                                <div className="relative overflow-hidden" style={{height:220}}>
-                                  <img src="/stamp-celebrate.png" alt="" className="absolute inset-0 w-full h-full"
-                                    style={{objectFit:"cover", objectPosition:"center top"}}/>
-                                  {/* Close: top-right, white */}
+                                {/* ── Hero: crimson red gradient with gold diamonds ── */}
+                                <div className="relative overflow-hidden" style={{height:210, background:"linear-gradient(160deg,#C8102E 0%,#7B0D1E 100%)"}}>
+                                  {[
+                                    {x:"7%",y:"10%",s:12,r:"45deg"},{x:"20%",y:"5%",s:8,r:"0"},
+                                    {x:"36%",y:"18%",s:14,r:"30deg"},{x:"53%",y:"4%",s:9,r:"0"},
+                                    {x:"68%",y:"13%",s:12,r:"-30deg"},{x:"84%",y:"7%",s:7,r:"0"},
+                                    {x:"13%",y:"42%",s:9,r:"20deg"},{x:"48%",y:"38%",s:7,r:"0"},
+                                    {x:"76%",y:"40%",s:11,r:"-20deg"},{x:"90%",y:"35%",s:6,r:"15deg"},
+                                  ].map((p,i)=>(
+                                    <span key={i} className="absolute pointer-events-none"
+                                      style={{left:p.x,top:p.y,width:p.s,height:p.s,background:"rgba(212,175,55,0.72)",transform:`rotate(${p.r})`,borderRadius:2}} />
+                                  ))}
                                   <button onClick={() => setStampDetailOpen(false)}
-                                    className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-black/20 hover:bg-black/35 text-white z-10 transition-colors"
+                                    className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full z-10 transition-colors"
+                                    style={{background:"rgba(0,0,0,0.22)"}}
                                     aria-label="Close">
                                     <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                                      <path d="M1 1l10 10M11 1L1 11" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"/>
+                                      <path d="M1 1l10 10M11 1L1 11" stroke="white" strokeWidth="2.2" strokeLinecap="round"/>
                                     </svg>
                                   </button>
-                                  {/* Wave at bottom of image area */}
                                   <div className="absolute bottom-0 left-0 right-0 pointer-events-none z-[2]">
                                     <svg viewBox="0 0 400 40" preserveAspectRatio="none" className="w-full h-10 block">
-                                      <path d="M0 40 C120 5, 280 28, 400 2 L400 40 Z" fill="white"/>
+                                      <path d="M0 40 C100 8, 300 26, 400 4 L400 40 Z" fill="white"/>
                                     </svg>
                                   </div>
                                 </div>
 
-                                {/* ── Indigo badge (overlaps image bottom) ── */}
+                                {/* ── Gold checkmark seal badge ── */}
                                 <div className="flex justify-center -mt-12 relative z-10 mb-4">
-                                  <div className="relative">
-                                    <div className="absolute inset-0 rounded-full scale-[1.3]"
-                                      style={{background:"rgba(99,102,241,0.12)"}}/>
-                                    <div className="relative w-[88px] h-[88px] rounded-full border-[6px] border-white shadow-2xl flex items-center justify-center ring-[3px] ring-indigo-200/60"
-                                      style={{background:"linear-gradient(135deg,#6366F1,#4338CA)"}}>
-                                      <svg width="38" height="38" viewBox="0 0 40 40" fill="none">
-                                        <path d="M9 22l8 9L32 12" stroke="white" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round"/>
-                                      </svg>
-                                    </div>
+                                  <div className="w-[88px] h-[88px] rounded-full border-[6px] border-white shadow-2xl flex items-center justify-center"
+                                    style={{background:"linear-gradient(135deg,#D4AF37 0%,#F7C948 50%,#B8860B 100%)",boxShadow:"0 8px 24px rgba(180,140,30,0.45)"}}>
+                                    <svg width="38" height="38" viewBox="0 0 40 40" fill="none">
+                                      <path d="M9 22l8 9L32 12" stroke="white" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round"/>
+                                    </svg>
                                   </div>
                                 </div>
 
@@ -5650,16 +5653,16 @@ export default function LookupPage({
                                 <div className="px-8 pb-3 text-center">
                                   <h2 className="text-[27px] font-black text-gray-900 leading-tight tracking-tight">{stamp.tagName}</h2>
                                   <p className="text-[13px] text-gray-400 leading-relaxed mt-2 max-w-[260px] mx-auto">
-                                    {stamp.description || (isChinese ? `恭喜！${result.domain || target} 已认领。` : `Congratulations! ${result.domain || target} has been claimed.`)}
+                                    {stamp.description || (isChinese ? `恭喜！${result.domain || target} 已通过认领。` : `Congratulations! ${result.domain || target} has been claimed.`)}
                                   </p>
                                 </div>
 
-                                {/* ── CTA ── */}
+                                {/* ── Gold CTA ── */}
                                 <div className="px-6 pt-4 pb-8 space-y-3">
                                   {stamp.link
                                     ? <a href={stamp.link} target="_blank" rel="noopener noreferrer"
                                         className="flex items-center justify-center w-full py-4 rounded-full text-white text-[15px] font-bold transition-all active:scale-[0.98]"
-                                        style={{background:"linear-gradient(135deg,#6366F1,#4338CA)", boxShadow:"0 8px 24px rgba(99,102,241,0.35)"}}>
+                                        style={{background:"linear-gradient(135deg,#D4AF37,#B8860B)",boxShadow:"0 8px 24px rgba(180,140,30,0.4)"}}>
                                         {isChinese ? "访问主页" : "Visit Profile"}
                                       </a>
                                     : null
@@ -5673,56 +5676,45 @@ export default function LookupPage({
                             );
 
                             /* ════════════════════════════════════════
-                               Layout: neon — IMG_9091 (Location Access)
-                               全黑卡 + 顶部绿色地图图标插画
-                               城市轮廓剪影 + 超大白色标题居中
-                               绿色填充主按钮 + 暗色描边取消按钮
+                               Layout: neon — 赛博·极光
                             ════════════════════════════════════════ */
                             if (theme.layout === "neon") return (
-                              <div key={stamp.id} className="relative overflow-hidden" style={{background:"#0d1117", borderRadius:"inherit"}}>
-                                {/* Reference image (pure black) as card background */}
-                                <img src="/stamp-neon.png" alt="" className="absolute inset-0 w-full h-full pointer-events-none"
-                                  style={{objectFit:"cover", objectPosition:"center top", opacity:0.35, mixBlendMode:"screen"}}/>
+                              <div key={stamp.id} className="relative overflow-hidden" style={{background:"#050d18", borderRadius:"inherit"}}>
                                 {/* Close: top-right */}
                                 <button onClick={() => setStampDetailOpen(false)}
-                                  className="absolute top-4 right-4 text-white/40 hover:text-white transition-colors z-20"
+                                  className="absolute top-4 right-4 z-20 transition-colors"
+                                  style={{color:"rgba(255,255,255,0.35)"}}
                                   aria-label="Close">
                                   <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
                                     <path d="M2 2l11 11M13 2L2 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
                                   </svg>
                                 </button>
 
-                                {/* ── Illustration: map pin + skyline ── */}
-                                <div className="relative flex flex-col items-center pt-10 pb-5 overflow-hidden" style={{background:"#0d1117"}}>
-                                  {/* Ambient green glow */}
-                                  <div className="absolute pointer-events-none" style={{width:240,height:200,top:0,left:"50%",transform:"translateX(-50%)",background:"radial-gradient(ellipse, rgba(34,197,94,0.18) 0%, transparent 68%)"}}/>
-                                  {/* Outer halo ring */}
-                                  <div className="absolute rounded-full pointer-events-none" style={{width:148,height:148,top:28,left:"50%",transform:"translateX(-50%)",border:"1px solid rgba(34,197,94,0.2)"}}/>
+                                {/* ── Top: purple ambient + 3 neon bars + icon ── */}
+                                <div className="relative flex flex-col items-center pt-10 pb-5 overflow-hidden" style={{background:"#050d18"}}>
+                                  {/* Purple ambient glow */}
+                                  <div className="absolute pointer-events-none" style={{width:280,height:220,top:0,left:"50%",transform:"translateX(-50%)",background:"radial-gradient(ellipse,rgba(123,47,190,0.32) 0%,transparent 68%)"}}/>
 
-                                  {/* Map pin: circle + triangle */}
-                                  <div className="relative flex flex-col items-center z-10">
-                                    <div className="w-[118px] h-[118px] rounded-full flex items-center justify-center" style={{background:"#22c55e", boxShadow:"0 0 32px rgba(34,197,94,0.30)"}}>
-                                      <div className="w-[70px] h-[70px] rounded-full flex items-center justify-center" style={{background:"#0d1117"}}>
-                                        <StampIcon className="w-8 h-8 text-white"/>
-                                      </div>
-                                    </div>
-                                    <div style={{width:0,height:0,borderLeft:"24px solid transparent",borderRight:"24px solid transparent",borderTop:"30px solid #22c55e",marginTop:"-2px"}}/>
+                                  {/* 3 neon light bars */}
+                                  <div className="flex justify-center gap-3 mb-6 relative z-10 w-full px-8">
+                                    <div style={{height:4,flex:3,background:"#FF2D78",borderRadius:3,boxShadow:"0 0 12px #FF2D78"}}/>
+                                    <div style={{height:4,flex:2,background:"#00D2FF",borderRadius:3,boxShadow:"0 0 12px #00D2FF"}}/>
+                                    <div style={{height:4,flex:1,background:"#FFE500",borderRadius:3,boxShadow:"0 0 12px #FFE500"}}/>
                                   </div>
 
-                                  {/* City skyline */}
-                                  <div className="mt-5 z-10" style={{opacity:0.22}}>
-                                    <svg viewBox="0 0 280 38" className="w-[216px] h-[26px]" fill="#22c55e">
-                                      <path d="M0 38L0 26 14 26 14 14 19 14 19 8 24 8 24 14 29 14 29 26 46 26 46 18 51 18 51 26 65 26 65 13 70 13 70 4 75 4 75 13 80 13 80 26 95 26 95 20 100 20 100 26 115 26 115 16 120 16 120 6 125 6 125 16 130 16 130 26 148 26 148 19 153 19 153 24 158 24 158 26 172 26 172 14 177 14 177 26 193 26 193 19 198 19 198 10 203 10 203 19 208 19 208 26 225 26 225 21 230 21 230 26 246 26 246 16 251 16 251 8 256 8 256 16 261 16 261 26 280 26 280 38Z"/>
-                                    </svg>
+                                  {/* Icon in glowing ring */}
+                                  <div className="relative z-10 w-[118px] h-[118px] rounded-full flex items-center justify-center"
+                                    style={{background:"rgba(0,210,255,0.07)",border:"2px solid rgba(0,210,255,0.45)",boxShadow:"0 0 32px rgba(0,210,255,0.2)"}}>
+                                    <StampIcon className="w-12 h-12 text-cyan-400"/>
                                   </div>
                                 </div>
 
                                 {/* ── Text ── */}
                                 <div className="px-8 pt-3 pb-3 text-center">
-                                  <h2 className="text-[23px] font-black text-white leading-tight tracking-tight">{stamp.tagName}</h2>
-                                  <p className="text-[13px] mt-2 leading-relaxed max-w-[240px] mx-auto" style={{color:"#6b7280"}}>
+                                  <h2 className="text-[24px] font-black text-white leading-tight tracking-tight">{stamp.tagName}</h2>
+                                  <p className="text-[13px] mt-2 leading-relaxed max-w-[240px] mx-auto" style={{color:"#4a5568"}}>
                                     {stamp.description || (isChinese
-                                      ? `${result.domain || target} 已通过持有人验证，点击了解更多。`
+                                      ? `${result.domain || target} 已通过持有人验证。`
                                       : `${result.domain || target} has been verified and claimed.`
                                     )}
                                   </p>
@@ -5732,15 +5724,15 @@ export default function LookupPage({
                                 <div className="px-5 pt-3 pb-8 space-y-2.5">
                                   {stamp.link
                                     ? <a href={stamp.link} target="_blank" rel="noopener noreferrer"
-                                        className="flex items-center justify-center w-full py-4 rounded-2xl font-bold text-[15px] transition-all active:scale-[0.98]"
-                                        style={{background:"#22c55e", color:"#0d1117"}}>
+                                        className="flex items-center justify-center w-full py-4 rounded-2xl font-bold text-[15px] text-white transition-all active:scale-[0.98]"
+                                        style={{background:"linear-gradient(135deg,#00D2FF,#7B2FBE)"}}>
                                         {isChinese ? "访问主页" : "Visit Profile"}
                                       </a>
                                     : null
                                   }
                                   <button onClick={() => setStampDetailOpen(false)}
-                                    className="flex items-center justify-center w-full py-4 rounded-2xl font-bold text-[15px] text-white/70 hover:text-white transition-all active:scale-[0.98]"
-                                    style={{border:"1.5px solid rgba(255,255,255,0.13)"}}>
+                                    className="flex items-center justify-center w-full py-4 rounded-2xl font-bold text-[15px] transition-all active:scale-[0.98]"
+                                    style={{border:"1.5px solid rgba(255,255,255,0.12)",color:"rgba(255,255,255,0.4)"}}>
                                     {isChinese ? "关闭" : "Cancel"}
                                   </button>
                                 </div>
@@ -5748,37 +5740,32 @@ export default function LookupPage({
                             );
 
                             /* ════════════════════════════════════════
-                               Layout: gradient — IMG_9093 (Apple Card)
-                               多点辐射彩虹渐变 + 大X左上关闭
-                               中心outlined徽章 + 超大标题 + 暗色CTA
+                               Layout: gradient — 全息·流光
                             ════════════════════════════════════════ */
                             if (theme.layout === "gradient") return (
-                              <div key={stamp.id} className="relative flex flex-col overflow-hidden" style={{minHeight:420}}>
-                                {/* ── Reference image as card background ── */}
-                                <img src="/stamp-gradient.png" alt="" className="absolute inset-0 w-full h-full"
-                                  style={{objectFit:"cover", objectPosition:"center"}}/>
+                              <div key={stamp.id} className="relative flex flex-col overflow-hidden" style={{minHeight:420, background:"linear-gradient(135deg,#FF6B6B 0%,#FFD93D 18%,#6BCB77 36%,#4D96FF 55%,#C77DFF 75%,#FF6B6B 100%)"}}>
 
-                                {/* Close: top-left, large bare X (over image) */}
+                                {/* Close: top-left, bare X */}
                                 <button onClick={() => setStampDetailOpen(false)}
                                   className="absolute top-5 left-5 flex items-center justify-center w-9 h-9 transition-colors z-10"
-                                  style={{color:"rgba(30,30,30,0.65)"}}
+                                  style={{color:"rgba(20,20,20,0.6)"}}
                                   aria-label="Close">
                                   <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
                                     <path d="M3 3l14 14M17 3L3 17" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round"/>
                                   </svg>
                                 </button>
 
-                                {/* ── Center content over image ── */}
+                                {/* ── Center content ── */}
                                 <div className="relative z-10 flex-1 flex flex-col items-center justify-center text-center px-8 pt-14 pb-4">
                                   <span className="inline-flex items-center px-6 py-2.5 rounded-full text-[13px] font-bold mb-7 tracking-tight"
-                                    style={{border:"2px solid rgba(20,20,20,0.65)", color:"rgba(20,20,20,0.8)"}}>
+                                    style={{border:"2px solid rgba(10,10,10,0.6)",color:"rgba(10,10,10,0.78)",background:"rgba(255,255,255,0.38)",backdropFilter:"blur(8px)"}}>
                                     {isChinese ? lbl.zh : lbl.en}
                                   </span>
                                   <h2 className="font-black text-gray-900 leading-[1.05] tracking-tight mb-5 max-w-[270px]"
-                                    style={{fontSize:34}}>
+                                    style={{fontSize:34,textShadow:"0 1px 6px rgba(255,255,255,0.7)"}}>
                                     {stamp.tagName}
                                   </h2>
-                                  <p className="text-[14px] text-gray-600 leading-relaxed max-w-[248px]">
+                                  <p className="text-[14px] leading-relaxed max-w-[248px]" style={{color:"rgba(20,20,20,0.72)",textShadow:"0 1px 3px rgba(255,255,255,0.5)"}}>
                                     {stamp.description || (isChinese
                                       ? `该域名 ${result.domain || target} 已由持有人认领，点击下方访问主页了解更多。`
                                       : `${result.domain || target} has been claimed. Visit the profile to learn more.`
@@ -5786,12 +5773,13 @@ export default function LookupPage({
                                   </p>
                                 </div>
 
-                                {/* ── Bottom CTA (over image, frosted) ── */}
-                                <div className="relative z-10 px-7 pb-8 pt-2 space-y-2">
+                                {/* ── Bottom frosted CTA ── */}
+                                <div className="relative z-10 px-6 pb-8 pt-2 mx-4 mb-2 rounded-3xl space-y-2"
+                                  style={{background:"rgba(255,255,255,0.88)",backdropFilter:"blur(20px)"}}>
                                   {stamp.link
                                     ? <a href={stamp.link} target="_blank" rel="noopener noreferrer"
-                                        className="flex items-center gap-3 w-full px-6 py-4 rounded-2xl text-white text-[14px] font-bold transition-all active:scale-[0.98]"
-                                        style={{background:"rgba(15,20,35,0.82)", backdropFilter:"blur(8px)"}}>
+                                        className="flex items-center gap-3 w-full px-5 py-4 mt-3 rounded-2xl text-white text-[14px] font-bold transition-all active:scale-[0.98]"
+                                        style={{background:"rgba(8,10,25,0.88)"}}>
                                         <div className="flex-1 text-left">
                                           <span className="block leading-none">{isChinese ? "访问主页" : "Visit Profile"}</span>
                                           {linkHostname && <span className="block text-[10px] opacity-50 mt-0.5 font-normal">{linkHostname}</span>}
@@ -5800,7 +5788,7 @@ export default function LookupPage({
                                       </a>
                                     : null
                                   }
-                                  <p className="text-[11px] text-center font-mono tracking-wider" style={{color:"rgba(80,80,80,0.7)"}}>
+                                  <p className="text-[11px] text-center font-mono tracking-wider pt-1" style={{color:"rgba(80,80,80,0.6)"}}>
                                     {result.domain || target}
                                   </p>
                                 </div>
@@ -5808,35 +5796,38 @@ export default function LookupPage({
                             );
 
                             /* ════════════════════════════════════════
-                               Layout: split — IMG_9087
-                               左侧深色面板(大字母背景) / 右侧白色
-                               右: 红色X + 超大标题 + 输入行式CTA
+                               Layout: split — 高反差·黑白
                             ════════════════════════════════════════ */
                             if (theme.layout === "split") return (
                               <div key={stamp.id} className="relative flex" style={{minHeight:310}}>
-                                {/* ── Left: reference image (light bg + bold domain text) ── */}
-                                <div className="relative flex items-center justify-center w-[42%] shrink-0 overflow-hidden"
-                                  style={{background:"#F8F8F5"}}>
-                                  <img src="/stamp-split.png" alt="" className="absolute inset-0 w-full h-full"
-                                    style={{objectFit:"cover", objectPosition:"center", opacity:0.18}}/>
-                                  {/* Giant bold domain / brand name */}
-                                  <div className="relative z-10 px-3 py-6 text-center w-full overflow-hidden">
-                                    <div className="font-black text-gray-900 leading-[0.9] tracking-tighter break-all"
-                                      style={{fontSize: Math.min(46, Math.max(20, 52 - (result.domain || target || stamp.tagName).length * 1.2))}}>
-                                      {result.domain || target || stamp.tagName}
+                                {/* ── Left: pure black with ghost letter ── */}
+                                <div className="relative flex flex-col items-center justify-center w-[42%] shrink-0 overflow-hidden"
+                                  style={{background:"#000"}}>
+                                  {/* Giant ghost letter */}
+                                  <div className="absolute inset-0 flex items-center justify-center overflow-hidden select-none pointer-events-none">
+                                    <span className="font-black leading-none"
+                                      style={{fontSize:200,color:"rgba(255,255,255,0.04)",lineHeight:1}}>
+                                      {(stamp.tagName||result.domain||target||"A")[0].toUpperCase()}
+                                    </span>
+                                  </div>
+                                  {/* Electric blue accent line at right edge */}
+                                  <div className="absolute top-0 right-0 w-[3px] h-full"
+                                    style={{background:"linear-gradient(to bottom,#3B82F6,#6366F1)"}}/>
+                                  {/* Icon */}
+                                  <div className="relative z-10 flex flex-col items-center gap-2 px-4 py-6 w-full overflow-hidden">
+                                    <div className="w-12 h-12 rounded-2xl flex items-center justify-center"
+                                      style={{background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.1)"}}>
+                                      <StampIcon className="w-6 h-6 text-white/70"/>
                                     </div>
-                                    <div className="mt-3 flex items-center justify-center">
-                                      <div className="w-8 h-[2px] rounded-full" style={{background:"#111"}}/>
-                                    </div>
-                                    <p className="mt-2 font-semibold tracking-[0.18em] uppercase text-gray-500"
-                                      style={{fontSize:8}}>
-                                      {isChinese ? "已认领" : "CLAIMED"}
+                                    <p className="font-mono tracking-widest uppercase text-center"
+                                      style={{fontSize:8,color:"rgba(255,255,255,0.18)"}}>
+                                      {result.domain || target}
                                     </p>
                                   </div>
                                 </div>
 
-                                {/* ── Right: white editorial ── */}
-                                <div className="flex-1 bg-white flex flex-col justify-between px-5 py-5 relative">
+                                {/* ── Right: off-white editorial ── */}
+                                <div className="flex-1 flex flex-col justify-between px-5 py-5 relative" style={{background:"#FAFAFA"}}>
                                   {/* Red X */}
                                   <button onClick={() => setStampDetailOpen(false)}
                                     className="absolute top-3 right-3 z-10 w-7 h-7 flex items-center justify-center transition-colors"
@@ -5882,19 +5873,17 @@ export default function LookupPage({
                             );
 
                             /* ════════════════════════════════════════
-                               Layout: flash — IMG_9090 (Flash Sale)
-                               紫色品牌栏 + 左黄右白双栏布局
-                               左: 叠加品牌大字 + 右: 标题+✦+紫色CTA
+                               Layout: flash — 闪购·电光
                             ════════════════════════════════════════ */
                             if ((theme as any).layout === "flash") return (
                               <div key={stamp.id} className="relative overflow-hidden" style={{borderRadius:"inherit"}}>
-                                {/* ── Purple header ── */}
-                                <div className="flex items-center justify-between px-4 py-3" style={{background:"#7c3aed"}}>
+                                {/* ── Orange-red header ── */}
+                                <div className="flex items-center justify-between px-4 py-3" style={{background:"#FF3800"}}>
                                   <div className="flex items-center gap-2">
-                                    <div className="w-5 h-5 rounded-full flex items-center justify-center" style={{background:"rgba(255,255,255,0.2)"}}>
+                                    <div className="w-5 h-5 rounded-full flex items-center justify-center" style={{background:"rgba(255,255,255,0.22)"}}>
                                       <StampIcon className="w-3 h-3 text-white"/>
                                     </div>
-                                    <p className="text-[11px] font-semibold tracking-wide" style={{color:"rgba(255,255,255,0.8)"}}>{result.domain || target}</p>
+                                    <p className="text-[11px] font-semibold tracking-wide" style={{color:"rgba(255,255,255,0.88)"}}>{result.domain || target}</p>
                                   </div>
                                   <button onClick={() => setStampDetailOpen(false)} className="transition-colors" style={{color:"rgba(255,255,255,0.6)"}} aria-label="Close">
                                     <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
@@ -5905,32 +5894,34 @@ export default function LookupPage({
 
                                 {/* ── Two-column body ── */}
                                 <div className="flex" style={{minHeight:256}}>
-                                  {/* Left: golden yellow + stacked text (reference image as subtle texture) */}
-                                  <div className="w-[44%] shrink-0 flex flex-col justify-end px-4 pb-5 pt-5 relative overflow-hidden" style={{background:"#FFD700"}}>
-                                    <img src="/stamp-flash.png" alt="" className="absolute inset-0 w-full h-full pointer-events-none"
-                                      style={{objectFit:"cover", objectPosition:"left center", opacity:0.1, mixBlendMode:"multiply"}}/>
+                                  {/* Left: electric yellow + stacked brand text + lightning */}
+                                  <div className="w-[44%] shrink-0 flex flex-col justify-end px-4 pb-5 pt-5 relative overflow-hidden" style={{background:"#FFE500"}}>
+                                    {/* Lightning bolt decoration */}
+                                    <svg className="absolute top-3 right-3 pointer-events-none" width={18} height={28} viewBox="0 0 10 18" fill="rgba(255,80,0,0.38)">
+                                      <path d="M7 0L1 10h5L3 18l8-11H6L7 0Z"/>
+                                    </svg>
                                     <div style={{lineHeight:"0.88"}}>
-                                      <p className="font-black text-[11px] uppercase tracking-wide mb-1.5" style={{color:"#6d28d9", lineHeight:1}}>
+                                      <p className="font-black text-[11px] uppercase tracking-wide mb-1.5" style={{color:"#FF3800", lineHeight:1}}>
                                         {isChinese ? lbl.zh : lbl.en}
                                       </p>
                                       <p className="font-black" style={{fontSize:26, color:"#111", lineHeight:"0.88"}}>
                                         {stamp.tagName}
                                       </p>
-                                      <p className="font-black" style={{fontSize:26, color:"#FFD700", WebkitTextStroke:"2.5px #111", lineHeight:"0.88"}}>
+                                      <p className="font-black" style={{fontSize:26, color:"#FFE500", WebkitTextStroke:"2.5px #111", lineHeight:"0.88"}}>
                                         {stamp.tagName}
                                       </p>
-                                      <p className="font-black" style={{fontSize:26, color:"#FFD700", WebkitTextStroke:"2.5px #111", lineHeight:"0.88"}}>
+                                      <p className="font-black" style={{fontSize:26, color:"#FFE500", WebkitTextStroke:"2.5px #111", lineHeight:"0.88"}}>
                                         {stamp.tagName}
                                       </p>
                                     </div>
                                   </div>
 
-                                  {/* Right: white + sparkles + content */}
+                                  {/* Right: white + star sparkles + content */}
                                   <div className="flex-1 flex flex-col justify-between px-4 py-4 bg-white relative">
-                                    {/* SVG sparkle diamonds */}
-                                    {[{x:8,y:8,s:11},{x:28,y:6,s:7},{x:6,y:56,s:10},{x:28,y:54,s:7}].map((sp,i)=>(
+                                    {/* Star sparkles */}
+                                    {[{x:8,y:8,s:13},{x:28,y:5,s:8},{x:6,y:60,s:12},{x:30,y:56,s:8}].map((sp,i)=>(
                                       <svg key={i} width={sp.s} height={sp.s} viewBox="0 0 10 10" className="absolute pointer-events-none"
-                                        style={{right:`${sp.x}px`, bottom:`${sp.y}px`, fill:"#FBBF24"}}>
+                                        style={{right:`${sp.x}px`, bottom:`${sp.y}px`, fill:"#FFB800"}}>
                                         <path d="M5 0 L6 4 L10 5 L6 6 L5 10 L4 6 L0 5 L4 4 Z"/>
                                       </svg>
                                     ))}
@@ -5938,7 +5929,7 @@ export default function LookupPage({
                                     <div>
                                       <h2 className="font-black text-gray-900 leading-none tracking-tight"
                                         style={{fontSize:28}}>{stamp.tagName}</h2>
-                                      <p className="text-[10px] font-bold uppercase tracking-widest mt-1 mb-3" style={{color:"#7c3aed"}}>
+                                      <p className="text-[10px] font-bold uppercase tracking-widest mt-1 mb-3" style={{color:"#FF3800"}}>
                                         {isChinese ? "域名认领" : "Domain Claimed"}
                                       </p>
                                       {stamp.description && (
@@ -5949,7 +5940,7 @@ export default function LookupPage({
                                     {stamp.link
                                       ? <a href={stamp.link} target="_blank" rel="noopener noreferrer"
                                           className="flex items-center justify-center w-full py-3 rounded-xl font-bold text-white text-[13px] transition-all active:scale-[0.98]"
-                                          style={{background:"linear-gradient(135deg,#8B5CF6,#7C3AED)", boxShadow:"0 4px 14px rgba(124,58,237,0.28)"}}>
+                                          style={{background:"linear-gradient(135deg,#FF3800,#FF6B00)", boxShadow:"0 4px 14px rgba(255,56,0,0.28)"}}>
                                           {isChinese ? "访问主页" : "Visit Profile"}
                                         </a>
                                       : null

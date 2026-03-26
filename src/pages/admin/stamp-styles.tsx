@@ -28,11 +28,11 @@ const CARD_THEMES: Record<string, CardThemeDef & { label: string; special?: stri
   ocean:     { label: "深海",     hero: "bg-gradient-to-br from-cyan-400 via-blue-500 to-indigo-700",           shimmer: "text-white font-black",       badge: "bg-cyan-400 text-slate-900 border-0",                   btn: "bg-cyan-500 text-white",       cardBg: "bg-slate-950",cardBorder: "border-slate-700",  cardText: "text-white"    },
   gold:      { label: "金色",     hero: "bg-gradient-to-br from-yellow-300 via-amber-400 to-orange-400",        shimmer: "text-gray-900 font-black",    badge: "bg-amber-900/70 text-amber-100 border-0",               btn: "bg-amber-500 text-white",      cardBg: "bg-white",   cardBorder: "border-amber-200",  cardText: "text-gray-900" },
   crimson:   { label: "烈焰",     hero: "bg-gradient-to-br from-red-500 via-rose-600 to-red-800",               shimmer: "text-white font-black",       badge: "bg-white/20 text-white border border-white/30",         btn: "bg-red-600 text-white",        cardBg: "bg-white",   cardBorder: "border-red-100",    cardText: "text-gray-900" },
-  celebrate: { label: "庆典",     hero: "bg-sky-400",                                  layout: "celebrate",    shimmer: "text-gray-900 font-black",    badge: "bg-white text-blue-700 border-0",                       btn: "bg-indigo-600 text-white",     cardBg: "bg-white",   cardBorder: "border-blue-100",   cardText: "text-gray-900", special: "🎊" },
-  neon:      { label: "霓虹",     hero: "bg-[#1a1a1a]",                                layout: "neon",         shimmer: "text-white font-black",       badge: "bg-emerald-400 text-slate-900 border-0",                btn: "bg-emerald-400 text-slate-900",cardBg: "bg-[#1a1a1a]",cardBorder: "border-slate-700", cardText: "text-white",    special: "⚡" },
-  gradient:  { label: "渐变流光", hero: "bg-gradient-to-br from-sky-200 via-rose-200 to-amber-200", layout: "gradient", shimmer: "text-gray-900 font-black", badge: "bg-black/10 text-gray-800 border border-black/15",   btn: "bg-gray-900 text-white",       cardBg: "bg-transparent",cardBorder:"border-0",           cardText: "text-gray-900", special: "✨" },
-  split:     { label: "分栏",     hero: "bg-gradient-to-b from-slate-700 to-slate-900", layout: "split",      shimmer: "text-gray-900 font-black",    badge: "bg-white/20 text-white border-0",                       btn: "bg-gray-900 text-white",       cardBg: "bg-white",   cardBorder: "border-gray-100",   cardText: "text-gray-900", special: "⊟" },
-  flash:     { label: "特卖",     hero: "bg-yellow-300",                               layout: "flash" as any, shimmer: "text-gray-900 font-black",    badge: "bg-violet-600 text-white border-0",                     btn: "bg-violet-600 text-white",     cardBg: "bg-white",   cardBorder: "border-0",          cardText: "text-gray-900", special: "💥" },
+  celebrate: { label: "庆典",     hero: "bg-gradient-to-br from-red-700 to-red-900",            layout: "celebrate",    shimmer: "text-white font-black",       badge: "bg-amber-400 text-amber-900 border-0",                  btn: "bg-amber-500 text-white",      cardBg: "bg-white",   cardBorder: "border-amber-100",  cardText: "text-gray-900", special: "🎊" },
+  neon:      { label: "霓虹",     hero: "bg-[#050d18]",                                              layout: "neon",         shimmer: "text-white font-black",       badge: "bg-cyan-400 text-slate-900 border-0",                   btn: "bg-cyan-400 text-slate-900",   cardBg: "bg-[#050d18]",cardBorder:"border-slate-800",  cardText: "text-white",    special: "⚡" },
+  gradient:  { label: "渐变流光", hero: "bg-gradient-to-br from-rose-300 via-sky-300 to-emerald-300",layout: "gradient",     shimmer: "text-gray-900 font-black",    badge: "bg-black/10 text-gray-800 border border-black/20",      btn: "bg-gray-900 text-white",       cardBg: "bg-transparent",cardBorder:"border-0",          cardText: "text-gray-900", special: "✨" },
+  split:     { label: "分栏",     hero: "bg-black",                                                  layout: "split",        shimmer: "text-white font-black",       badge: "bg-blue-500 text-white border-0",                       btn: "bg-gray-900 text-white",       cardBg: "bg-white",   cardBorder: "border-gray-100",   cardText: "text-gray-900", special: "◼" },
+  flash:     { label: "特卖",     hero: "bg-[#FF3800]",                                              layout: "flash" as any, shimmer: "text-white font-black",       badge: "bg-[#FF3800] text-white border-0",                      btn: "bg-orange-500 text-white",     cardBg: "bg-white",   cardBorder: "border-0",          cardText: "text-gray-900", special: "⚡" },
 };
 
 /* Demo stamp data for preview — hello.sn real info */
@@ -58,164 +58,170 @@ function StampPreviewCard({ themeKey }: { themeKey: string }) {
     </div>
   );
 
-  /* ── celebrate — sky gradient + wave + glowing indigo badge ── */
+  /* ── celebrate — 中国红·节庆 ── */
   if (t.layout === "celebrate") return (
     <div className="rounded-2xl overflow-hidden shadow-md bg-white">
-      <div className="relative px-4 pt-4 pb-12 overflow-hidden"
-        style={{background:"linear-gradient(160deg,#7DD3FC 0%,#0EA5E9 100%)"}}>
+      <div className="relative px-4 pt-5 pb-12 overflow-hidden"
+        style={{background:"linear-gradient(160deg,#C8102E 0%,#7B0D1E 100%)"}}>
         {[
-          {x:"7%", y:"10%",w:10,h:4,bg:"#f43f5e",r:"-45deg"},{x:"22%",y:"5%", w:6, h:6, bg:"#facc15",r:"0"},
-          {x:"38%",y:"20%",w:14,h:3,bg:"#a78bfa",r:"20deg"}, {x:"55%",y:"4%", w:7, h:7, bg:"#34d399",r:"0"},
-          {x:"68%",y:"14%",w:12,h:3,bg:"#60a5fa",r:"30deg"}, {x:"82%",y:"8%", w:5, h:5, bg:"#f472b6",r:"0"},
-          {x:"12%",y:"38%",w:9, h:3, bg:"#4ade80",r:"15deg"},{x:"50%",y:"32%",w:5, h:5, bg:"#f87171",r:"0"},
-          {x:"75%",y:"35%",w:11,h:3,bg:"#38bdf8",r:"-20deg"},{x:"90%",y:"40%",w:8, h:3, bg:"#fbbf24",r:"10deg"},
+          {x:"8%",y:"12%",s:8,r:"45deg"},{x:"18%",y:"5%",s:5,r:"0"},
+          {x:"34%",y:"20%",s:10,r:"30deg"},{x:"52%",y:"5%",s:6,r:"0"},
+          {x:"68%",y:"15%",s:8,r:"-30deg"},{x:"84%",y:"8%",s:5,r:"0"},
+          {x:"12%",y:"42%",s:6,r:"20deg"},{x:"57%",y:"38%",s:4,r:"0"},
+          {x:"80%",y:"40%",s:7,r:"-20deg"},
         ].map((p,i)=>(
-          <span key={i} className="absolute pointer-events-none rounded-sm"
-            style={{left:p.x,top:p.y,width:p.w,height:p.h,backgroundColor:p.bg,transform:`rotate(${p.r})`}} />
+          <span key={i} className="absolute pointer-events-none"
+            style={{left:p.x,top:p.y,width:p.s,height:p.s,background:"rgba(212,175,55,0.7)",transform:`rotate(${p.r})`,borderRadius:1}} />
         ))}
         <div className="absolute bottom-0 left-0 right-0 pointer-events-none">
           <svg viewBox="0 0 400 32" preserveAspectRatio="none" className="w-full h-8 block">
-            <path d="M0 32 C120 4, 280 22, 400 2 L400 32 Z" fill="white"/>
+            <path d="M0 32 C100 8, 300 22, 400 4 L400 32 Z" fill="white"/>
           </svg>
         </div>
       </div>
       <div className="flex justify-center -mt-9 relative z-10 mb-2">
-        <div className="relative">
-          <div className="absolute inset-0 rounded-full scale-[1.3]" style={{background:"rgba(99,102,241,0.12)"}}/>
-          <div className="relative w-[60px] h-[60px] rounded-full border-[4px] border-white shadow-xl flex items-center justify-center ring-[2px] ring-indigo-200/60"
-            style={{background:"linear-gradient(135deg,#6366F1,#4338CA)"}}>
-            <Icon className="w-6 h-6 text-white"/>
-          </div>
-        </div>
-      </div>
-      <div className="px-4 pb-2 text-center">
-        <p className="text-[15px] font-black text-gray-900 leading-tight">{DEMO.tagName}</p>
-        <p className="text-[9px] text-gray-400 mt-0.5 mb-3">{DEMO.desc}</p>
-        <div className="w-full py-2.5 rounded-full text-white text-[10px] font-bold text-center mb-2"
-          style={{background:"linear-gradient(135deg,#6366F1,#4338CA)", boxShadow:"0 4px 12px rgba(99,102,241,0.3)"}}>访问主页</div>
-        <p className="text-[9px] text-gray-400 pb-2">关闭</p>
-      </div>
-    </div>
-  );
-
-  /* ── neon — #0d1117 + emerald pin + ambient glow + skyline ── */
-  if (t.layout === "neon") return (
-    <div className="rounded-2xl overflow-hidden shadow-md" style={{background:"#0d1117"}}>
-      <div className="relative flex flex-col items-center pt-6 pb-3 overflow-hidden" style={{background:"#0d1117"}}>
-        <div className="absolute pointer-events-none" style={{width:140,height:120,top:0,left:"50%",transform:"translateX(-50%)",background:"radial-gradient(ellipse, rgba(34,197,94,0.16) 0%, transparent 68%)"}}/>
-        <div className="absolute rounded-full pointer-events-none" style={{width:88,height:88,top:14,left:"50%",transform:"translateX(-50%)",border:"1px solid rgba(34,197,94,0.18)"}}/>
-        <div className="flex flex-col items-center z-10">
-          <div className="w-[72px] h-[72px] rounded-full flex items-center justify-center" style={{background:"#22c55e",boxShadow:"0 0 20px rgba(34,197,94,0.28)"}}>
-            <div className="w-[44px] h-[44px] rounded-full flex items-center justify-center" style={{background:"#0d1117"}}>
-              <Icon className="w-5 h-5 text-white"/>
-            </div>
-          </div>
-          <div style={{width:0,height:0,borderLeft:"14px solid transparent",borderRight:"14px solid transparent",borderTop:"18px solid #22c55e",marginTop:"-1px"}}/>
-        </div>
-        <div className="mt-3 z-10" style={{opacity:0.2}}>
-          <svg viewBox="0 0 140 20" className="w-28 h-4" fill="#22c55e">
-            <path d="M0 20L0 13 7 13 7 7 10 7 10 4 13 4 13 7 16 7 16 13 23 13 23 9 26 9 26 13 33 13 33 7 36 7 36 2 39 2 39 7 42 7 42 13 53 13 53 10 56 10 56 13 63 13 63 8 66 8 66 3 69 3 69 8 72 8 72 13 83 13 83 9 86 9 86 12 89 12 89 13 97 13 97 7 100 7 100 13 110 13 110 10 113 10 113 5 116 5 116 10 119 10 119 13 127 13 127 11 130 11 130 13 140 13 140 20Z"/>
+        <div className="w-[58px] h-[58px] rounded-full border-[4px] border-white shadow-xl flex items-center justify-center"
+          style={{background:"linear-gradient(135deg,#D4AF37 0%,#F7C948 50%,#B8860B 100%)",boxShadow:"0 4px 14px rgba(180,140,30,0.4)"}}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <path d="M4 13l6 7L20 6" stroke="white" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
         </div>
       </div>
       <div className="px-4 pb-2 text-center">
-        <p className="text-white text-[14px] font-black leading-tight mb-1">{DEMO.tagName}</p>
-        <p className="text-[9px] leading-relaxed" style={{color:"#6b7280"}}>{DEMO.desc}</p>
+        <p className="text-[14px] font-black text-gray-900 leading-tight">{DEMO.tagName}</p>
+        <p className="text-[8px] text-gray-400 mt-0.5 mb-3 leading-relaxed">{DEMO.desc}</p>
+        <div className="w-full py-2.5 rounded-full text-white text-[9px] font-bold text-center mb-2"
+          style={{background:"linear-gradient(135deg,#D4AF37,#B8860B)",boxShadow:"0 3px 10px rgba(180,140,30,0.3)"}}>访问主页</div>
+        <p className="text-[8px] text-gray-400 pb-2">关闭</p>
+      </div>
+    </div>
+  );
+
+  /* ── neon — 赛博·极光 ── */
+  if (t.layout === "neon") return (
+    <div className="rounded-2xl overflow-hidden shadow-md" style={{background:"#050d18"}}>
+      <div className="relative flex flex-col items-center pt-5 pb-2 overflow-hidden" style={{background:"#050d18"}}>
+        <div className="absolute pointer-events-none" style={{width:150,height:100,top:0,left:"50%",transform:"translateX(-50%)",background:"radial-gradient(ellipse,rgba(123,47,190,0.28) 0%,transparent 70%)"}}/>
+        <div className="flex justify-center gap-2 mb-3 relative z-10 w-full px-5">
+          <div style={{height:3,flex:3,background:"#FF2D78",borderRadius:2,boxShadow:"0 0 8px #FF2D78"}}/>
+          <div style={{height:3,flex:2,background:"#00D2FF",borderRadius:2,boxShadow:"0 0 8px #00D2FF"}}/>
+          <div style={{height:3,flex:1,background:"#FFE500",borderRadius:2,boxShadow:"0 0 8px #FFE500"}}/>
+        </div>
+        <div className="relative z-10 w-[68px] h-[68px] rounded-full flex items-center justify-center"
+          style={{background:"rgba(0,210,255,0.08)",border:"2px solid rgba(0,210,255,0.45)",boxShadow:"0 0 22px rgba(0,210,255,0.18)"}}>
+          <Icon className="w-6 h-6 text-cyan-400"/>
+        </div>
+      </div>
+      <div className="px-4 pt-2 pb-1 text-center">
+        <p className="text-white text-[13px] font-black leading-tight mb-1">{DEMO.tagName}</p>
+        <p className="text-[8px] leading-relaxed" style={{color:"#4a5568"}}>{DEMO.desc}</p>
       </div>
       <div className="px-4 pb-4 pt-2 space-y-1.5">
-        <div className="w-full py-2 rounded-xl text-[9px] font-bold text-center" style={{background:"#22c55e",color:"#0d1117"}}>访问主页</div>
-        <div className="w-full py-2 rounded-xl text-[9px] font-bold text-white/70 text-center" style={{border:"1.5px solid rgba(255,255,255,0.13)"}}>关闭</div>
+        <div className="w-full py-2 rounded-xl text-[9px] font-bold text-white text-center"
+          style={{background:"linear-gradient(135deg,#00D2FF,#7B2FBE)"}}>访问主页</div>
+        <div className="w-full py-2 rounded-xl text-[9px] font-bold text-center"
+          style={{border:"1.5px solid rgba(255,255,255,0.1)",color:"rgba(255,255,255,0.35)"}}>关闭</div>
       </div>
     </div>
   );
 
-  /* ── gradient — multi-radial Apple Card soft gradient ── */
+  /* ── gradient — 全息·流光 ── */
   if (t.layout === "gradient") return (
     <div className="rounded-2xl overflow-hidden shadow-md flex flex-col"
-      style={{background:"radial-gradient(ellipse at 22% 28%, rgba(147,197,253,0.92) 0%, transparent 55%), radial-gradient(ellipse at 78% 22%, rgba(249,168,212,0.85) 0%, transparent 55%), radial-gradient(ellipse at 72% 82%, rgba(253,230,138,0.88) 0%, transparent 55%), radial-gradient(ellipse at 22% 82%, rgba(167,243,208,0.6) 0%, transparent 55%), #fafcff"}}>
+      style={{background:"linear-gradient(135deg,#FF6B6B 0%,#FFD93D 18%,#6BCB77 36%,#4D96FF 55%,#C77DFF 75%,#FF6B6B 100%)"}}>
       <div className="px-4 pt-5 pb-4 flex flex-col items-center text-center flex-1">
-        <span className="inline-flex items-center px-4 py-1.5 rounded-full text-[9px] font-bold mb-3 tracking-tight"
-          style={{border:"2px solid rgba(20,20,20,0.6)", color:"rgba(20,20,20,0.75)"}}>
+        <span className="inline-flex items-center px-3 py-1 rounded-full text-[8px] font-bold mb-2.5 tracking-tight"
+          style={{border:"1.5px solid rgba(0,0,0,0.52)",color:"rgba(0,0,0,0.72)",background:"rgba(255,255,255,0.35)",backdropFilter:"blur(6px)"}}>
           {DEMO.tagLabel}
         </span>
-        <p className="font-black text-gray-900 leading-tight tracking-tight mb-2" style={{fontSize:22}}>{DEMO.tagName}</p>
-        <p className="text-[9.5px] text-gray-600 leading-relaxed">{DEMO.desc}</p>
+        <p className="font-black text-gray-900 leading-tight tracking-tight mb-1.5" style={{fontSize:20,textShadow:"0 1px 4px rgba(255,255,255,0.6)"}}>{DEMO.tagName}</p>
+        <p className="text-[8.5px] leading-relaxed" style={{color:"rgba(30,30,30,0.7)",textShadow:"0 1px 2px rgba(255,255,255,0.4)"}}>{DEMO.desc}</p>
       </div>
-      <div className="px-4 pb-4">
-        <div className="flex items-center justify-between w-full px-3.5 py-2.5 rounded-xl text-white text-[9px] font-bold"
-          style={{background:"rgba(15,20,35,0.85)"}}>
-          <span>访问主页</span><span style={{opacity:0.6}}>→</span>
+      <div className="px-3 pb-4">
+        <div className="rounded-2xl px-3 py-2 mb-1" style={{background:"rgba(255,255,255,0.88)",backdropFilter:"blur(16px)"}}>
+          <div className="flex items-center justify-between w-full px-2.5 py-2 rounded-xl text-white text-[9px] font-bold"
+            style={{background:"rgba(8,8,20,0.88)"}}>
+            <span>访问主页</span><span style={{opacity:0.5}}>→</span>
+          </div>
+          <p className="text-[7px] text-center font-mono mt-1" style={{color:"rgba(80,80,80,0.5)"}}>{DEMO.domain}</p>
         </div>
-        <p className="text-[8px] text-center font-mono mt-1.5" style={{color:"rgba(100,100,100,0.6)"}}>{DEMO.domain}</p>
       </div>
     </div>
   );
 
-  /* ── split — navy left with ghost initial + white right ── */
+  /* ── split — 高反差·黑白 ── */
   if (t.layout === "split") return (
     <div className="rounded-2xl overflow-hidden shadow-md flex" style={{minHeight:140}}>
-      <div className="relative flex flex-col items-center justify-center w-[38%] shrink-0 overflow-hidden"
-        style={{background:"linear-gradient(145deg,#1e3a5f 0%,#0f172a 100%)"}}>
+      <div className="relative flex flex-col items-center justify-center w-[40%] shrink-0 overflow-hidden"
+        style={{background:"#000"}}>
         <div className="absolute inset-0 flex items-center justify-center overflow-hidden select-none pointer-events-none">
-          <span className="font-black leading-none select-none" style={{fontSize:100,color:"rgba(255,255,255,0.04)",lineHeight:1}}>
+          <span className="font-black leading-none select-none"
+            style={{fontSize:108,color:"rgba(255,255,255,0.045)",lineHeight:1}}>
             {(DEMO.tagName||"A")[0].toUpperCase()}
           </span>
         </div>
-        <div className="absolute top-0 right-0 w-[2px] h-full" style={{background:"linear-gradient(to bottom,#3b82f6,#1d4ed8)"}}/>
-        <div className="relative z-10 w-9 h-9 rounded-xl flex items-center justify-center" style={{background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.1)"}}>
-          <Icon className="w-4 h-4 text-white/80"/>
+        <div className="absolute top-0 right-0 w-[2.5px] h-full"
+          style={{background:"linear-gradient(to bottom,#3B82F6,#6366F1)"}}/>
+        <div className="relative z-10 w-10 h-10 rounded-xl flex items-center justify-center"
+          style={{background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.09)"}}>
+          <Icon className="w-5 h-5 text-white/70"/>
         </div>
-        <p className="text-center px-2 font-mono tracking-widest uppercase mt-1" style={{fontSize:7,color:"rgba(255,255,255,0.22)"}}>{DEMO.domain}</p>
+        <p className="font-mono tracking-widest uppercase mt-1.5 text-center px-2"
+          style={{fontSize:6,color:"rgba(255,255,255,0.18)"}}>{DEMO.domain}</p>
       </div>
-      <div className="flex-1 bg-white flex flex-col justify-between px-3 py-3 relative">
+      <div className="flex-1 flex flex-col justify-between px-3 py-3 relative" style={{background:"#FAFAFA"}}>
         <div className="absolute top-2 right-2" style={{color:"#ef4444",fontSize:10,fontWeight:700,lineHeight:1}}>✕</div>
-        <div className="mt-0.5">
-          <p className="text-[7px] font-semibold uppercase tracking-[0.2em] mb-0.5" style={{color:"#9ca3af"}}>域名认领</p>
+        <div>
+          <p className="text-[6.5px] font-bold uppercase tracking-[0.22em] mb-0.5" style={{color:"#6366F1"}}>已认领</p>
           <p className="font-black text-gray-900 leading-none tracking-tight" style={{fontSize:18}}>{DEMO.tagName}</p>
-          <p className="text-[8px] mt-0.5" style={{color:"#9ca3af"}}>{DEMO.domain}</p>
+          <p className="text-[7.5px] mt-0.5 font-mono" style={{color:"#b0b7c3"}}>{DEMO.domain}</p>
         </div>
         <div className="flex items-center gap-1 mt-2">
-          <div className="flex-1 border border-gray-200 rounded-md px-2 py-1.5 text-[8px] font-mono truncate" style={{color:"#d1d5db"}}>{DEMO.domain}</div>
-          <div className="shrink-0 px-2 py-1.5 text-white text-[8px] font-bold rounded-md" style={{background:"#111827"}}>访问</div>
+          <div className="flex-1 border border-gray-200 rounded-md px-2 py-1.5 text-[7.5px] font-mono truncate" style={{color:"#d1d5db"}}>{DEMO.domain}</div>
+          <div className="shrink-0 px-2 py-1.5 text-white text-[8px] font-bold rounded-md" style={{background:"#111"}}>访问</div>
         </div>
       </div>
     </div>
   );
 
-  /* ── flash — purple header + gold yellow left + white right + ✦ ── */
+  /* ── flash — 闪购·电光 ── */
   if ((t as any).layout === "flash") return (
     <div className="rounded-2xl overflow-hidden shadow-md">
-      <div className="px-3 py-2 flex items-center justify-between" style={{background:"#7c3aed"}}>
+      <div className="px-3 py-2 flex items-center justify-between" style={{background:"#FF3800"}}>
         <div className="flex items-center gap-1.5">
           <div className="w-4 h-4 rounded-full flex items-center justify-center" style={{background:"rgba(255,255,255,0.2)"}}>
             <Icon className="w-2.5 h-2.5 text-white"/>
           </div>
-          <p className="text-[8px] font-semibold tracking-wide" style={{color:"rgba(255,255,255,0.8)"}}>{DEMO.domain}</p>
+          <p className="text-[8px] font-semibold tracking-wide" style={{color:"rgba(255,255,255,0.85)"}}>{DEMO.domain}</p>
         </div>
         <span style={{color:"rgba(255,255,255,0.5)",fontSize:9,fontWeight:700}}>✕</span>
       </div>
-      <div className="flex" style={{minHeight:110}}>
-        <div className="w-[44%] shrink-0 flex flex-col justify-end px-3 pb-3 pt-2" style={{background:"#FFD700"}}>
+      <div className="flex" style={{minHeight:112}}>
+        <div className="w-[44%] shrink-0 flex flex-col justify-end px-3 pb-3 pt-3 relative overflow-hidden"
+          style={{background:"#FFE500"}}>
+          <svg className="absolute top-2 right-2 pointer-events-none" width={12} height={19} viewBox="0 0 10 18" fill="rgba(255,80,0,0.4)">
+            <path d="M7 0L1 10h5L3 18l8-11H6L7 0Z"/>
+          </svg>
           <div style={{lineHeight:"0.88"}}>
-            <p className="font-black text-[7px] uppercase tracking-wide mb-1" style={{color:"#6d28d9",lineHeight:1}}>{DEMO.tagLabel}</p>
-            <p className="font-black" style={{fontSize:16,color:"#111",lineHeight:"0.88"}}>{DEMO.tagName}</p>
-            <p className="font-black" style={{fontSize:16,color:"#FFD700",WebkitTextStroke:"1.5px #111",lineHeight:"0.88"}}>{DEMO.tagName}</p>
-            <p className="font-black" style={{fontSize:16,color:"#FFD700",WebkitTextStroke:"1.5px #111",lineHeight:"0.88"}}>{DEMO.tagName}</p>
+            <p className="font-black text-[6.5px] uppercase tracking-wide mb-1" style={{color:"#FF3800",lineHeight:1}}>{DEMO.tagLabel}</p>
+            <p className="font-black" style={{fontSize:15,color:"#111",lineHeight:"0.88"}}>{DEMO.tagName}</p>
+            <p className="font-black" style={{fontSize:15,color:"#FFE500",WebkitTextStroke:"1.5px #111",lineHeight:"0.88"}}>{DEMO.tagName}</p>
+            <p className="font-black" style={{fontSize:15,color:"#FFE500",WebkitTextStroke:"1.5px #111",lineHeight:"0.88"}}>{DEMO.tagName}</p>
           </div>
         </div>
         <div className="flex-1 flex flex-col justify-between px-3 py-3 bg-white relative">
-          {[{b:40,r:20,s:8},{b:38,r:8,s:6}].map((sp,i)=>(
+          {[{b:38,r:18,s:9},{b:34,r:7,s:6},{b:8,r:20,s:7}].map((sp,i)=>(
             <svg key={i} width={sp.s} height={sp.s} viewBox="0 0 10 10" className="absolute pointer-events-none"
-              style={{right:`${sp.r}px`,bottom:`${sp.b}px`,fill:"#FBBF24"}}>
+              style={{right:`${sp.r}px`,bottom:`${sp.b}px`,fill:"#FFB800"}}>
               <path d="M5 0 L6 4 L10 5 L6 6 L5 10 L4 6 L0 5 L4 4 Z"/>
             </svg>
           ))}
           <div>
-            <p className="font-black text-gray-900 leading-none" style={{fontSize:17}}>{DEMO.tagName}</p>
-            <p className="text-[7px] font-bold uppercase tracking-widest mt-0.5" style={{color:"#7c3aed"}}>域名认领</p>
+            <p className="font-black text-gray-900 leading-none" style={{fontSize:16}}>{DEMO.tagName}</p>
+            <p className="text-[6.5px] font-bold uppercase tracking-widest mt-0.5" style={{color:"#FF3800"}}>域名认领</p>
           </div>
-          <div className="w-full py-1.5 rounded-lg text-[9px] font-bold text-white text-center"
-            style={{background:"linear-gradient(135deg,#8B5CF6,#7C3AED)"}}>访问主页</div>
+          <div className="w-full py-1.5 rounded-lg text-[8px] font-bold text-white text-center"
+            style={{background:"linear-gradient(135deg,#FF3800,#FF6B00)"}}>访问主页</div>
         </div>
       </div>
     </div>
@@ -253,56 +259,39 @@ export default function StampStylesPage() {
   const specialThemes  = Object.entries(CARD_THEMES).filter(([, t]) => !!t.special);
 
   const [previewKey, setPreviewKey] = React.useState<string | null>(null);
-  const [countdown, setCountdown]   = React.useState(3);
-  const timerRef    = React.useRef<ReturnType<typeof setTimeout>  | null>(null);
-  const intervalRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const openPreview = (key: string) => {
-    if (timerRef.current)    clearTimeout(timerRef.current);
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    setPreviewKey(key);
-    setCountdown(3);
-    let c = 3;
-    intervalRef.current = setInterval(() => {
-      c -= 1;
-      setCountdown(c);
-      if (c <= 0) clearInterval(intervalRef.current!);
-    }, 1000);
-    timerRef.current = setTimeout(() => {
-      setPreviewKey(null);
-      clearInterval(intervalRef.current!);
-    }, 3000);
-  };
+  const openPreview  = (key: string) => setPreviewKey(key);
+  const closePreview = () => setPreviewKey(null);
 
-  const closePreview = () => {
-    if (timerRef.current)    clearTimeout(timerRef.current);
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    setPreviewKey(null);
-  };
-
-  React.useEffect(() => () => {
-    if (timerRef.current)    clearTimeout(timerRef.current);
-    if (intervalRef.current) clearInterval(intervalRef.current);
+  React.useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") closePreview(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
   }, []);
+
+  const previewTheme = previewKey ? CARD_THEMES[previewKey] : null;
 
   return (
     <AdminLayout title="弹窗样式">
 
-      {/* ── 3-second full-size preview overlay ── */}
+      {/* ── Full-size preview overlay (manual close) ── */}
       {previewKey && (
         <div
-          className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/65 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/70 backdrop-blur-sm"
           onClick={closePreview}>
           <div
             className="rounded-[22px] overflow-hidden shadow-2xl"
-            style={{width:340, transform:"scale(1)", transformOrigin:"center"}}
+            style={{width:340}}
             onClick={e => e.stopPropagation()}>
             <StampPreviewCard themeKey={previewKey} />
           </div>
-          <div className="mt-5 flex items-center gap-2 text-white/60 text-sm font-medium select-none">
-            <span>{countdown}s</span>
-            <span>·</span>
-            <span>点击任意处关闭</span>
+          <div className="mt-5 flex flex-col items-center gap-1.5 select-none">
+            <div className="flex items-center gap-2">
+              {previewTheme?.special && <span className="text-lg leading-none">{previewTheme.special}</span>}
+              <span className="text-white font-bold text-sm">{previewTheme?.label}</span>
+              <code className="text-white/40 text-xs font-mono">{previewKey}</code>
+            </div>
+            <p className="text-white/40 text-xs">点击背景或按 Esc 关闭</p>
           </div>
         </div>
       )}
@@ -312,7 +301,7 @@ export default function StampStylesPage() {
         <div>
           <h1 className="text-xl font-bold">弹窗样式一览</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            在「品牌管理」编辑认领时可选择以下样式，点击缩略图可预览 3 秒。
+            在「品牌管理」编辑认领时可选择以下样式，点击缩略图可全屏预览真实效果。
           </p>
         </div>
 
