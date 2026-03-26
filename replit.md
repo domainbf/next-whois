@@ -42,6 +42,15 @@ When IANA page has no lifecycle keywords, the scraper:
 - Link keywords: same languages + URL path keywords (lifecycle, renewal, expir, policy, delete)
 Text extraction prioritizes keyword-containing lines (70/30 split) within 10k char limit.
 
+### DB Schema additions
+- `manually_edited BOOLEAN DEFAULT FALSE` — marks admin-manually-edited records; auto-scraper skips these unless `force=true`
+
+### API endpoints (PATCH added)
+- **GET** `/api/admin/tld-rules` — includes `manually_edited` field
+- **POST** `/api/admin/tld-rules` — scrape+AI extract; skips if `manually_edited=true` OR data fresh
+- **PATCH** `/api/admin/tld-rules` — manual edit: saves values + sets `manually_edited=TRUE`, `confidence='high'`
+- **DELETE** `/api/admin/tld-rules` — removes rule
+
 ### Admin UI
 - Model status badges in single-scrape form (✓/✗ per configured model)
 - Model selector dropdown in single-scrape form

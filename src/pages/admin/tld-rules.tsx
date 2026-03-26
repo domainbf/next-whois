@@ -19,6 +19,11 @@ import {
   RiBarChartLine,
   RiGlobalLine,
   RiMapPin2Line,
+  RiEditLine,
+  RiSaveLine,
+  RiCloseLine,
+  RiUserLine,
+  RiLockLine,
 } from "@remixicon/react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -41,6 +46,19 @@ type TldRule = {
   updated_at: string;
   model_used: string | null;
   ai_reasoning: string | null;
+  manually_edited: boolean;
+};
+
+type EditForm = {
+  grace_period_days: string;
+  redemption_period_days: string;
+  pending_delete_days: string;
+  drop_hour: string;
+  drop_minute: string;
+  drop_second: string;
+  drop_timezone: string;
+  pre_expiry_days: string;
+  source_url: string;
 };
 
 type AiModelInfo = {
@@ -224,6 +242,14 @@ export default function AdminTldRulesPage() {
   const [form, setForm] = React.useState({ tld: "", source_url: "", force: false });
   const [lastResult, setLastResult] = React.useState<any>(null);
 
+  // Inline edit state
+  const [editingTld, setEditingTld] = React.useState<string | null>(null);
+  const [editForm, setEditForm] = React.useState<EditForm>({
+    grace_period_days: "", redemption_period_days: "", pending_delete_days: "",
+    drop_hour: "", drop_minute: "", drop_second: "", drop_timezone: "", pre_expiry_days: "", source_url: "",
+  });
+  const [saving, setSaving] = React.useState(false);
+
   // AI model state
   const [aiModels, setAiModels] = React.useState<AiModelInfo[]>([]);
   const [selectedModel, setSelectedModel] = React.useState<string>(""); // "" = auto (priority order)
@@ -328,7 +354,11 @@ export default function AdminTldRulesPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "抓取失败");
       if (data.skipped) {
-        toast.info(`.${tld} 数据仍有效（有效至 ${data.fresh_until?.slice(0,10) ?? "—"}），跳过重爬。勾选"强制重爬"可覆盖。`);
+        if (data.reason === "manually_edited") {
+          toast.info(`.${tld} 已被手动修改，自动爬取已跳过。勾选"强制重爬"可覆盖并重新抓取。`);
+        } else {
+          toast.info(`.${tld} 数据仍有效（有效至 ${data.fresh_until?.slice(0,10) ?? "—"}），跳过重爬。勾选"强制重爬"可覆盖。`);
+        }
         setLastResult(data);
       } else {
         setLastResult(data);
@@ -365,23 +395,77 @@ export default function AdminTldRulesPage() {
     }
   }
 
+  // ── Inline edit ───────────────────────────────────────────────────────────
+  function startEdit(r: TldRule) {
+    setEditingTld(r.tld);
+    setEditForm({
+      grace_period_days: String(r.grace_period_days),
+      redemption_period_days: String(r.redemption_period_days),
+      pending_delete_days: String(r.pending_delete_days),
+      drop_hour: r.drop_hour !== null ? String(r.drop_hour) : "",
+      drop_minute: r.drop_minute !== null ? String(r.drop_minute) : "",
+      drop_second: r.drop_second !== null ? String(r.drop_second) : "",
+      drop_timezone: r.drop_timezone ?? "",
+      pre_expiry_days: r.pre_expiry_days !== null ? String(r.pre_expiry_days) : "",
+      source_url: r.source_url ?? "",
+    });
+  }
+
+  async function handleSaveEdit(tld: string) {
+    setSaving(true);
+    try {
+      const body: Record<string, unknown> = {
+        tld,
+        grace_period_days: parseInt(editForm.grace_period_days) || 0,
+        redemption_period_days: parseInt(editForm.redemption_period_days) || 0,
+        pending_delete_days: parseInt(editForm.pending_delete_days) || 0,
+        drop_hour: editForm.drop_hour !== "" ? parseInt(editForm.drop_hour) : null,
+        drop_minute: editForm.drop_minute !== "" ? parseInt(editForm.drop_minute) : null,
+        drop_second: editForm.drop_second !== "" ? parseInt(editForm.drop_second) : null,
+        drop_timezone: editForm.drop_timezone || null,
+        pre_expiry_days: editForm.pre_expiry_days !== "" ? parseInt(editForm.pre_expiry_days) : null,
+        source_url: editForm.source_url || null,
+      };
+      const res = await fetch("/api/admin/tld-rules", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "保存失败");
+      toast.success(`.${tld} 已手动修改保存（后续爬取将跳过此记录）`);
+      setEditingTld(null);
+      load();
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "保存失败");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   // ── Batch scrape ──────────────────────────────────────────────────────────
   // Freshness thresholds: ccTLD (2-letter) = 60 days, gTLD = 180 days (stable)
   function isTldFresh(tld: string): boolean {
     const rule = rules.find(r => r.tld === tld);
-    if (!rule?.scraped_at) return false;
+    if (!rule) return false;
+    // Manually edited records are treated as "always fresh" (protected from re-scrape)
+    if (rule.manually_edited) return true;
+    if (!rule.scraped_at) return false;
     const validityDays = tld.length === 2 ? 60 : 180;
     const freshUntil = new Date(rule.scraped_at).getTime() + validityDays * 86_400_000;
     return Date.now() < freshUntil;
   }
 
   function startBatch(list: typeof batchList) {
-    // Build full item list: mark fresh ones immediately as "skipped"
+    // Build full item list: mark fresh/manually-edited ones immediately as "skipped"
     const items: BatchItem[] = list.map(t => {
+      const rule = rules.find(r => r.tld === t.tld);
+      if (rule?.manually_edited) {
+        return { tld: t.tld, status: "skipped" as const, msg: "手动修改，已跳过" };
+      }
       if (isTldFresh(t.tld)) {
-        const rule = rules.find(r => r.tld === t.tld)!;
         const validityDays = t.tld.length === 2 ? 60 : 180;
-        const freshUntil = new Date(new Date(rule.scraped_at!).getTime() + validityDays * 86_400_000);
+        const freshUntil = new Date(new Date(rule!.scraped_at!).getTime() + validityDays * 86_400_000);
         return { tld: t.tld, status: "skipped" as const, msg: `数据有效至 ${freshUntil.toISOString().slice(0, 10)}` };
       }
       return { tld: t.tld, status: "pending" as const };
@@ -438,9 +522,11 @@ export default function AdminTldRulesPage() {
             i === batchIdx ? { ...it, status: res.status === 429 ? "skipped" : "error", msg: data.error } : it
           ));
         } else if (data.skipped) {
-          // Backend says data is still fresh
+          const skipMsg = data.reason === "manually_edited"
+            ? "手动修改，已保护"
+            : `数据有效至 ${data.fresh_until?.slice(0,10) ?? "—"}`;
           setBatchItems(prev => prev.map((it, i) =>
-            i === batchIdx ? { ...it, status: "skipped", msg: `数据有效至 ${data.fresh_until?.slice(0,10) ?? "—"}` } : it
+            i === batchIdx ? { ...it, status: "skipped", msg: skipMsg } : it
           ));
         } else {
           setBatchItems(prev => prev.map((it, i) =>
@@ -481,6 +567,24 @@ export default function AdminTldRulesPage() {
     if (c === "high") return <span className="text-xs px-1.5 py-0.5 rounded bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">官方</span>;
     if (c === "ai") return <span className="text-xs px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">AI</span>;
     return <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">估算</span>;
+  }
+
+  function sourceBadge(r: TldRule) {
+    if (r.manually_edited) {
+      return (
+        <span className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 font-medium">
+          <RiUserLine className="w-2.5 h-2.5" />手动修改
+        </span>
+      );
+    }
+    if (r.scraped_at) {
+      return (
+        <span className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 font-medium">
+          <RiRobot2Line className="w-2.5 h-2.5" />已爬取
+        </span>
+      );
+    }
+    return null;
   }
 
   function formatDropTime(r: TldRule | CompareRow, prefix: "db_" | "" = "") {
@@ -968,45 +1072,150 @@ export default function AdminTldRulesPage() {
                 <tbody className="divide-y divide-border">
                   {filtered.map(r => {
                     const dt = formatDropTime(r);
+                    const isEditing = editingTld === r.tld;
                     return (
-                      <tr key={r.tld} className="hover:bg-muted/30 transition-colors">
-                        <td className="px-4 py-2.5 font-mono font-medium">.{r.tld}</td>
-                        <td className="px-3 py-2.5 text-right">{r.grace_period_days}d</td>
-                        <td className="px-3 py-2.5 text-right">{r.redemption_period_days}d</td>
-                        <td className="px-3 py-2.5 text-right">{r.pending_delete_days}d</td>
-                        <td className="px-3 py-2.5 text-right font-medium">{r.total_release_days}d</td>
-                        <td className="px-3 py-2.5">
-                          {dt ? (
-                            <span className="flex items-center gap-1 text-xs text-blue-600">
-                              <RiTimeLine className="w-3 h-3 shrink-0" />{dt}
-                            </span>
-                          ) : <span className="text-muted-foreground text-xs">—</span>}
-                        </td>
-                        <td className="px-3 py-2.5 text-right text-xs">
-                          {r.pre_expiry_days ? `${r.pre_expiry_days}d` : "—"}
-                        </td>
-                        <td className="px-3 py-2.5">
-                          {r.source_url ? (
-                            <a href={r.source_url} target="_blank" rel="noopener noreferrer"
-                              className="flex items-center gap-1 text-xs text-blue-600 hover:underline max-w-[120px] truncate">
-                              <RiExternalLinkLine className="w-3 h-3 shrink-0" />
-                              <span className="truncate">{new URL(r.source_url).hostname}</span>
-                            </a>
-                          ) : <span className="text-muted-foreground text-xs">—</span>}
-                        </td>
-                        <td className="px-3 py-2.5">{confidenceBadge(r.confidence)}</td>
-                        <td className="px-3 py-2.5 text-xs text-muted-foreground">
-                          {r.updated_at ? new Date(r.updated_at).toLocaleDateString("zh-CN") : "—"}
-                        </td>
-                        <td className="px-3 py-2.5">
-                          <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500 hover:text-red-600 hover:bg-red-50"
-                            disabled={deleting === r.tld} onClick={() => handleDelete(r.tld)}>
-                            {deleting === r.tld
-                              ? <RiLoader4Line className="w-3.5 h-3.5 animate-spin" />
-                              : <RiDeleteBinLine className="w-3.5 h-3.5" />}
-                          </Button>
-                        </td>
-                      </tr>
+                      <React.Fragment key={r.tld}>
+                        <tr className={cn(
+                          "hover:bg-muted/30 transition-colors",
+                          r.manually_edited && "bg-amber-50/40 dark:bg-amber-950/10",
+                          isEditing && "bg-blue-50/60 dark:bg-blue-950/20"
+                        )}>
+                          <td className="px-4 py-2.5">
+                            <div className="flex flex-col gap-0.5">
+                              <span className="font-mono font-medium">.{r.tld}</span>
+                              {sourceBadge(r)}
+                            </div>
+                          </td>
+                          <td className="px-3 py-2.5 text-right">{r.grace_period_days}d</td>
+                          <td className="px-3 py-2.5 text-right">{r.redemption_period_days}d</td>
+                          <td className="px-3 py-2.5 text-right">{r.pending_delete_days}d</td>
+                          <td className="px-3 py-2.5 text-right font-medium">{r.total_release_days}d</td>
+                          <td className="px-3 py-2.5">
+                            {dt ? (
+                              <span className="flex items-center gap-1 text-xs text-blue-600">
+                                <RiTimeLine className="w-3 h-3 shrink-0" />{dt}
+                              </span>
+                            ) : <span className="text-muted-foreground text-xs">—</span>}
+                          </td>
+                          <td className="px-3 py-2.5 text-right text-xs">
+                            {r.pre_expiry_days ? `${r.pre_expiry_days}d` : "—"}
+                          </td>
+                          <td className="px-3 py-2.5">
+                            {r.source_url ? (
+                              <a href={r.source_url} target="_blank" rel="noopener noreferrer"
+                                className="flex items-center gap-1 text-xs text-blue-600 hover:underline max-w-[120px] truncate">
+                                <RiExternalLinkLine className="w-3 h-3 shrink-0" />
+                                <span className="truncate">{new URL(r.source_url).hostname}</span>
+                              </a>
+                            ) : <span className="text-muted-foreground text-xs">—</span>}
+                          </td>
+                          <td className="px-3 py-2.5">{confidenceBadge(r.confidence)}</td>
+                          <td className="px-3 py-2.5 text-xs text-muted-foreground">
+                            {r.updated_at ? new Date(r.updated_at).toLocaleDateString("zh-CN") : "—"}
+                          </td>
+                          <td className="px-3 py-2.5">
+                            <div className="flex items-center gap-1">
+                              {isEditing ? (
+                                <>
+                                  <Button variant="ghost" size="icon" className="h-7 w-7 text-green-600 hover:text-green-700 hover:bg-green-50"
+                                    disabled={saving} onClick={() => handleSaveEdit(r.tld)}>
+                                    {saving ? <RiLoader4Line className="w-3.5 h-3.5 animate-spin" /> : <RiSaveLine className="w-3.5 h-3.5" />}
+                                  </Button>
+                                  <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                                    onClick={() => setEditingTld(null)}>
+                                    <RiCloseLine className="w-3.5 h-3.5" />
+                                  </Button>
+                                </>
+                              ) : (
+                                <>
+                                  <Button variant="ghost" size="icon" className="h-7 w-7 text-blue-500 hover:text-blue-600 hover:bg-blue-50"
+                                    title="手动编辑" onClick={() => startEdit(r)}>
+                                    <RiEditLine className="w-3.5 h-3.5" />
+                                  </Button>
+                                  <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500 hover:text-red-600 hover:bg-red-50"
+                                    disabled={deleting === r.tld} onClick={() => handleDelete(r.tld)}>
+                                    {deleting === r.tld
+                                      ? <RiLoader4Line className="w-3.5 h-3.5 animate-spin" />
+                                      : <RiDeleteBinLine className="w-3.5 h-3.5" />}
+                                  </Button>
+                                </>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+
+                        {/* Inline edit form row */}
+                        {isEditing && (
+                          <tr className="bg-blue-50/80 dark:bg-blue-950/30">
+                            <td colSpan={11} className="px-4 py-3">
+                              <div className="space-y-3">
+                                <div className="flex items-center gap-2 text-xs font-medium text-blue-700 dark:text-blue-400">
+                                  <RiEditLine className="w-3.5 h-3.5" />
+                                  手动编辑 .{r.tld} — 保存后此记录将被标记为"手动修改"，自动爬取将跳过
+                                  {r.manually_edited && (
+                                    <span className="flex items-center gap-1 ml-2 text-amber-600">
+                                      <RiLockLine className="w-3 h-3" />已受保护
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
+                                  {[
+                                    { label: "宽限期(天)", key: "grace_period_days" as const, placeholder: "30" },
+                                    { label: "赎回期(天)", key: "redemption_period_days" as const, placeholder: "30" },
+                                    { label: "待删期(天)", key: "pending_delete_days" as const, placeholder: "5" },
+                                    { label: "提前删(天)", key: "pre_expiry_days" as const, placeholder: "0" },
+                                    { label: "掉落时(h)", key: "drop_hour" as const, placeholder: "如 16" },
+                                    { label: "掉落分(m)", key: "drop_minute" as const, placeholder: "如 0" },
+                                    { label: "掉落秒(s)", key: "drop_second" as const, placeholder: "如 0" },
+                                  ].map(({ label, key, placeholder }) => (
+                                    <div key={key} className="space-y-1">
+                                      <Label className="text-[10px] text-muted-foreground">{label}</Label>
+                                      <Input
+                                        type="number"
+                                        className="h-7 text-xs px-2"
+                                        placeholder={placeholder}
+                                        value={editForm[key]}
+                                        onChange={e => setEditForm(f => ({ ...f, [key]: e.target.value }))}
+                                      />
+                                    </div>
+                                  ))}
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                  <div className="space-y-1">
+                                    <Label className="text-[10px] text-muted-foreground">时区 (IANA格式，如 UTC / Europe/Berlin)</Label>
+                                    <Input
+                                      className="h-7 text-xs px-2"
+                                      placeholder="如 Asia/Tokyo，留空则无"
+                                      value={editForm.drop_timezone}
+                                      onChange={e => setEditForm(f => ({ ...f, drop_timezone: e.target.value }))}
+                                    />
+                                  </div>
+                                  <div className="space-y-1">
+                                    <Label className="text-[10px] text-muted-foreground">来源 URL（政策页链接）</Label>
+                                    <Input
+                                      className="h-7 text-xs px-2"
+                                      placeholder="https://..."
+                                      value={editForm.source_url}
+                                      onChange={e => setEditForm(f => ({ ...f, source_url: e.target.value }))}
+                                    />
+                                  </div>
+                                </div>
+                                <div className="flex gap-2">
+                                  <Button size="sm" className="h-7 gap-1.5 text-xs" disabled={saving}
+                                    onClick={() => handleSaveEdit(r.tld)}>
+                                    {saving ? <RiLoader4Line className="w-3.5 h-3.5 animate-spin" /> : <RiSaveLine className="w-3.5 h-3.5" />}
+                                    保存手动修改
+                                  </Button>
+                                  <Button size="sm" variant="ghost" className="h-7 gap-1.5 text-xs"
+                                    onClick={() => setEditingTld(null)}>
+                                    <RiCloseLine className="w-3.5 h-3.5" />取消
+                                  </Button>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
                     );
                   })}
                 </tbody>

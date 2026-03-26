@@ -496,10 +496,19 @@ async function fetchPageText(url: string): Promise<{ text: string; finalUrl: str
         }
       }
 
-      if (found && hasLifecycleInfo(found.text)) {
-        // Combine: IANA context (registry name etc.) + registry lifecycle page
-        text = `[IANA 页面 — 注册局信息]\n${ianaText.slice(0, 1500)}\n\n[注册局生命周期政策页 ${found.url}]\n${found.text.slice(0, 7500)}`;
+      if (found) {
+        // Always use registry page text — even without lifecycle keywords,
+        // the AI may still extract data from context (e.g., policy tables in non-English).
+        // Signal to AI whether strong keywords were found.
+        const hasKw = hasLifecycleInfo(found.text);
+        const hint = hasKw
+          ? ""
+          : "\n[注意：本页未检测到标准生命周期关键词，但仍尝试从上下文提取数据，如无法提取请使用行业默认值]\n";
+        text = `[IANA 页面 — 注册局信息]\n${ianaText.slice(0, 1500)}\n\n[注册局官网 ${found.url}]${hint}\n${found.text.slice(0, 7500)}`;
         finalUrl = found.url;
+      } else if (!hasLifecycleInfo(ianaText)) {
+        // No registry page found — still send IANA text to AI with a hint
+        text = `[IANA 页面 — 注册局信息，无注册局官网数据]\n${ianaText}\n[注意：未能找到注册局生命周期政策页，请根据TLD类型判断是否使用行业默认值]`;
       }
     }
   }
@@ -615,13 +624,14 @@ export default async function handler(
       confidence: string; drop_hour: number | null; drop_minute: number | null;
       drop_second: number | null; drop_timezone: string | null; pre_expiry_days: number | null;
       scraped_at: string | null; updated_at: string; model_used: string | null;
-      ai_reasoning: string | null;
+      ai_reasoning: string | null; manually_edited: boolean;
     }>(
       `SELECT tld, grace_period_days, redemption_period_days, pending_delete_days,
               grace_period_days + redemption_period_days + pending_delete_days AS total_release_days,
               source_url, confidence,
               drop_hour, drop_minute, drop_second, drop_timezone, pre_expiry_days,
-              scraped_at, updated_at, model_used, ai_reasoning
+              scraped_at, updated_at, model_used, ai_reasoning,
+              COALESCE(manually_edited, FALSE) AS manually_edited
        FROM tld_rules ORDER BY tld`
     );
 
@@ -677,14 +687,32 @@ export default async function handler(
 
     // ── Freshness check ───────────────────────────────────────────────────
     // ccTLD (2-letter) = 60-day validity; gTLD = 180-day validity (stable).
-    // Skip re-scraping if data is still fresh, unless force=true.
+    // Skip re-scraping if data is still fresh, OR if admin has manually edited it.
     if (!force) {
-      const existing = await one<{ scraped_at: Date | null; grace_period_days: number; redemption_period_days: number; pending_delete_days: number; drop_hour: number | null; drop_timezone: string | null }>(
+      const existing = await one<{
+        scraped_at: Date | null; grace_period_days: number; redemption_period_days: number;
+        pending_delete_days: number; drop_hour: number | null; drop_timezone: string | null;
+        manually_edited: boolean;
+      }>(
         `SELECT scraped_at, grace_period_days, redemption_period_days, pending_delete_days,
-                drop_hour, drop_timezone
+                drop_hour, drop_timezone, COALESCE(manually_edited, FALSE) AS manually_edited
          FROM tld_rules WHERE tld = $1`,
         [cleanTld]
       ).catch(() => null);
+
+      // Protect manually-edited records from being overwritten by scraper
+      if (existing?.manually_edited) {
+        return res.status(200).json({
+          skipped: true,
+          tld: cleanTld,
+          reason: "manually_edited",
+          grace_period_days: existing.grace_period_days,
+          redemption_period_days: existing.redemption_period_days,
+          pending_delete_days: existing.pending_delete_days,
+          drop_hour: existing.drop_hour,
+          drop_timezone: existing.drop_timezone,
+        });
+      }
 
       if (existing?.scraped_at) {
         const isCcTld = cleanTld.length === 2;
@@ -804,6 +832,86 @@ export default async function handler(
     }
   }
 
+  // PATCH — manual edit (admin overrides AI scrape; marks record as manually_edited)
+  if (req.method === "PATCH") {
+    const session = await requireAdmin(req, res);
+    if (!session) return;
+
+    const {
+      tld, grace_period_days, redemption_period_days, pending_delete_days,
+      drop_hour, drop_minute, drop_second, drop_timezone, pre_expiry_days, source_url,
+    } = req.body as {
+      tld?: string;
+      grace_period_days?: number;
+      redemption_period_days?: number;
+      pending_delete_days?: number;
+      drop_hour?: number | null;
+      drop_minute?: number | null;
+      drop_second?: number | null;
+      drop_timezone?: string | null;
+      pre_expiry_days?: number | null;
+      source_url?: string | null;
+    };
+
+    if (!tld) return res.status(400).json({ error: "tld is required" });
+    const cleanTld = tld.toLowerCase().replace(/^\./, "");
+
+    const toInt = (v: unknown, fallback = 0) =>
+      v === null || v === undefined || v === "" ? fallback : Math.max(0, parseInt(String(v)) || fallback);
+    const toNullInt = (v: unknown, lo: number, hi: number): number | null => {
+      if (v === null || v === undefined || v === "") return null;
+      const n = parseInt(String(v));
+      return isNaN(n) ? null : Math.min(hi, Math.max(lo, n));
+    };
+
+    await run(
+      `INSERT INTO tld_rules
+         (tld, grace_period_days, redemption_period_days, pending_delete_days,
+          source_url, confidence, manually_edited, drop_hour, drop_minute, drop_second,
+          drop_timezone, pre_expiry_days, updated_at, created_at)
+       VALUES ($1,$2,$3,$4,$5,'high',TRUE,$6,$7,$8,$9,$10,NOW(),NOW())
+       ON CONFLICT (tld) DO UPDATE SET
+         grace_period_days      = EXCLUDED.grace_period_days,
+         redemption_period_days = EXCLUDED.redemption_period_days,
+         pending_delete_days    = EXCLUDED.pending_delete_days,
+         source_url             = COALESCE(EXCLUDED.source_url, tld_rules.source_url),
+         confidence             = 'high',
+         manually_edited        = TRUE,
+         drop_hour              = EXCLUDED.drop_hour,
+         drop_minute            = EXCLUDED.drop_minute,
+         drop_second            = EXCLUDED.drop_second,
+         drop_timezone          = EXCLUDED.drop_timezone,
+         pre_expiry_days        = EXCLUDED.pre_expiry_days,
+         ai_reasoning           = COALESCE(tld_rules.ai_reasoning, '手动录入'),
+         updated_at             = NOW()`,
+      [
+        cleanTld,
+        toInt(grace_period_days, 30),
+        toInt(redemption_period_days, 30),
+        toInt(pending_delete_days, 5),
+        source_url ?? null,
+        toNullInt(drop_hour, 0, 23),
+        toNullInt(drop_minute, 0, 59),
+        toNullInt(drop_second, 0, 59),
+        typeof drop_timezone === "string" && drop_timezone ? drop_timezone.slice(0, 50) : null,
+        toNullInt(pre_expiry_days, 0, 365),
+      ]
+    );
+
+    // Update local JSON cache
+    updateLocalCache(cleanTld, {
+      grace_period_days: toInt(grace_period_days, 30),
+      redemption_period_days: toInt(redemption_period_days, 30),
+      pending_delete_days: toInt(pending_delete_days, 5),
+      total_release_days: toInt(grace_period_days, 30) + toInt(redemption_period_days, 30) + toInt(pending_delete_days, 5),
+      confidence: "high",
+      manually_edited: true,
+      source_url: source_url ?? null,
+    });
+
+    return res.json({ ok: true, tld: cleanTld, manually_edited: true });
+  }
+
   // DELETE — remove a rule
   if (req.method === "DELETE") {
     const session = await requireAdmin(req, res);
@@ -820,6 +928,6 @@ export default async function handler(
     return res.json({ ok: true });
   }
 
-  res.setHeader("Allow", "GET, POST, DELETE");
+  res.setHeader("Allow", "GET, POST, PATCH, DELETE");
   res.status(405).json({ error: "Method not allowed" });
 }
