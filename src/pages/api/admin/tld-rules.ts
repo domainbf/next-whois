@@ -195,9 +195,10 @@ export default async function handler(
     const session = await requireAdmin(req, res);
     if (!session) return;
 
-    const { tld, source_url } = req.body as {
+    const { tld, source_url, force } = req.body as {
       tld?: string;
       source_url?: string;
+      force?: boolean;
     };
     if (!tld) {
       return res.status(400).json({ error: "tld is required" });
@@ -207,7 +208,38 @@ export default async function handler(
     const cleanUrl = (source_url ?? "").trim() ||
       `https://www.iana.org/domains/root/db/${cleanTld}.html`;
 
-    // Rate limit
+    // ── Freshness check ───────────────────────────────────────────────────
+    // ccTLD (2-letter) = 60-day validity; gTLD = 30-day validity.
+    // Skip re-scraping if data is still fresh, unless force=true.
+    if (!force) {
+      const existing = await one<{ scraped_at: Date | null; grace_period_days: number; redemption_period_days: number; pending_delete_days: number; drop_hour: number | null; drop_timezone: string | null }>(
+        `SELECT scraped_at, grace_period_days, redemption_period_days, pending_delete_days,
+                drop_hour, drop_timezone
+         FROM tld_rules WHERE tld = $1`,
+        [cleanTld]
+      ).catch(() => null);
+
+      if (existing?.scraped_at) {
+        const isCcTld = cleanTld.length === 2;
+        const validityDays = isCcTld ? 60 : 30;
+        const freshUntil = new Date(existing.scraped_at.getTime() + validityDays * 86_400_000);
+        if (freshUntil > new Date()) {
+          return res.status(200).json({
+            skipped: true,
+            tld: cleanTld,
+            reason: "data_fresh",
+            fresh_until: freshUntil.toISOString(),
+            grace_period_days: existing.grace_period_days,
+            redemption_period_days: existing.redemption_period_days,
+            pending_delete_days: existing.pending_delete_days,
+            drop_hour: existing.drop_hour,
+            drop_timezone: existing.drop_timezone,
+          });
+        }
+      }
+    }
+
+    // Rate limit (anti-spam: 1 scrape per TLD per hour)
     const allowed = await checkRateLimit(cleanTld);
     if (!allowed) {
       return res.status(429).json({

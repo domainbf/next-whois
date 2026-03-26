@@ -210,7 +210,7 @@ export default function AdminTldRulesPage() {
   const [search, setSearch] = React.useState("");
   const [scraping, setScraping] = React.useState(false);
   const [deleting, setDeleting] = React.useState<string | null>(null);
-  const [form, setForm] = React.useState({ tld: "", source_url: "" });
+  const [form, setForm] = React.useState({ tld: "", source_url: "", force: false });
   const [lastResult, setLastResult] = React.useState<any>(null);
 
   // Batch state
@@ -268,13 +268,18 @@ export default function AdminTldRulesPage() {
       const res = await fetch("/api/admin/tld-rules", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tld, source_url: form.source_url.trim() || undefined }),
+        body: JSON.stringify({ tld, source_url: form.source_url.trim() || undefined, force: form.force }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "抓取失败");
-      setLastResult(data);
-      toast.success(`.${tld} 规则提取成功！`);
-      setForm({ tld: "", source_url: "" });
+      if (data.skipped) {
+        toast.info(`.${tld} 数据仍有效（有效至 ${data.fresh_until?.slice(0,10) ?? "—"}），跳过重爬。勾选"强制重爬"可覆盖。`);
+        setLastResult(data);
+      } else {
+        setLastResult(data);
+        toast.success(`.${tld} 规则提取成功！`);
+      }
+      setForm({ tld: "", source_url: "", force: false });
       load();
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "抓取失败";
@@ -306,14 +311,38 @@ export default function AdminTldRulesPage() {
   }
 
   // ── Batch scrape ──────────────────────────────────────────────────────────
+  // Freshness thresholds: ccTLD (2-letter) = 60 days, gTLD = 30 days
+  function isTldFresh(tld: string): boolean {
+    const rule = rules.find(r => r.tld === tld);
+    if (!rule?.scraped_at) return false;
+    const validityDays = tld.length === 2 ? 60 : 30;
+    const freshUntil = new Date(rule.scraped_at).getTime() + validityDays * 86_400_000;
+    return Date.now() < freshUntil;
+  }
+
   function startBatch(list: typeof batchList) {
-    const existing = new Set(rules.map(r => r.tld));
-    const todo = list.filter(t => !existing.has(t.tld));
-    if (todo.length === 0) { toast.info("所有预置 TLD 已抓取完毕"); return; }
+    // Build full item list: mark fresh ones immediately as "skipped"
+    const items: BatchItem[] = list.map(t => {
+      if (isTldFresh(t.tld)) {
+        const rule = rules.find(r => r.tld === t.tld)!;
+        const validityDays = t.tld.length === 2 ? 60 : 30;
+        const freshUntil = new Date(new Date(rule.scraped_at!).getTime() + validityDays * 86_400_000);
+        return { tld: t.tld, status: "skipped" as const, msg: `数据有效至 ${freshUntil.toISOString().slice(0, 10)}` };
+      }
+      return { tld: t.tld, status: "pending" as const };
+    });
+    const pending = items.filter(i => i.status === "pending");
+    if (pending.length === 0) {
+      toast.info(`所有 ${list.length} 个 TLD 数据均新鲜，无需重新抓取`);
+      return;
+    }
+    toast.info(`跳过 ${items.length - pending.length} 个新鲜 TLD，准备抓取 ${pending.length} 个`);
     batchAbortRef.current = false;
     setBatchList(list);
-    setBatchItems(todo.map(t => ({ tld: t.tld, status: "pending" })));
-    setBatchIdx(0);
+    setBatchItems(items);
+    // Start from first pending item
+    const firstPending = items.findIndex(i => i.status === "pending");
+    setBatchIdx(firstPending);
     setBatchStatus("running");
   }
 
@@ -325,13 +354,18 @@ export default function AdminTldRulesPage() {
 
   React.useEffect(() => {
     if (batchStatus !== "running") return;
-    if (batchIdx >= batchItems.length) {
+    // Find next pending item starting from batchIdx
+    const nextPending = batchItems.findIndex((it, i) => i >= batchIdx && it.status === "pending");
+    if (nextPending === -1) {
       setBatchStatus("done");
-      toast.success(`批量抓取完成，共 ${batchItems.length} 个`);
+      const doneCount = batchItems.filter(i => i.status === "ok").length;
+      const skipCount = batchItems.filter(i => i.status === "skipped").length;
+      toast.success(`批量抓取完成：成功 ${doneCount} 个，跳过 ${skipCount} 个`);
       load();
       return;
     }
     if (batchAbortRef.current) return;
+    if (nextPending !== batchIdx) { setBatchIdx(nextPending); return; }
 
     const item = batchItems[batchIdx];
     const meta = batchList.find(t => t.tld === item.tld);
@@ -348,6 +382,11 @@ export default function AdminTldRulesPage() {
           setBatchItems(prev => prev.map((it, i) =>
             i === batchIdx ? { ...it, status: res.status === 429 ? "skipped" : "error", msg: data.error } : it
           ));
+        } else if (data.skipped) {
+          // Backend says data is still fresh
+          setBatchItems(prev => prev.map((it, i) =>
+            i === batchIdx ? { ...it, status: "skipped", msg: `数据有效至 ${data.fresh_until?.slice(0,10) ?? "—"}` } : it
+          ));
         } else {
           setBatchItems(prev => prev.map((it, i) =>
             i === batchIdx ? { ...it, status: "ok", msg: `${data.total_release_days}d` } : it
@@ -359,7 +398,7 @@ export default function AdminTldRulesPage() {
         ));
       } finally {
         if (!batchAbortRef.current) {
-          await new Promise(r => setTimeout(r, 1500));
+          await new Promise(r => setTimeout(r, 1200));
           setBatchIdx(i => i + 1);
         }
       }
@@ -411,7 +450,7 @@ export default function AdminTldRulesPage() {
             <RiPlayCircleLine className="w-4 h-4 text-violet-500" />
             {label}
             <span className="text-xs text-muted-foreground font-normal">
-              — {list.length} 个，跳过已有，自动用 IANA 页面
+              — {list.length} 个 · 国别域名60天有效期 / 通用域名30天 · 新鲜数据自动跳过
             </span>
           </h2>
           <div className="flex items-center gap-2">
@@ -467,8 +506,9 @@ export default function AdminTldRulesPage() {
 
         {batchItems.length === 0 && (
           <p className="text-xs text-muted-foreground">
-            点击"开始批量抓取"，系统会依次处理（已存在的自动跳过），每条间隔 1.5 秒。
-            {label.includes("gTLD") && ` 共 ${G_TLDS.length} 个，预计约 ${Math.ceil(G_TLDS.length * 1.5 / 60)} 分钟。`}
+            点击"开始批量抓取"——新鲜数据（国别60天/通用30天内已爬）直接跳过，过期或缺失的才会重新抓取，每条间隔 1.2 秒。
+            {label.includes("gTLD") && ` 共 ${G_TLDS.length} 个通用域名。`}
+            {label.includes("国别") && ` 共 ${CC_TLDS.length} 个国别域名。`}
           </p>
         )}
       </div>
@@ -539,10 +579,17 @@ export default function AdminTldRulesPage() {
                     className="h-9"
                   />
                 </div>
-                <Button type="submit" disabled={scraping} className="h-9 gap-1.5 shrink-0">
-                  {scraping ? <><RiLoader4Line className="w-4 h-4 animate-spin" />抓取中…</>
-                    : <><RiRobot2Line className="w-4 h-4" />抓取</>}
-                </Button>
+                <div className="flex flex-col gap-1.5">
+                  <Button type="submit" disabled={scraping} className="h-9 gap-1.5 shrink-0">
+                    {scraping ? <><RiLoader4Line className="w-4 h-4 animate-spin" />抓取中…</>
+                      : <><RiRobot2Line className="w-4 h-4" />抓取</>}
+                  </Button>
+                  <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
+                    <input type="checkbox" checked={form.force}
+                      onChange={e => setForm(f => ({ ...f, force: e.target.checked }))} />
+                    强制重爬
+                  </label>
+                </div>
               </form>
 
               {scraping && <p className="text-xs text-muted-foreground animate-pulse">正在爬取页面，调用 GLM-4-Flash 提取规则，请稍等 5-15 秒…</p>}
@@ -551,11 +598,18 @@ export default function AdminTldRulesPage() {
                 <div className={cn("rounded-lg p-4 text-sm border",
                   lastResult.error
                     ? "bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800"
+                    : lastResult.skipped
+                    ? "bg-yellow-50 border-yellow-200 dark:bg-yellow-900/20 dark:border-yellow-800"
                     : "bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800"
                 )}>
                   {lastResult.error ? (
                     <div className="flex items-start gap-2 text-red-700 dark:text-red-400">
                       <RiErrorWarningLine className="w-4 h-4 mt-0.5 shrink-0" />{lastResult.error}
+                    </div>
+                  ) : lastResult.skipped ? (
+                    <div className="flex items-start gap-2 text-yellow-700 dark:text-yellow-400">
+                      <RiTimeLine className="w-4 h-4 mt-0.5 shrink-0" />
+                      .{lastResult.tld} 数据仍在有效期内（有效至 {lastResult.fresh_until?.slice(0,10)}），已跳过重爬。勾选"强制重爬"可强制覆盖。
                     </div>
                   ) : (
                     <div className="space-y-2">
