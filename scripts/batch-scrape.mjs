@@ -43,8 +43,17 @@ const DRY_RUN      = hasFlag("--dry-run");
 const DEBUG        = hasFlag("--debug");
 
 // ── Database ──────────────────────────────────────────────────────────────────
+const DB_URL =
+  process.env.POSTGRES_URL ||
+  process.env.POSTGRES_URL_NON_POOLING ||
+  process.env.SUPABASE_DATABASE_URL ||
+  process.env.DATABASE_URL;
+if (!DB_URL) {
+  console.error("[batch-scrape] No database URL found. Set POSTGRES_URL or SUPABASE_DATABASE_URL.");
+  process.exit(1);
+}
 const pool = new pg.Pool({
-  connectionString: process.env.POSTGRES_URL,
+  connectionString: DB_URL,
   ssl: { rejectUnauthorized: false },
   max: 4,
 });

@@ -237,7 +237,7 @@ function StampLandingPage() {
   return (
     <>
       <Head>
-        <title key="site-title">{sl("page_title_main")} · Next WHOIS</title>
+        <title key="site-title">{`${sl("page_title_main")} · Next WHOIS`}</title>
         <meta name="description" content={sl("page_desc_main")} />
       </Head>
       <div className="max-w-lg mx-auto px-4 py-8 pb-10 space-y-6">

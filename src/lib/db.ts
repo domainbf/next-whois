@@ -321,7 +321,7 @@ const CREATE_INDEXES = [
   `CREATE INDEX IF NOT EXISTS idx_tld_rules_updated        ON tld_rules (updated_at DESC)`,
   `CREATE INDEX IF NOT EXISTS idx_tld_overrides_tld        ON tld_lifecycle_overrides (tld)`,
   `CREATE INDEX IF NOT EXISTS idx_password_reset_token     ON password_reset_tokens (token)`,
-  `CREATE INDEX IF NOT EXISTS idx_password_reset_email     ON password_reset_tokens (user_email)`,
+  `CREATE INDEX IF NOT EXISTS idx_password_reset_user      ON password_reset_tokens (user_id)`,
   `CREATE UNIQUE INDEX IF NOT EXISTS idx_activation_codes_code ON activation_codes (code)`,
   `CREATE INDEX IF NOT EXISTS idx_activation_codes_used    ON activation_codes (used)`,
   `CREATE INDEX IF NOT EXISTS idx_balance_tx_user_id       ON balance_transactions (user_id)`,
@@ -374,8 +374,8 @@ function makePool(connectionString: string): Pool {
   const p = new Pool({
     connectionString: cleanUrl,
     ssl: { rejectUnauthorized: false },
-    max: 3,
-    connectionTimeoutMillis: 10000,
+    max: 5,
+    connectionTimeoutMillis: 5000,
     idleTimeoutMillis: 20000,
     allowExitOnIdle: true,
   });

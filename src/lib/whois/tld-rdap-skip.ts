@@ -40,6 +40,12 @@ const STATIC_NO_RDAP = new Set<string>([
   "bo", "py",
   // Sub-Saharan Africa — confirmed no RDAP (no IANA entry, no known public endpoint)
   "bi", "cg", "sz", "ne", "gw", "sl", "lr", "km", "er",
+  // Caribbean — no IANA RDAP bootstrap entry; confirmed via iana/rdap/dns.json
+  "kn", "ag", "lc", "vc", "gd", "dm", "tt", "bb",
+  // Pacific Islands — no public RDAP endpoint
+  "ws", "ki", "tv", "nr", "pw", "mh", "fm",
+  // Other ccTLDs confirmed no RDAP
+  "ht", "cu", "sd", "so", "ye",
   //
   // NOTE: The following TLDs were previously listed here but HAVE been confirmed
   // to have RDAP servers and are now in CCTLD_RDAP_OVERRIDES:

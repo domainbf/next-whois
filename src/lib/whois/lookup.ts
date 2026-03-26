@@ -628,9 +628,9 @@ const WHOIS_TIMEOUT = intEnv("WHOIS_TIMEOUT_MS", 4_000);
 
 // How long to wait for native lookups before starting third-party fallbacks
 // in parallel.  Set shorter than WHOIS_TIMEOUT so that slow WHOIS servers
-// don't block the response: fallbacks start racing at t=2.5 s while WHOIS
+// don't block the response: fallbacks start racing at t=1.2 s while WHOIS
 // TCP is still open, whichever responds first wins.
-const FALLBACK_START_MS = intEnv("FALLBACK_START_MS", 2_000);
+const FALLBACK_START_MS = intEnv("FALLBACK_START_MS", 1_200);
 
 export async function lookupWhois(domain: string): Promise<WhoisResult> {
   const startTime = performance.now();

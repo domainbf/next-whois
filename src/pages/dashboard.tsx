@@ -989,7 +989,7 @@ export default function DashboardPage() {
 
   return (
     <>
-      <Head><title key="site-title">{t("nav_dashboard")} · Next WHOIS</title></Head>
+      <Head><title key="site-title">{`${t("nav_dashboard")} · Next WHOIS`}</title></Head>
       {showClaimGuide && <ClaimGuideModal onClose={() => setShowClaimGuide(false)} />}
       {showSubscribeGuide && <SubscribeGuideModal onClose={() => setShowSubscribeGuide(false)} />}
       {editingStamp && (

@@ -98,7 +98,7 @@ export default function PaymentResult() {
   return (
     <>
       <Head>
-        <title>{pageTitle} · {settings.site_title}</title>
+        <title>{`${pageTitle} · ${settings.site_title}`}</title>
         <meta name="robots" content="noindex" />
       </Head>
 

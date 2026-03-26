@@ -103,6 +103,23 @@ A fast, modern WHOIS and RDAP lookup tool supporting domains, IPv4/IPv6, ASN, an
 
 ## Changelog
 
+### System Audit Fixes (2026-03-26)
+
+**Scope:** Bug fixes and performance improvements from comprehensive system audit.
+
+#### Bug Fixes
+- **Title element React warning** — 6 pages had multiple children inside `<title>` (JSX expression + string literal) which caused a React hydration warning and potentially wrong tab text. All fixed to use template literals: `payment/result.tsx`, `payment/checkout.tsx`, `stamp.tsx`, `remind/index.tsx`, `remind/cancel.tsx`, `dashboard.tsx`.
+- **DB index references nonexistent column** — `idx_password_reset_email` on `password_reset_tokens` referenced column `user_email` which doesn't exist (table has `user_id`). Fixed to `idx_password_reset_user ON password_reset_tokens (user_id)`.
+- **batch-scrape.mjs ignores DB fallback chain** — Script only read `POSTGRES_URL` and silently failed if only `SUPABASE_DATABASE_URL` was set. Now reads the full fallback chain: `POSTGRES_URL → POSTGRES_URL_NON_POOLING → SUPABASE_DATABASE_URL → DATABASE_URL`. Exits with clear error if none is found.
+- **Redis double-connect in dev** — HMR re-imports in Next.js dev mode caused `createRedisConn()` to be called twice, logging `[Redis] Connected and ready` twice. Fixed by caching client and availability state on `global.__redisClient` / `global.__redisAvailable`.
+
+#### Performance Improvements
+- **FALLBACK_START_MS reduced** — Default reduced from 2000ms to 1200ms. Third-party fallbacks (Yisi/Tianhu) now start racing native lookups sooner for slow domains, reducing worst-case response time by ~800ms.
+- **DB pool tuned** — `connectionTimeoutMillis` reduced from 10000ms to 5000ms (prevent 10s hangs on failed connections); `max` increased from 3 to 5 connections.
+- **STATIC_NO_RDAP expanded** — Added Caribbean (kn, ag, lc, vc, gd, dm, tt, bb), Pacific Islands (ws, ki, tv, nr, pw, mh, fm), and other confirmed no-RDAP ccTLDs (ht, cu, sd, so, ye). This eliminates a 5s RDAP timeout for these TLDs, going straight to WHOIS + fallback.
+
+---
+
 ### Security & Feature Hardening (2026-03-26)
 
 **Scope:** Comprehensive security audit and feature completeness pass across all API and page layers.

@@ -806,7 +806,7 @@ export default function RemindPage() {
   return (
     <>
       <Head>
-        <title key="site-title">{t("remind.page_title_main")} · Next WHOIS</title>
+        <title key="site-title">{`${t("remind.page_title_main")} · Next WHOIS`}</title>
         <meta name="description" content={t("remind.page_desc_main")} />
       </Head>
 

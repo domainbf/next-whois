@@ -14,12 +14,29 @@ export const REDIS_PORT    = parseInt(process.env.REDIS_PORT    || "6379");
 export const REDIS_PASSWORD = process.env.REDIS_PASSWORD;
 export const REDIS_DB      = parseInt(process.env.REDIS_DB      || "0");
 
-export const redis = createRedisConn();
+// In Next.js dev mode, HMR re-imports modules and would create a second
+// connection on every hot reload. Cache the client on `global` so it
+// survives across module re-evaluations in the same Node process.
+declare global {
+  // eslint-disable-next-line no-var
+  var __redisClient: Redis | undefined | null;
+  // eslint-disable-next-line no-var
+  var __redisAvailable: boolean;
+}
+
+if (global.__redisAvailable === undefined) global.__redisAvailable = false;
+
+export const redis: Redis | undefined = (() => {
+  if (global.__redisClient !== undefined) return global.__redisClient ?? undefined;
+  const client = createRedisConn();
+  global.__redisClient = client ?? null;
+  return client;
+})();
 
 // Start unavailable — only flip to true once the "ready" event fires.
 // Eager connect (lazyConnect:false) ensures the "ready" event fires
 // reliably at module init. Commands are rejected until then via _available.
-let _available = false;
+let _available = global.__redisAvailable;
 
 function createRedisConn(): Redis | undefined {
   const opts = {
@@ -57,17 +74,17 @@ function createRedisConn(): Redis | undefined {
 
   if (!client) return undefined;
 
-  client.on("ready",        ()    => { _available = true;  console.log("[Redis] Connected and ready"); });
+  client.on("ready",        ()    => { _available = true;  global.__redisAvailable = true;  console.log("[Redis] Connected and ready"); });
   client.on("error",        (err) => { console.error("[Redis]", err.message); });
-  client.on("close",        ()    => { _available = false; });
-  client.on("reconnecting", ()    => { _available = false; });
-  client.on("end",          ()    => { _available = false; });
+  client.on("close",        ()    => { _available = false; global.__redisAvailable = false; });
+  client.on("reconnecting", ()    => { _available = false; global.__redisAvailable = false; });
+  client.on("end",          ()    => { _available = false; global.__redisAvailable = false; });
 
   return client;
 }
 
 export function isRedisAvailable(): boolean {
-  return _available;
+  return _available || global.__redisAvailable;
 }
 
 export async function getRedisValue(key: string): Promise<string | null> {

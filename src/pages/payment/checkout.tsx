@@ -135,7 +135,7 @@ export default function PaymentCheckout() {
   return (
     <>
       <Head>
-        <title>{t("payment.checkout_title")} · {settings.site_title}</title>
+        <title>{`${t("payment.checkout_title")} · ${settings.site_title}`}</title>
         <meta name="robots" content="noindex" />
       </Head>
 
