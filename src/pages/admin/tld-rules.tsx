@@ -39,6 +39,17 @@ type TldRule = {
   pre_expiry_days: number | null;
   scraped_at: string | null;
   updated_at: string;
+  model_used: string | null;
+  ai_reasoning: string | null;
+};
+
+type AiModelInfo = {
+  id: string;
+  name: string;
+  provider: string;
+  env_var: string;
+  configured: boolean;
+  priority: number;
 };
 
 // ── ccTLD batch list: all IANA-delegated 2-letter country codes ──────────────
@@ -213,6 +224,11 @@ export default function AdminTldRulesPage() {
   const [form, setForm] = React.useState({ tld: "", source_url: "", force: false });
   const [lastResult, setLastResult] = React.useState<any>(null);
 
+  // AI model state
+  const [aiModels, setAiModels] = React.useState<AiModelInfo[]>([]);
+  const [selectedModel, setSelectedModel] = React.useState<string>(""); // "" = auto (priority order)
+  const [batchModel, setBatchModel] = React.useState<string>("");
+
   // Batch state
   const [batchStatus, setBatchStatus] = React.useState<BatchStatus>("idle");
   const [batchItems, setBatchItems] = React.useState<BatchItem[]>([]);
@@ -263,6 +279,14 @@ export default function AdminTldRulesPage() {
   React.useEffect(() => { load(); }, []);
   React.useEffect(() => { if (tab === "compare" && !compareData) loadCompare(); }, [tab]);
 
+  // Load AI model list on mount
+  React.useEffect(() => {
+    fetch("/api/admin/ai-models")
+      .then(r => r.json())
+      .then(d => { if (d.providers) setAiModels(d.providers); })
+      .catch(() => {});
+  }, []);
+
   // Load full IANA gTLD list when gtld tab opens (1000+)
   React.useEffect(() => {
     if (tab !== "gtld" || ianaGtlds.length > 0) return;
@@ -299,7 +323,7 @@ export default function AdminTldRulesPage() {
       const res = await fetch("/api/admin/tld-rules", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tld, source_url: form.source_url.trim() || undefined, force: form.force }),
+        body: JSON.stringify({ tld, source_url: form.source_url.trim() || undefined, force: form.force, model: selectedModel || undefined }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "抓取失败");
@@ -406,7 +430,7 @@ export default function AdminTldRulesPage() {
         const res = await fetch("/api/admin/tld-rules", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ tld: item.tld, source_url: meta?.source_url }),
+          body: JSON.stringify({ tld: item.tld, source_url: meta?.source_url, model: batchModel || undefined }),
         });
         const data = await res.json();
         if (!res.ok) {
@@ -484,7 +508,19 @@ export default function AdminTldRulesPage() {
               — {list.length} 个 · 国别60天 / 通用180天有效期 · 新鲜数据自动跳过
             </span>
           </h2>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            {aiModels.filter(m => m.configured).length > 0 && batchStatus !== "running" && (
+              <select
+                value={batchModel}
+                onChange={e => setBatchModel(e.target.value)}
+                className="h-7 rounded border text-xs px-2 bg-background"
+              >
+                <option value="">AI 自动选择</option>
+                {aiModels.filter(m => m.configured).map(m => (
+                  <option key={m.id} value={m.id}>{m.name}</option>
+                ))}
+              </select>
+            )}
             {batchStatus === "running" ? (
               <Button variant="outline" size="sm" onClick={stopBatch} className="gap-1.5 text-red-600 border-red-300 hover:bg-red-50">
                 <RiStopCircleLine className="w-4 h-4" />停止
@@ -552,7 +588,7 @@ export default function AdminTldRulesPage() {
         <div>
           <h1 className="text-xl font-semibold">TLD 生命周期规则 — AI 自动抓取</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            爬取注册局页面，GLM-4-Flash 提取宽限期、赎回期、精确掉落时间和时区，与本地静态数据对比验证。
+            爬取注册局页面，多模型 AI（GLM/Groq/Gemini/DeepSeek 自动回退）提取宽限期、赎回期、精确掉落时间和时区，IANA 页面自动发现注册局生命周期子页。
           </p>
         </div>
 
@@ -621,7 +657,45 @@ export default function AdminTldRulesPage() {
                 </div>
               </form>
 
-              {scraping && <p className="text-xs text-muted-foreground animate-pulse">正在爬取页面，调用 GLM-4-Flash 提取规则，请稍等 5-15 秒…</p>}
+              {/* AI Model selector */}
+              <div className="flex flex-wrap items-center gap-3 pt-1">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <RiRobot2Line className="w-3.5 h-3.5" />
+                  <span>AI 模型：</span>
+                  <select
+                    value={selectedModel}
+                    onChange={e => setSelectedModel(e.target.value)}
+                    className="h-7 rounded border text-xs px-2 bg-background"
+                  >
+                    <option value="">自动选择（按优先级）</option>
+                    {aiModels.filter(m => m.configured).map(m => (
+                      <option key={m.id} value={m.id}>{m.name} ({m.provider})</option>
+                    ))}
+                    {aiModels.filter(m => !m.configured).map(m => (
+                      <option key={m.id} value={m.id} disabled>🔒 {m.name} (需 {m.env_var})</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex gap-1 flex-wrap">
+                  {aiModels.slice(0, 6).map(m => (
+                    <span key={m.id} className={cn(
+                      "text-[10px] px-1.5 py-0.5 rounded-full border",
+                      m.configured
+                        ? "bg-green-50 border-green-200 text-green-700 dark:bg-green-900/20 dark:border-green-800 dark:text-green-400"
+                        : "bg-muted border-border text-muted-foreground"
+                    )}>
+                      {m.configured ? "✓" : "✗"} {m.name}
+                    </span>
+                  ))}
+                  {aiModels.length > 6 && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full border bg-muted text-muted-foreground">
+                      +{aiModels.length - 6} 个
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {scraping && <p className="text-xs text-muted-foreground animate-pulse">正在爬取页面，调用 AI 提取规则（支持自动回退到备用模型），请稍等 5-20 秒…</p>}
 
               {lastResult && (
                 <div className={cn("rounded-lg p-4 text-sm border",
@@ -644,7 +718,18 @@ export default function AdminTldRulesPage() {
                     <div className="space-y-2">
                       <div className="flex items-center gap-2 font-medium text-green-700 dark:text-green-400">
                         <RiCheckboxCircleLine className="w-4 h-4" />.{lastResult.tld} 提取成功
+                        {lastResult.model_used && (
+                          <span className="text-xs font-normal text-muted-foreground ml-1">via {lastResult.model_used}</span>
+                        )}
+                        {lastResult.has_lifecycle_info === false && (
+                          <span className="text-xs font-normal text-amber-600 ml-1">⚠ 页面无明确生命周期数据，已用行业默认值</span>
+                        )}
                       </div>
+                      {lastResult.source_url && lastResult.source_url !== lastResult.source_url_requested && (
+                        <p className="text-xs text-blue-600 dark:text-blue-400">
+                          🔍 自动发现注册局生命周期页面：{lastResult.source_url}
+                        </p>
+                      )}
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
                         {[
                           ["宽限期", `${lastResult.grace_period_days}天`],

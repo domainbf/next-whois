@@ -1,4 +1,38 @@
-# Next Whois UI — v3.22
+# Next Whois UI — v3.23
+
+## Multi-Model AI System for TLD Scraping (Added 2026-03-26)
+
+### Architecture
+- **`src/lib/server/ai-providers.ts`** — 13 models across 7 providers, priority-ordered fallback
+  - Zhipu (ZHIPU_API_KEY): GLM-4-FlashX (p10), GLM-4-Flash (p11), GLM-4-Air (p20)
+  - Groq (GROQ_API_KEY): Llama-3.3-70B (p15), Gemma2-9B (p25)
+  - Google (GEMINI_API_KEY): Gemini-2.0-Flash (p12), Gemini-1.5-Flash (p22)
+  - DeepSeek (DEEPSEEK_API_KEY): DeepSeek-V3 (p13)
+  - DashScope/Qwen (DASHSCOPE_API_KEY): Qwen-Turbo (p18), Qwen-Long (p28)
+  - Moonshot/Kimi (MOONSHOT_API_KEY): moonshot-v1-8k (p19)
+  - SiliconFlow (SILICONFLOW_API_KEY): Qwen2.5-7B (p30), Llama-3.1-8B (p31)
+- **`callProviderWithFallback(messages, preferredId?, errors?)`** — tries providers in priority order, returns `{ content, provider }`
+- **`/api/admin/ai-models`** — GET endpoint listing all providers + configured status
+- **DB change**: `model_used TEXT` column added to `tld_rules` via ALTER TABLE IF NOT EXISTS
+
+### Smart URL Discovery
+When IANA page has no lifecycle keywords, the scraper:
+1. Extracts registry URL from "URL for registration services:" field
+2. Tries 13 common lifecycle path suffixes on the registry domain
+3. If lifecycle info found → uses that page; caches discovery in Redis 7 days
+4. Falls back to IANA page if registry lifecycle page not found
+5. Combines IANA + registry text when both have relevant info
+
+### Keywords for lifecycle detection
+`grace period`, `redemption`, `pending delete`, `rgp`, `lifecycle`, `宽限期`, `赎回期`, etc.
+Text extraction prioritizes lines containing these keywords (up to 70% of the 6k char limit).
+
+### Admin UI
+- Model status badges in single-scrape form (✓/✗ per configured model)
+- Model selector dropdown in single-scrape form
+- Batch panel model selector (AI 自动选择 / specific model)
+- Results show `model_used` and `has_lifecycle_info` warning when page has no data
+- Auto-discovered source URL displayed when different from requested URL
 
 ## Payment System (Added 2026-03-24)
 

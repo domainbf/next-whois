@@ -298,6 +298,7 @@ const ALTER_COLUMNS = [
   `ALTER TABLE reminders     ADD COLUMN IF NOT EXISTS thresholds_json     TEXT`,
   `ALTER TABLE users         ADD COLUMN IF NOT EXISTS balance_cents       INTEGER NOT NULL DEFAULT 0`,
   `ALTER TABLE users         ADD COLUMN IF NOT EXISTS membership_plan     TEXT`,
+  `ALTER TABLE tld_rules     ADD COLUMN IF NOT EXISTS model_used          TEXT`,
 ];
 
 const CREATE_INDEXES = [
