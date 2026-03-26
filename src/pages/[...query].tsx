@@ -4316,20 +4316,6 @@ export default function LookupPage({
       "unknown";
 
     addHistory(target, regStatus as any);
-
-    if (session?.user) {
-      fetch("/api/user/search-history", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          query: target,
-          queryType,
-          regStatus,
-          expirationDate: data.result?.expirationDate && data.result.expirationDate !== "Unknown" ? data.result.expirationDate : null,
-          remainingDays: typeof data.result?.remainingDays === "number" ? data.result.remainingDays : null,
-        }),
-      }).catch(() => {});
-    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, target]);
 

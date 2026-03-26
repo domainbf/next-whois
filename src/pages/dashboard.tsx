@@ -13,11 +13,11 @@ import {
   RiLoader4Line, RiCalendarLine, RiShieldCheckLine, RiGlobalLine,
   RiDeleteBinLine, RiPencilLine, RiCheckLine, RiCloseLine,
   RiUserLine, RiLogoutBoxLine, RiAlertLine, RiExternalLinkLine,
-  RiFlashlightLine, RiTimeLine, RiHistoryLine, RiSearchLine,
+  RiFlashlightLine, RiTimeLine, RiSearchLine,
   RiEdit2Line, RiShieldUserLine, RiLockLine, RiMailLine,
   RiEyeLine, RiEyeOffLine, RiPaletteLine, RiArrowRightLine,
   RiBellLine, RiFileTextLine, RiWifiLine,
-  RiDownloadLine, RiFilterLine, RiDeleteBack2Line, RiFireLine,
+  RiDownloadLine, RiFireLine,
   RiTimerLine, RiBarChartLine, RiKeyLine,
   RiIdCardLine, RiBuildingLine, RiAwardLine, RiShakeHandsLine,
   RiCodeSLine, RiVipCrownLine, RiCoinLine, RiGiftLine,
@@ -54,14 +54,6 @@ type Order = {
   status: string;
   paid_at: string | null;
   created_at: string;
-};
-
-type ServerHistoryItem = {
-  id?: string;
-  query: string;
-  queryType: string;
-  timestamp: number;
-  regStatus: RegStatus;
 };
 
 type Stamp = {
@@ -609,17 +601,14 @@ export default function DashboardPage() {
   const { data: session, status, update: updateSession } = useSession();
   const siteSettings = useSiteSettings();
   const paymentEnabled = !!(siteSettings.payment_stripe_enabled || siteSettings.payment_xunhupay_enabled || siteSettings.payment_alipay_enabled || siteSettings.payment_paypal_enabled);
-  const [tab, setTab] = React.useState<"subscriptions" | "stamps" | "account" | "history" | "membership">("stamps");
+  const [tab, setTab] = React.useState<"subscriptions" | "stamps" | "account" | "membership">("stamps");
   const [subscriptions, setSubscriptions] = React.useState<Subscription[]>([]);
   const [stamps, setStamps] = React.useState<Stamp[]>([]);
   // DB-authoritative access flag; initialized from session (fast), then confirmed by API
   const [subscriptionAccessDB, setSubscriptionAccessDB] = React.useState<boolean | null>(null);
   const [subscriptionExpiresAt, setSubscriptionExpiresAt] = React.useState<string | null>(null);
-  const [searchHistory, setSearchHistory] = React.useState<ServerHistoryItem[]>([]);
   const [loadingData, setLoadingData] = React.useState(false);
   const [dashError, setDashError] = React.useState(false);
-  const [historyError, setHistoryError] = React.useState(false);
-  const [loadingHistory, setLoadingHistory] = React.useState(false);
   const [editingStamp, setEditingStamp] = React.useState<Stamp | null>(null);
   const [editingSubscription, setEditingSubscription] = React.useState<Subscription | null>(null);
   const [savingDaysBefore, setSavingDaysBefore] = React.useState<string | null>(null);
@@ -655,11 +644,6 @@ export default function DashboardPage() {
   const [avatarColor, setAvatarColor] = React.useState("violet");
   const [editingAvatar, setEditingAvatar] = React.useState(false);
   const [savingAvatar, setSavingAvatar] = React.useState(false);
-  const [historySearch, setHistorySearch] = React.useState("");
-  const [clearingHistory, setClearingHistory] = React.useState(false);
-  const [historyPage, setHistoryPage] = React.useState(1);
-  const [historyTotal, setHistoryTotal] = React.useState(0);
-  const [historyPages, setHistoryPages] = React.useState(1);
 
   React.useEffect(() => {
     if (status === "unauthenticated") router.replace("/login");
@@ -706,28 +690,6 @@ export default function DashboardPage() {
       .finally(() => setLoadingData(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status]);
-
-  const fetchHistory = React.useCallback((page: number) => {
-    setHistoryError(false);
-    setLoadingHistory(true);
-    fetch(`/api/user/search-history?page=${page}`)
-      .then(r => { if (!r.ok) throw new Error(`${r.status}`); return r.json(); })
-      .then(data => {
-        if (data.history) setSearchHistory(data.history);
-        if (typeof data.total === "number") setHistoryTotal(data.total);
-        if (typeof data.pages === "number") setHistoryPages(data.pages);
-        if (typeof data.page  === "number") setHistoryPage(data.page);
-      })
-      .catch(() => setHistoryError(true))
-      .finally(() => setLoadingHistory(false));
-  }, []);
-
-  React.useEffect(() => {
-    if (tab === "history" && status === "authenticated") {
-      fetchHistory(historyPage);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab, status]);
 
   // Load orders when membership tab opens
   React.useEffect(() => {
@@ -822,23 +784,6 @@ export default function DashboardPage() {
       toast.error(e.message || t("dashboard.delete_failed"));
     } finally {
       setDeletingStamp(null);
-    }
-  }
-
-  async function clearAllHistory() {
-    if (!window.confirm(t("dashboard.confirm_clear_history", { count: historyTotal }))) return;
-    setClearingHistory(true);
-    try {
-      await fetch("/api/user/search-history?id=all", { method: "DELETE" });
-      setSearchHistory([]);
-      setHistoryTotal(0);
-      setHistoryPages(1);
-      setHistoryPage(1);
-      toast.success(t("dashboard.history_cleared"));
-    } catch {
-      toast.error(t("dashboard.op_failed"));
-    } finally {
-      setClearingHistory(false);
     }
   }
 
@@ -1038,13 +983,9 @@ export default function DashboardPage() {
     { key: "subscriptions" as const, label: t("dashboard.tab_subscriptions"), icon: <RiCalendarLine className="w-3.5 h-3.5" />, count: activeSubs.length || undefined },
     { key: "stamps" as const, label: t("dashboard.tab_stamps"), icon: <RiShieldCheckLine className="w-3.5 h-3.5" />, count: stamps.length || undefined },
     { key: "membership" as const, label: t("dashboard.tab_membership"), icon: <RiVipCrownLine className="w-3.5 h-3.5" /> },
-    { key: "history" as const, label: t("dashboard.tab_history"), icon: <RiHistoryLine className="w-3.5 h-3.5" />, count: historyTotal || undefined },
     { key: "account" as const, label: t("dashboard.tab_account"), icon: <RiUserLine className="w-3.5 h-3.5" /> },
   ];
 
-  const QUERY_TYPE_LABEL: Record<string, string> = {
-    domain: t("dashboard.qtype_domain"), ipv4: "IPv4", ipv6: "IPv6", asn: "ASN", cidr: "CIDR",
-  };
 
   return (
     <>
@@ -1138,15 +1079,6 @@ export default function DashboardPage() {
               <div>
                 <p className="text-base font-bold leading-none">{verifiedStamps.length}</p>
                 <p className="text-[10px] text-muted-foreground mt-0.5">{t("dashboard.stat_verified_brands")}</p>
-              </div>
-            </div>
-            <div className="glass-panel border border-border rounded-xl px-3 py-2.5 flex items-center gap-2.5">
-              <div className="w-7 h-7 rounded-lg bg-violet-100 dark:bg-violet-950/40 flex items-center justify-center shrink-0">
-                <RiBarChartLine className="w-3.5 h-3.5 text-violet-600 dark:text-violet-400" />
-              </div>
-              <div>
-                <p className="text-base font-bold leading-none">{historyTotal || searchHistory.length}</p>
-                <p className="text-[10px] text-muted-foreground mt-0.5">{t("dashboard.stat_history")}</p>
               </div>
             </div>
           </div>
@@ -1988,160 +1920,6 @@ export default function DashboardPage() {
             );
           })()}
 
-          {/* ── Search History ── */}
-          {tab === "history" && (() => {
-            const STATUS_CFG: Record<string, { label: string; cls: string }> = {
-              registered:   { label: t("dashboard.status_registered"),   cls: "text-emerald-600 bg-emerald-50 border-emerald-300/60 dark:bg-emerald-950/30 dark:border-emerald-700/40" },
-              unregistered: { label: t("dashboard.status_unregistered"), cls: "text-sky-600 bg-sky-50 border-sky-300/60 dark:bg-sky-950/30 dark:border-sky-700/40" },
-              reserved:     { label: t("dashboard.status_reserved"),     cls: "text-amber-600 bg-amber-50 border-amber-300/60 dark:bg-amber-950/30 dark:border-amber-700/40" },
-              error:        { label: t("dashboard.status_error"),        cls: "text-rose-600 bg-rose-50 border-rose-300/60 dark:bg-rose-950/30 dark:border-rose-700/40" },
-              unknown:      { label: t("dashboard.status_unknown"),      cls: "text-muted-foreground bg-muted border-border" },
-            };
-            const TIER_CFG: Record<string, { label: string; cls: string }> = {
-              high:     { label: t("dashboard.tier_high"),     cls: "text-amber-600 bg-amber-50 border-amber-300/60 dark:bg-amber-950/30 dark:border-amber-700/40" },
-              valuable: { label: t("dashboard.tier_valuable"), cls: "text-violet-600 bg-violet-50 border-violet-300/60 dark:bg-violet-950/30 dark:border-violet-700/40" },
-            };
-            const q = historySearch.trim().toLowerCase();
-            const filtered = q ? searchHistory.filter(h => h.query.toLowerCase().includes(q)) : searchHistory;
-
-            function goPage(p: number) {
-              if (p < 1 || p > historyPages) return;
-              setHistorySearch("");
-              fetchHistory(p);
-            }
-
-            return (
-              <motion.div key="history" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.18 }} className="space-y-3">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground shrink-0">{t("dashboard.history_tab_header")}</p>
-                    {historyTotal > 0 && (
-                      <span className="text-[10px] text-muted-foreground/60 tabular-nums">{t("dashboard.history_total", { n: historyTotal })}</span>
-                    )}
-                  </div>
-                  {historyTotal > 0 && (
-                    <button
-                      onClick={clearAllHistory}
-                      disabled={clearingHistory}
-                      className="text-[11px] text-muted-foreground hover:text-red-500 flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-muted transition-colors shrink-0"
-                    >
-                      {clearingHistory ? <RiLoader4Line className="w-3 h-3 animate-spin" /> : <RiDeleteBack2Line className="w-3 h-3" />}
-                      {t("dashboard.delete_all")}
-                    </button>
-                  )}
-                </div>
-
-                {/* Search filter */}
-                {searchHistory.length > 4 && (
-                  <div className="relative">
-                    <RiFilterLine className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
-                    <input
-                      type="text"
-                      value={historySearch}
-                      onChange={e => setHistorySearch(e.target.value)}
-                      placeholder={t("dashboard.filter_placeholder")}
-                      className="w-full pl-8 pr-3 py-2 text-sm bg-muted/50 border border-border/60 rounded-xl outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all"
-                    />
-                    {historySearch && (
-                      <button onClick={() => setHistorySearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-                        ×
-                      </button>
-                    )}
-                  </div>
-                )}
-
-                {loadingHistory ? (
-                  <div className="flex justify-center py-8"><RiLoader4Line className="w-5 h-5 animate-spin text-muted-foreground" /></div>
-                ) : historyError ? (
-                  <div className="flex flex-col items-center py-10 gap-3 text-center">
-                    <RiAlertLine className="w-7 h-7 text-destructive/60" />
-                    <p className="text-sm text-muted-foreground">{t("dashboard.history_load_failed")}</p>
-                    <Button size="sm" variant="outline" className="rounded-xl text-xs gap-1.5"
-                      onClick={() => fetchHistory(historyPage)}>{t("dashboard.reload")}</Button>
-                  </div>
-                ) : searchHistory.length === 0 ? (
-                  <div className="text-center py-12 space-y-3">
-                    <RiHistoryLine className="w-10 h-10 text-muted-foreground/30 mx-auto" />
-                    <p className="text-sm text-muted-foreground">{t("dashboard.no_history")}</p>
-                  </div>
-                ) : filtered.length === 0 ? (
-                  <div className="text-center py-8">
-                    <p className="text-sm text-muted-foreground">{t("dashboard.no_match", { q: historySearch })}</p>
-                  </div>
-                ) : (
-                  <div className="glass-panel border border-border rounded-2xl divide-y divide-border/50">
-                    {filtered.map((item, i) => {
-                      const rs = item.regStatus ?? "unknown";
-                      const cfg = STATUS_CFG[rs] ?? STATUS_CFG.unknown;
-                      const tier = (item as any).valueTier as string | undefined;
-                      const tierCfg = tier && TIER_CFG[tier];
-                      const d = new Date(item.timestamp);
-                      const ts = `${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-                      return (
-                        <div key={item.id ?? i} className="flex items-center gap-2 px-3 py-2.5 hover:bg-muted/40 transition-colors first:rounded-t-2xl last:rounded-b-2xl group">
-                          <div className="w-6 h-6 rounded-md bg-muted flex items-center justify-center shrink-0">
-                            <RiSearchLine className="w-3 h-3 text-muted-foreground" />
-                          </div>
-                          <Link href={`/${item.query}`} className="flex items-center gap-2 flex-1 min-w-0 overflow-hidden">
-                            <span className="text-sm font-mono truncate flex-1 min-w-0">{item.query}</span>
-                            {item.queryType === "domain" && (
-                              <span className={`shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-md border ${cfg.cls}`}>
-                                {cfg.label}
-                              </span>
-                            )}
-                              <span className="shrink-0 text-[11px] text-muted-foreground tabular-nums whitespace-nowrap">
-                              {QUERY_TYPE_LABEL[item.queryType] ?? item.queryType}{" · "}{ts}
-                            </span>
-                          </Link>
-                          <button
-                            onClick={async () => {
-                              if (!item.id) return;
-                              await fetch(`/api/user/search-history?id=${item.id}`, { method: "DELETE" });
-                              setSearchHistory(prev => prev.filter(h => h.id !== item.id));
-                              setHistoryTotal(prev => Math.max(0, prev - 1));
-                            }}
-                            className="p-1 rounded-md text-muted-foreground/40 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors opacity-0 group-hover:opacity-100 shrink-0"
-                            title={t("dashboard.delete_record")}
-                          >
-                            <RiDeleteBack2Line className="w-3 h-3" />
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {/* Pagination */}
-                {!q && historyPages > 1 && (
-                  <div className="flex items-center justify-center gap-2 pt-1">
-                    <button
-                      onClick={() => goPage(historyPage - 1)}
-                      disabled={historyPage <= 1 || loadingHistory}
-                      className="px-3 py-1.5 rounded-lg text-xs font-medium bg-muted hover:bg-muted/80 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                    >
-                      {t("dashboard.prev_page")}
-                    </button>
-                    <span className="text-[11px] text-muted-foreground tabular-nums">
-                      {historyPage} / {historyPages}
-                    </span>
-                    <button
-                      onClick={() => goPage(historyPage + 1)}
-                      disabled={historyPage >= historyPages || loadingHistory}
-                      className="px-3 py-1.5 rounded-lg text-xs font-medium bg-muted hover:bg-muted/80 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                    >
-                      {t("dashboard.next_page")}
-                    </button>
-                  </div>
-                )}
-
-                {!q && historyTotal > 0 && historyPages <= 1 && (
-                  <p className="text-[10px] text-center text-muted-foreground/50">
-                    {t("dashboard.history_retention")}
-                  </p>
-                )}
-              </motion.div>
-            );
-          })()}
 
           {/* ── Account ── */}
           {tab === "account" && (() => {

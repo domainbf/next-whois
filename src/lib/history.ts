@@ -103,35 +103,6 @@ export function removeHistory(query: string) {
   }
 }
 
-const SYNC_KEY = "history_synced_uid";
-
-export async function syncLocalHistoryToServer(userId: string): Promise<void> {
-  if (!isLocalStorageAvailable()) return;
-  const syncedUid = localStorage.getItem(SYNC_KEY);
-  if (syncedUid === userId) return;
-
-  const history = listHistory();
-  if (history.length === 0) {
-    localStorage.setItem(SYNC_KEY, userId);
-    return;
-  }
-
-  try {
-    const records = history.map(item => ({
-      query: item.query,
-      queryType: item.queryType,
-      regStatus: item.regStatus,
-      timestamp: item.timestamp,
-    }));
-    const res = await fetch("/api/user/search-history", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ records }),
-    });
-    if (res.ok) {
-      localStorage.setItem(SYNC_KEY, userId);
-    }
-  } catch {
-    // silent fail
-  }
-}
+// no-op: search history is recorded server-side silently via lookup.ts
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export async function syncLocalHistoryToServer(_userId: string): Promise<void> {}
