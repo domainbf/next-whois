@@ -17,7 +17,7 @@ export type CardThemeDef = {
   hero: string; shimmer: string;
   badge: string; btn: string;
   cardBg: string; cardBorder: string; cardText: string;
-  layout?: "default" | "celebrate" | "neon" | "gradient" | "split" | "flash";
+  layout?: "default" | "celebrate" | "neon" | "gradient" | "split" | "flash" | "classic" | "hero" | "minimal";
   accent?: string; accentText?: string;
 };
 
@@ -37,7 +37,19 @@ export const STAMP_CARD_THEMES: Record<string, CardThemeDef & { label: string; s
   neon:      { label: "霓虹",     hero: "bg-[#050d18]",                                         layout: "neon",      shimmer: "text-white font-black",    badge: "bg-cyan-400 text-slate-900 border-0",                   btn: "bg-cyan-400 text-slate-900",   cardBg: "bg-[#050d18]",cardBorder: "border-slate-800",   cardText: "text-white",    special: "⚡" },
   gradient:  { label: "渐变流光", hero: "bg-gradient-to-br from-rose-300 via-sky-300 to-emerald-300",layout: "gradient",shimmer: "text-gray-900 font-black", badge: "bg-black/10 text-gray-800 border border-black/20",      btn: "bg-gray-900 text-white",       cardBg: "bg-transparent",cardBorder: "border-0",           cardText: "text-gray-900", special: "✨" },
   split:     { label: "分栏",     hero: "bg-black",                                              layout: "split",     shimmer: "text-white font-black",    badge: "bg-blue-500 text-white border-0",                       btn: "bg-gray-900 text-white",       cardBg: "bg-white",    cardBorder: "border-gray-100",    cardText: "text-gray-900", special: "◼" },
-  flash:     { label: "特卖",     hero: "bg-[#FF3800]",                                          layout: "flash",     shimmer: "text-white font-black",    badge: "bg-[#FF3800] text-white border-0",                      btn: "bg-orange-500 text-white",     cardBg: "bg-white",    cardBorder: "border-0",           cardText: "text-gray-900", special: "💥" },
+  flash:          { label: "特卖",     hero: "bg-[#FF3800]",                                          layout: "flash",     shimmer: "text-white font-black",    badge: "bg-[#FF3800] text-white border-0",                      btn: "bg-orange-500 text-white",     cardBg: "bg-white",    cardBorder: "border-0",           cardText: "text-gray-900", special: "💥" },
+  /* ── Classic: Style A — gradient hero + floating card ── */
+  "blue-classic":   { label: "蓝·卡片",   hero: "bg-gradient-to-br from-blue-500 to-blue-700",           layout: "classic",   shimmer: "text-white font-black",    badge: "bg-blue-50 text-blue-700 border border-blue-200",       btn: "bg-blue-600 text-white",       cardBg: "bg-white",    cardBorder: "border-gray-100",    cardText: "text-gray-900" },
+  "purple-classic": { label: "紫·卡片",   hero: "bg-gradient-to-br from-violet-500 to-purple-700",       layout: "classic",   shimmer: "text-white font-black",    badge: "bg-violet-50 text-violet-700 border border-violet-200", btn: "bg-violet-600 text-white",     cardBg: "bg-white",    cardBorder: "border-gray-100",    cardText: "text-gray-900" },
+  "green-classic":  { label: "绿·卡片",   hero: "bg-gradient-to-br from-emerald-400 to-green-600",       layout: "classic",   shimmer: "text-white font-black",    badge: "bg-emerald-50 text-emerald-700 border border-emerald-200", btn: "bg-emerald-600 text-white",  cardBg: "bg-white",    cardBorder: "border-gray-100",    cardText: "text-gray-900" },
+  /* ── Hero: Style B — full-screen immersive gradient ── */
+  "blue-hero":      { label: "蓝·渐变",   hero: "bg-gradient-to-br from-blue-500 via-indigo-600 to-blue-800", layout: "hero",  shimmer: "text-white font-black",    badge: "bg-white/20 text-white border border-white/30",         btn: "bg-white/20 text-white border border-white/25", cardBg: "bg-transparent", cardBorder: "border-0", cardText: "text-white" },
+  "purple-hero":    { label: "紫·渐变",   hero: "bg-gradient-to-br from-violet-600 via-purple-600 to-indigo-700", layout: "hero", shimmer: "text-white font-black", badge: "bg-white/20 text-white border border-white/30",        btn: "bg-white/20 text-white border border-white/25", cardBg: "bg-transparent", cardBorder: "border-0", cardText: "text-white" },
+  "green-hero":     { label: "绿·渐变",   hero: "bg-gradient-to-br from-emerald-500 via-teal-600 to-green-700", layout: "hero",  shimmer: "text-white font-black", badge: "bg-white/20 text-white border border-white/30",         btn: "bg-white/20 text-white border border-white/25", cardBg: "bg-transparent", cardBorder: "border-0", cardText: "text-white" },
+  /* ── Minimal: Style C — compact centered card ── */
+  "blue-minimal":   { label: "蓝·简约",   hero: "bg-blue-500",                                           layout: "minimal",   shimmer: "text-white font-black",    badge: "bg-blue-50 text-blue-600 border border-blue-200",       btn: "bg-blue-600 text-white",       cardBg: "bg-white",    cardBorder: "border-gray-100",    cardText: "text-gray-900" },
+  "purple-minimal": { label: "紫·简约",   hero: "bg-violet-500",                                         layout: "minimal",   shimmer: "text-white font-black",    badge: "bg-violet-50 text-violet-600 border border-violet-200", btn: "bg-violet-600 text-white",     cardBg: "bg-white",    cardBorder: "border-gray-100",    cardText: "text-gray-900" },
+  "green-minimal":  { label: "绿·简约",   hero: "bg-emerald-500",                                        layout: "minimal",   shimmer: "text-white font-black",    badge: "bg-emerald-50 text-emerald-700 border border-emerald-200", btn: "bg-emerald-600 text-white",  cardBg: "bg-white",    cardBorder: "border-gray-100",    cardText: "text-gray-900" },
 };
 
 export interface StampPreviewData {
@@ -261,6 +273,80 @@ export function StampPreviewCard({
           </div>
         </div>
       </div>
+    </div>
+  );
+
+  /* ── classic — Style A: gradient hero strip + floating card ── */
+  if (t.layout === "classic") return (
+    <div className="rounded-2xl overflow-hidden shadow-md">
+      {/* Hero strip */}
+      <div className={cn("relative px-3 pt-4 pb-8 flex flex-col items-center overflow-hidden", t.hero)}>
+        <div className="absolute inset-0 opacity-[0.06]"
+          style={{backgroundImage:"radial-gradient(circle,white 1px,transparent 1px)",backgroundSize:"12px 12px"}} />
+        {/* Decorative close X */}
+        <span className="absolute top-2.5 right-2.5 text-white/40 text-[8px] font-bold leading-none select-none">✕</span>
+        <div className="relative z-10 w-9 h-9 rounded-xl bg-white/20 border border-white/30 flex items-center justify-center shadow-lg">
+          <Icon className="w-4.5 h-4.5 text-white" style={{width:18,height:18}} />
+        </div>
+      </div>
+      {/* Floating card */}
+      <div className="relative -mt-4 mx-2 rounded-[14px] bg-white border border-gray-100 shadow-xl px-3 pt-3 pb-2.5">
+        <div className="flex justify-center mb-1.5">
+          <span className={cn("inline-flex items-center gap-1 text-[7px] font-semibold px-2 py-0.5 rounded-full", t.badge)}>
+            {tagLabel}
+          </span>
+        </div>
+        <p className="text-[11px] font-black text-center text-gray-900 leading-tight mb-1">{tagName}</p>
+        <p className="text-[7.5px] text-gray-500 text-center leading-relaxed">{desc}</p>
+      </div>
+      {/* CTA */}
+      <div className="px-2 pt-2 pb-3 bg-white flex justify-center">
+        <CtaBtn extra="rounded-lg" />
+      </div>
+    </div>
+  );
+
+  /* ── hero — Style B: full-screen immersive gradient ── */
+  if (t.layout === "hero") return (
+    <div className={cn("rounded-2xl overflow-hidden shadow-md flex flex-col relative", t.hero)} style={{minHeight:168}}>
+      <span className="absolute top-2.5 right-2.5 z-10 text-white/40 text-[8px] font-bold leading-none select-none">✕</span>
+      <div className="absolute inset-0 opacity-[0.05]"
+        style={{backgroundImage:"radial-gradient(circle,white 1px,transparent 1px)",backgroundSize:"14px 14px"}} />
+      {/* Center content */}
+      <div className="relative flex-1 flex flex-col items-center justify-center text-center px-4 pt-5 pb-3">
+        <div className="w-9 h-9 rounded-xl bg-white/20 border border-white/30 flex items-center justify-center shadow-lg mb-2.5">
+          <Icon className="text-white" style={{width:18,height:18}} />
+        </div>
+        <p className="text-[12px] font-black text-white leading-tight mb-1.5">{tagName}</p>
+        <span className={cn("inline-flex items-center gap-1 text-[7px] font-semibold px-2 py-0.5 rounded-full mb-2", t.badge)}>
+          {tagLabel}
+        </span>
+        <p className="text-[7.5px] text-white/70 leading-relaxed max-w-[120px]">{desc}</p>
+      </div>
+      {/* Bottom CTA */}
+      <div className="relative px-3 pb-3 space-y-1.5">
+        <CtaBtn extra="w-full justify-center rounded-xl px-0 py-1.5" />
+        <p className="text-center text-[6.5px] text-white/40 font-medium">关闭</p>
+      </div>
+    </div>
+  );
+
+  /* ── minimal — Style C: compact centered card ── */
+  if (t.layout === "minimal") return (
+    <div className="rounded-2xl overflow-hidden shadow-md bg-white relative flex flex-col items-center px-3 pt-5 pb-3">
+      {/* Decorative close */}
+      <span className="absolute top-2.5 right-2.5 text-gray-300 text-[8px] font-bold leading-none select-none">✕</span>
+      {/* Colored icon */}
+      <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center shadow-md mb-2.5", t.hero)}>
+        <Icon className="text-white" style={{width:18,height:18}} />
+      </div>
+      <p className="text-[12px] font-black text-center text-gray-900 leading-tight mb-1.5">{tagName}</p>
+      <p className="text-[7.5px] text-gray-500 text-center leading-relaxed mb-2.5 max-w-[110px]">{desc}</p>
+      <span className={cn("inline-flex items-center gap-1 text-[7px] font-semibold px-2 py-0.5 rounded mb-3", t.badge)}>
+        {tagLabel}
+      </span>
+      <CtaBtn extra="w-full justify-center rounded-xl px-0 py-1.5" />
+      <p className="text-[6.5px] font-mono text-gray-400 mt-2">{domain}</p>
     </div>
   );
 

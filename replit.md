@@ -103,6 +103,34 @@ A fast, modern WHOIS and RDAP lookup tool supporting domains, IPv4/IPv6, ASN, an
 
 ## Changelog
 
+### v3.23.1 — Stamp Popup Redesign: 3 Layouts × 3 Colors = 9 New Themes (2026-03-26)
+
+**Files:** `src/pages/[...query].tsx`, `src/components/stamp-preview-card.tsx`
+
+**New layout types added to `CardThemeDef.layout`:** `"classic"` | `"hero"` | `"minimal"`
+
+**9 new themes in `CARD_THEMES` / `STAMP_CARD_THEMES`:**
+- **Classic (Style A — gradient hero strip + floating white card):** `blue-classic`, `purple-classic`, `green-classic`
+  - Gradient hero area at top (64×64 glass icon, dot texture, white × close), floating `-mt-10` white card below with badge + title + description, full-width CTA button
+- **Hero (Style B — full-screen immersive gradient):** `blue-hero`, `purple-hero`, `green-hero`
+  - Full gradient fills the dialog, centered icon + title + badge + description, frosted-glass CTA button at bottom, text "Close" link
+- **Minimal (Style C — compact centered card):** `blue-minimal`, `purple-minimal`, `green-minimal`
+  - Pure white card, 56×56 colored icon, title 20px bold, description 13px, small tag badge, full-width rounded CTA, domain hint at bottom
+
+**Design spec met:**
+- Logo 64×64 (56×56 minimal) rounded-[18px] glass/colored
+- Title 20–22px font-black, centered
+- Description 13px, text-gray-500, line-height 1.6
+- Badge: rounded-full (classic/hero) or rounded-md (minimal), accent-tinted
+- CTA: rounded-xl, 48px touch height, accent color + white text
+- Close: top-right 32×32 translucent circle (classic/hero) or small gray × (minimal)
+- No "Esc to close" hint text in any new layout
+- Dark mode compatible (gray-900/zinc-900 backgrounds)
+
+**Admin preview:** `StampPreviewCard` also updated with all 9 themes + 3 mini-layout renderers. New themes auto-appear in `/admin/stamp-styles` standard group.
+
+---
+
 ### System Audit Fixes (2026-03-26)
 
 **Scope:** Bug fixes and performance improvements from comprehensive system audit.
