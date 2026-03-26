@@ -236,6 +236,10 @@ function mergeRegistrars(
       if (!key) continue;
       if (map.has(key)) {
         const existing = map.get(key)!;
+        // If existing entry is already premium-flagged by the source, preserve it.
+        // External sources (miqingju, tianhu) always hardcode "standard" and cannot
+        // distinguish premium pricing — their lower price is not the correct premium price.
+        if (existing.currencytype?.toLowerCase().includes("premium")) continue;
         const ePrice = typeof existing[type] === "number" ? (existing[type] as number) : Infinity;
         const mPrice = typeof r[type] === "number" ? (r[type] as number) : Infinity;
         if (mPrice < ePrice) {
@@ -251,14 +255,19 @@ function mergeRegistrars(
 }
 
 function calcIsPremium(r: NazhumiRegistrar): boolean {
-  // Registry marks domain as premium via currencytype field
+  // Authoritative: registry/registrar explicitly flags as premium
   if (r.currencytype && r.currencytype.toLowerCase().includes("premium")) return true;
-  // High price threshold for major currencies (registry-level premium TLD pricing)
-  return (
-    typeof r.new === "number" &&
-    r.new > 100 &&
-    ["usd", "eur", "cad"].includes(r.currency.toLowerCase())
-  );
+  // Price-based heuristic: significantly above typical TLD registration cost
+  // Thresholds per currency chosen to approximate >~$60 USD equivalent
+  if (typeof r.new !== "number") return false;
+  const cur = r.currency.toLowerCase();
+  const thresholds: Record<string, number> = {
+    usd: 60, eur: 55, cad: 80, gbp: 50, aud: 90,
+    cny: 420, hkd: 470, sgd: 80, jpy: 9000,
+  };
+  const threshold = thresholds[cur];
+  if (threshold !== undefined && r.new > threshold) return true;
+  return false;
 }
 
 export async function getDomainPricing(
