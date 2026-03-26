@@ -43,6 +43,7 @@ import {
   RiInformationLine,
 } from "@remixicon/react";
 import { toast } from "sonner";
+import { StampPreviewCard } from "@/components/stamp-preview-card";
 
 const CARD_THEME_OPTIONS: {
   id: string; label: string; enLabel: string; hero: string; dot: string;
@@ -1184,12 +1185,9 @@ export default function StampPage() {
                             </div>
                           )}
 
-                          {/* Live mini card preview */}
-                          {(() => {
-                            if (!form.tagName) return null;
-                            const curTheme = CARD_THEME_OPTIONS.find(t => t.id === form.cardTheme) || CARD_THEME_OPTIONS[0];
+                          {/* Live real popup preview */}
+                          {form.tagName && (() => {
                             const styleObj = TAG_STYLES.find(ts => ts.id === form.tagStyle) || TAG_STYLES[0];
-                            const CurIcon = styleObj.icon;
                             const badgeLabel = s((`badge_${form.tagStyle}`) as StampKey) || s("badge_default");
                             return (
                               <div>
@@ -1197,59 +1195,18 @@ export default function StampPage() {
                                   <span className="text-[10px] font-bold uppercase tracking-widest text-violet-400/70">{s("live_preview")}</span>
                                   <div className="flex-1 h-px bg-violet-200/40 dark:bg-violet-800/30" />
                                 </div>
-                                <div className="rounded-[18px] overflow-hidden border border-border/40 shadow-md">
-                                  {/* Hero */}
-                                  <div className={cn("relative px-3 pt-4 pb-7 text-center select-none overflow-hidden", curTheme.hero)}>
-                                    <div className="absolute inset-0 opacity-[0.06]"
-                                      style={{ backgroundImage: "radial-gradient(circle, white 1px, transparent 1px)", backgroundSize: "14px 14px" }} />
-                                    <div className="absolute inset-x-0 bottom-0 h-9 bg-gradient-to-t from-black/30 to-transparent" />
-                                    <div className="relative flex flex-col items-center gap-1.5">
-                                      <div className="relative flex items-center justify-center">
-                                        <div className="absolute w-12 h-12 rounded-2xl bg-white/10 blur-md" />
-                                        <div className="relative w-10 h-10 rounded-[13px] bg-white/20 border border-white/30 flex items-center justify-center shadow-lg">
-                                          <CurIcon className="w-5 h-5 text-white drop-shadow" />
-                                        </div>
-                                      </div>
-                                      <p className="text-shimmer-white text-[9px] font-mono tracking-[0.2em] uppercase">
-                                        {domain || "your-domain.com"}
-                                      </p>
-                                    </div>
-                                  </div>
-                                  {/* Floating card — info only */}
-                                  <div className={cn("relative -mt-4 mx-2.5 rounded-[14px] border shadow-lg px-3 pt-2.5 pb-2.5", curTheme.cardBg, curTheme.cardBorder)}>
-                                    <div className="flex items-start justify-between gap-2">
-                                      <span className={cn("text-[13px] font-black leading-tight tracking-tight", curTheme.shimmer)}>
-                                        {form.tagName}
-                                      </span>
-                                      <span className={cn("inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0 whitespace-nowrap mt-0.5", styleObj.className)}>
-                                        <RiShieldCheckLine className="w-2 h-2" />
-                                        {badgeLabel}
-                                      </span>
-                                    </div>
-                                    {form.description && (
-                                      <p className={cn("text-[10px] leading-relaxed mt-1.5", curTheme.cardText === "text-white" ? "text-white/60" : "text-muted-foreground")}>
-                                        {form.description}
-                                      </p>
-                                    )}
-                                  </div>
-                                  {/* CTA — primary action, outside card */}
-                                  <div className="px-2.5 pt-2 pb-3">
-                                    {form.link ? (() => {
-                                      let h = form.link;
-                                      try { h = new URL(form.link).hostname; } catch {}
-                                      return (
-                                        <div className={cn("flex items-center justify-between w-full px-3 py-2 rounded-xl", curTheme.btn)}>
-                                          <div className="flex flex-col gap-0.5">
-                                            <span className="text-[10px] font-bold leading-none">{s("visit_homepage")}</span>
-                                            <span className="text-[8px] font-normal opacity-55 leading-none">{h}</span>
-                                          </div>
-                                          <RiArrowRightSLine className="w-3 h-3 opacity-70 shrink-0" />
-                                        </div>
-                                      );
-                                    })() : (
-                                      <p className="text-[9px] text-muted-foreground/40 font-mono text-center py-0.5">{s("no_homepage_link")}</p>
-                                    )}
-                                  </div>
+                                <div className="rounded-[18px] overflow-hidden shadow-md">
+                                  <StampPreviewCard
+                                    themeKey={form.cardTheme || "app"}
+                                    data={{
+                                      tagName: form.tagName,
+                                      domain: domain || undefined,
+                                      description: form.description || undefined,
+                                      link: form.link || undefined,
+                                      tagLabel: badgeLabel,
+                                      icon: styleObj.icon,
+                                    }}
+                                  />
                                 </div>
                               </div>
                             );
@@ -2215,58 +2172,20 @@ export default function StampPage() {
                               <RiCloseLine className="w-4 h-4" />
                             </button>
                           </div>
-                          {/* Card preview */}
+                          {/* Card preview — real popup */}
                           <div className="px-4 py-4">
-                            <div className="rounded-[18px] overflow-hidden border border-border/40 shadow-md">
-                              <div className={cn("relative px-3 pt-4 pb-7 text-center select-none overflow-hidden", cardTheme.hero)}>
-                                <div className="absolute inset-0 opacity-[0.06]"
-                                  style={{ backgroundImage: "radial-gradient(circle, white 1px, transparent 1px)", backgroundSize: "14px 14px" }} />
-                                <div className="absolute inset-x-0 bottom-0 h-9 bg-gradient-to-t from-black/30 to-transparent" />
-                                <div className="relative flex flex-col items-center gap-1.5">
-                                  <div className="relative flex items-center justify-center">
-                                    <div className="absolute w-12 h-12 rounded-2xl bg-white/10 blur-md" />
-                                    <div className="relative w-10 h-10 rounded-[13px] bg-white/20 border border-white/30 flex items-center justify-center shadow-lg">
-                                      <Icon className="w-5 h-5 text-white drop-shadow" />
-                                    </div>
-                                  </div>
-                                  <p className="text-shimmer-white text-[9px] font-mono tracking-[0.2em] uppercase">
-                                    {domain || "your-domain.com"}
-                                  </p>
-                                </div>
-                              </div>
-                              <div className={cn("relative -mt-4 mx-2.5 rounded-[14px] border shadow-lg px-3 pt-2.5 pb-2.5", cardTheme.cardBg, cardTheme.cardBorder)}>
-                                <div className="flex items-start justify-between gap-2">
-                                  <span className={cn("text-[13px] font-black leading-tight tracking-tight", cardTheme.shimmer)}>
-                                    {previewName}
-                                  </span>
-                                  <span className={cn("inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0 whitespace-nowrap mt-0.5", ts.className)}>
-                                    <RiShieldCheckLine className="w-2 h-2" />
-                                    {badgeLabel}
-                                  </span>
-                                </div>
-                                {form.description && (
-                                  <p className={cn("text-[10px] leading-relaxed mt-1.5", cardTheme.cardText === "text-white" ? "text-white/60" : "text-muted-foreground")}>
-                                    {form.description}
-                                  </p>
-                                )}
-                              </div>
-                              <div className="px-2.5 pt-2 pb-3">
-                                {form.link ? (() => {
-                                  let h = form.link;
-                                  try { h = new URL(form.link).hostname; } catch {}
-                                  return (
-                                    <div className={cn("flex items-center justify-between w-full px-3 py-2 rounded-xl", cardTheme.btn)}>
-                                      <div className="flex flex-col gap-0.5">
-                                        <span className="text-[10px] font-bold leading-none">{s("visit_homepage")}</span>
-                                        <span className="text-[8px] font-normal opacity-55 leading-none">{h}</span>
-                                      </div>
-                                      <RiArrowRightSLine className="w-3 h-3 opacity-70 shrink-0" />
-                                    </div>
-                                  );
-                                })() : (
-                                  <p className="text-[9px] text-muted-foreground/40 font-mono text-center py-0.5">{s("no_link_set")}</p>
-                                )}
-                              </div>
+                            <div className="rounded-[18px] overflow-hidden shadow-md">
+                              <StampPreviewCard
+                                themeKey={ts.theme || "app"}
+                                data={{
+                                  tagName: previewName,
+                                  domain: domain || undefined,
+                                  description: form.description || undefined,
+                                  link: form.link || undefined,
+                                  tagLabel: badgeLabel,
+                                  icon: ts.icon,
+                                }}
+                              />
                             </div>
                           </div>
                           {/* Action */}

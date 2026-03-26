@@ -274,7 +274,7 @@ export default function App({ Component, pageProps: { session, ...pageProps } }:
         disableTransitionOnChange
       >
         <div className="fixed inset-0 -z-10">
-          <div className="absolute inset-0 bg-dot-pattern opacity-10" />
+          <div className="absolute inset-0 bg-dot-pattern opacity-[0.055]" />
           <div className="absolute inset-0 bg-gradient-to-b from-transparent via-background/20 to-background" />
         </div>
         <MaintenanceGate>

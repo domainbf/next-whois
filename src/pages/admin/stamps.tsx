@@ -11,7 +11,10 @@ import {
   RiLinkM, RiFileTextLine, RiUserLine, RiArrowDownSLine,
   RiArrowUpSLine, RiFilterLine, RiPencilLine, RiCloseLine,
   RiSaveLine, RiAddLine, RiGlobalLine, RiPriceTagLine,
+  RiIdCardLine, RiBuildingLine, RiAwardLine, RiVipCrownLine,
+  RiShakeHandsLine, RiCodeSLine, RiAlertLine, RiEyeLine,
 } from "@remixicon/react";
+import { StampPreviewCard, STAMP_CARD_THEMES } from "@/components/stamp-preview-card";
 
 type Stamp = {
   id: string;
@@ -28,36 +31,15 @@ type Stamp = {
   created_at: string;
 };
 
-const TAG_STYLES: { value: string; label: string; color: string }[] = [
-  { value: "personal", label: "个人",    color: "bg-teal-500 text-white" },
-  { value: "official", label: "官方",    color: "bg-blue-500 text-white" },
-  { value: "brand",    label: "品牌",    color: "bg-violet-500 text-white" },
-  { value: "verified", label: "认证",    color: "bg-emerald-500 text-white" },
-  { value: "partner",  label: "合作",    color: "bg-orange-500 text-white" },
-  { value: "dev",      label: "开发者",  color: "bg-sky-500 text-white" },
-  { value: "warning",  label: "警告",    color: "bg-amber-400 text-white" },
-  { value: "premium",  label: "高级",    color: "bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white" },
-];
-
-const CARD_THEMES: { value: string; label: string; bg: string; special?: string }[] = [
-  /* ── 标准配色 ── */
-  { value: "app",       label: "经典",      bg: "from-zinc-700 to-zinc-900" },
-  { value: "glow",      label: "光晕",      bg: "from-teal-400 to-teal-600" },
-  { value: "midnight",  label: "深夜",      bg: "from-slate-700 via-blue-900 to-slate-900" },
-  { value: "aurora",    label: "极光",      bg: "from-violet-500 via-fuchsia-500 to-pink-400" },
-  { value: "solar",     label: "阳光",      bg: "from-amber-400 to-orange-600" },
-  { value: "ink",       label: "墨水",      bg: "from-zinc-800 via-zinc-900 to-black" },
-  { value: "rose",      label: "玫瑰",      bg: "from-pink-400 via-rose-500 to-red-400" },
-  { value: "forest",    label: "森林",      bg: "from-emerald-400 via-green-500 to-teal-600" },
-  { value: "ocean",     label: "深海",      bg: "from-cyan-400 via-blue-500 to-indigo-700" },
-  { value: "gold",      label: "金色",      bg: "from-yellow-300 via-amber-400 to-orange-400" },
-  { value: "crimson",   label: "烈焰",      bg: "from-red-500 via-rose-600 to-red-800" },
-  /* ── 特殊排版 ── */
-  { value: "celebrate", label: "庆典",      bg: "from-sky-400 to-sky-500",                   special: "🎊" },
-  { value: "neon",      label: "霓虹",      bg: "from-gray-900 to-black",                    special: "⚡" },
-  { value: "gradient",  label: "渐变流光",  bg: "from-sky-200 via-rose-200 to-amber-200",    special: "✨" },
-  { value: "split",     label: "分栏",      bg: "from-gray-700 to-gray-900",                 special: "⊟" },
-  { value: "flash",     label: "特卖",      bg: "from-yellow-300 to-yellow-400",             special: "💥" },
+const TAG_STYLES: { value: string; label: string; color: string; icon: React.ElementType }[] = [
+  { value: "personal", label: "个人",   color: "bg-zinc-800 text-white",                                               icon: RiIdCardLine      },
+  { value: "official", label: "官方",   color: "bg-blue-700 text-white",                                               icon: RiBuildingLine    },
+  { value: "brand",    label: "品牌",   color: "bg-violet-600 text-white",                                             icon: RiAwardLine       },
+  { value: "verified", label: "认证",   color: "bg-emerald-500 text-white",                                            icon: RiShieldCheckLine },
+  { value: "partner",  label: "合作",   color: "bg-orange-500 text-white",                                             icon: RiShakeHandsLine  },
+  { value: "dev",      label: "开发者", color: "bg-slate-800 text-white",                                              icon: RiCodeSLine       },
+  { value: "warning",  label: "警告",   color: "bg-amber-500 text-white",                                              icon: RiAlertLine       },
+  { value: "premium",  label: "高级",   color: "bg-gradient-to-r from-violet-600 to-fuchsia-500 text-white",           icon: RiVipCrownLine    },
 ];
 
 function styleColor(style: string) {
@@ -65,20 +47,24 @@ function styleColor(style: string) {
 }
 
 function StyleBadge({ style, name }: { style: string; name?: string }) {
+  const ts = TAG_STYLES.find(s => s.value === style);
+  const Icon = ts?.icon ?? RiShieldCheckLine;
   return (
-    <span className={cn("inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold shrink-0", styleColor(style))}>
-      {name || TAG_STYLES.find(s => s.value === style)?.label || style}
+    <span className={cn("inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold shrink-0", styleColor(style))}>
+      <Icon className="w-3 h-3" />
+      {name || ts?.label || style}
     </span>
   );
 }
 
 function ThemePreview({ theme }: { theme: string }) {
-  const t = CARD_THEMES.find(c => c.value === theme);
+  const t = STAMP_CARD_THEMES[theme];
   if (!t) return null;
   return (
-    <span className="inline-flex items-center gap-1">
-      <span className={cn("inline-block w-5 h-5 rounded-md bg-gradient-to-br shrink-0 border border-white/10", t.bg)} />
+    <span className="inline-flex items-center gap-1.5">
+      <span className={cn("inline-block w-5 h-5 rounded-md bg-gradient-to-br shrink-0 border border-white/10", t.hero)} />
       {t.special && <span className="text-[10px]">{t.special}</span>}
+      <span className="text-xs font-medium">{t.label}</span>
     </span>
   );
 }
@@ -157,23 +143,36 @@ function StampFormFields({
       <div className="space-y-1.5">
         <Label className="text-sm font-medium">标签样式</Label>
         <div className="grid grid-cols-4 gap-1.5">
-          {TAG_STYLES.map(s => (
-            <button
-              key={s.value}
-              type="button"
-              onClick={() => setTagStyle(s.value)}
-              className={cn(
-                "h-8 rounded-lg text-xs font-semibold border-2 transition-all",
-                s.color,
-                tagStyle === s.value ? "border-foreground/60 scale-[0.97]" : "border-transparent opacity-70 hover:opacity-100"
-              )}
-            >
-              {s.label}
-            </button>
-          ))}
+          {TAG_STYLES.map(s => {
+            const Icon = s.icon;
+            const isSelected = tagStyle === s.value;
+            return (
+              <button
+                key={s.value}
+                type="button"
+                onClick={() => setTagStyle(s.value)}
+                className={cn(
+                  "relative flex flex-col items-center gap-1 py-2 px-1 rounded-xl border-2 transition-all text-center",
+                  isSelected
+                    ? "border-foreground/50 shadow-sm scale-[0.97]"
+                    : "border-transparent hover:border-border/60"
+                )}
+              >
+                <span className={cn("w-8 h-8 rounded-lg flex items-center justify-center", s.color)}>
+                  <Icon className="w-4 h-4" />
+                </span>
+                <span className="text-[10px] font-semibold leading-none text-foreground/80">{s.label}</span>
+                {isSelected && (
+                  <span className="absolute top-1 right-1 w-3 h-3 rounded-full bg-foreground flex items-center justify-center">
+                    <RiShieldCheckLine className="w-2 h-2 text-background" />
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
-        <div className="flex items-center gap-2 mt-1">
-          <span className="text-[11px] text-muted-foreground">预览：</span>
+        <div className="flex items-center gap-2 mt-0.5 px-1">
+          <span className="text-[11px] text-muted-foreground">当前：</span>
           <StyleBadge style={tagStyle} name={tagName || "标签预览"} />
         </div>
       </div>
@@ -200,44 +199,46 @@ function StampFormFields({
               <div>
                 <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-3">标准配色</p>
                 <div className="grid grid-cols-3 gap-2.5">
-                  {CARD_THEMES.filter(c => !c.special).map(c => (
-                    <button key={c.value} type="button"
-                      onClick={() => { setCardTheme(c.value); setThemePickerOpen(false); }}
+                  {Object.entries(STAMP_CARD_THEMES).filter(([, t]) => !t.special).map(([key, t]) => (
+                    <button key={key} type="button"
+                      onClick={() => { setCardTheme(key); setThemePickerOpen(false); }}
                       className={cn(
                         "flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all active:scale-[0.97]",
-                        cardTheme === c.value
+                        cardTheme === key
                           ? "border-primary bg-primary/5"
                           : "border-transparent hover:border-border hover:bg-muted/40"
                       )}>
-                      <span className={cn("w-full h-7 rounded-lg bg-gradient-to-br", c.bg)} />
-                      <span className="text-[11px] font-semibold leading-none">{c.label}</span>
-                      {cardTheme === c.value && (
+                      <span className={cn("w-full h-7 rounded-lg overflow-hidden", t.hero)} />
+                      <span className="text-[11px] font-semibold leading-none">{t.label}</span>
+                      {cardTheme === key && (
                         <span className="text-[9px] text-primary font-bold uppercase tracking-widest">已选</span>
                       )}
                     </button>
                   ))}
                 </div>
               </div>
-              {/* Special layout themes */}
+              {/* Special layout themes — show actual card previews */}
               <div>
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-3">特殊排版</p>
-                <div className="grid grid-cols-2 gap-2.5">
-                  {CARD_THEMES.filter(c => !!c.special).map(c => (
-                    <button key={c.value} type="button"
-                      onClick={() => { setCardTheme(c.value); setThemePickerOpen(false); }}
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-3">特殊排版 <span className="normal-case font-normal opacity-60">· 实际效果预览</span></p>
+                <div className="grid grid-cols-2 gap-3">
+                  {Object.entries(STAMP_CARD_THEMES).filter(([, t]) => !!t.special).map(([key, t]) => (
+                    <button key={key} type="button"
+                      onClick={() => { setCardTheme(key); setThemePickerOpen(false); }}
                       className={cn(
-                        "flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition-all active:scale-[0.97]",
-                        cardTheme === c.value
-                          ? "border-primary bg-primary/5"
-                          : "border-transparent hover:border-border hover:bg-muted/40"
+                        "flex flex-col gap-2 rounded-xl border-2 overflow-hidden transition-all active:scale-[0.97]",
+                        cardTheme === key
+                          ? "border-primary"
+                          : "border-transparent hover:border-border"
                       )}>
-                      <span className={cn("w-10 h-10 rounded-xl bg-gradient-to-br shrink-0 flex items-center justify-center text-lg", c.bg)}>
-                        {c.special}
-                      </span>
-                      <div className="text-left">
-                        <p className="text-[12px] font-semibold leading-tight">{c.label}</p>
-                        {cardTheme === c.value && (
-                          <p className="text-[9px] text-primary font-bold uppercase tracking-widest mt-0.5">已选</p>
+                      <div className="pointer-events-none scale-[0.72] origin-top-left w-[138.8%]">
+                        <StampPreviewCard themeKey={key} />
+                      </div>
+                      <div className={cn(
+                        "flex items-center justify-between px-2 pb-2 -mt-[28%]",
+                      )}>
+                        <span className="text-[11px] font-semibold">{t.special} {t.label}</span>
+                        {cardTheme === key && (
+                          <span className="text-[9px] text-primary font-bold uppercase tracking-widest">已选</span>
                         )}
                       </div>
                     </button>
@@ -259,11 +260,11 @@ function StampFormFields({
         <Label className="text-sm font-medium">弹窗样式</Label>
         {/* Clickable display — opens theme picker */}
         {(() => {
-          const cur = CARD_THEMES.find(c => c.value === cardTheme);
+          const cur = STAMP_CARD_THEMES[cardTheme];
           return (
             <button type="button" onClick={() => setThemePickerOpen(true)}
               className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl border border-border bg-muted/30 hover:bg-muted/60 transition-colors text-left">
-              <span className={cn("w-6 h-6 rounded-md shrink-0 bg-gradient-to-br flex items-center justify-center text-xs", cur?.bg ?? "from-zinc-700 to-zinc-900")}>
+              <span className={cn("w-6 h-6 rounded-md shrink-0 overflow-hidden flex items-center justify-center text-xs", cur?.hero ?? "bg-zinc-700")}>
                 {cur?.special && <span className="leading-none">{cur.special}</span>}
               </span>
               <span className="text-sm font-medium flex-1">
@@ -300,6 +301,30 @@ function StampFormFields({
         />
         <p className="text-[10px] text-muted-foreground text-right">{description.length}/200</p>
       </div>
+
+      {/* ── Live popup preview ── */}
+      {tagName && (
+        <div>
+          <div className="flex items-center gap-2 mb-2.5">
+            <RiEyeLine className="w-3.5 h-3.5 text-muted-foreground" />
+            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">弹窗实际效果</span>
+            <div className="flex-1 h-px bg-border/50" />
+          </div>
+          <div className="rounded-2xl overflow-hidden shadow-sm border border-border/30">
+            <StampPreviewCard
+              themeKey={cardTheme || "app"}
+              data={{
+                tagName,
+                domain: domain || undefined,
+                description: description || undefined,
+                link: link || undefined,
+                tagLabel: TAG_STYLES.find(s => s.value === tagStyle)?.label,
+                icon: TAG_STYLES.find(s => s.value === tagStyle)?.icon,
+              }}
+            />
+          </div>
+        </div>
+      )}
 
       {showVerifiedToggle && setVerified && (
         <label className="flex items-center gap-3 cursor-pointer select-none p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200/60 dark:border-emerald-800/40">

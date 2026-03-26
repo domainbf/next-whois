@@ -16,11 +16,11 @@ import type { GetServerSideProps } from "next";
 
 function XRWDisplay() {
   return (
-    <div className="w-full flex flex-col items-center justify-center select-none">
-      <span className="text-shimmer text-6xl font-bold tracking-[0.2em]">
+    <div className="w-full flex flex-col items-center justify-center select-none gap-2">
+      <span className="text-shimmer text-4xl font-bold tracking-[0.22em]">
         X.RW
       </span>
-      <span className="mt-2 text-[11px] text-muted-foreground/50 tracking-[0.25em] uppercase">
+      <span className="text-[10px] text-muted-foreground/35 tracking-[0.22em] uppercase">
         NiC.RW 提供技术支持
       </span>
     </div>
@@ -116,7 +116,7 @@ export default function HomePage({ origin }: { origin: string }) {
 
         {/* Mobile: centered X.RW brand display */}
         {!loading && (
-          <div className="sm:hidden flex items-center justify-center" style={{ height: "calc(100vh - 13rem)" }}>
+          <div className="sm:hidden flex items-center justify-center" style={{ height: "calc(100vh - 16rem)" }}>
             <XRWDisplay />
           </div>
         )}
