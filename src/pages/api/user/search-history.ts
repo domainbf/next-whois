@@ -5,6 +5,8 @@ import { many, one, run, isDbReady } from "@/lib/db-query";
 import { scoreDomain, shouldAlertAdmin } from "@/lib/domain-value";
 import { sendEmail, highValueAlertHtml, getSiteLabel } from "@/lib/email";
 import { ADMIN_EMAIL } from "@/lib/admin-shared";
+import { checkHotPrefix } from "@/lib/server/hot-prefix-cache";
+import { analyzeDomainWithAi } from "@/lib/server/domain-value-ai";
 
 const MAX_HISTORY   = 100;
 const PAGE_SIZE     = 20;
@@ -35,7 +37,12 @@ async function maybeSendHighValueAlert(
   regStatus: string,
   checkedByEmail?: string | null,
 ) {
-  if (!shouldAlertAdmin(query, queryType, regStatus)) return;
+  const scoreResult = scoreDomain(query, queryType);
+  const sld = query.lastIndexOf(".") > 0 ? query.substring(0, query.lastIndexOf(".")) : query;
+  const hotPrefixMatch = await checkHotPrefix(sld).catch(() => null);
+
+  const shouldAlert = shouldAlertAdmin(query, queryType, regStatus) || !!hotPrefixMatch;
+  if (!shouldAlert) return;
 
   const recent = await one<{ count: string }>(
     `SELECT COUNT(*) AS count FROM search_history
@@ -45,26 +52,55 @@ async function maybeSendHighValueAlert(
   );
   if (parseInt(recent?.count ?? "0") > 0) return;
 
-  const result = scoreDomain(query, queryType);
-  if (!result) return;
+  if (!scoreResult) return;
+
+  // Fetch AI summary for high-value / hot prefix domains
+  let aiSummary: string | null = null;
+  if (scoreResult.score >= 55 || hotPrefixMatch) {
+    try {
+      const aiResult = await Promise.race([
+        analyzeDomainWithAi(query),
+        new Promise<null>((_, reject) => setTimeout(() => reject(new Error("timeout")), 8000)),
+      ]) as Awaited<ReturnType<typeof analyzeDomainWithAi>> | null;
+      if (aiResult && typeof aiResult === "object" && "summary" in aiResult) {
+        aiSummary = (aiResult as { summary?: string }).summary ?? null;
+      }
+    } catch {
+      // AI unavailable — proceed without it
+    }
+  }
 
   const siteName = await getSiteLabel().catch(() => "X.RW");
   const html = highValueAlertHtml({
     domain: query,
-    score: result.score,
-    tier: result.tier,
-    reasons: result.reasons,
-    isAlertKeyword: result.isAlertKeyword,
-    isNumericOnly: result.isNumericOnly,
+    score: scoreResult.score,
+    tier: scoreResult.tier,
+    reasons: scoreResult.reasons,
+    isAlertKeyword: scoreResult.isAlertKeyword,
+    isNumericOnly: scoreResult.isNumericOnly,
     checkedBy: checkedByEmail ?? null,
-    breakdown: result.breakdown,
+    breakdown: scoreResult.breakdown,
+    hotPrefix: hotPrefixMatch ? {
+      prefix: hotPrefixMatch.prefix.prefix,
+      category: hotPrefixMatch.prefix.category,
+      weight: hotPrefixMatch.prefix.weight,
+      matchType: hotPrefixMatch.matchType,
+      saleExamples: hotPrefixMatch.prefix.sale_examples,
+      notes: hotPrefixMatch.prefix.notes,
+    } : null,
+    aiSummary,
     siteName,
   });
 
-  const prefix = result.isAlertKeyword ? "⚡ 特殊关键词可用" : "💎 高价值域名可用";
+  const subjectPrefix = hotPrefixMatch
+    ? "🔥 热门前缀可用"
+    : scoreResult.isAlertKeyword
+    ? "⚡ 特殊关键词可用"
+    : "💎 高价值域名可用";
+
   await sendEmail({
     to: ADMIN_EMAIL,
-    subject: `${prefix}：${query}（评分 ${result.score}）`,
+    subject: `${subjectPrefix}：${query}（评分 ${scoreResult.score}${hotPrefixMatch ? ` · 前缀:${hotPrefixMatch.prefix.prefix}` : ""}）`,
     html,
   }).catch(err => console.error("[high-value-alert]", err.message));
 }

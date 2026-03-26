@@ -586,6 +586,15 @@ export interface HighValueAlertParams {
   isNumericOnly: boolean;
   checkedBy?: string | null;
   breakdown: { lengthScore: number; tldScore: number; keywordScore: number; patternScore: number };
+  hotPrefix?: {
+    prefix: string;
+    category: string;
+    weight: number;
+    matchType: "exact" | "contains";
+    saleExamples?: string | null;
+    notes?: string | null;
+  } | null;
+  aiSummary?: string | null;
 }
 
 export function highValueAlertHtml(p: HighValueAlertParams & { siteName?: string }): string {
@@ -637,9 +646,21 @@ export function highValueAlertHtml(p: HighValueAlertParams & { siteName?: string
             ${p.reasons.map(r => pill(r, tierBg, tierColor)).join("")}
             ${p.isAlertKeyword ? pill("⚡ 特殊关键词", "#fef3c7", "#92400e") : ""}
             ${p.isNumericOnly ? pill("🔢 纯数字", "#ecfdf5", "#065f46") : ""}
+            ${p.hotPrefix ? pill(`🔥 热门前缀: ${p.hotPrefix.prefix}`, "#fff7ed", "#c2410c") : ""}
           </div>
         </div>
       </div>
+
+      <!-- Hot Prefix Alert (if matched) -->
+      ${p.hotPrefix ? `<div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:12px;padding:16px;margin-bottom:20px">
+        <p style="margin:0 0 8px;font-size:11px;font-weight:700;letter-spacing:1px;color:#c2410c;text-transform:uppercase">🔥 热门前缀监控命中</p>
+        <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center">
+          <span style="font-family:monospace;font-size:16px;font-weight:800;color:#c2410c;background:#fed7aa;padding:4px 12px;border-radius:8px">${p.hotPrefix.prefix}</span>
+          <span style="font-size:12px;color:#78350f">分类：${p.hotPrefix.category} &nbsp;·&nbsp; 权重：${p.hotPrefix.weight} &nbsp;·&nbsp; 匹配：${p.hotPrefix.matchType === "exact" ? "精确" : "前缀"}</span>
+        </div>
+        ${p.hotPrefix.notes ? `<p style="margin:8px 0 0;font-size:12px;color:#92400e">${p.hotPrefix.notes}</p>` : ""}
+        ${p.hotPrefix.saleExamples ? `<p style="margin:6px 0 0;font-size:11px;color:#b45309;font-style:italic">参考成交：${p.hotPrefix.saleExamples}</p>` : ""}
+      </div>` : ""}
 
       <!-- Score breakdown -->
       <div style="background:#f8fafc;border-radius:12px;padding:16px;margin-bottom:20px">
@@ -649,6 +670,12 @@ export function highValueAlertHtml(p: HighValueAlertParams & { siteName?: string
         ${scoreBar("热词匹配", p.breakdown.keywordScore, 25, "#f59e0b")}
         ${scoreBar("特征加分", p.breakdown.patternScore, 15, "#10b981")}
       </div>
+
+      <!-- AI Analysis Summary (if available) -->
+      ${p.aiSummary ? `<div style="background:#f5f3ff;border:1px solid #ddd6fe;border-radius:12px;padding:16px;margin-bottom:20px">
+        <p style="margin:0 0 8px;font-size:11px;font-weight:700;letter-spacing:1px;color:#6d28d9;text-transform:uppercase">🤖 AI 快速评估</p>
+        <p style="margin:0;font-size:13px;color:#3730a3;line-height:1.6">${p.aiSummary}</p>
+      </div>` : ""}
 
       <!-- Info table -->
       <table cellpadding="0" cellspacing="0" style="width:100%;margin-bottom:20px">

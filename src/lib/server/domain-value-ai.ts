@@ -4,8 +4,8 @@
  * Results are cached in Redis for 7 days to avoid repeated calls.
  */
 
-import { getAiProviders } from "./ai-providers";
-import { getRedisClient } from "./redis";
+import { getConfiguredProviders } from "./ai-providers";
+import { redis, isRedisAvailable } from "./redis";
 
 export interface DomainAiAnalysis {
   domain: string;
@@ -117,12 +117,12 @@ function parseAiResponse(text: string): Omit<DomainAiAnalysis, "domain" | "model
 }
 
 export async function analyzeDomainWithAi(domain: string): Promise<DomainAiAnalysis | null> {
-  const redis = await getRedisClient().catch(() => null);
+  const redisClient = isRedisAvailable() ? redis : null;
 
   // Try cache first
-  if (redis) {
+  if (redisClient) {
     try {
-      const cached = await redis.get(cacheKey(domain));
+      const cached = await redisClient.get(cacheKey(domain));
       if (cached) {
         const parsed = JSON.parse(cached) as DomainAiAnalysis;
         parsed.cached = true;
@@ -132,7 +132,7 @@ export async function analyzeDomainWithAi(domain: string): Promise<DomainAiAnaly
   }
 
   // Get available AI providers
-  const providers = await getAiProviders();
+  const providers = getConfiguredProviders();
   if (providers.length === 0) return null;
 
   const messages = [
@@ -158,9 +158,9 @@ export async function analyzeDomainWithAi(domain: string): Promise<DomainAiAnaly
       };
 
       // Cache the result
-      if (redis) {
+      if (redisClient) {
         try {
-          await redis.set(cacheKey(domain), JSON.stringify(result), { ex: CACHE_TTL });
+          await redisClient.set(cacheKey(domain), JSON.stringify(result), "EX", CACHE_TTL);
         } catch { /* ignore */ }
       }
 

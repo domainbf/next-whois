@@ -4176,3 +4176,24 @@ All persistent state lives in PostgreSQL (`src/lib/db.ts`). Tables auto-created 
 - Reply-by-email button (envelope icon) appears on hover next to delete; opens pre-filled mailto: with domain in subject
 - Expanded panel now shows: user description + action buttons ("复制域名", "RDAP 查看", "回复 EMAIL")
 - All in-place confirm dialogs replace native `confirm()` calls
+
+### v3.3 — Hot Prefix System + Enhanced Admin Email Alerts
+
+**Scope:** Hot prefix monitoring watchlist, AI analysis in admin email alerts, removal of domain value display from public frontend.
+
+**Changes:**
+
+| File | Change | Detail |
+|---|---|---|
+| `src/pages/[...query].tsx` | Removed AI panel and domain value score strip from `AvailableDomainCard` | Domain value scoring / AI analysis is admin-only; removed all state, functions, and JSX. Public users see no score. |
+| `src/pages/api/admin/hot-prefixes.ts` | New CRUD API | `GET`/`POST`/`PATCH`/`DELETE`; auto-creates `hot_prefixes` table; `?action=seed` imports 90+ built-in prefixes; Redis cache invalidation. |
+| `src/pages/admin/hot-prefixes.tsx` | New admin UI at `/admin/hot-prefixes` | CRUD table: add/edit/delete prefixes, enable/disable toggle, category filter pills, 30-day hit counter, seed button. |
+| `src/components/admin-layout.tsx` | Added "热门前缀" nav item | Flame icon, Config group. |
+| `src/lib/server/hot-prefix-cache.ts` | New server-side hot prefix cache | In-process 1-min + Redis 5-min cache; `checkHotPrefix(sld)` / `getHotPrefixBoost(name)`. |
+| `src/lib/server/domain-value-ai.ts` | Fixed imports; AI analysis module working | `analyzeDomainWithAi(domain)` with 7-day Redis cache. |
+| `src/lib/email.ts` | Enhanced alert email | Added `hotPrefix` match section (orange) and `aiSummary` section (violet) to `highValueAlertHtml`. |
+| `src/pages/api/lookup.ts` | Enhanced `maybeSendHighValueAlert` | Hot prefix check + AI summary (8s timeout); alert for hot prefix even below score threshold. |
+| `src/pages/api/user/search-history.ts` | Same alert enhancement | Mirrors lookup.ts logic. |
+
+**Hot Prefix Table:** `hot_prefixes` (id, prefix, category, weight, source, sale_examples, notes, enabled, hit_count, created_at, updated_at)
+**Alert subject prefixes:** 🔥 热门前缀可用 / ⚡ 特殊关键词可用 / 💎 高价值域名可用

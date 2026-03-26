@@ -23,6 +23,7 @@ import {
   RiBankCardLine, RiBankCardFill, RiPriceTag3Line,
   RiMailSendLine, RiLayoutGridLine,
   RiRobot2Line,
+  RiFireLine,
 } from "@remixicon/react";
 
 type NavItem = {
@@ -70,7 +71,8 @@ const NAV_GROUPS: { titleKey: string; items: NavItem[] }[] = [
       { href: "/admin/access-keys",   labelKey: "admin.nav_access_keys",            icon: RiShieldUserLine, activeIcon: RiShieldUserLine },
       { href: "/admin/links",         labelKey: "admin.nav_links",                  icon: RiLinksLine,    activeIcon: RiLinksLine },
       { href: "/admin/tld-lifecycle", labelKey: "admin.nav_tld_lifecycle",          icon: RiTimeLine,     activeIcon: RiTimeLine },
-      { href: "/admin/tld-rules",     labelKey: "admin.nav_tld_rules",              icon: RiRobot2Line,   activeIcon: RiRobot2Line },
+      { href: "/admin/tld-rules",       labelKey: "admin.nav_tld_rules",              icon: RiRobot2Line,   activeIcon: RiRobot2Line },
+      { href: "/admin/hot-prefixes",    labelKey: "admin.nav_hot_prefixes",           icon: RiFireLine,     activeIcon: RiFireLine },
       { href: "/admin/tld-lifecycle-feedback", labelKey: "admin.nav_tld_lifecycle_feedback", icon: RiFlagLine, activeIcon: RiFlagLine },
       { href: "/admin/og-styles",     labelKey: "admin.nav_og_styles",              icon: RiImageLine,    activeIcon: RiImageLine },
     ],
