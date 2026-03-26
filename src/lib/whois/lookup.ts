@@ -474,6 +474,7 @@ function mergeResults(
     status: rdap.status.length > 0 ? rdap.status : whoisParsed.status,
     nameServers:
       rdap.nameServers.length > 0 ? rdap.nameServers : whoisParsed.nameServers,
+    registrantName: pickStr(rdap.registrantName, whoisParsed.registrantName),
     registrantOrganization: pickStr(
       rdap.registrantOrganization,
       whoisParsed.registrantOrganization,
@@ -488,6 +489,8 @@ function mergeResults(
     ),
     registrantPhone: pickStr(rdap.registrantPhone, whoisParsed.registrantPhone),
     registrantEmail: pickStr(rdap.registrantEmail, whoisParsed.registrantEmail),
+    abuseEmail: pickStr(rdap.abuseEmail, whoisParsed.abuseEmail),
+    abusePhone: pickStr(rdap.abusePhone, whoisParsed.abusePhone),
     dnssec: pickStr(rdap.dnssec, whoisParsed.dnssec),
     rawWhoisContent: rdap.rawWhoisContent || whoisParsed.rawWhoisContent,
     rawRdapContent: rdap.rawRdapContent || whoisParsed.rawRdapContent,

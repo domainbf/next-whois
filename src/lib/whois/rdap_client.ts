@@ -377,39 +377,71 @@ function parseRdapEntity(entities: any[]): {
   registrar: string;
   registrarURL: string;
   ianaId: string;
+  registrantName: string;
   registrantOrganization: string;
   registrantCountry: string;
   registrantProvince: string;
   registrantPhone: string;
   registrantEmail: string;
+  abuseEmail: string;
+  abusePhone: string;
 } {
   let registrar = "Unknown";
   let registrarURL = "Unknown";
   let ianaId = "N/A";
+  let registrantName = "Unknown";
   let registrantOrganization = "Unknown";
   let registrantCountry = "Unknown";
   let registrantProvince = "Unknown";
   let registrantPhone = "Unknown";
   let registrantEmail = "Unknown";
+  let abuseEmail = "Unknown";
+  let abusePhone = "Unknown";
 
   for (const entity of entities) {
     if (entity.roles?.includes("registrar")) {
       if (entity.vcardArray?.[1]) {
-        registrar = extractVcardField(entity.vcardArray[1], "fn");
-        registrantOrganization = extractVcardField(entity.vcardArray[1], "org");
+        registrar = extractVcardField(entity.vcardArray[1], "fn") || registrar;
       }
-
       if (entity.publicIds) {
         const ianaEntry = entity.publicIds.find(
           (pub: any) => pub.type === "IANA Registrar ID",
         );
-        if (ianaEntry) {
-          ianaId = ianaEntry.identifier;
+        if (ianaEntry) ianaId = ianaEntry.identifier;
+      }
+      // Extract registrar URL from RDAP links
+      if (entity.links) {
+        const selfLink = entity.links.find(
+          (l: any) => l.rel === "self" || l.type === "application/rdap+json",
+        );
+        const aboutLink = entity.links.find(
+          (l: any) => l.rel === "about" || l.rel === "related",
+        );
+        const anyLink = entity.links.find((l: any) => l.href?.startsWith("http"));
+        const best = aboutLink || selfLink || anyLink;
+        if (best?.href && best.href.startsWith("http")) {
+          registrarURL = best.href;
+        }
+      }
+      // Also check nested entities inside registrar for abuse contact
+      if (entity.entities) {
+        for (const sub of entity.entities) {
+          if (sub.roles?.includes("abuse") && sub.vcardArray?.[1]) {
+            abuseEmail = extractVcardField(sub.vcardArray[1], "email") || abuseEmail;
+            abusePhone = extractVcardField(sub.vcardArray[1], "tel") || abusePhone;
+          }
         }
       }
     }
 
+    // Top-level abuse entity
+    if (entity.roles?.includes("abuse") && entity.vcardArray?.[1]) {
+      abuseEmail = extractVcardField(entity.vcardArray[1], "email") || abuseEmail;
+      abusePhone = extractVcardField(entity.vcardArray[1], "tel") || abusePhone;
+    }
+
     if (entity.roles?.includes("registrant") && entity.vcardArray?.[1]) {
+      registrantName = extractVcardField(entity.vcardArray[1], "fn") || registrantName;
       registrantOrganization =
         extractVcardField(entity.vcardArray[1], "org") ||
         registrantOrganization;
@@ -429,11 +461,14 @@ function parseRdapEntity(entities: any[]): {
     registrar,
     registrarURL,
     ianaId,
+    registrantName,
     registrantOrganization,
     registrantCountry,
     registrantProvince,
     registrantPhone,
     registrantEmail,
+    abuseEmail,
+    abusePhone,
   };
 }
 
@@ -525,11 +560,14 @@ export async function convertRdapToWhoisResult(
     expirationDate,
     status,
     nameServers,
+    registrantName: entityData.registrantName,
     registrantOrganization: entityData.registrantOrganization,
     registrantProvince: entityData.registrantProvince,
     registrantCountry: entityData.registrantCountry,
     registrantPhone: entityData.registrantPhone,
     registrantEmail: entityData.registrantEmail,
+    abuseEmail: entityData.abuseEmail,
+    abusePhone: entityData.abusePhone,
     dnssec: rdapData.secureDNS?.delegationSigned
       ? "signedDelegation"
       : "unsigned",

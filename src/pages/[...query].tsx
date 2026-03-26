@@ -6261,118 +6261,136 @@ export default function LookupPage({
                 </motion.div>
                 <motion.div variants={CARD_ITEM_VARIANTS} className="lg:col-span-4 relative overflow-hidden">
                   <div className="flex flex-col gap-6 lg:absolute lg:inset-0 lg:overflow-y-auto">
-                    {isValidField(result.registrar) && (
-                      <div className="glass-panel border border-border rounded-xl p-5 shrink-0 overflow-hidden">
-                        <div className="flex items-center justify-between mb-4">
-                          <h3 className="text-sm font-semibold">
-                            {t("whois_fields.registrar")}
-                          </h3>
-                          {isValidField(result.ianaId) && (
-                            <Link
-                              href={`https://www.internic.net/registrars/registrar-${result.ianaId}.html`}
-                              target="_blank"
-                              className="text-[10px] bg-muted px-2 py-0.5 rounded text-muted-foreground font-mono hover:bg-muted/80 transition-colors"
-                            >
-                              IANA: {result.ianaId}
-                            </Link>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-3 mb-6">
-                          {registrarIcon && registrarIcon.slug ? (
-                            registrarIcon.slug.startsWith("/") ? (
-                              <div className="w-10 h-10 bg-white dark:bg-zinc-800 rounded-lg flex items-center justify-center p-1.5 border shrink-0">
-                                <img
-                                  src={registrarIcon.slug}
-                                  alt=""
-                                  className="w-full h-full object-contain rounded-md"
-                                />
-                              </div>
+                    {isValidField(result.registrar) && (() => {
+                      const hasAbuseContact = isValidField(result.abuseEmail) || isValidField(result.abusePhone);
+                      const hasRegistrantContact = isValidField(result.registrantName) || isValidField(result.registrantOrganization) || isValidField(result.registrantEmail) || isValidField(result.registrantPhone) || isValidField(result.registrantCountry) || isValidField(result.registrantProvince);
+                      return (
+                      <div className="glass-panel border border-border rounded-xl overflow-hidden shrink-0">
+                        {/* Header: icon + name + IANA */}
+                        <div className="p-5 pb-4">
+                          <div className="flex items-center justify-between mb-3">
+                            <h3 className="text-sm font-semibold">{t("whois_fields.registrar")}</h3>
+                            {isValidField(result.ianaId) && (
+                              <Link
+                                href={`https://www.internic.net/registrars/registrar-${result.ianaId}.html`}
+                                target="_blank"
+                                className="text-[10px] bg-muted px-2 py-0.5 rounded text-muted-foreground font-mono hover:bg-muted/80 transition-colors"
+                              >
+                                IANA: {result.ianaId}
+                              </Link>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-3">
+                            {registrarIcon && registrarIcon.slug ? (
+                              registrarIcon.slug.startsWith("/") ? (
+                                <div className="w-10 h-10 bg-white dark:bg-zinc-800 rounded-lg flex items-center justify-center p-1.5 border shrink-0">
+                                  <img src={registrarIcon.slug} alt="" className="w-full h-full object-contain rounded-md" />
+                                </div>
+                              ) : (
+                                <div className="w-10 h-10 bg-white dark:bg-zinc-800 rounded-lg flex items-center justify-center p-1.5 border shrink-0">
+                                  <img src={resolveIconUrl(registrarIcon.slug, registrarIcon.color, false)} alt="" className="w-full h-full object-contain dark:hidden" />
+                                  <img src={resolveIconUrl(registrarIcon.slug, registrarIcon.color, true)} alt="" className="w-full h-full object-contain hidden dark:block" />
+                                </div>
+                              )
                             ) : (
-                              <div className="w-10 h-10 bg-white dark:bg-zinc-800 rounded-lg flex items-center justify-center p-1.5 border shrink-0">
-                                <img
-                                  src={resolveIconUrl(
-                                    registrarIcon.slug,
-                                    registrarIcon.color,
-                                    false,
-                                  )}
-                                  alt=""
-                                  className="w-full h-full object-contain dark:hidden"
-                                />
-                                <img
-                                  src={resolveIconUrl(
-                                    registrarIcon.slug,
-                                    registrarIcon.color,
-                                    true,
-                                  )}
-                                  alt=""
-                                  className="w-full h-full object-contain hidden dark:block"
-                                />
+                              <div className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold text-lg shrink-0"
+                                style={{ backgroundColor: registrarIcon ? registrarIcon.color : getRegistrarFallbackColor(result.registrar) }}>
+                                {registrarInitial}
                               </div>
-                            )
-                          ) : (
-                            <div
-                              className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold text-lg shrink-0"
-                              style={{
-                                backgroundColor: registrarIcon
-                                  ? registrarIcon.color
-                                  : getRegistrarFallbackColor(result.registrar),
-                              }}
-                            >
-                              {registrarInitial}
-                            </div>
-                          )}
-                          <div className="min-w-0">
-                            <p className="font-medium text-sm truncate">
-                              {result.registrar}
-                            </p>
-                            {isValidField(result.registrarURL) && (
-                                <a
-                                  href={
-                                    result.registrarURL.startsWith("http")
-                                      ? result.registrarURL
-                                      : `http://${result.registrarURL}`
-                                  }
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-xs text-blue-600 dark:text-blue-400 hover:underline break-all block"
-                                >
+                            )}
+                            <div className="min-w-0 flex-1">
+                              <p className="font-semibold text-sm leading-tight">{result.registrar}</p>
+                              {isValidField(result.registrarURL) && (
+                                <a href={result.registrarURL.startsWith("http") ? result.registrarURL : `http://${result.registrarURL}`}
+                                  target="_blank" rel="noopener noreferrer"
+                                  className="text-[11px] text-blue-600 dark:text-blue-400 hover:underline break-all">
                                   {result.registrarURL}
                                 </a>
                               )}
+                            </div>
                           </div>
                         </div>
-                        {isValidField(result.whoisServer) && (
-                            <div className="mb-3">
-                              <p className="text-[10px] uppercase text-muted-foreground font-medium mb-1">
-                                {t("whois_fields.whois_server")}
-                              </p>
-                              <p className="text-xs font-mono text-muted-foreground whitespace-pre-wrap break-all">
-                                {result.whoisServer}
-                              </p>
+
+                        {/* Registrar technical info */}
+                        {(isValidField(result.whoisServer)) && (
+                          <div className="border-t border-border/50 px-5 py-3 space-y-2.5">
+                            {isValidField(result.whoisServer) && (
+                              <div className="flex items-start justify-between gap-3">
+                                <span className="text-[10px] uppercase font-medium text-muted-foreground/70 tracking-wide shrink-0 pt-0.5">{t("whois_fields.whois_server")}</span>
+                                <span className="text-xs font-mono text-foreground/80 break-all text-right">{result.whoisServer}</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Abuse contact */}
+                        {hasAbuseContact && (
+                          <div className="border-t border-border/50 px-5 py-3">
+                            <p className="text-[10px] uppercase font-semibold text-muted-foreground/60 tracking-wider mb-2">
+                              {isZh ? "滥用联系" : "Abuse Contact"}
+                            </p>
+                            <div className="space-y-2">
+                              {isValidField(result.abuseEmail) && (
+                                <div className="flex items-start justify-between gap-3">
+                                  <span className="text-[10px] uppercase font-medium text-muted-foreground/70 tracking-wide shrink-0 pt-0.5">{isZh ? "邮箱" : "Email"}</span>
+                                  <a href={`mailto:${result.abuseEmail}`} className="text-xs font-mono text-blue-600 dark:text-blue-400 hover:underline break-all text-right">{result.abuseEmail}</a>
+                                </div>
+                              )}
+                              {isValidField(result.abusePhone) && (
+                                <div className="flex items-start justify-between gap-3">
+                                  <span className="text-[10px] uppercase font-medium text-muted-foreground/70 tracking-wide shrink-0 pt-0.5">{isZh ? "电话" : "Phone"}</span>
+                                  <span className="text-xs font-mono text-foreground/80 text-right">{result.abusePhone}</span>
+                                </div>
+                              )}
                             </div>
-                          )}
-                        {isValidField(result.registrantEmail) && (
-                            <div className="mb-3">
-                              <p className="text-[10px] uppercase text-muted-foreground font-medium mb-1">
-                                {t("whois_fields.contact_email")}
-                              </p>
-                              <p className="text-xs font-mono text-muted-foreground whitespace-pre-wrap break-all">
-                                {result.registrantEmail}
-                              </p>
+                          </div>
+                        )}
+
+                        {/* Registrant contact */}
+                        {hasRegistrantContact && (
+                          <div className="border-t border-border/50 px-5 py-3">
+                            <p className="text-[10px] uppercase font-semibold text-muted-foreground/60 tracking-wider mb-2">
+                              {isZh ? "注册人信息" : "Registrant"}
+                            </p>
+                            <div className="space-y-2">
+                              {isValidField(result.registrantName) && (
+                                <div className="flex items-start justify-between gap-3">
+                                  <span className="text-[10px] uppercase font-medium text-muted-foreground/70 tracking-wide shrink-0 pt-0.5">{isZh ? "姓名" : "Name"}</span>
+                                  <span className="text-xs text-foreground/80 text-right break-all">{result.registrantName}</span>
+                                </div>
+                              )}
+                              {isValidField(result.registrantOrganization) && (
+                                <div className="flex items-start justify-between gap-3">
+                                  <span className="text-[10px] uppercase font-medium text-muted-foreground/70 tracking-wide shrink-0 pt-0.5">{isZh ? "机构" : "Org"}</span>
+                                  <span className="text-xs text-foreground/80 text-right break-all">{result.registrantOrganization}</span>
+                                </div>
+                              )}
+                              {(isValidField(result.registrantCountry) || isValidField(result.registrantProvince)) && (
+                                <div className="flex items-start justify-between gap-3">
+                                  <span className="text-[10px] uppercase font-medium text-muted-foreground/70 tracking-wide shrink-0 pt-0.5">{isZh ? "地区" : "Location"}</span>
+                                  <span className="text-xs text-foreground/80 text-right">
+                                    {[result.registrantProvince, result.registrantCountry].filter(v => isValidField(v)).join(", ")}
+                                  </span>
+                                </div>
+                              )}
+                              {isValidField(result.registrantEmail) && (
+                                <div className="flex items-start justify-between gap-3">
+                                  <span className="text-[10px] uppercase font-medium text-muted-foreground/70 tracking-wide shrink-0 pt-0.5">{isZh ? "邮箱" : "Email"}</span>
+                                  <a href={`mailto:${result.registrantEmail}`} className="text-xs font-mono text-blue-600 dark:text-blue-400 hover:underline break-all text-right">{result.registrantEmail}</a>
+                                </div>
+                              )}
+                              {isValidField(result.registrantPhone) && (
+                                <div className="flex items-start justify-between gap-3">
+                                  <span className="text-[10px] uppercase font-medium text-muted-foreground/70 tracking-wide shrink-0 pt-0.5">{isZh ? "电话" : "Phone"}</span>
+                                  <span className="text-xs font-mono text-foreground/80 text-right">{result.registrantPhone}</span>
+                                </div>
+                              )}
                             </div>
-                          )}
-                        {isValidField(result.registrantPhone) && (
-                            <div>
-                              <p className="text-[10px] uppercase text-muted-foreground font-medium mb-1">
-                                {t("whois_fields.contact_phone")}
-                              </p>
-                              <p className="text-xs font-mono text-muted-foreground">
-                                {result.registrantPhone}
-                              </p>
-                            </div>
-                          )}
+                          </div>
+                        )}
                       </div>
-                    )}
+                      );
+                    })()}
 
                     {(result.rawWhoisContent || result.rawRdapContent) && !hideRawWhois && (
                       <div className="flex-1 min-h-[250px]">

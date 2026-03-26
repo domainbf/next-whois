@@ -26,11 +26,14 @@ export type WhoisAnalyzeResult = {
   expirationDate: string;
   status: DomainStatusProps[];
   nameServers: string[];
+  registrantName: string;
   registrantOrganization: string;
   registrantProvince: string;
   registrantCountry: string;
   registrantPhone: string;
   registrantEmail: string;
+  abuseEmail: string;
+  abusePhone: string;
   dnssec: string;
   rawWhoisContent: string;
   rawRdapContent?: string;
@@ -69,11 +72,14 @@ export const initialWhoisAnalyzeResult: WhoisAnalyzeResult = {
   expirationDate: "Unknown",
   status: [],
   nameServers: [],
+  registrantName: "Unknown",
   registrantOrganization: "Unknown",
   registrantProvince: "Unknown",
   registrantCountry: "Unknown",
   registrantPhone: "Unknown",
   registrantEmail: "Unknown",
+  abuseEmail: "Unknown",
+  abusePhone: "Unknown",
   dnssec: "",
   rawWhoisContent: "",
 

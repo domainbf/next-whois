@@ -552,7 +552,7 @@ export async function analyzeWhois(data: string): Promise<WhoisAnalyzeResult> {
         result.nameServers.push(value.split(/\s+/)[0]);
         break;
       case "registrant name":
-        if (!isRedactedValue(value)) result.registrantOrganization = value;
+        if (!isRedactedValue(value)) result.registrantName = value;
         break;
       case "registrant organization":
         if (!isRedactedValue(value)) result.registrantOrganization = value;
@@ -595,7 +595,11 @@ export async function analyzeWhois(data: string): Promise<WhoisAnalyzeResult> {
       case "registrar abuse contact phone":
       case "ac phone number":
         if (!isRedactedValue(value))
-          result.registrantPhone = value.replace("tel:", "").trim();
+          result.abusePhone = value.replace("tel:", "").trim();
+        break;
+      case "registrar abuse contact email":
+      case "abuse-mailbox":
+        if (!isRedactedValue(value)) result.abuseEmail = value;
         break;
       case "orgtechphone":
         if (!isRedactedValue(value)) result.registrantPhone = value;
