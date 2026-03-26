@@ -10,6 +10,9 @@ import {
   useSaver,
 } from "@/lib/utils";
 import { GetServerSidePropsContext } from "next";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/pages/api/auth/[...nextauth]";
+import { saveSearchRecord } from "@/lib/server/save-search-record";
 import { useRouter } from "next/router";
 import { getOrigin } from "@/lib/seo";
 import { Input } from "@/components/ui/input";
@@ -1400,8 +1403,23 @@ export async function getServerSideProps(context: GetServerSidePropsContext) {
     };
   }
 
+  // Get user session for search record attribution
+  let userId: string | null = null;
+  let userEmail: string | null = null;
+  try {
+    const session = await getServerSession(context.req, context.res, authOptions);
+    userId    = (session?.user as any)?.id    ?? null;
+    userEmail = (session?.user as any)?.email ?? null;
+  } catch {}
+
   try {
     const data = await lookupWhoisWithCache(target);
+
+    // Record every query (anonymous and logged-in) in the backend
+    if (data.status && data.result) {
+      saveSearchRecord(target, data.result, data.dnsProbe, userId, userEmail).catch(() => {});
+    }
+
     return {
       props: {
         data: JSON.parse(JSON.stringify(data)),
