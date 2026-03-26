@@ -45,25 +45,32 @@ const RATE_LIMIT_TTL_S = 60 * 60;       // 1 request per TLD per hour
 const SCRAPE_CACHE_TTL_S = 60 * 60 * 6; // raw page text cached 6 h
 const REGISTRY_URL_TTL_S = 60 * 60 * 24 * 7; // registry URL cached 7 days
 
-// Lifecycle keywords that signal a page has actual policy info
+// Lifecycle keywords that signal a page has actual domain lifecycle policy info.
+// IMPORTANT: Keep these SPECIFIC enough to avoid false positives from cookie banners,
+// privacy policies, and general website content that also use words like "delete", "expir".
 const LIFECYCLE_KEYWORDS = [
-  // English
-  "grace period", "grace", "redemption", "pending delete", "pendingdelete",
-  "rgp", "autorenew", "auto-renew", "purge", "drop time", "drop date",
-  "release time", "deletion", "lifecycle", "life cycle", "expiry period",
-  "expiration period", "renewal period", "registry grace", "add grace",
-  // Chinese (Simplified + Traditional)
+  // English — multi-word or domain-specific single terms only
+  "grace period", "redemption period", "pending delete", "pendingdelete",
+  "rgp", "autorenew grace", "auto-renew grace", "registry grace period",
+  "add grace period", "drop time", "drop date", "drop catch",
+  "lifecycle", "life cycle", "domain lifecycle",
+  "expiry period", "expiration period", "renewal grace period",
+  "registry lock period", "domain deletion", "domain expiration",
+  "domain expiry", "restore period", "redemption grace",
+  // Chinese (Simplified + Traditional) — multi-char terms are naturally specific
   "宽限期", "赎回期", "待删除", "掉落时间", "释放时间", "删除时间",
-  "续费", "到期", "宽限", "赎回", "注销", "删除期",
-  // Japanese
-  "ライフサイクル", "猶予期間", "回復期間", "削除待ち", "更新期間",
-  "有効期限", "削除", "廃止",
+  "续费宽限", "到期删除", "赎回", "注册局宽限",
+  // Japanese — domain-specific multi-character terms
+  "ライフサイクル", "猶予期間", "回復期間", "削除待ち", "更新猶予",
+  "ドメイン有効期限", "削除期間",
   // Korean
   "갱신유예", "복구기간", "삭제대기", "라이프사이클",
-  // German
-  "löschfrist", "kündigungsfrist", "löschung", "wiederherstellung",
-  // French
-  "période de grâce", "rédemption", "suppression en attente",
+  // German — compound terms unique to domain industry
+  "löschfrist", "kündigungsfrist", "löschantrag", "wiederherstellungsphase",
+  "domainlöschung", "freigabephase", "domainlebenszykl",
+  // French — specific domain lifecycle terms
+  "période de grâce", "rédemption", "suppression en attente", "cycle de vie",
+  "durée de grâce",
   // Russian
   "период льготы", "период выкупа",
 ];
@@ -199,14 +206,29 @@ function extractRegistryUrlFromHtml(html: string): string | null {
 
 /** Common lifecycle path suffixes to probe on a registry domain */
 const LIFECYCLE_PATHS = [
+  // Lifecycle-specific paths (highest signal)
   "/domain-lifecycle", "/domains/lifecycle", "/en/domains/lifecycle",
   "/lifecycle", "/en/lifecycle", "/policies/lifecycle",
   "/domain-names/lifecycle", "/support/lifecycle", "/faq/lifecycle",
   "/about/lifecycle", "/en/domain-lifecycle", "/domains/domain-lifecycle",
   "/en/domains/domain-lifecycle", "/registrar/lifecycle",
+  // General policy/domain info pages (often contain lifecycle)
   "/policies", "/en/policies", "/domains/policies", "/domains",
   "/en/domains", "/en/domain-names", "/domain-names",
   "/registrar-information", "/registrar-resources",
+  // FAQ / help sections (registries often document lifecycle in FAQs)
+  "/faq", "/en/faq", "/help", "/en/help", "/support", "/en/support",
+  "/help-center", "/knowledge-base", "/kb",
+  // German ccTLD registries (DENIC .de)
+  "/en/the-dot-de-domain", "/en/domains/conditions",
+  "/domainrichtlinien", "/richtlinien",
+  "/en/domain-names/conditions",
+  // French ccTLD (afnic .fr)
+  "/en/domain-names-and-support/managing-a-domain-name",
+  "/en/domain-names-and-support",
+  // Australian ccTLD (auDA .au)
+  "/for-registrants/au-domain-administration",
+  "/domain-names", "/registrants",
 ];
 
 /** Link href keywords that indicate a lifecycle/renewal policy page */
@@ -263,18 +285,64 @@ function extractLifecycleLinks(html: string, baseUrl: string): string[] {
 }
 
 /**
+ * Fetch a URL via Jina Reader (r.jina.ai) which renders JS and returns clean Markdown.
+ * No API key needed. Returns the rendered Markdown text.
+ */
+async function fetchViaJina(url: string): Promise<string> {
+  const jinaUrl = `https://r.jina.ai/${url}`;
+  const res = await fetch(jinaUrl, {
+    headers: {
+      "User-Agent": "Mozilla/5.0 (compatible; next-whois-ui/1.0)",
+      Accept: "text/plain,text/markdown,*/*",
+      "X-No-Cache": "true",
+    },
+    signal: AbortSignal.timeout(25_000),
+  });
+  if (!res.ok) throw new Error(`Jina HTTP ${res.status} for ${url}`);
+  const text = await res.text();
+  if (!text || text.length < 100) throw new Error(`Jina returned empty content for ${url}`);
+  return text;
+}
+
+/**
+ * Parse lifecycle-looking links from Jina Markdown output.
+ * Jina formats links as: [Link text](https://example.com/path)
+ */
+function extractLifecycleLinksFromMarkdown(markdown: string, baseUrl: string): string[] {
+  const base = new URL(baseUrl).origin;
+  const seen = new Set<string>();
+  const links: string[] = [];
+
+  // Match: [text](url) patterns from Markdown
+  const mdLinkRe = /\[([^\]]{1,80})\]\((https?:\/\/[^\s)]+)\)/g;
+  let match: RegExpExecArray | null;
+  while ((match = mdLinkRe.exec(markdown)) !== null) {
+    const text = match[1];
+    const href = match[2];
+    if (!hasLifecycleLinkKeyword(href, text)) continue;
+    if (!href.startsWith(base)) continue;
+    if (seen.has(href)) continue;
+    seen.add(href);
+    links.push(href);
+    if (links.length >= 15) break;
+  }
+  return links;
+}
+
+/**
  * Multi-strategy registry lifecycle page finder.
  * Strategy 1: Try the registry URL itself (homepage may have lifecycle info)
  * Strategy 2: Try common path suffixes
  * Strategy 3: Crawl homepage + linked pages for lifecycle keywords
+ * Strategy 4: Jina Reader fallback (handles JS-rendered sites like DENIC, nic.fr, nic.uk)
  * Returns { url, text } of the best page found, or null.
  */
 async function findRegistryLifecyclePage(
   registryUrl: string
-): Promise<{ url: string; text: string } | null> {
+): Promise<{ url: string; text: string }| null> {
   const base = new URL(registryUrl).origin;
 
-  // ── Strategy 1: Try registry root URL directly ──────────────────────────────
+  // ── Strategy 1-3: Static HTML crawl ─────────────────────────────────────────
   try {
     const html = await fetchRawHtml(registryUrl);
     const text = extractText(html, 10_000);
@@ -317,7 +385,56 @@ async function findRegistryLifecyclePage(
         }
       } catch { /* try next link */ }
     }
-  } catch { /* registry unreachable */ }
+  } catch { /* registry unreachable via direct fetch */ }
+
+  // ── Strategy 4: Jina Reader (JS-rendered sites) ───────────────────────────
+  // Used when direct fetching finds no lifecycle info (JS-heavy sites like DENIC, nic.fr, nic.uk)
+  console.log(`[tld-rules] Strategy 4: Trying Jina Reader for ${registryUrl}`);
+  try {
+    // 4a: Render registry homepage via Jina
+    const jinaMarkdown = await fetchViaJina(registryUrl);
+    if (hasLifecycleInfo(jinaMarkdown)) {
+      return { url: registryUrl, text: jinaMarkdown.slice(0, 10_000) };
+    }
+
+    // 4b: Extract lifecycle links from Jina-rendered Markdown, follow them via Jina
+    const jinaLinks = extractLifecycleLinksFromMarkdown(jinaMarkdown, registryUrl);
+    console.log(`[tld-rules] Jina found ${jinaLinks.length} lifecycle-keyword links`);
+    for (const jLink of jinaLinks) {
+      try {
+        const jPageText = await fetchViaJina(jLink);
+        if (hasLifecycleInfo(jPageText)) {
+          return { url: jLink, text: jPageText.slice(0, 10_000) };
+        }
+        // One level deeper from Jina-rendered linked page
+        const deepJinaLinks = extractLifecycleLinksFromMarkdown(jPageText, jLink).slice(0, 4);
+        for (const djLink of deepJinaLinks) {
+          if (djLink === jLink || djLink === registryUrl) continue;
+          try {
+            const djText = await fetchViaJina(djLink);
+            if (hasLifecycleInfo(djText)) {
+              return { url: djLink, text: djText.slice(0, 10_000) };
+            }
+          } catch { /* skip */ }
+        }
+      } catch { /* try next Jina link */ }
+    }
+
+    // 4c: Try common lifecycle path suffixes via Jina (JS sites may render those too)
+    // Include lifecycle-specific paths AND registry-specific paths (FAQ, conditions, etc.)
+    const jinaPathsToTry = LIFECYCLE_PATHS.slice(0, 20);
+    for (const path of jinaPathsToTry) {
+      const url = base + path;
+      try {
+        const pText = await fetchViaJina(url);
+        if (hasLifecycleInfo(pText)) {
+          return { url, text: pText.slice(0, 10_000) };
+        }
+      } catch { /* try next */ }
+    }
+  } catch (jinaErr) {
+    console.warn(`[tld-rules] Jina Reader failed for ${registryUrl}:`, (jinaErr as Error).message);
+  }
 
   return null;
 }
