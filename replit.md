@@ -116,7 +116,7 @@ A fast, modern WHOIS and RDAP lookup tool supporting domains, IPv4/IPv6, ASN, an
 #### Performance Improvements
 - **FALLBACK_START_MS reduced** — Default reduced from 2000ms to 1200ms. Third-party fallbacks (Yisi/Tianhu) now start racing native lookups sooner for slow domains, reducing worst-case response time by ~800ms.
 - **DB pool tuned** — `connectionTimeoutMillis` reduced from 10000ms to 5000ms (prevent 10s hangs on failed connections); `max` increased from 3 to 5 connections.
-- **STATIC_NO_RDAP expanded** — Added Caribbean (kn, ag, lc, vc, gd, dm, tt, bb), Pacific Islands (ws, ki, tv, nr, pw, mh, fm), and other confirmed no-RDAP ccTLDs (ht, cu, sd, so, ye). This eliminates a 5s RDAP timeout for these TLDs, going straight to WHOIS + fallback.
+- **STATIC_NO_RDAP conflict note added** — Reverted an erroneous expansion that would have broken RDAP for 17 TLDs already covered by `CCTLD_RDAP_OVERRIDES` (kn, ag, lc, vc, gd, dm, tt, bb, ws, tv, pw, fm, ht, cu, sd, so, ye). These TLDs all have working RDAP servers. Added a comprehensive "DO NOT re-add" comment block to prevent the same mistake in future sessions. The `.kn` slow-query issue is due to `rdap.nic.kn` being unreliable — the runtime `markRdapSkipped()` mechanism will handle it after a few failures.
 
 ---
 
@@ -1188,7 +1188,9 @@ The app is production-ready for Vercel and similar serverless platforms.
 | `RESEND_FROM_EMAIL` | **Yes** | `noreply@x.rw` | Verified sender address on Resend |
 | `NEXT_PUBLIC_BASE_URL` | Recommended | NEXTAUTH_URL | Base URL used in email links |
 | `CRON_SECRET` | Recommended | — | Protects cron jobs; Vercel sends as `Authorization: Bearer` |
-| `WHOIS_TIMEOUT_MS` | No | 7000 | WHOIS query timeout in ms (also controls RDAP_TIMEOUT at 3000 ms; keep ≤ 7000 on Hobby plan) |
+| `WHOIS_TIMEOUT_MS` | No | 4000 | WHOIS query timeout in ms (keep ≤ 7000 on Hobby plan) |
+| `RDAP_TIMEOUT_MS` | No | 5000 | RDAP query timeout in ms |
+| `FALLBACK_START_MS` | No | 1200 | ms delay before 3rd-party fallback starts racing native lookups |
 | `NEXT_PUBLIC_MAX_WHOIS_FOLLOW` | No | 0 | WHOIS follow depth (0 = fastest) |
 | `REDIS_URL` | No | — | Redis connection URL (optional caching) |
 | `REDIS_CACHE_TTL` | No | 3600 | Result cache TTL in seconds |
@@ -1201,8 +1203,8 @@ See `.env.example` for complete reference with comments.
 - Without Redis, custom servers fall back to `src/data/custom-tld-servers.json` (local only)
 
 ### Vercel plan considerations:
-- **Hobby plan (10s limit)**: Default `WHOIS_TIMEOUT_MS=7000` is already safe. Total request time ≤9s.
-- **Pro plan (300s limit)**: Default 7000 ms is fine; increase to 10000 for maximum ccTLD WHOIS coverage.
+- **Hobby plan (10s limit)**: Default `WHOIS_TIMEOUT_MS=4000` + `RDAP_TIMEOUT_MS=5000` keeps total request time well under 10s.
+- **Pro plan (300s limit)**: Can safely increase `WHOIS_TIMEOUT_MS=7000` for maximum ccTLD WHOIS coverage.
 
 ## Brand Claim (品牌认领) & Domain Subscription (域名订阅)
 
@@ -2545,7 +2547,9 @@ The app is production-ready for Vercel and similar serverless platforms.
 | `RESEND_FROM_EMAIL` | **Yes** | `noreply@x.rw` | Verified sender address on Resend |
 | `NEXT_PUBLIC_BASE_URL` | Recommended | NEXTAUTH_URL | Base URL used in email links |
 | `CRON_SECRET` | Recommended | — | Protects cron jobs; Vercel sends as `Authorization: Bearer` |
-| `WHOIS_TIMEOUT_MS` | No | 7000 | WHOIS query timeout in ms (also controls RDAP_TIMEOUT at 3000 ms; keep ≤ 7000 on Hobby plan) |
+| `WHOIS_TIMEOUT_MS` | No | 4000 | WHOIS query timeout in ms (keep ≤ 7000 on Hobby plan) |
+| `RDAP_TIMEOUT_MS` | No | 5000 | RDAP query timeout in ms |
+| `FALLBACK_START_MS` | No | 1200 | ms delay before 3rd-party fallback starts racing native lookups |
 | `NEXT_PUBLIC_MAX_WHOIS_FOLLOW` | No | 0 | WHOIS follow depth (0 = fastest) |
 | `REDIS_URL` | No | — | Redis connection URL (optional caching) |
 | `REDIS_CACHE_TTL` | No | 3600 | Result cache TTL in seconds |
@@ -2558,8 +2562,8 @@ See `.env.example` for complete reference with comments.
 - Without Redis, custom servers fall back to `src/data/custom-tld-servers.json` (local only)
 
 ### Vercel plan considerations:
-- **Hobby plan (10s limit)**: Default `WHOIS_TIMEOUT_MS=7000` is already safe. Total request time ≤9s.
-- **Pro plan (300s limit)**: Default 7000 ms is fine; increase to 10000 for maximum ccTLD WHOIS coverage.
+- **Hobby plan (10s limit)**: Default `WHOIS_TIMEOUT_MS=4000` + `RDAP_TIMEOUT_MS=5000` keeps total request time well under 10s.
+- **Pro plan (300s limit)**: Can safely increase `WHOIS_TIMEOUT_MS=7000` for maximum ccTLD WHOIS coverage.
 
 ## Brand Claim (品牌认领) & Domain Subscription (域名订阅)
 
@@ -3901,7 +3905,9 @@ The app is production-ready for Vercel and similar serverless platforms.
 | `RESEND_FROM_EMAIL` | **Yes** | `noreply@x.rw` | Verified sender address on Resend |
 | `NEXT_PUBLIC_BASE_URL` | Recommended | NEXTAUTH_URL | Base URL used in email links |
 | `CRON_SECRET` | Recommended | — | Protects cron jobs; Vercel sends as `Authorization: Bearer` |
-| `WHOIS_TIMEOUT_MS` | No | 7000 | WHOIS query timeout in ms (also controls RDAP_TIMEOUT at 3000 ms; keep ≤ 7000 on Hobby plan) |
+| `WHOIS_TIMEOUT_MS` | No | 4000 | WHOIS query timeout in ms (keep ≤ 7000 on Hobby plan) |
+| `RDAP_TIMEOUT_MS` | No | 5000 | RDAP query timeout in ms |
+| `FALLBACK_START_MS` | No | 1200 | ms delay before 3rd-party fallback starts racing native lookups |
 | `NEXT_PUBLIC_MAX_WHOIS_FOLLOW` | No | 0 | WHOIS follow depth (0 = fastest) |
 | `REDIS_URL` | No | — | Redis connection URL (optional caching) |
 | `REDIS_CACHE_TTL` | No | 3600 | Result cache TTL in seconds |
@@ -3914,8 +3920,8 @@ See `.env.example` for complete reference with comments.
 - Without Redis, custom servers fall back to `src/data/custom-tld-servers.json` (local only)
 
 ### Vercel plan considerations:
-- **Hobby plan (10s limit)**: Default `WHOIS_TIMEOUT_MS=7000` is already safe. Total request time ≤9s.
-- **Pro plan (300s limit)**: Default 7000 ms is fine; increase to 10000 for maximum ccTLD WHOIS coverage.
+- **Hobby plan (10s limit)**: Default `WHOIS_TIMEOUT_MS=4000` + `RDAP_TIMEOUT_MS=5000` keeps total request time well under 10s.
+- **Pro plan (300s limit)**: Can safely increase `WHOIS_TIMEOUT_MS=7000` for maximum ccTLD WHOIS coverage.
 
 ## Brand Claim (品牌认领) & Domain Subscription (域名订阅)
 

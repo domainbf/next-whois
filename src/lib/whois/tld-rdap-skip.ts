@@ -40,20 +40,28 @@ const STATIC_NO_RDAP = new Set<string>([
   "bo", "py",
   // Sub-Saharan Africa — confirmed no RDAP (no IANA entry, no known public endpoint)
   "bi", "cg", "sz", "ne", "gw", "sl", "lr", "km", "er",
-  // Caribbean — no IANA RDAP bootstrap entry; confirmed via iana/rdap/dns.json
-  "kn", "ag", "lc", "vc", "gd", "dm", "tt", "bb",
-  // Pacific Islands — no public RDAP endpoint
-  "ws", "ki", "tv", "nr", "pw", "mh", "fm",
-  // Other ccTLDs confirmed no RDAP
-  "ht", "cu", "sd", "so", "ye",
   //
-  // NOTE: The following TLDs were previously listed here but HAVE been confirmed
-  // to have RDAP servers and are now in CCTLD_RDAP_OVERRIDES:
+  // NOTE: The following TLDs were previously (incorrectly) listed here but HAVE
+  // been confirmed to have RDAP servers and are now in CCTLD_RDAP_OVERRIDES.
+  // DO NOT re-add them here — doing so will break their fast RDAP path.
+  //
+  // Eastern Europe / CIS:
   //   ru (rdap.nic.ru), by (rdap.cctld.by), kz (rdap.nic.kz),
   //   lb (rdap.lbdr.org.lb), ve (rdap.nic.ve), ec (rdap.registry.ec),
   //   tl (rdap.nic.tl), cd (rdap.nic.cd), af (rdap.nic.af),
   //   gh (rdap.nic.gh), ug (rdap.nic.ug), et (rdap.nic.et),
   //   ci (rdap.nic.ci), dj (rdap.nic.dj), ss (rdap.nic.ss)
+  //
+  // Caribbean — ALL have RDAP servers in CCTLD_RDAP_OVERRIDES:
+  //   kn (rdap.nic.kn), ag (rdap.nic.ag), lc (rdap.nic.lc), vc (rdap.nic.vc),
+  //   gd (rdap.centralnic.com/gd), dm (rdap.nic.dm), tt (rdap.nic.tt), bb (rdap.nic.bb)
+  //
+  // Pacific / Asia — ALL have RDAP servers in CCTLD_RDAP_OVERRIDES:
+  //   ws (rdap.nic.ws), tv (rdap.nic.tv), pw (rdap.radix.host), fm (rdap.centralnic.com/fm)
+  //
+  // Africa / Middle East — ALL have RDAP servers in CCTLD_RDAP_OVERRIDES:
+  //   sd (rdap.nic.sd), so (rdap.nic.so), ye (rdap.y.net.ye),
+  //   ht (rdap.nic.ht), cu (rdap.nic.cu)
 ]);
 
 // Runtime-learned skip set (updated by markRdapSkipped / markRdapSupported)
