@@ -5664,63 +5664,73 @@ export default function LookupPage({
                             );
 
                             /* ════════════════════════════════════════
-                               Layout: neon — 赛博·极光
+                               Layout: neon — 赛博·霓虹
                             ════════════════════════════════════════ */
                             if (theme.layout === "neon") return (
                               <div key={stamp.id} className="relative overflow-hidden" style={{background:"#050d18", borderRadius:"inherit"}}>
-                                {/* Close: top-right */}
+                                {/* Close */}
                                 <button onClick={() => setStampDetailOpen(false)}
                                   className="absolute top-4 right-4 z-20 transition-colors"
-                                  style={{color:"rgba(255,255,255,0.35)"}}
+                                  style={{color:"rgba(255,255,255,0.3)"}}
                                   aria-label="Close">
-                                  <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
-                                    <path d="M2 2l11 11M13 2L2 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                                    <path d="M2 2l10 10M12 2L2 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
                                   </svg>
                                 </button>
 
-                                {/* ── Top: purple ambient + 3 neon bars + icon ── */}
-                                <div className="relative flex flex-col items-center pt-10 pb-5 overflow-hidden" style={{background:"#050d18"}}>
-                                  {/* Purple ambient glow */}
-                                  <div className="absolute pointer-events-none" style={{width:280,height:220,top:0,left:"50%",transform:"translateX(-50%)",background:"radial-gradient(ellipse,rgba(123,47,190,0.32) 0%,transparent 68%)"}}/>
-
-                                  {/* 3 neon light bars */}
-                                  <div className="flex justify-center gap-3 mb-6 relative z-10 w-full px-8">
-                                    <div style={{height:4,flex:3,background:"#FF2D78",borderRadius:3,boxShadow:"0 0 12px #FF2D78"}}/>
-                                    <div style={{height:4,flex:2,background:"#00D2FF",borderRadius:3,boxShadow:"0 0 12px #00D2FF"}}/>
-                                    <div style={{height:4,flex:1,background:"#FFE500",borderRadius:3,boxShadow:"0 0 12px #FFE500"}}/>
+                                {/* Hero */}
+                                <div className="relative flex flex-col items-center pt-10 pb-6 overflow-hidden" style={{background:"#050d18"}}>
+                                  {/* ambient radial glow */}
+                                  <div className="absolute inset-0 pointer-events-none"
+                                    style={{background:"radial-gradient(ellipse 80% 60% at 50% 0%,rgba(0,210,255,0.13) 0%,transparent 70%)"}}/>
+                                  {/* badge */}
+                                  <div className="relative z-10 mb-5">
+                                    <span className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-[11px] font-bold font-mono"
+                                      style={{background:"rgba(0,210,255,0.1)",border:"1px solid rgba(0,210,255,0.4)",color:"#00D2FF",
+                                        boxShadow:"0 0 14px rgba(0,210,255,0.2)"}}>
+                                      <RiShieldCheckLine className="w-3 h-3" />
+                                      {isChinese ? lbl.zh : lbl.en}
+                                    </span>
                                   </div>
-
-                                  {/* Icon in glowing ring */}
-                                  <div className="relative z-10 w-[118px] h-[118px] rounded-full flex items-center justify-center"
-                                    style={{background:"rgba(0,210,255,0.07)",border:"2px solid rgba(0,210,255,0.45)",boxShadow:"0 0 32px rgba(0,210,255,0.2)"}}>
+                                  {/* icon in pulsing ring */}
+                                  <div className="relative z-10 w-[110px] h-[110px] rounded-full flex items-center justify-center"
+                                    style={{background:"rgba(0,210,255,0.06)",border:"2px solid rgba(0,210,255,0.45)",
+                                      boxShadow:"0 0 30px rgba(0,210,255,0.22), 0 0 60px rgba(0,210,255,0.08)"}}>
                                     <StampIcon className="w-12 h-12 text-cyan-400"/>
                                   </div>
-                                </div>
-
-                                {/* ── Text ── */}
-                                <div className="px-8 pt-3 pb-3 text-center">
-                                  <h2 className="text-[24px] font-black text-white leading-tight tracking-tight">{stamp.tagName}</h2>
-                                  <p className="text-[13px] mt-2 leading-relaxed max-w-[240px] mx-auto" style={{color:"rgba(120,138,160,0.88)"}}>
-                                    {stamp.description || (isChinese
-                                      ? `${result.domain || target} 已通过持有人验证。`
-                                      : `${result.domain || target} has been verified and claimed.`
-                                    )}
+                                  {/* domain */}
+                                  <p className="relative z-10 text-[10px] font-mono tracking-[0.25em] uppercase mt-3"
+                                    style={{color:"rgba(0,210,255,0.3)"}}>
+                                    {result.domain || target}
                                   </p>
                                 </div>
 
-                                {/* ── Two buttons ── */}
-                                <div className="px-5 pt-3 pb-8 space-y-2.5">
+                                {/* Info */}
+                                <div className="px-8 pt-2 pb-4 text-center">
+                                  <h2 className="text-[26px] font-black text-white leading-tight tracking-tight"
+                                    style={{textShadow:"0 0 24px rgba(0,210,255,0.3)"}}>{stamp.tagName}</h2>
+                                  {stamp.description && (
+                                    <p className="text-[13px] mt-2 leading-relaxed max-w-[240px] mx-auto"
+                                      style={{color:"rgba(100,130,160,0.88)"}}>
+                                      {stamp.description}
+                                    </p>
+                                  )}
+                                </div>
+
+                                {/* CTA */}
+                                <div className="px-5 pt-2 pb-8 space-y-2.5">
                                   {stamp.link
                                     ? <a href={stamp.link} target="_blank" rel="noopener noreferrer"
                                         className="flex items-center justify-center w-full py-4 rounded-2xl font-bold text-[15px] text-white transition-all active:scale-[0.98]"
-                                        style={{background:"linear-gradient(135deg,#00D2FF,#7B2FBE)"}}>
+                                        style={{background:"linear-gradient(135deg,#00D2FF,#7B2FBE)",
+                                          boxShadow:"0 4px 20px rgba(0,210,255,0.3)"}}>
                                         {isChinese ? "访问主页" : "Visit Profile"}
                                       </a>
                                     : null
                                   }
                                   <button onClick={() => setStampDetailOpen(false)}
-                                    className="flex items-center justify-center w-full py-4 rounded-2xl font-bold text-[15px] transition-all active:scale-[0.98]"
-                                    style={{border:"1.5px solid rgba(255,255,255,0.12)",color:"rgba(255,255,255,0.4)"}}>
+                                    className="flex items-center justify-center w-full py-3 rounded-2xl font-medium text-[13px] transition-all active:scale-[0.98]"
+                                    style={{border:"1px solid rgba(255,255,255,0.1)",color:"rgba(255,255,255,0.35)"}}>
                                     {isChinese ? "关闭" : "Cancel"}
                                   </button>
                                 </div>
@@ -5762,23 +5772,24 @@ export default function LookupPage({
                                 </div>
 
                                 {/* ── Bottom frosted CTA ── */}
-                                <div className="relative z-10 px-6 pb-8 pt-2 mx-4 mb-2 rounded-3xl space-y-2"
-                                  style={{background:"rgba(255,255,255,0.88)",backdropFilter:"blur(20px)"}}>
-                                  {stamp.link
-                                    ? <a href={stamp.link} target="_blank" rel="noopener noreferrer"
-                                        className="flex items-center gap-3 w-full px-5 py-4 mt-3 rounded-2xl text-white text-[14px] font-bold transition-all active:scale-[0.98]"
-                                        style={{background:"rgba(8,10,25,0.88)"}}>
-                                        <div className="flex-1 text-left">
-                                          <span className="block leading-none">{isChinese ? "访问主页" : "Visit Profile"}</span>
-                                          {linkHostname && <span className="block text-[10px] opacity-50 mt-0.5 font-normal">{linkHostname}</span>}
-                                        </div>
-                                        <RiArrowRightSLine className="w-5 h-5 opacity-60 shrink-0"/>
-                                      </a>
-                                    : null
-                                  }
-                                  <p className="text-[11px] text-center font-mono tracking-wider pt-1" style={{color:"rgba(80,80,80,0.6)"}}>
-                                    {result.domain || target}
-                                  </p>
+                                <div className="relative z-10 px-4 pb-6 pt-0">
+                                  <div className="rounded-[20px] overflow-hidden"
+                                    style={{background:"rgba(255,255,255,0.88)",backdropFilter:"blur(20px)"}}>
+                                    <div className="px-4 py-3">
+                                      <p className="text-[10px] font-mono tracking-wider text-center mb-2.5" style={{color:"rgba(60,60,60,0.45)"}}>
+                                        {result.domain || target}
+                                      </p>
+                                      {stamp.link
+                                        ? <a href={stamp.link} target="_blank" rel="noopener noreferrer"
+                                            className="flex items-center justify-between w-full px-5 py-3.5 rounded-[14px] text-white text-[14px] font-bold transition-all active:scale-[0.98]"
+                                            style={{background:"rgba(8,10,25,0.88)"}}>
+                                            <span>{isChinese ? "访问主页" : "Visit Profile"}</span>
+                                            <RiArrowRightSLine className="w-5 h-5 opacity-60 shrink-0"/>
+                                          </a>
+                                        : null
+                                      }
+                                    </div>
+                                  </div>
                                 </div>
                               </div>
                             );
@@ -5882,26 +5893,21 @@ export default function LookupPage({
 
                                 {/* ── Two-column body ── */}
                                 <div className="flex" style={{minHeight:256}}>
-                                  {/* Left: electric yellow + stacked brand text + lightning */}
-                                  <div className="w-[44%] shrink-0 flex flex-col justify-end px-4 pb-5 pt-5 relative overflow-hidden" style={{background:"#FFE500"}}>
+                                  {/* Left: electric yellow + brand text + lightning */}
+                                  <div className="w-[44%] shrink-0 flex flex-col justify-center px-4 pb-5 pt-5 relative overflow-hidden" style={{background:"#FFE500"}}>
                                     {/* Lightning bolt decoration */}
-                                    <svg className="absolute top-3 right-3 pointer-events-none" width={18} height={28} viewBox="0 0 10 18" fill="rgba(255,80,0,0.38)">
+                                    <svg className="absolute top-3 right-3 pointer-events-none" width={18} height={28} viewBox="0 0 10 18" fill="rgba(255,80,0,0.4)">
                                       <path d="M7 0L1 10h5L3 18l8-11H6L7 0Z"/>
                                     </svg>
-                                    <div style={{lineHeight:"0.88"}}>
-                                      <p className="font-black text-[11px] uppercase tracking-wide mb-1.5" style={{color:"#FF3800", lineHeight:1}}>
-                                        {isChinese ? lbl.zh : lbl.en}
-                                      </p>
-                                      <p className="font-black" style={{fontSize:26, color:"#111", lineHeight:"0.88"}}>
-                                        {stamp.tagName}
-                                      </p>
-                                      <p className="font-black" style={{fontSize:26, color:"#FFE500", WebkitTextStroke:"2.5px #111", lineHeight:"0.88"}}>
-                                        {stamp.tagName}
-                                      </p>
-                                      <p className="font-black" style={{fontSize:26, color:"#FFE500", WebkitTextStroke:"2.5px #111", lineHeight:"0.88"}}>
-                                        {stamp.tagName}
-                                      </p>
-                                    </div>
+                                    <svg className="absolute bottom-4 left-3 pointer-events-none" width={11} height={17} viewBox="0 0 10 18" fill="rgba(255,80,0,0.25)">
+                                      <path d="M7 0L1 10h5L3 18l8-11H6L7 0Z"/>
+                                    </svg>
+                                    <p className="font-black text-[10.5px] uppercase tracking-wide mb-2" style={{color:"#FF3800", lineHeight:1}}>
+                                      {isChinese ? lbl.zh : lbl.en}
+                                    </p>
+                                    <p className="font-black leading-tight tracking-tight" style={{fontSize:26, color:"#111"}}>
+                                      {stamp.tagName}
+                                    </p>
                                   </div>
 
                                   {/* Right: white + star sparkles + content */}

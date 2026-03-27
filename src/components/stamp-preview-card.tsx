@@ -76,194 +76,349 @@ export function StampPreviewCard({
 
   const linkHost = (() => { try { return new URL(link).hostname; } catch { return link; } })();
 
-  const CtaBtn = ({ extra }: { extra?: string }) => (
+  const CtaBtn = ({ cls }: { cls?: string }) => (
     <span className={cn(
-      "inline-flex items-center gap-1 px-4 py-1.5 rounded-full text-[9px] font-bold tracking-wide cursor-pointer",
-      t.btn, extra
+      "inline-flex items-center gap-1 px-4 py-1.5 rounded-full text-[9px] font-bold tracking-wide cursor-pointer shrink-0",
+      cls ?? t.btn
     )}>
       <span>访问主页</span>
-      <RiArrowRightSLine className="w-2.5 h-2.5 opacity-75" />
+      <RiArrowRightSLine className="w-2.5 h-2.5 opacity-80" />
     </span>
   );
 
-  /* ── celebrate — 中国红·节庆 ── */
+  /* ════════════════════════════════════════
+     Layout: celebrate — 中国红·节庆
+  ════════════════════════════════════════ */
   if (t.layout === "celebrate") return (
-    <div className="rounded-2xl overflow-hidden shadow-md bg-white">
-      <div className="relative px-4 pt-5 pb-12 overflow-hidden"
-        style={{background:"linear-gradient(160deg,#C8102E 0%,#7B0D1E 100%)"}}>
-        {[
-          {x:"8%",y:"12%",s:8,r:"45deg"},{x:"18%",y:"5%",s:5,r:"0"},
-          {x:"34%",y:"20%",s:10,r:"30deg"},{x:"52%",y:"5%",s:6,r:"0"},
-          {x:"68%",y:"15%",s:8,r:"-30deg"},{x:"84%",y:"8%",s:5,r:"0"},
-          {x:"12%",y:"42%",s:6,r:"20deg"},{x:"57%",y:"38%",s:4,r:"0"},
-          {x:"80%",y:"40%",s:7,r:"-20deg"},
-        ].map((p,i)=>(
-          <span key={i} className="absolute pointer-events-none"
-            style={{left:p.x,top:p.y,width:p.s,height:p.s,background:"rgba(212,175,55,0.7)",transform:`rotate(${p.r})`,borderRadius:1}} />
-        ))}
-        <div className="absolute bottom-0 left-0 right-0 pointer-events-none">
-          <svg viewBox="0 0 400 32" preserveAspectRatio="none" className="w-full h-8 block">
-            <path d="M0 32 C100 8, 300 22, 400 4 L400 32 Z" fill="white"/>
-          </svg>
-        </div>
-      </div>
-      <div className="flex justify-center -mt-9 relative z-10 mb-2">
-        <div className="w-[58px] h-[58px] rounded-full border-[4px] border-white shadow-xl flex items-center justify-center"
-          style={{background:"linear-gradient(135deg,#D4AF37 0%,#F7C948 50%,#B8860B 100%)",boxShadow:"0 4px 14px rgba(180,140,30,0.4)"}}>
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-            <path d="M4 13l6 7L20 6" stroke="white" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        </div>
-      </div>
-      <div className="px-4 pb-3 text-center">
-        <p className="text-[14px] font-black text-gray-900 leading-tight">{tagName}</p>
-        <p className="text-[8px] text-gray-400 mt-0.5 mb-3 leading-relaxed">{desc}</p>
-        <div className="flex justify-center mb-2">
-          <span className="inline-flex items-center gap-1 px-4 py-1.5 rounded-full text-white text-[9px] font-bold"
-            style={{background:"linear-gradient(135deg,#D4AF37,#B8860B)",boxShadow:"0 3px 10px rgba(180,140,30,0.3)"}}>
-            访问主页 <RiArrowRightSLine style={{width:10,height:10,opacity:0.8}} />
-          </span>
-        </div>
-        <p className="text-[8px] text-gray-400 pb-1">关闭</p>
-      </div>
-    </div>
-  );
-
-  /* ── neon — 赛博·极光 ── */
-  if (t.layout === "neon") return (
-    <div className="rounded-2xl overflow-hidden shadow-md" style={{background:"#050d18"}}>
-      <div className="relative flex flex-col items-center pt-5 pb-2 overflow-hidden" style={{background:"#050d18"}}>
-        <div className="absolute pointer-events-none" style={{width:150,height:100,top:0,left:"50%",transform:"translateX(-50%)",background:"radial-gradient(ellipse,rgba(123,47,190,0.28) 0%,transparent 70%)"}}/>
-        <div className="flex justify-center gap-2 mb-3 relative z-10 w-full px-5">
-          <div style={{height:3,flex:3,background:"#FF2D78",borderRadius:2,boxShadow:"0 0 8px #FF2D78"}}/>
-          <div style={{height:3,flex:2,background:"#00D2FF",borderRadius:2,boxShadow:"0 0 8px #00D2FF"}}/>
-          <div style={{height:3,flex:1,background:"#FFE500",borderRadius:2,boxShadow:"0 0 8px #FFE500"}}/>
-        </div>
-        <div className="relative z-10 w-[68px] h-[68px] rounded-full flex items-center justify-center"
-          style={{background:"rgba(0,210,255,0.08)",border:"2px solid rgba(0,210,255,0.45)",boxShadow:"0 0 22px rgba(0,210,255,0.18)"}}>
-          <Icon className="w-6 h-6 text-cyan-400"/>
-        </div>
-      </div>
-      <div className="px-4 pt-2 pb-1 text-center">
-        <p className="text-white text-[13px] font-black leading-tight mb-1">{tagName}</p>
-        <p className="text-[8px] leading-relaxed" style={{color:"rgba(120,138,158,0.9)"}}>{desc}</p>
-      </div>
-      <div className="px-4 pb-4 pt-1 flex flex-col items-center gap-1.5">
-        <span className="inline-flex items-center gap-1 px-4 py-1.5 rounded-full text-[9px] font-bold text-white"
-          style={{background:"linear-gradient(135deg,#00D2FF,#7B2FBE)",boxShadow:"0 0 14px rgba(0,210,255,0.3)"}}>
-          访问主页 <RiArrowRightSLine style={{width:10,height:10,opacity:0.8}} />
-        </span>
-        <span className="text-[8px] font-medium" style={{color:"rgba(255,255,255,0.25)"}}>关闭</span>
-      </div>
-    </div>
-  );
-
-  /* ── gradient — 全息·流光 ── */
-  if (t.layout === "gradient") return (
-    <div className="rounded-2xl overflow-hidden shadow-md flex flex-col"
-      style={{background:"linear-gradient(135deg,#FF6B6B 0%,#FFD93D 18%,#6BCB77 36%,#4D96FF 55%,#C77DFF 75%,#FF6B6B 100%)"}}>
-      <div className="px-4 pt-5 pb-4 flex flex-col items-center text-center flex-1">
-        <span className="inline-flex items-center px-3 py-1 rounded-full text-[8px] font-bold mb-2.5 tracking-tight"
-          style={{border:"1.5px solid rgba(0,0,0,0.52)",color:"rgba(0,0,0,0.72)",background:"rgba(255,255,255,0.35)",backdropFilter:"blur(6px)"}}>
-          {tagLabel}
-        </span>
-        <p className="font-black text-gray-900 leading-tight tracking-tight mb-1.5" style={{fontSize:20,textShadow:"0 1px 4px rgba(255,255,255,0.6)"}}>{tagName}</p>
-        <p className="text-[8.5px] leading-relaxed" style={{color:"rgba(30,30,30,0.7)",textShadow:"0 1px 2px rgba(255,255,255,0.4)"}}>{desc}</p>
-      </div>
-      <div className="px-3 pb-4">
-        <div className="rounded-2xl px-3 py-2.5 flex flex-col items-center gap-1.5" style={{background:"rgba(255,255,255,0.85)",backdropFilter:"blur(16px)"}}>
-          <span className="inline-flex items-center gap-1 px-4 py-1.5 rounded-full text-white text-[9px] font-bold"
-            style={{background:"rgba(8,8,20,0.88)"}}>
-            访问主页 <RiArrowRightSLine style={{width:10,height:10,opacity:0.6}} />
-          </span>
-          <p className="text-[7px] font-mono" style={{color:"rgba(80,80,80,0.5)"}}>{linkHost}</p>
-        </div>
-      </div>
-    </div>
-  );
-
-  /* ── split — 高反差·黑白 ── */
-  if (t.layout === "split") return (
-    <div className="rounded-2xl overflow-hidden shadow-md flex" style={{minHeight:140}}>
-      <div className="relative flex flex-col items-center justify-center w-[40%] shrink-0 overflow-hidden"
-        style={{background:"#000"}}>
-        <div className="absolute inset-0 flex items-center justify-center overflow-hidden select-none pointer-events-none">
-          <span className="font-black leading-none select-none"
-            style={{fontSize:108,color:"rgba(255,255,255,0.045)",lineHeight:1}}>
-            {(tagName||"A")[0].toUpperCase()}
-          </span>
-        </div>
-        <div className="absolute top-0 right-0 w-[2.5px] h-full"
-          style={{background:"linear-gradient(to bottom,#3B82F6,#6366F1)"}}/>
-        <div className="relative z-10 w-10 h-10 rounded-xl flex items-center justify-center"
-          style={{background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.09)"}}>
-          <Icon className="w-5 h-5 text-white/70"/>
-        </div>
-        <p className="font-mono tracking-widest uppercase mt-1.5 text-center px-2"
-          style={{fontSize:6,color:"rgba(255,255,255,0.18)"}}>{domain}</p>
-      </div>
-      <div className="flex-1 flex flex-col justify-between px-3 py-3 relative" style={{background:"#FAFAFA"}}>
-        <div className="absolute top-2 right-2" style={{color:"#ef4444",fontSize:10,fontWeight:700,lineHeight:1}}>✕</div>
-        <div>
-          <p className="text-[6.5px] font-bold uppercase tracking-[0.22em] mb-0.5" style={{color:"#6366F1"}}>已认领</p>
-          <p className="font-black text-gray-900 leading-none tracking-tight" style={{fontSize:18}}>{tagName}</p>
-          <p className="text-[7.5px] mt-0.5 font-mono" style={{color:"#b0b7c3"}}>{domain}</p>
-        </div>
-        <div className="flex items-center gap-1 mt-2">
-          <div className="flex-1 border border-gray-200 rounded-md px-2 py-1.5 text-[7.5px] font-mono truncate" style={{color:"#d1d5db"}}>{domain}</div>
-          <div className="shrink-0 px-2 py-1.5 text-white text-[8px] font-bold rounded-md" style={{background:"#111"}}>访问</div>
-        </div>
-      </div>
-    </div>
-  );
-
-  /* ── flash — 闪购·电光 ── */
-  if (t.layout === "flash") return (
-    <div className="rounded-2xl overflow-hidden shadow-md">
-      <div className="px-3 py-2 flex items-center justify-between" style={{background:"#FF3800"}}>
-        <div className="flex items-center gap-1.5">
-          <div className="w-4 h-4 rounded-full flex items-center justify-center" style={{background:"rgba(255,255,255,0.2)"}}>
-            <Icon className="w-2.5 h-2.5 text-white"/>
-          </div>
-          <p className="text-[8px] font-semibold tracking-wide" style={{color:"rgba(255,255,255,0.85)"}}>{domain}</p>
-        </div>
-        <span style={{color:"rgba(255,255,255,0.5)",fontSize:9,fontWeight:700}}>✕</span>
-      </div>
-      <div className="flex" style={{minHeight:112}}>
-        <div className="w-[44%] shrink-0 flex flex-col justify-end px-3 pb-3 pt-3 relative overflow-hidden"
-          style={{background:"#FFE500"}}>
-          <svg className="absolute top-2 right-2 pointer-events-none" width={12} height={19} viewBox="0 0 10 18" fill="rgba(255,80,0,0.4)">
-            <path d="M7 0L1 10h5L3 18l8-11H6L7 0Z"/>
-          </svg>
-          <div style={{lineHeight:"0.88"}}>
-            <p className="font-black text-[6.5px] uppercase tracking-wide mb-1" style={{color:"#FF3800",lineHeight:1}}>{tagLabel}</p>
-            <p className="font-black" style={{fontSize:15,color:"#111",lineHeight:"0.88"}}>{tagName}</p>
-            <p className="font-black" style={{fontSize:15,color:"#FFE500",WebkitTextStroke:"1.5px #111",lineHeight:"0.88"}}>{tagName}</p>
-          </div>
-        </div>
-        <div className="flex-1 flex flex-col justify-between px-3 py-3 bg-white relative">
-          {[{b:38,r:18,s:9},{b:34,r:7,s:6},{b:8,r:20,s:7}].map((sp,i)=>(
-            <svg key={i} width={sp.s} height={sp.s} viewBox="0 0 10 10" className="absolute pointer-events-none"
-              style={{right:`${sp.r}px`,bottom:`${sp.b}px`,fill:"#FFB800"}}>
-              <path d="M5 0 L6 4 L10 5 L6 6 L5 10 L4 6 L0 5 L4 4 Z"/>
-            </svg>
+    <>
+      <style>{`
+        @keyframes spc-confetti-float {
+          0%,100% { transform: translateY(0) rotate(0deg); opacity: 0.7; }
+          50% { transform: translateY(-4px) rotate(180deg); opacity: 1; }
+        }
+        @keyframes spc-gold-shimmer {
+          0%,100% { box-shadow: 0 0 14px rgba(212,175,55,0.5), 0 4px 16px rgba(180,140,30,0.4); }
+          50% { box-shadow: 0 0 26px rgba(247,201,72,0.8), 0 4px 20px rgba(212,175,55,0.6); }
+        }
+      `}</style>
+      <div className="rounded-2xl overflow-hidden shadow-lg" style={{background:"#fff"}}>
+        {/* Hero */}
+        <div className="relative pt-5 pb-10 overflow-hidden text-center"
+          style={{background:"linear-gradient(160deg,#C8102E 0%,#8B0000 100%)"}}>
+          {/* animated confetti diamonds */}
+          {[
+            {x:"7%",y:"10%",s:7,d:"0s"},{x:"22%",y:"5%",s:5,d:"0.4s"},
+            {x:"38%",y:"18%",s:9,d:"0.8s"},{x:"56%",y:"4%",s:6,d:"0.2s"},
+            {x:"72%",y:"14%",s:8,d:"1.1s"},{x:"87%",y:"7%",s:5,d:"0.6s"},
+            {x:"14%",y:"38%",s:6,d:"1.3s"},{x:"60%",y:"35%",s:5,d:"0.9s"},
+            {x:"82%",y:"36%",s:7,d:"0.3s"},
+          ].map((p,i) => (
+            <span key={i} className="absolute pointer-events-none rounded-[2px]"
+              style={{left:p.x,top:p.y,width:p.s,height:p.s,
+                background:"rgba(212,175,55,0.75)",transform:"rotate(45deg)",
+                animation:`spc-confetti-float 2.4s ease-in-out ${p.d} infinite`}} />
           ))}
-          <div>
-            <p className="font-black text-gray-900 leading-none" style={{fontSize:16}}>{tagName}</p>
-            <p className="text-[6.5px] font-bold uppercase tracking-widest mt-0.5" style={{color:"#FF3800"}}>域名认领</p>
+          {/* wave bottom */}
+          <div className="absolute bottom-0 left-0 right-0 pointer-events-none">
+            <svg viewBox="0 0 400 28" preserveAspectRatio="none" className="w-full h-7 block">
+              <path d="M0 28 C80 6,160 22,240 10,320 -2,380 20,400 8 L400 28 Z" fill="white"/>
+            </svg>
           </div>
-          <div className="flex justify-center">
-            <span className="inline-flex items-center gap-0.5 px-3 py-1 rounded-full text-[8px] font-bold text-white"
-              style={{background:"linear-gradient(135deg,#FF3800,#FF6B00)"}}>
-              访问主页 <RiArrowRightSLine style={{width:9,height:9,opacity:0.8}} />
+          {/* badge pill */}
+          <div className="flex justify-center mb-3">
+            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[7.5px] font-bold"
+              style={{background:"rgba(212,175,55,0.25)",border:"1px solid rgba(212,175,55,0.5)",color:"rgba(255,220,100,0.95)"}}>
+              <RiShieldCheckLine style={{width:8,height:8}} />{tagLabel}
             </span>
           </div>
         </div>
+
+        {/* Gold icon circle floating over wave */}
+        <div className="flex justify-center -mt-8 relative z-10">
+          <div className="w-[56px] h-[56px] rounded-full border-[3px] border-white flex items-center justify-center"
+            style={{background:"linear-gradient(135deg,#F7C948 0%,#D4AF37 50%,#B8860B 100%)",
+              animation:"spc-gold-shimmer 2s ease-in-out infinite"}}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+              <path d="M4 13l6 7L20 6" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </div>
+        </div>
+
+        {/* Info block */}
+        <div className="px-4 pt-2 pb-4 text-center">
+          <p className="text-[14.5px] font-black text-gray-900 leading-tight tracking-tight mt-1">{tagName}</p>
+          <p className="text-[8px] font-mono text-gray-400 mt-0.5 tracking-wider">{domain}</p>
+          {desc && <p className="text-[8px] text-gray-500 mt-2 mb-3.5 leading-relaxed line-clamp-2">{desc}</p>}
+          <div className="flex justify-center">
+            <a href={link} className="inline-flex items-center gap-1 px-5 py-2 rounded-full text-white text-[9px] font-bold"
+              style={{background:"linear-gradient(135deg,#D4AF37,#B8860B)",
+                boxShadow:"0 3px 12px rgba(180,140,30,0.35)"}}>
+              访问主页 <RiArrowRightSLine style={{width:10,height:10,opacity:0.9}} />
+            </a>
+          </div>
+        </div>
       </div>
-    </div>
+    </>
   );
 
-  /* ── default standard themes ── */
+  /* ════════════════════════════════════════
+     Layout: neon — 赛博·霓虹
+  ════════════════════════════════════════ */
+  if (t.layout === "neon") return (
+    <>
+      <style>{`
+        @keyframes spc-neon-pulse {
+          0%,100% { box-shadow: 0 0 18px rgba(0,210,255,0.25), 0 0 40px rgba(0,210,255,0.08); border-color: rgba(0,210,255,0.45); }
+          50% { box-shadow: 0 0 30px rgba(0,210,255,0.55), 0 0 60px rgba(0,210,255,0.18); border-color: rgba(0,210,255,0.75); }
+        }
+        @keyframes spc-neon-badge {
+          0%,100% { opacity: 0.85; }
+          50% { opacity: 1; }
+        }
+        @keyframes spc-neon-bg {
+          0%,100% { opacity: 0.35; }
+          50% { opacity: 0.55; }
+        }
+      `}</style>
+      <div className="rounded-2xl overflow-hidden shadow-lg" style={{background:"#050d18"}}>
+        {/* Hero */}
+        <div className="relative flex flex-col items-center pt-6 pb-5 overflow-hidden" style={{background:"#050d18"}}>
+          {/* radial glow bg */}
+          <div className="absolute pointer-events-none inset-0"
+            style={{background:"radial-gradient(ellipse 80% 60% at 50% 0%,rgba(0,210,255,0.12) 0%,transparent 70%)",
+              animation:"spc-neon-bg 3s ease-in-out infinite"}} />
+          {/* badge */}
+          <div className="relative z-10 mb-3">
+            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[7.5px] font-bold font-mono"
+              style={{background:"rgba(0,210,255,0.1)",border:"1px solid rgba(0,210,255,0.4)",color:"#00D2FF",
+                boxShadow:"0 0 10px rgba(0,210,255,0.2)",animation:"spc-neon-badge 2s ease-in-out infinite"}}>
+              <RiShieldCheckLine style={{width:8,height:8}} />{tagLabel}
+            </span>
+          </div>
+          {/* icon circle */}
+          <div className="relative z-10 w-[66px] h-[66px] rounded-full flex items-center justify-center"
+            style={{background:"rgba(0,210,255,0.06)",border:"2px solid rgba(0,210,255,0.45)",
+              animation:"spc-neon-pulse 2.5s ease-in-out infinite"}}>
+            <Icon className="w-7 h-7 text-cyan-400"/>
+          </div>
+          {/* domain */}
+          <p className="relative z-10 text-[6.5px] font-mono tracking-[0.2em] uppercase mt-2"
+            style={{color:"rgba(0,210,255,0.3)"}}>
+            {domain}
+          </p>
+        </div>
+
+        {/* Info */}
+        <div className="px-4 pt-2 pb-4 text-center">
+          <p className="text-white text-[14px] font-black leading-tight tracking-tight"
+            style={{textShadow:"0 0 20px rgba(0,210,255,0.3)"}}>{tagName}</p>
+          {desc && <p className="text-[8px] leading-relaxed mt-1.5 mb-4 line-clamp-2"
+            style={{color:"rgba(100,130,160,0.85)"}}>{desc}</p>}
+          <a href={link} className="inline-flex items-center gap-1.5 px-5 py-2 rounded-full text-[9px] font-bold text-white"
+            style={{background:"linear-gradient(135deg,#00D2FF,#7B2FBE)",
+              boxShadow:"0 0 18px rgba(0,210,255,0.35)"}}>
+            访问主页 <RiArrowRightSLine style={{width:10,height:10,opacity:0.9}} />
+          </a>
+        </div>
+      </div>
+    </>
+  );
+
+  /* ════════════════════════════════════════
+     Layout: gradient — 全息·流光
+  ════════════════════════════════════════ */
+  if (t.layout === "gradient") return (
+    <>
+      <style>{`
+        @keyframes spc-gradient-shift {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+      `}</style>
+      <div className="rounded-2xl overflow-hidden shadow-lg"
+        style={{
+          background:"linear-gradient(135deg,#FF6B6B,#FFD93D,#6BCB77,#4D96FF,#C77DFF,#FF6B6B)",
+          backgroundSize:"300% 300%",
+          animation:"spc-gradient-shift 5s ease infinite",
+        }}>
+        {/* Badge row */}
+        <div className="flex justify-center pt-5 pb-1">
+          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[7.5px] font-bold"
+            style={{background:"rgba(255,255,255,0.45)",backdropFilter:"blur(8px)",
+              border:"1px solid rgba(255,255,255,0.6)",color:"rgba(20,20,20,0.8)"}}>
+            <RiShieldCheckLine style={{width:8,height:8}} />{tagLabel}
+          </span>
+        </div>
+
+        {/* Icon */}
+        <div className="flex justify-center my-2">
+          <div className="w-12 h-12 rounded-full flex items-center justify-center"
+            style={{background:"rgba(255,255,255,0.35)",backdropFilter:"blur(10px)",
+              border:"1.5px solid rgba(255,255,255,0.6)",boxShadow:"0 4px 20px rgba(0,0,0,0.1)"}}>
+            <Icon className="w-5 h-5" style={{color:"rgba(20,20,20,0.75)"}} />
+          </div>
+        </div>
+
+        {/* Title + desc */}
+        <div className="px-4 text-center pb-3">
+          <p className="font-black text-gray-900 leading-tight tracking-tight"
+            style={{fontSize:18,textShadow:"0 1px 6px rgba(255,255,255,0.7)"}}>{tagName}</p>
+          <p className="text-[7px] font-mono text-gray-700/60 tracking-wider mt-0.5">{domain}</p>
+          {desc && <p className="text-[8px] leading-relaxed mt-1.5 line-clamp-2"
+            style={{color:"rgba(20,20,20,0.6)",textShadow:"0 1px 3px rgba(255,255,255,0.5)"}}>{desc}</p>}
+        </div>
+
+        {/* CTA panel */}
+        <div className="px-3 pb-3.5">
+          <div className="rounded-[14px] px-3 py-2.5 flex items-center justify-between gap-2"
+            style={{background:"rgba(255,255,255,0.82)",backdropFilter:"blur(16px)",
+              boxShadow:"0 2px 12px rgba(0,0,0,0.08)"}}>
+            <p className="text-[7px] font-mono truncate flex-1" style={{color:"rgba(80,80,80,0.55)"}}>{linkHost}</p>
+            <a href={link} className="inline-flex items-center gap-1 px-3.5 py-1.5 rounded-full text-[8.5px] font-bold text-white shrink-0"
+              style={{background:"rgba(10,10,20,0.85)"}}>
+              访问主页 <RiArrowRightSLine style={{width:9,height:9,opacity:0.8}} />
+            </a>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+
+  /* ════════════════════════════════════════
+     Layout: split — 高反差·黑白
+  ════════════════════════════════════════ */
+  if (t.layout === "split") return (
+    <>
+      <style>{`
+        @keyframes spc-split-bar {
+          0%,100% { opacity: 0.7; }
+          50% { opacity: 1; }
+        }
+      `}</style>
+      <div className="rounded-2xl overflow-hidden shadow-lg flex" style={{minHeight:148}}>
+        {/* Left black panel */}
+        <div className="relative flex flex-col items-center justify-center w-[38%] shrink-0 overflow-hidden"
+          style={{background:"#000"}}>
+          {/* giant initial ghost letter */}
+          <div className="absolute inset-0 flex items-center justify-center overflow-hidden select-none pointer-events-none">
+            <span className="font-black select-none"
+              style={{fontSize:100,color:"rgba(255,255,255,0.04)",lineHeight:1,userSelect:"none"}}>
+              {(tagName||"A")[0].toUpperCase()}
+            </span>
+          </div>
+          {/* animated gradient divider bar */}
+          <div className="absolute top-0 right-0 w-[2.5px] h-full"
+            style={{background:"linear-gradient(to bottom,#60a5fa,#818cf8,#c084fc)",
+              animation:"spc-split-bar 2s ease-in-out infinite"}} />
+          {/* icon */}
+          <div className="relative z-10 w-10 h-10 rounded-xl flex items-center justify-center"
+            style={{background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)"}}>
+            <Icon className="w-5 h-5 text-white/60"/>
+          </div>
+          <p className="relative z-10 font-mono tracking-widest uppercase text-center px-2 mt-1.5"
+            style={{fontSize:5.5,color:"rgba(255,255,255,0.15)"}}>{domain}</p>
+        </div>
+
+        {/* Right white panel */}
+        <div className="flex-1 flex flex-col justify-between px-3 py-3.5" style={{background:"#FAFAFA"}}>
+          {/* tag label */}
+          <div>
+            <span className="inline-flex items-center gap-0.5 text-[6.5px] font-bold px-2 py-0.5 rounded-md mb-1.5"
+              style={{background:"rgba(99,102,241,0.08)",color:"#6366F1",border:"1px solid rgba(99,102,241,0.15)"}}>
+              <RiShieldCheckLine style={{width:7,height:7}} />{tagLabel}
+            </span>
+            <p className="font-black text-gray-900 leading-none tracking-tight" style={{fontSize:17}}>{tagName}</p>
+            <p className="text-[7px] mt-0.5 font-mono" style={{color:"#b0b7c3"}}>{domain}</p>
+            {desc && <p className="text-[7.5px] leading-relaxed mt-1.5" style={{color:"#9ca3af"}}>{desc}</p>}
+          </div>
+          {/* CTA */}
+          <a href={link} className="flex items-center justify-between mt-2 px-2.5 py-1.5 rounded-[10px] text-white text-[8px] font-bold"
+            style={{background:"#111"}}>
+            <span>访问主页</span>
+            <RiArrowRightSLine style={{width:11,height:11,opacity:0.8}} />
+          </a>
+        </div>
+      </div>
+    </>
+  );
+
+  /* ════════════════════════════════════════
+     Layout: flash — 闪购·电光
+  ════════════════════════════════════════ */
+  if (t.layout === "flash") return (
+    <>
+      <style>{`
+        @keyframes spc-flash-bolt {
+          0%,100% { opacity: 0.4; }
+          50% { opacity: 0.7; }
+        }
+        @keyframes spc-flash-pulse {
+          0%,100% { transform: scale(1); }
+          50% { transform: scale(1.04); }
+        }
+      `}</style>
+      <div className="rounded-2xl overflow-hidden shadow-lg">
+        {/* Top bar */}
+        <div className="px-3 py-2 flex items-center gap-1.5" style={{background:"#FF3800"}}>
+          <div className="w-4 h-4 rounded-full flex items-center justify-center shrink-0"
+            style={{background:"rgba(255,255,255,0.2)"}}>
+            <Icon className="w-2.5 h-2.5 text-white"/>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[7.5px] font-mono truncate" style={{color:"rgba(255,255,255,0.8)"}}>{domain}</p>
+          </div>
+          <span className="text-[7px] font-bold px-1.5 py-0.5 rounded"
+            style={{background:"rgba(255,255,255,0.15)",color:"rgba(255,255,255,0.7)"}}>
+            {tagLabel}
+          </span>
+        </div>
+
+        {/* Body */}
+        <div className="flex" style={{minHeight:110}}>
+          {/* Left yellow panel */}
+          <div className="w-[42%] shrink-0 relative overflow-hidden flex flex-col justify-center px-3 py-4"
+            style={{background:"#FFE500"}}>
+            {/* lightning decoration */}
+            <svg className="absolute top-2 right-2 pointer-events-none"
+              style={{animation:"spc-flash-bolt 1.5s ease-in-out infinite"}}
+              width={14} height={22} viewBox="0 0 10 18" fill="rgba(255,80,0,0.45)">
+              <path d="M7 0L1 10h5L3 18l8-11H6L7 0Z"/>
+            </svg>
+            <svg className="absolute bottom-3 left-2 pointer-events-none"
+              style={{animation:"spc-flash-bolt 1.5s ease-in-out 0.75s infinite"}}
+              width={8} height={13} viewBox="0 0 10 18" fill="rgba(255,80,0,0.3)">
+              <path d="M7 0L1 10h5L3 18l8-11H6L7 0Z"/>
+            </svg>
+            {/* title */}
+            <p className="font-black leading-tight tracking-tight relative z-10"
+              style={{fontSize:16,color:"#111",animation:"spc-flash-pulse 2s ease-in-out infinite",
+                textShadow:"2px 2px 0 rgba(255,80,0,0.12)"}}>
+              {tagName}
+            </p>
+          </div>
+
+          {/* Right white panel */}
+          <div className="flex-1 flex flex-col justify-between px-3 py-3 bg-white">
+            <div>
+              <p className="font-black text-gray-900 leading-none tracking-tight" style={{fontSize:15}}>{tagName}</p>
+              <p className="text-[6.5px] font-mono text-gray-400 mt-0.5 tracking-wider">{domain}</p>
+              {desc && <p className="text-[7.5px] text-gray-500 leading-relaxed mt-1.5 line-clamp-2">{desc}</p>}
+            </div>
+            <a href={link} className="inline-flex items-center gap-0.5 mt-2 px-3.5 py-1.5 rounded-full text-[8.5px] font-bold text-white"
+              style={{background:"linear-gradient(135deg,#FF3800,#FF6800)",
+                boxShadow:"0 2px 10px rgba(255,56,0,0.3)"}}>
+              访问主页 <RiArrowRightSLine style={{width:10,height:10,opacity:0.85}} />
+            </a>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+
+  /* ════════════════════════════════════════
+     Layout: default — 8 standard themes
+  ════════════════════════════════════════ */
   const isDarkCard = t.cardBg === "bg-zinc-950" || t.cardBg === "bg-slate-900";
   return (
     <div className="rounded-2xl overflow-hidden shadow-lg">
