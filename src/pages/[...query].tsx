@@ -3745,13 +3745,20 @@ function AvailableDomainCard({ domain, locale, isPremiumByWhois = false }: { dom
     };
     const sorted = [...rawPrices]
       .sort((a, b) => {
-        // Non-premium registrars first (premium ones may not reflect actual registration cost)
-        if (a.isPremium !== b.isPremium) return a.isPremium ? 1 : -1;
+        if (anyApiPremium) {
+          // Confirmed premium domain: registrars with explicit premium pricing come first
+          // (they carry the real per-domain price). Non-premium entries show standard TLD
+          // prices that may not apply to this specific domain — push them to the bottom.
+          if (a.isPremium !== b.isPremium) return a.isPremium ? -1 : 1;
+        } else {
+          // Standard domain: cheapest non-premium first, premium last
+          if (a.isPremium !== b.isPremium) return a.isPremium ? 1 : -1;
+        }
         return toEur(a.new as number, a.currency) - toEur(b.new as number, b.currency);
       })
       .slice(0, 5);
     setRegistrars(sorted);
-  }, [rawPrices, eurRates]);
+  }, [rawPrices, eurRates, anyApiPremium]);
 
   function formatPrice(amount: number, currency: string): string {
     const cur = (currency ?? "").toUpperCase();
@@ -3775,8 +3782,15 @@ function AvailableDomainCard({ domain, locale, isPremiumByWhois = false }: { dom
   const sldForDisplay = domain.substring(0, domain.lastIndexOf("."));
   // Premium when TLD is flagged by nazhumi, any price exceeds threshold, or WHOIS detected it
   const isPremium = anyApiPremium || isPremiumByWhois || registrars.some((r) => r.isPremium);
-  // For premium TLDs, show cheapest non-premium registrar as CTA (premium entries sorted last by API)
-  const bestRegistrar = registrars.find((r) => !r.isPremium) ?? registrars[0] ?? null;
+  // Registrars that explicitly returned a premium-priced entry for this domain
+  const premiumRegistrars = registrars.filter((r) => r.isPremium);
+  // CTA registrar selection:
+  //   • Confirmed premium (anyApiPremium) + premium entries available → cheapest premium registrar
+  //     (non-premium entries likely show the standard TLD price, not the domain-specific premium fee)
+  //   • Otherwise → cheapest non-premium registrar (or fallback to first)
+  const bestRegistrar = (isPremium && premiumRegistrars.length > 0)
+    ? premiumRegistrars[0]
+    : (registrars.find((r) => !r.isPremium) ?? registrars[0] ?? null);
 
   return (
     <div className={cn(
@@ -3859,9 +3873,13 @@ function AvailableDomainCard({ domain, locale, isPremiumByWhois = false }: { dom
           {/* Description */}
           {isPremium ? (
             <p className="text-sm text-muted-foreground leading-relaxed mb-4">
-              {isZh
-                ? "该域名为溢价域名，注册价格高于普通域名，以下展示的为标准 TLD 参考价，实际溢价需以注册商报价为准。"
-                : "This is a premium domain. Registration costs are above standard rates. Prices shown are standard TLD references — the actual premium price may differ."}
+              {anyApiPremium && premiumRegistrars.length > 0
+                ? (isZh
+                    ? `该域名为溢价域名，注册商已报溢价注册费，最低约 ${formatPrice(premiumRegistrars[0].new as number, premiumRegistrars[0].currency)}/年，实际以注册商报价为准。`
+                    : `This is a premium domain. Registrars quote a premium fee — starting from ${formatPrice(premiumRegistrars[0].new as number, premiumRegistrars[0].currency)}/yr. Confirm the exact price with the registrar before purchasing.`)
+                : (isZh
+                    ? "该域名为溢价域名，注册价格高于普通域名，以下展示的为标准 TLD 参考价，实际溢价需以注册商报价为准。"
+                    : "This is a premium domain. Registration costs are above standard rates. Prices shown are standard TLD references — the actual premium price may differ.")}
             </p>
           ) : (
             <p className="text-sm text-muted-foreground leading-relaxed mb-4">
@@ -3906,9 +3924,13 @@ function AvailableDomainCard({ domain, locale, isPremiumByWhois = false }: { dom
           <div className="mx-4 sm:mx-6 mt-4 flex items-start gap-2 rounded-lg border border-amber-200/60 bg-amber-50/40 dark:bg-amber-950/15 dark:border-amber-800/40 px-3 py-2.5">
             <RiInformationLine className="w-3.5 h-3.5 text-amber-500 mt-0.5 shrink-0" />
             <p className="text-[11px] text-amber-700 dark:text-amber-300 leading-snug">
-              {isZh
-                ? "以下价格为该 TLD 的标准/溢价参考价，实际注册价格可能显著更高，请以注册商实时报价为准。"
-                : "Prices below are standard/premium TLD reference rates. The actual registration cost for this specific domain may be significantly higher — confirm with the registrar before purchasing."}
+              {anyApiPremium && premiumRegistrars.length > 0
+                ? (isZh
+                    ? "溢价注册商的报价已显示在上方（标注「溢价」），未标注的注册商可能仅提供标准参考价，实际注册价格请以注册商实时报价为准。"
+                    : "Registrars showing a \"Premium\" badge have quoted the actual premium fee for this domain. Others may display only the standard TLD reference price — always confirm the final price with the registrar.")
+                : (isZh
+                    ? "以下价格为该 TLD 的标准/溢价参考价，实际注册价格可能显著更高，请以注册商实时报价为准。"
+                    : "Prices below are standard/premium TLD reference rates. The actual registration cost for this specific domain may be significantly higher — confirm with the registrar before purchasing.")}
             </p>
           </div>
         )}
@@ -3971,14 +3993,28 @@ function AvailableDomainCard({ domain, locale, isPremiumByWhois = false }: { dom
                     )}>
                       {r.registrarname}
                     </p>
-                    {isFirst && !rowIsPremium && (
+                    {/* "Best price" badge — only for non-premium domains */}
+                    {isFirst && !rowIsPremium && !isPremium && (
                       <span className="shrink-0 text-[9px] font-bold text-white bg-emerald-500 dark:bg-emerald-600 px-1.5 py-0.5 rounded uppercase tracking-wide">
                         {isZh ? "最低价" : "BEST"}
                       </span>
                     )}
-                    {rowIsPremium && (
+                    {/* "Cheapest premium" badge — first premium entry on a confirmed premium domain */}
+                    {isFirst && rowIsPremium && anyApiPremium && (
+                      <span className="shrink-0 text-[9px] font-bold text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/50 border border-amber-300/50 dark:border-amber-700/40 px-1.5 py-0.5 rounded uppercase tracking-wide">
+                        {isZh ? "最低溢价" : "LOWEST"}
+                      </span>
+                    )}
+                    {/* Premium badge — all premium entries except the first when already badged above */}
+                    {rowIsPremium && !(isFirst && anyApiPremium) && (
                       <span className="shrink-0 text-[9px] font-bold text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/50 border border-amber-300/50 dark:border-amber-700/40 px-1.5 py-0.5 rounded uppercase tracking-wide">
                         {isZh ? "溢价" : "PREMIUM"}
+                      </span>
+                    )}
+                    {/* "Standard reference" badge — non-premium entries in a confirmed-premium domain list */}
+                    {!rowIsPremium && anyApiPremium && (
+                      <span className="shrink-0 text-[9px] font-bold text-muted-foreground/60 bg-muted/60 border border-border/60 px-1.5 py-0.5 rounded uppercase tracking-wide">
+                        {isZh ? "参考价" : "STD"}
                       </span>
                     )}
                   </div>
@@ -4006,9 +4042,13 @@ function AvailableDomainCard({ domain, locale, isPremiumByWhois = false }: { dom
             })}
             <p className="text-[10px] text-muted-foreground/35 px-4 sm:px-6 pt-2.5 pb-2">
               {isPremium
-                ? (isZh
-                    ? "数据来源：nazhumi.com & miqingju.com · 溢价域名价格仅供参考，实际以注册商为准"
-                    : "Source: nazhumi.com & miqingju.com · Premium prices are indicative only — confirm with registrar")
+                ? (anyApiPremium && premiumRegistrars.length > 0
+                    ? (isZh
+                        ? "数据来源：nazhumi.com & miqingju.com · 溢价报价优先排列 · 「参考价」为标准 TLD 价格，不代表实际溢价"
+                        : "Source: nazhumi.com & miqingju.com · Premium quotes listed first · \"STD\" entries show standard TLD price, not domain-specific premium fee")
+                    : (isZh
+                        ? "数据来源：nazhumi.com & miqingju.com · 溢价域名价格仅供参考，实际以注册商为准"
+                        : "Source: nazhumi.com & miqingju.com · Premium prices are indicative only — confirm with registrar"))
                 : (isZh
                     ? "数据来源：nazhumi.com & miqingju.com · 最低价优先 · 价格仅供参考"
                     : "Source: nazhumi.com & miqingju.com · Sorted by lowest price · For reference only")}
@@ -4475,11 +4515,31 @@ export default function LookupPage({
 
   const hasRegistrant =
     result &&
-    (isValidField(result.registrantOrganization) ||
+    (isValidField(result.registrantName) ||
+      isValidField(result.registrantOrganization) ||
       isValidField(result.registrantCountry) ||
       isValidField(result.registrantProvince) ||
+      isValidField(result.registrantCity) ||
+      isValidField(result.registrantAddress) ||
+      isValidField(result.registrantPostalCode) ||
       isValidField(result.registrantEmail) ||
-      isValidField(result.registrantPhone));
+      isValidField(result.registrantPhone) ||
+      isValidField(result.registrantFax));
+
+  const hasAdminContact =
+    result &&
+    (isValidField(result.adminName) ||
+      isValidField(result.adminOrganization) ||
+      isValidField(result.adminEmail) ||
+      isValidField(result.adminPhone) ||
+      isValidField(result.adminCountry));
+
+  const hasTechContact =
+    result &&
+    (isValidField(result.techName) ||
+      isValidField(result.techOrganization) ||
+      isValidField(result.techEmail) ||
+      isValidField(result.techPhone));
 
   return (
     <>
@@ -6034,51 +6094,131 @@ export default function LookupPage({
                     </Dialog>
 
                     {hasRegistrant && (
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-6 pt-6 border-t border-border/50">
-                        {[
-                          {
-                            label: t("whois_fields.registrant_organization"),
-                            value: result.registrantOrganization,
-                          },
-                          {
-                            label: t("whois_fields.registrant_country"),
-                            value: result.registrantCountry,
-                            country: true,
-                          },
-                          {
-                            label: t("whois_fields.registrant_province"),
-                            value: result.registrantProvince,
-                          },
-                          {
-                            label: t("whois_fields.registrant_email"),
-                            value: result.registrantEmail,
-                          },
-                          {
-                            label: t("whois_fields.registrant_phone"),
-                            value: result.registrantPhone,
-                          },
-                        ]
-                          .filter((f) => isValidField(f.value))
-                          .map((f, i) => (
-                            <div key={i} className="min-w-0">
-                              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">
-                                {f.label}
-                              </p>
-                              <p className="text-xs font-mono whitespace-pre-wrap break-all flex items-center gap-1.5">
-                                {"country" in f &&
-                                  f.country &&
-                                  f.value &&
-                                  /^[A-Z]{2}$/i.test(f.value.trim()) && (
-                                    <img
-                                      src={`https://flagcdn.com/w40/${f.value.trim().toLowerCase()}.png`}
-                                      alt=""
-                                      className="w-4 h-3 object-cover rounded-[2px]"
-                                    />
-                                  )}
-                                {f.value}
-                              </p>
+                      <div className="mt-6 pt-6 border-t border-border/50 space-y-4">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                          {[
+                            {
+                              label: t("whois_fields.registrant_name"),
+                              value: result.registrantName,
+                            },
+                            {
+                              label: t("whois_fields.registrant_organization"),
+                              value: result.registrantOrganization,
+                            },
+                            {
+                              label: t("whois_fields.registrant_country"),
+                              value: result.registrantCountry,
+                              country: true,
+                            },
+                            {
+                              label: t("whois_fields.registrant_province"),
+                              value: result.registrantProvince,
+                            },
+                            {
+                              label: t("whois_fields.registrant_city"),
+                              value: result.registrantCity,
+                            },
+                            {
+                              label: t("whois_fields.registrant_address"),
+                              value: result.registrantAddress,
+                            },
+                            {
+                              label: t("whois_fields.registrant_postal_code"),
+                              value: result.registrantPostalCode,
+                            },
+                            {
+                              label: t("whois_fields.registrant_email"),
+                              value: result.registrantEmail,
+                            },
+                            {
+                              label: t("whois_fields.registrant_phone"),
+                              value: result.registrantPhone,
+                            },
+                            {
+                              label: t("whois_fields.registrant_fax"),
+                              value: result.registrantFax,
+                            },
+                          ]
+                            .filter((f) => isValidField(f.value))
+                            .map((f, i) => (
+                              <div key={i} className="min-w-0">
+                                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">
+                                  {f.label}
+                                </p>
+                                <p className="text-xs font-mono whitespace-pre-wrap break-all flex items-center gap-1.5">
+                                  {"country" in f &&
+                                    f.country &&
+                                    f.value &&
+                                    /^[A-Z]{2}$/i.test(f.value.trim()) && (
+                                      <img
+                                        src={`https://flagcdn.com/w40/${f.value.trim().toLowerCase()}.png`}
+                                        alt=""
+                                        className="w-4 h-3 object-cover rounded-[2px]"
+                                      />
+                                    )}
+                                  {f.value}
+                                </p>
+                              </div>
+                            ))}
+                        </div>
+
+                        {/* Admin contact */}
+                        {hasAdminContact && (
+                          <div className="pt-3 border-t border-border/30">
+                            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-2">
+                              {t("whois_fields.admin_contact")}
+                            </p>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                              {[
+                                { label: t("whois_fields.admin_name"), value: result.adminName },
+                                { label: t("whois_fields.admin_organization"), value: result.adminOrganization },
+                                { label: t("whois_fields.admin_country"), value: result.adminCountry, country: true },
+                                { label: t("whois_fields.admin_email"), value: result.adminEmail },
+                                { label: t("whois_fields.admin_phone"), value: result.adminPhone },
+                              ]
+                                .filter((f) => isValidField(f.value))
+                                .map((f, i) => (
+                                  <div key={i} className="min-w-0">
+                                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-0.5">
+                                      {f.label}
+                                    </p>
+                                    <p className="text-xs font-mono break-all flex items-center gap-1.5">
+                                      {"country" in f && f.country && f.value && /^[A-Z]{2}$/i.test(f.value.trim()) && (
+                                        <img src={`https://flagcdn.com/w40/${f.value.trim().toLowerCase()}.png`} alt="" className="w-4 h-3 object-cover rounded-[2px]" />
+                                      )}
+                                      {f.value}
+                                    </p>
+                                  </div>
+                                ))}
                             </div>
-                          ))}
+                          </div>
+                        )}
+
+                        {/* Tech contact */}
+                        {hasTechContact && (
+                          <div className="pt-3 border-t border-border/30">
+                            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-2">
+                              {t("whois_fields.tech_contact")}
+                            </p>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                              {[
+                                { label: t("whois_fields.tech_name"), value: result.techName },
+                                { label: t("whois_fields.tech_organization"), value: result.techOrganization },
+                                { label: t("whois_fields.tech_email"), value: result.techEmail },
+                                { label: t("whois_fields.tech_phone"), value: result.techPhone },
+                              ]
+                                .filter((f) => isValidField(f.value))
+                                .map((f, i) => (
+                                  <div key={i} className="min-w-0">
+                                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-0.5">
+                                      {f.label}
+                                    </p>
+                                    <p className="text-xs font-mono break-all">{f.value}</p>
+                                  </div>
+                                ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -6294,7 +6434,7 @@ export default function LookupPage({
                   <div className="flex flex-col gap-6 lg:absolute lg:inset-0 lg:overflow-y-auto">
                     {isValidField(result.registrar) && (() => {
                       const hasAbuseContact = isValidField(result.abuseEmail) || isValidField(result.abusePhone);
-                      const hasRegistrantContact = isValidField(result.registrantName) || isValidField(result.registrantOrganization) || isValidField(result.registrantEmail) || isValidField(result.registrantPhone) || isValidField(result.registrantCountry) || isValidField(result.registrantProvince);
+                      const hasRegistrantContact = isValidField(result.registrantName) || isValidField(result.registrantOrganization) || isValidField(result.registrantEmail) || isValidField(result.registrantPhone) || isValidField(result.registrantCountry) || isValidField(result.registrantProvince) || isValidField(result.registrantCity) || isValidField(result.registrantAddress) || isValidField(result.registrantPostalCode) || isValidField(result.registrantFax) || hasAdminContact || hasTechContact;
                       return (
                       <div className="glass-panel border border-border rounded-xl overflow-hidden shrink-0">
                         {/* Header: icon + name + IANA */}
@@ -6343,12 +6483,18 @@ export default function LookupPage({
                         </div>
 
                         {/* Registrar technical info */}
-                        {(isValidField(result.whoisServer)) && (
+                        {(isValidField(result.whoisServer) || isValidField(result.registryDomainId)) && (
                           <div className="border-t border-border/50 px-5 py-3 space-y-2.5">
                             {isValidField(result.whoisServer) && (
                               <div className="flex items-start justify-between gap-3">
                                 <span className="text-[10px] uppercase font-medium text-muted-foreground/70 tracking-wide shrink-0 pt-0.5">{t("whois_fields.whois_server")}</span>
                                 <span className="text-xs font-mono text-foreground/80 break-all text-right">{result.whoisServer}</span>
+                              </div>
+                            )}
+                            {isValidField(result.registryDomainId) && (
+                              <div className="flex items-start justify-between gap-3">
+                                <span className="text-[10px] uppercase font-medium text-muted-foreground/70 tracking-wide shrink-0 pt-0.5">{t("whois_fields.registry_domain_id")}</span>
+                                <span className="text-xs font-mono text-foreground/80 break-all text-right">{result.registryDomainId}</span>
                               </div>
                             )}
                           </div>
