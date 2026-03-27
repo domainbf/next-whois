@@ -1,6 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { rateLimit, getClientIp } from "@/lib/server/rate-limit";
-import { enforceApiKey } from "@/lib/access-key";
 
 export const config = { maxDuration: 20 };
 
@@ -116,7 +115,6 @@ function extractRdapInfo(rdap: any): Record<string, string> {
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { allowed } = rateLimit(getClientIp(req), RL_LIMIT, RL_WINDOW);
   if (!allowed) return res.status(429).json({ error: "Too many requests" });
-  if (!await enforceApiKey(req, res)) return;
 
   let query = (req.query.q as string | undefined)?.trim();
   if (!query) return res.status(400).json({ error: "q parameter is required" });

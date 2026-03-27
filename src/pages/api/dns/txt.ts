@@ -1,7 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import dns from "dns/promises";
 import { rateLimit, getClientIp } from "@/lib/server/rate-limit";
-import { enforceApiKey } from "@/lib/access-key";
 
 export const config = { maxDuration: 12 };
 
@@ -57,7 +56,6 @@ export default async function handler(
     name: "", found: false, records: [], flat: [], resolvers: [], latencyMs: 0,
     error: "Too many requests",
   });
-  if (!await enforceApiKey(req, res)) return;
 
   const name = (req.query.name as string | undefined)?.trim();
   if (!name) {

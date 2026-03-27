@@ -6,9 +6,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RiLoader4Line, RiMailLine, RiArrowLeftLine, RiCheckLine } from "@remixicon/react";
 import { useTranslation } from "@/lib/i18n";
+import { useSiteSettings } from "@/lib/site-settings";
 
 export default function ForgotPasswordPage() {
   const { t } = useTranslation();
+  const settings = useSiteSettings();
+  const siteName = settings.site_logo_text || "X.RW";
   const [email, setEmail] = React.useState("");
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -37,7 +40,7 @@ export default function ForgotPasswordPage() {
 
   return (
     <>
-      <Head><title key="site-title">{`${t("auth.forgot_page_title")} · Next WHOIS`}</title></Head>
+      <Head><title key="site-title">{`${t("auth.forgot_page_title")} · ${siteName}`}</title></Head>
       <div className="min-h-screen flex items-center justify-center px-4 py-16">
         <div className="w-full max-w-sm">
           <div className="text-center mb-8">

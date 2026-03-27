@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useTranslation } from "@/lib/i18n";
+import { useSiteSettings } from "@/lib/site-settings";
 import {
   RiCalendarLine, RiMailLine, RiSearchLine, RiShieldCheckLine,
   RiArrowRightLine, RiGlobalLine, RiTimeLine, RiTimerLine,
@@ -708,6 +709,8 @@ export default function RemindPage() {
   const router = useRouter();
   const { t, locale } = useTranslation();
   const { data: session, status } = useSession();
+  const siteSettings = useSiteSettings();
+  const siteName = siteSettings.site_logo_text || "X.RW";
   const [searchQuery, setSearchQuery] = React.useState("");
   const [subscriptions, setSubscriptions] = React.useState<Subscription[]>([]);
   const [loadingSubs, setLoadingSubs] = React.useState(false);
@@ -806,7 +809,7 @@ export default function RemindPage() {
   return (
     <>
       <Head>
-        <title key="site-title">{`${t("remind.page_title_main")} · Next WHOIS`}</title>
+        <title key="site-title">{`${t("remind.page_title_main")} · ${siteName}`}</title>
         <meta name="description" content={t("remind.page_desc_main")} />
       </Head>
 

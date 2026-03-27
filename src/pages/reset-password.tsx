@@ -11,10 +11,13 @@ import {
 } from "@remixicon/react";
 import { toast } from "sonner";
 import { useTranslation } from "@/lib/i18n";
+import { useSiteSettings } from "@/lib/site-settings";
 
 export default function ResetPasswordPage() {
   const router = useRouter();
   const { t } = useTranslation();
+  const settings = useSiteSettings();
+  const siteName = settings.site_logo_text || "X.RW";
   const { token } = router.query;
   const [password, setPassword] = React.useState("");
   const [confirm, setConfirm] = React.useState("");
@@ -52,7 +55,7 @@ export default function ResetPasswordPage() {
 
   return (
     <>
-      <Head><title key="site-title">{`${t("auth.reset_page_title")} · Next WHOIS`}</title></Head>
+      <Head><title key="site-title">{`${t("auth.reset_page_title")} · ${siteName}`}</title></Head>
       <div className="min-h-screen flex items-center justify-center px-4 py-16">
         <div className="w-full max-w-sm">
           <div className="text-center mb-8">

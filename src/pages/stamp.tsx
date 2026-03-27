@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import { useSession } from "next-auth/react";
 import { useTranslation, TranslationKey } from "@/lib/i18n";
+import { useSiteSettings } from "@/lib/site-settings";
 import en from "../../locales/en.json";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -168,6 +169,8 @@ function StampLandingPage() {
   const { t, locale } = useTranslation();
   const sl = (key: StampKey) => t(`stamp.${key}` as TranslationKey);
   const { data: session, status: authStatus } = useSession();
+  const settings = useSiteSettings();
+  const siteName = settings.site_logo_text || "X.RW";
   const [query, setQuery] = React.useState("");
   const [myStamps, setMyStamps] = React.useState<{
     id: string; domain: string; tag_name: string; tag_style: string;
@@ -241,7 +244,7 @@ function StampLandingPage() {
   return (
     <>
       <Head>
-        <title key="site-title">{`${sl("page_title_main")} · Next WHOIS`}</title>
+        <title key="site-title">{`${sl("page_title_main")} · ${siteName}`}</title>
         <meta name="description" content={sl("page_desc_main")} />
       </Head>
       <div className="max-w-lg mx-auto px-4 py-8 pb-10 space-y-6">
