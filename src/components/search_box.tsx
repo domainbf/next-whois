@@ -305,7 +305,7 @@ export function SearchBox({
 
     // Add history suggestions first
     const historySuggestions = history
-      .filter((item) => item.query.toLowerCase().includes(value.toLowerCase()))
+      .filter((item) => item.query && item.query.toLowerCase().includes(value.toLowerCase()))
       .map((item) => item.query);
 
     if (historySuggestions.length > 0) {

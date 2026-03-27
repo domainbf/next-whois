@@ -1331,10 +1331,20 @@ export async function getServerSideProps(context: GetServerSidePropsContext) {
   const querySegments: string[] = (context.params?.query as string[]) ?? [];
   const origin = getOrigin(context.req);
 
+  // ── Strip locale prefix from catch-all segments ───────────────────────────
+  // toSearchURI() generates /{locale}/{query} (e.g. /en/x.rw, /zh/x.rw).
+  // Next.js has no i18n routing configured, so the catch-all receives all
+  // segments: ["en", "x.rw"].  Strip the locale so only the real query
+  // reaches cleanDomain/looksLikeQuery.
+  const VALID_LOCALES = new Set(["en", "zh", "zh-tw", "de", "ru", "ja", "fr", "ko"]);
+  const hasLocalePrefix =
+    querySegments.length >= 2 && VALID_LOCALES.has(querySegments[0]);
+  const effectiveSegments = hasLocalePrefix ? querySegments.slice(1) : querySegments;
+
   // ── Smart URL cleaning + canonical redirect ──────────────────────────────
   // Strip spaces first (handles URL-encoded spaces like %20 decoded to " ")
   // then run cleanDomain which strips protocols, paths, ports, auth, etc.
-  const rawPath = querySegments.join("/");
+  const rawPath = effectiveSegments.join("/");
   const spacelessPath = rawPath.replace(/\s+/g, "");
   const target = cleanDomain(spacelessPath);
   const displayTarget = targetToDisplayName(target);
@@ -4157,7 +4167,7 @@ export default function LookupPage({
   >([]);
 
   const isOfficialDomain = React.useMemo(() => {
-    const d = target.toLowerCase().replace(/^www\./, "");
+    const d = (target || "").toLowerCase().replace(/^www\./, "");
     return MAINSTREAM_DOMAINS.has(d);
   }, [target]);
 

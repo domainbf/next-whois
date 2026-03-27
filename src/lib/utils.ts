@@ -393,10 +393,12 @@ const STATIC_PAGE_PREFIXES = [
   "/", "/docs", "/tools", "/directory", "/tlds", "/whois-servers",
   "/stamp", "/remind", "/api",
   "/login", "/register", "/dashboard",
-  "/dns", "/ssl", "/ip", "/icp",
+  "/dns", "/ssl", "/ip", "/icp", "/http",
   "/about", "/sponsor", "/links", "/changelog",
   "/admin", "/feedback",
   "/og-card", "/404", "/500",
+  "/guide", "/nav", "/payment",
+  "/forgot-password", "/reset-password", "/sitemap",
 ];
 
 /**
