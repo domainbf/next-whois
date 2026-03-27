@@ -13,6 +13,7 @@ import { LocaleProvider } from "@/lib/locale-context";
 import { SiteSettingsProvider, useSiteSettings } from "@/lib/site-settings";
 import { RiMegaphoneLine, RiCloseLine, RiWrenchLine } from "@remixicon/react";
 import { ADMIN_EMAIL } from "@/lib/admin-shared";
+import Link from "next/link";
 
 
 function AppHead({ origin }: { origin: string }) {
@@ -86,15 +87,32 @@ function AppHead({ origin }: { origin: string }) {
   );
 }
 
+const FOOTER_LINKS = [
+  { href: "/faq", label: "FAQ" },
+  { href: "/privacy", label: "Privacy" },
+  { href: "/terms", label: "Terms" },
+];
+
 function SiteFooter() {
   const settings = useSiteSettings();
   const router = useRouter();
   const footerText = settings.site_footer;
-  if (!footerText) return null;
   if (router.pathname.startsWith("/admin")) return null;
+  if (!footerText && FOOTER_LINKS.length === 0) return null;
   return (
-    <footer className="border-t border-border/40 mt-12 py-6 px-4 text-center">
-      <p className="text-xs text-muted-foreground/60">{footerText}</p>
+    <footer className="border-t border-border/40 mt-12 py-5 px-4 text-center">
+      <div className="flex items-center justify-center gap-5 mb-2">
+        {FOOTER_LINKS.map((link) => (
+          <Link
+            key={link.href}
+            href={link.href}
+            className="text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+          >
+            {link.label}
+          </Link>
+        ))}
+      </div>
+      {footerText && <p className="text-xs text-muted-foreground/40">{footerText}</p>}
     </footer>
   );
 }

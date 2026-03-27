@@ -3757,15 +3757,14 @@ function AvailableDomainCard({ domain, locale, isPremiumByWhois = false }: { dom
 
   function formatPrice(amount: number, currency: string): string {
     const cur = currency.toUpperCase();
-    if (isZh) {
-      const cnyRate = eurRates["CNY"] ?? 7.82;
-      const eurAmount = cur === "EUR" ? amount : amount / (eurRates[cur] ?? 1);
-      return `CNY ${(eurAmount * cnyRate).toFixed(2)}`;
-    }
-    if (cur === "USD") return `USD ${amount.toFixed(2)}`;
-    const usdRate = eurRates["USD"] ?? 1.09;
-    const eurAmount = cur === "EUR" ? amount : amount / (eurRates[cur] ?? 1);
-    return `USD ${(eurAmount * usdRate).toFixed(2)}`;
+    const SYMBOLS: Record<string, string> = {
+      USD: "$", EUR: "€", CNY: "¥", GBP: "£",
+      CAD: "CA$", AUD: "A$", HKD: "HK$", SGD: "S$",
+      NZD: "NZ$", TWD: "NT$", KRW: "₩", JPY: "¥",
+    };
+    const sym = SYMBOLS[cur] ?? (cur + "\u00a0");
+    const decimals = ["JPY", "KRW"].includes(cur) ? 0 : 2;
+    return `${sym}${amount.toFixed(decimals)}`;
   }
 
   const tldForDisplay = domain.substring(domain.lastIndexOf(".")).toLowerCase();

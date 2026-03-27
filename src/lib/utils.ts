@@ -399,6 +399,7 @@ const STATIC_PAGE_PREFIXES = [
   "/og-card", "/404", "/500",
   "/guide", "/nav", "/payment",
   "/forgot-password", "/reset-password", "/sitemap",
+  "/faq", "/privacy", "/terms",
 ];
 
 /**
