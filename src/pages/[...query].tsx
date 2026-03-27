@@ -7,6 +7,7 @@ import {
   isSearchRoute,
   toSearchURI,
   useClipboard,
+  useSaver,
 } from "@/lib/utils";
 import { GetServerSidePropsContext } from "next";
 import { getServerSession } from "next-auth/next";
@@ -1224,6 +1225,7 @@ function ResponsePanel({
   copy: (text: string) => void;
 }) {
   const { t } = useTranslation();
+  const save = useSaver();
   const hasWhois = !!whoisContent;
   const hasRdap = !!rdapContent;
   const [activeTab, setActiveTab] = React.useState<"whois" | "rdap">(
@@ -1232,6 +1234,9 @@ function ResponsePanel({
 
   const currentContent =
     activeTab === "whois" ? whoisContent : rdapContent || "";
+
+  const currentFilename =
+    activeTab === "whois" ? `${target}.txt` : `${target}.rdap.json`;
 
   return (
     <div className="bg-white dark:bg-zinc-950 text-zinc-700 dark:text-zinc-300 rounded-xl overflow-hidden border border-border flex flex-col shadow-lg h-full">
@@ -1265,6 +1270,13 @@ function ResponsePanel({
           )}
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => save(currentFilename, currentContent)}
+            className="text-[10px] text-muted-foreground hover:text-foreground transition-colors uppercase font-medium tracking-wide flex items-center gap-1"
+          >
+            <RiDownloadLine className="w-3 h-3" />
+            {t("save")}
+          </button>
           <button
             onClick={() => copy(currentContent)}
             className="text-[10px] text-muted-foreground hover:text-foreground transition-colors uppercase font-medium tracking-wide flex items-center gap-1"

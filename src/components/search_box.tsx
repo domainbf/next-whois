@@ -516,6 +516,71 @@ export function SearchBox({
             )}
           </Button>
         </motion.div>
+
+        {/* Suggestions anchored to input row bottom — unaffected by validation banner */}
+        <AnimatePresence mode="wait">
+          {showSuggestions && suggestions.length > 0 && (
+            <motion.div
+              ref={suggestionsRef}
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.1 }}
+              className="absolute z-50 w-full top-full mt-1 bg-background/95 backdrop-blur-sm rounded-lg border shadow-lg overflow-hidden divide-y divide-border/50"
+            >
+            {suggestions.map((group, groupIndex) => (
+              <div key={group.type} className="relative">
+                <div>
+                  {group.items.map((suggestion, index) => {
+                    const isHistory = group.type === "history";
+                    const type = predictQueryType(suggestion);
+
+                    return (
+                      <motion.div
+                        key={suggestion}
+                        initial={{ opacity: 0.5 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ duration: 0.1 }}
+                        className={cn(
+                          "flex items-center px-3 py-2 cursor-pointer group",
+                          "hover:bg-muted/50 transition-colors duration-150",
+                          selectedGroup === groupIndex &&
+                            selectedIndex === index &&
+                            "bg-muted/50",
+                          index !== group.items.length - 1 &&
+                            "border-b border-border/10",
+                        )}
+                        onClick={() => handleSuggestionClick(suggestion)}
+                      >
+                        {isHistory ? (
+                          <RiHistoryLine className="w-3.5 h-3.5 mr-2 text-muted-foreground/50 group-hover:text-muted-foreground/70 transition-colors duration-150" />
+                        ) : (
+                          <RiLinkM className="w-3.5 h-3.5 mr-2 text-muted-foreground/50 group-hover:text-muted-foreground/70 transition-colors duration-150" />
+                        )}
+                        <span className="flex-grow text-sm text-foreground/80 group-hover:text-foreground transition-colors duration-150">
+                          {suggestion}
+                        </span>
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "ml-2 text-[10px] px-1.5 py-0 font-normal border-dashed rounded-sm",
+                            isHistory
+                              ? "opacity-60 bg-muted/20"
+                              : "opacity-40 group-hover:opacity-60",
+                            "transition-opacity duration-150 bg-primary/20",
+                          )}
+                        >
+                          {type.toUpperCase()}
+                        </Badge>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       <AnimatePresence>
@@ -570,70 +635,6 @@ export function SearchBox({
                 <RiCloseLine className="w-4 h-4" />
               </button>
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence mode="wait">
-        {showSuggestions && suggestions.length > 0 && (
-          <motion.div
-            ref={suggestionsRef}
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.1 }}
-            className="absolute z-50 w-full mt-1 bg-background/95 backdrop-blur-sm rounded-lg border shadow-lg overflow-hidden divide-y divide-border/50"
-          >
-            {suggestions.map((group, groupIndex) => (
-              <div key={group.type} className="relative">
-                <div>
-                  {group.items.map((suggestion, index) => {
-                    const isHistory = group.type === "history";
-                    const type = predictQueryType(suggestion);
-
-                    return (
-                      <motion.div
-                        key={suggestion}
-                        initial={{ opacity: 0.5 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ duration: 0.1 }}
-                        className={cn(
-                          "flex items-center px-3 py-2 cursor-pointer group",
-                          "hover:bg-muted/50 transition-colors duration-150",
-                          selectedGroup === groupIndex &&
-                            selectedIndex === index &&
-                            "bg-muted/50",
-                          index !== group.items.length - 1 &&
-                            "border-b border-border/10",
-                        )}
-                        onClick={() => handleSuggestionClick(suggestion)}
-                      >
-                        {isHistory ? (
-                          <RiHistoryLine className="w-3.5 h-3.5 mr-2 text-muted-foreground/50 group-hover:text-muted-foreground/70 transition-colors duration-150" />
-                        ) : (
-                          <RiLinkM className="w-3.5 h-3.5 mr-2 text-muted-foreground/50 group-hover:text-muted-foreground/70 transition-colors duration-150" />
-                        )}
-                        <span className="flex-grow text-sm text-foreground/80 group-hover:text-foreground transition-colors duration-150">
-                          {suggestion}
-                        </span>
-                        <Badge
-                          variant="outline"
-                          className={cn(
-                            "ml-2 text-[10px] px-1.5 py-0 font-normal border-dashed rounded-sm",
-                            isHistory
-                              ? "opacity-60 bg-muted/20"
-                              : "opacity-40 group-hover:opacity-60",
-                            "transition-opacity duration-150 bg-primary/20",
-                          )}
-                        >
-                          {type.toUpperCase()}
-                        </Badge>
-                      </motion.div>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
           </motion.div>
         )}
       </AnimatePresence>
