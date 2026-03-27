@@ -3757,10 +3757,20 @@ function AvailableDomainCard({ domain, locale, isPremiumByWhois = false }: { dom
 
   function formatPrice(amount: number, currency: string): string {
     const cur = (currency ?? "").toUpperCase();
-    if (cur === "CNY") return `¥${amount.toFixed(2)}`;
-    const cnyRate = eurRates["CNY"] ?? 7.82;
-    const eurAmount = cur === "EUR" ? amount : amount / (eurRates[cur] ?? 1);
-    return `¥${(eurAmount * cnyRate).toFixed(2)}`;
+    if (isZh) {
+      if (cur === "CNY") return `¥${amount.toFixed(2)}`;
+      const cnyRate = eurRates["CNY"] ?? 7.82;
+      const eurAmount = cur === "EUR" ? amount : amount / (eurRates[cur] ?? 1);
+      return `¥${(eurAmount * cnyRate).toFixed(2)}`;
+    }
+    const SYMBOLS: Record<string, string> = {
+      USD: "$", EUR: "€", CNY: "¥", GBP: "£",
+      CAD: "CA$", AUD: "A$", HKD: "HK$", SGD: "S$",
+      NZD: "NZ$", TWD: "NT$", KRW: "₩", JPY: "¥",
+    };
+    const sym = SYMBOLS[cur] ?? (cur + "\u00a0");
+    const decimals = ["JPY", "KRW"].includes(cur) ? 0 : 2;
+    return `${sym}${amount.toFixed(decimals)}`;
   }
 
   const tldForDisplay = domain.substring(domain.lastIndexOf(".")).toLowerCase();
@@ -4340,10 +4350,20 @@ export default function LookupPage({
 
   function formatRegistrarPrice(amount: number, currency: string): string {
     const cur = (currency ?? "").toUpperCase();
-    if (cur === "CNY") return `¥${amount.toFixed(2)}`;
-    const cnyRate = eurRates["CNY"] ?? 7.82;
-    const eurAmount = cur === "EUR" ? amount : amount / (eurRates[cur] ?? 1);
-    return `¥${(eurAmount * cnyRate).toFixed(2)}`;
+    if (isChinese) {
+      if (cur === "CNY") return `¥${amount.toFixed(2)}`;
+      const cnyRate = eurRates["CNY"] ?? 7.82;
+      const eurAmount = cur === "EUR" ? amount : amount / (eurRates[cur] ?? 1);
+      return `¥${(eurAmount * cnyRate).toFixed(2)}`;
+    }
+    const SYMBOLS: Record<string, string> = {
+      USD: "$", EUR: "€", CNY: "¥", GBP: "£",
+      CAD: "CA$", AUD: "A$", HKD: "HK$", SGD: "S$",
+      NZD: "NZ$", TWD: "NT$", KRW: "₩", JPY: "¥",
+    };
+    const sym = SYMBOLS[cur] ?? (cur ? cur + "\u00a0" : "$");
+    const decimals = ["JPY", "KRW"].includes(cur) ? 0 : 2;
+    return `${sym}${amount.toFixed(decimals)}`;
   }
   const toCNY = formatRegistrarPrice;
   const toUSD = formatRegistrarPrice;
