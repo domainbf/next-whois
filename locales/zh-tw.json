@@ -376,7 +376,7 @@
   "validation": {
     "empty": "請輸入域名、IP 位址或 ASN",
     "no_dot": "請輸入有效域名（如 example.com），無需 http:// 或路徑",
-    "too_long": "查詢內容過長，最多 253 字元",
+    "too_long": "輸入內容太長了（最多 {{max}} 個字元）",
     "label_too_long": "域名每段不超過 63 個字元",
     "invalid_chars": "包含無效字元，僅支援字母、數字和連字號",
     "invalid_domain": "域名格式無效",

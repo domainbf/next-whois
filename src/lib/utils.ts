@@ -210,11 +210,18 @@ export type SearchValidationResult = {
  * Strategy: be lenient — clean first, validate after.
  * Returns { valid, cleaned } on success or { valid: false, errorKey } on failure.
  */
+const MAX_VALIDATED_LENGTH = 300;
+
 export function validateAndSanitizeInput(raw: string): SearchValidationResult {
   const cleaned = sanitizeInput(raw);
 
   if (!cleaned) {
     return { valid: false, cleaned: "", errorKey: "validation.empty" };
+  }
+
+  // Universal length guard (matches the server-side MAX_QUERY_LENGTH = 300)
+  if (cleaned.length > MAX_VALIDATED_LENGTH) {
+    return { valid: false, cleaned, errorKey: "validation.too_long", errorArgs: { max: String(MAX_VALIDATED_LENGTH) } };
   }
 
   // ASN

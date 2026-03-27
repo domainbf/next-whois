@@ -376,7 +376,7 @@
   "validation": {
     "empty": "Type a domain, IP address, or ASN to get started",
     "no_dot": "Domains need a dot — try something like example.com",
-    "too_long": "That's way too long — WHOIS servers won't handle more than 253 characters",
+    "too_long": "Input too long — max {{max}} characters allowed",
     "label_too_long": "Each domain segment can be at most 63 characters",
     "invalid_chars": "Odd characters detected — stick to letters, digits, and hyphens",
     "invalid_domain": "Invalid format — labels can't start or end with a hyphen",

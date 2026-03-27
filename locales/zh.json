@@ -376,7 +376,7 @@
   "validation": {
     "empty": "输个域名、IP 或 ASN 才能开始查询",
     "no_dot": "域名必须包含点号（.）— 试试 example.com 这样的格式",
-    "too_long": "这也太长了，WHOIS 服务器会罢工的（最多 253 个字符）",
+    "too_long": "输入内容太长了（最多 {{max}} 个字符）",
     "label_too_long": "域名每段最多 63 个字符，太长了没有注册商会接受",
     "invalid_chars": "域名里有奇怪的字符，只能用字母、数字和连字符（-）",
     "invalid_domain": "域名格式不对，两端不能用连字符",

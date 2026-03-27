@@ -322,8 +322,9 @@ const NAV_GROUPS: NavGroup[] = [
   {
     groupKey: "nav_section_tools",
     items: [
-      { labelKey: "nav_domain_lookup", descKey: "nav_domain_lookup_desc", href: "/",        icon: <RiGlobalLine className="h-6 w-6" /> },
-      { labelKey: "nav_tools",         descKey: "nav_tools_desc",         subPanel: "tools", icon: <RiToolsLine className="h-6 w-6" /> },
+      { labelKey: "nav_domain_lookup", descKey: "nav_domain_lookup_desc", href: "/",          icon: <RiGlobalLine className="h-6 w-6" /> },
+      { labelKey: "nav_tools",         descKey: "nav_tools_desc",         subPanel: "tools",  icon: <RiToolsLine className="h-6 w-6" /> },
+      { labelKey: "nav_directory",     descKey: "nav_directory_desc",     href: "/directory", icon: <RiCompassLine className="h-6 w-6" /> },
     ],
   },
   {
@@ -331,7 +332,6 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { labelKey: "nav_api_docs",   descKey: "nav_api_docs_desc",   href: "/docs",    icon: <RiCodeSSlashLine className="h-6 w-6" />, settingKey: "enable_docs" },
       { labelKey: "nav_tlds",       descKey: "nav_tlds_desc",       href: "/tlds",    icon: <RiServerLine className="h-6 w-6" /> },
-      { labelKey: "nav_directory",  descKey: "nav_directory_desc",  href: "/directory", icon: <RiCompassLine className="h-6 w-6" /> },
       { labelKey: "nav_about",      descKey: "nav_about_desc",      href: "/about",   icon: <RiInformationLine className="h-6 w-6" />, settingKey: "enable_about" },
       { labelKey: "nav_sponsor",    descKey: "nav_sponsor_desc",    href: "/sponsor", icon: <RiHeart3Line className="h-6 w-6" />, settingKey: "enable_sponsor" },
     ],
@@ -420,7 +420,8 @@ export function NavDrawer() {
                     </p>
                     <div className={cn(
                       "grid gap-2.5",
-                      group.items.length <= 2 ? "grid-cols-2" : "grid-cols-3"
+                      group.items.length === 3 ? "grid-cols-3" :
+                      group.items.length % 2 === 0 ? "grid-cols-2" : "grid-cols-3"
                     )}>
                       {group.items.map((item) => {
                         const cardContent = (
@@ -688,17 +689,15 @@ export function Navbar() {
         <div className="flex items-center gap-3">
           <ThemeToggle />
           <LanguageSwitcher />
-          {settings.enable_tools && (
-            <motion.div {...TAP} style={{ display: "inline-flex" }}>
-              <Link
-                href="/tools"
-                className="p-2 pr-0 inline-flex items-center justify-center touch-manipulation"
-                aria-label={t("nav_toolbox")}
-              >
-                <RiToolsLine className="h-[1rem] w-[1rem]" />
-              </Link>
-            </motion.div>
-          )}
+          <motion.div {...TAP} style={{ display: "inline-flex" }}>
+            <Link
+              href="/directory"
+              className="p-2 pr-0 inline-flex items-center justify-center touch-manipulation"
+              aria-label={t("nav_directory")}
+            >
+              <RiCompassLine className="h-[1rem] w-[1rem]" />
+            </Link>
+          </motion.div>
           <UserButton />
           <HistoryDrawer />
           <NavDrawer />

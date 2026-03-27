@@ -16,6 +16,9 @@ import { listHistory, HistoryItem } from "@/lib/history";
 import { Badge } from "@/components/ui/badge";
 import { useTranslation } from "@/lib/i18n";
 
+const MAX_INPUT_LENGTH = 300;
+const CHAR_COUNTER_THRESHOLD = 200;
+
 const commonDomains = [
   ".com",
   ".net",
@@ -388,7 +391,7 @@ export function SearchBox({
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
+    const value = e.target.value.slice(0, MAX_INPUT_LENGTH);
     setInputValue(value);
     if (validationError) setValidationError(null);
     const cleaned = sanitizeInput(value);
@@ -473,6 +476,10 @@ export function SearchBox({
     setShowSuggestions(false);
   };
 
+  const charCount = inputValue.length;
+  const showCounter = charCount >= CHAR_COUNTER_THRESHOLD;
+  const nearLimit = charCount >= MAX_INPUT_LENGTH - 20;
+
   return (
     <div className={cn("relative w-full", className)}>
       <div className="relative flex flex-row items-center w-full">
@@ -485,6 +492,7 @@ export function SearchBox({
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
           onFocus={() => setShowSuggestions(suggestions.length > 0)}
+          maxLength={MAX_INPUT_LENGTH}
         />
         <motion.div
           whileTap={{ scale: 0.9 }}
@@ -509,6 +517,26 @@ export function SearchBox({
           </Button>
         </motion.div>
       </div>
+
+      <AnimatePresence>
+        {showCounter && (
+          <motion.div
+            key="char-counter"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="flex justify-end mt-1 px-1"
+          >
+            <span className={cn(
+              "text-[11px] tabular-nums",
+              nearLimit ? "text-red-500 dark:text-red-400 font-medium" : "text-muted-foreground/50"
+            )}>
+              {charCount} / {MAX_INPUT_LENGTH}
+            </span>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {validationError && (
