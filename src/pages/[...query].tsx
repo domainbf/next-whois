@@ -5941,41 +5941,59 @@ export default function LookupPage({
                             /* ════════════════════════════════════════
                                Layout: default
                             ════════════════════════════════════════ */
+                            const isDarkCard = theme.cardBg === "bg-zinc-950" || theme.cardBg === "bg-slate-900";
                             return (
                               <div key={stamp.id}>
-                                {/* ── Gradient hero strip ── */}
-                                <div className={cn("relative px-5 pt-7 pb-9 text-center select-none overflow-hidden", theme.hero)}>
-                                  <div className="absolute inset-0 opacity-[0.06]"
+                                {/* ── Hero ── */}
+                                <div className={cn("relative px-5 pt-10 pb-14 text-center select-none overflow-hidden", theme.hero)}>
+                                  <div className="absolute inset-0 opacity-[0.04]"
                                     style={{ backgroundImage: "radial-gradient(circle, white 1px, transparent 1px)", backgroundSize: "18px 18px" }} />
-                                  <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-black/30 to-transparent" />
+                                  <div className="absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t from-black/45 to-transparent" />
                                   <CloseBtn />
                                   <div className="relative flex flex-col items-center gap-2.5">
-                                    <div className="relative flex items-center justify-center">
-                                      <div className="absolute w-[72px] h-[72px] rounded-3xl bg-white/10 blur-md" />
-                                      <div className="relative w-[58px] h-[58px] rounded-[18px] bg-white/20 backdrop-blur-sm border border-white/30 flex items-center justify-center shadow-xl">
-                                        <StampIcon className="w-7 h-7 text-white drop-shadow" />
+                                    <div className="relative">
+                                      <div className="absolute inset-0 rounded-full bg-white/15 blur-xl scale-150 pointer-events-none" />
+                                      <div className="relative w-[62px] h-[62px] rounded-full bg-white/20 backdrop-blur-sm border border-white/30 flex items-center justify-center shadow-2xl ring-8 ring-white/[0.06]">
+                                        <StampIcon className="w-7 h-7 text-white drop-shadow-lg" />
                                       </div>
                                     </div>
-                                    <p className="text-shimmer-white text-[10px] font-mono tracking-[0.2em] uppercase">
+                                    <p className="text-[9px] text-white/35 font-mono tracking-[0.3em] uppercase">
                                       {result.domain || target}
                                     </p>
                                   </div>
                                 </div>
-                                {/* ── Floating name card ── */}
-                                <div className={cn("relative -mt-6 mx-3.5 rounded-[18px] border shadow-xl px-4 pt-3.5 pb-3.5", theme.cardBg, theme.cardBorder)}>
-                                  <div className="flex items-start justify-between gap-2">
-                                    <span className={cn("text-xl font-black leading-tight tracking-tight", theme.shimmer)}>{stamp.tagName}</span>
-                                    <span className={cn("inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-full shrink-0 whitespace-nowrap mt-0.5", theme.badge)}>
-                                      <RiShieldCheckLine className="w-2.5 h-2.5" />
-                                      {isChinese ? lbl.zh : lbl.en}
-                                    </span>
+
+                                {/* ── Floating card ── */}
+                                <div className={cn("relative -mt-7 mx-4 rounded-[22px] border shadow-2xl overflow-hidden", theme.cardBg, theme.cardBorder)}>
+                                  {/* accent stripe */}
+                                  <div className={cn("h-1 w-full", theme.hero)} />
+                                  <div className="px-4 pt-3.5 pb-4">
+                                    {/* name + badge */}
+                                    <div className="flex items-start justify-between gap-3 mb-0.5">
+                                      <div className="flex-1 min-w-0">
+                                        <p className={cn("text-[21px] font-black leading-tight tracking-tight", theme.shimmer)}>{stamp.tagName}</p>
+                                        <p className={cn("text-[10px] font-mono tracking-wider mt-0.5 truncate", isDarkCard ? "text-zinc-600" : "text-muted-foreground/35")}>
+                                          {result.domain || target}
+                                        </p>
+                                      </div>
+                                      <span className={cn("inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-[5px] rounded-full shrink-0 whitespace-nowrap mt-1.5 leading-none", theme.badge)}>
+                                        <RiShieldCheckLine className="w-2.5 h-2.5" />
+                                        {isChinese ? lbl.zh : lbl.en}
+                                      </span>
+                                    </div>
+                                    {/* description */}
+                                    {stamp.description && (
+                                      <p className={cn("text-[13px] leading-relaxed mt-2.5 mb-4", isDarkCard ? "text-zinc-500" : "text-muted-foreground/65")}>
+                                        {stamp.description}
+                                      </p>
+                                    )}
+                                    {/* CTA */}
+                                    <CtaLink />
                                   </div>
-                                  {stamp.description && <p className={cn("text-[12.5px] leading-relaxed mt-2", theme.cardBg === "bg-zinc-950" ? "text-zinc-500" : "text-muted-foreground")}>{stamp.description}</p>}
                                 </div>
-                                {/* ── CTA ── */}
-                                <div className="px-3.5 pt-3 pb-5">
-                                  <CtaLink />
-                                </div>
+
+                                {/* ── bottom fill ── */}
+                                <div className={cn("h-5", theme.cardBg)} />
                               </div>
                             );
                           })}

@@ -266,33 +266,52 @@ export function StampPreviewCard({
   /* ── default standard themes ── */
   const isDarkCard = t.cardBg === "bg-zinc-950" || t.cardBg === "bg-slate-900";
   return (
-    <div className="rounded-2xl overflow-hidden border border-border/40 shadow-md">
+    <div className="rounded-2xl overflow-hidden shadow-lg">
       {/* ── Hero ── */}
-      <div className={cn("relative px-4 pt-6 pb-8 text-center overflow-hidden", t.hero)}>
-        <div className="absolute inset-0 opacity-[0.05]"
+      <div className={cn("relative px-4 pt-9 pb-12 text-center overflow-hidden", t.hero)}>
+        <div className="absolute inset-0 opacity-[0.04]"
           style={{ backgroundImage: "radial-gradient(circle, white 1px, transparent 1px)", backgroundSize: "14px 14px" }} />
-        <div className="absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-black/25 to-transparent pointer-events-none" />
-        <div className="relative w-11 h-11 rounded-2xl bg-white/20 border border-white/30 flex items-center justify-center mx-auto shadow-lg backdrop-blur-sm">
-          <Icon className="w-5 h-5 text-white drop-shadow" />
+        <div className="absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-black/40 to-transparent pointer-events-none" />
+        <div className="relative flex flex-col items-center gap-1.5">
+          <div className="relative">
+            <div className="absolute inset-0 rounded-full bg-white/15 blur-md scale-125 pointer-events-none" />
+            <div className="relative w-12 h-12 rounded-full bg-white/20 border border-white/30 flex items-center justify-center shadow-xl backdrop-blur-sm ring-4 ring-white/[0.07]">
+              <Icon className="w-[22px] h-[22px] text-white drop-shadow-md" />
+            </div>
+          </div>
+          <p className="text-[6px] text-white/40 font-mono tracking-[0.28em] uppercase">{domain}</p>
         </div>
-        <p className="text-[7.5px] text-white/60 font-mono mt-2 tracking-[0.18em] uppercase">{domain}</p>
       </div>
+
       {/* ── Floating card ── */}
-      <div className={cn("relative -mt-4 mx-2.5 rounded-[16px] border shadow-xl px-3 pt-3 pb-2.5", t.cardBg, t.cardBorder)}>
-        <div className="flex items-start justify-between gap-2">
-          <span className={cn("text-[13px] font-black leading-tight tracking-tight", t.shimmer)}>{tagName}</span>
-          <span className={cn("inline-flex items-center gap-0.5 text-[6.5px] font-bold px-1.5 py-0.5 rounded-full shrink-0 mt-0.5 whitespace-nowrap", t.badge)}>
-            <RiShieldCheckLine className="w-1.5 h-1.5" />{tagLabel}
-          </span>
+      <div className={cn("relative -mt-5 mx-2 rounded-[18px] border shadow-xl overflow-hidden", t.cardBg, t.cardBorder)}>
+        {/* theme accent stripe */}
+        <div className={cn("h-[3px] w-full", t.hero)} />
+        <div className="px-3 pt-2.5 pb-3">
+          {/* name + badge row */}
+          <div className="flex items-start justify-between gap-2 mb-0.5">
+            <div className="flex-1 min-w-0">
+              <p className={cn("text-[13px] font-black leading-snug tracking-tight truncate", t.shimmer)}>{tagName}</p>
+              <p className={cn("text-[6px] font-mono tracking-wider mt-0.5 truncate", isDarkCard ? "text-zinc-700" : "text-foreground/25")}>{domain}</p>
+            </div>
+            <span className={cn("inline-flex items-center gap-0.5 text-[6px] font-bold px-1.5 py-[3px] rounded-full shrink-0 whitespace-nowrap mt-1 leading-none", t.badge)}>
+              <RiShieldCheckLine className="w-[7px] h-[7px]" />{tagLabel}
+            </span>
+          </div>
+          {/* description */}
+          {desc && (
+            <p className={cn("text-[7.5px] leading-[1.6] mt-2 mb-2.5 line-clamp-2", isDarkCard ? "text-zinc-500" : "text-foreground/50")}>{desc}</p>
+          )}
+          {/* CTA row */}
+          <div className={cn("flex items-center justify-between gap-2 pt-2 border-t", isDarkCard ? "border-zinc-800" : "border-border/30")}>
+            <p className={cn("text-[6px] font-mono truncate flex-1", isDarkCard ? "text-zinc-700" : "text-foreground/20")}>{linkHost}</p>
+            <CtaBtn />
+          </div>
         </div>
-        {desc && (
-          <p className={cn("text-[7.5px] mt-1.5 leading-[1.6]", isDarkCard ? "text-zinc-500" : "text-muted-foreground/55")}>{desc}</p>
-        )}
       </div>
-      {/* ── CTA ── */}
-      <div className={cn("px-2.5 pt-2.5 pb-3.5 flex justify-center", t.cardBg)}>
-        <CtaBtn />
-      </div>
+
+      {/* ── bottom fill ── */}
+      <div className={cn("h-3.5", t.cardBg)} />
     </div>
   );
 }
