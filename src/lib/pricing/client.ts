@@ -287,7 +287,12 @@ export async function getDomainPricing(
       fetchTianhuData(tld, type),
     ]);
 
-    const merged = mergeRegistrars([nazhumiData, miqingjuData, tianhuData], type);
+    // Prefer nazhumi/miqingju (authoritative) over tianhu.
+    // Only use tianhu if neither nazhumi nor miqingju has any entry for this TLD.
+    const trustedSources = nazhumiData.length > 0 || miqingjuData.length > 0;
+    const merged = trustedSources
+      ? mergeRegistrars([nazhumiData, miqingjuData], type)
+      : mergeRegistrars([tianhuData], type);
     if (merged.length === 0) return null;
 
     merged.sort((a, b) => {
@@ -326,7 +331,10 @@ export async function getTopRegistrars(
       fetchTianhuData(tld, type),
     ]);
 
-    const merged = mergeRegistrars([nazhumiData, miqingjuData, tianhuData], type);
+    const trustedSourcesTop = nazhumiData.length > 0 || miqingjuData.length > 0;
+    const merged = trustedSourcesTop
+      ? mergeRegistrars([nazhumiData, miqingjuData], type)
+      : mergeRegistrars([tianhuData], type);
 
     return merged
       .filter((r) => typeof r[type] === "number" && (r[type] as number) > 0)

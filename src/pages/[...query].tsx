@@ -4343,20 +4343,19 @@ export default function LookupPage({
       .catch(() => {});
   }, [isChinese]);
 
-  function toCNY(amount: number, currency: string): string {
-    const cur = currency.toUpperCase();
-    const cnyRate = eurRates["CNY"] ?? 7.82;
-    const eurAmount = cur === "EUR" ? amount : amount / (eurRates[cur] ?? 1);
-    return `¥${(eurAmount * cnyRate).toFixed(2)}`;
+  function formatRegistrarPrice(amount: number, currency: string): string {
+    const cur = (currency ?? "").toUpperCase();
+    const SYMBOLS: Record<string, string> = {
+      USD: "$", EUR: "€", CNY: "¥", GBP: "£",
+      CAD: "CA$", AUD: "A$", HKD: "HK$", SGD: "S$",
+      NZD: "NZ$", TWD: "NT$", KRW: "₩", JPY: "¥",
+    };
+    const sym = SYMBOLS[cur] ?? (cur ? cur + "\u00a0" : "$");
+    const decimals = ["JPY", "KRW"].includes(cur) ? 0 : 2;
+    return `${sym}${amount.toFixed(decimals)}`;
   }
-
-  function toUSD(amount: number, currency: string): string {
-    const cur = currency.toUpperCase();
-    if (cur === "USD") return `$${amount.toFixed(2)}`;
-    const usdRate = eurRates["USD"] ?? 1.09;
-    const eurAmount = cur === "EUR" ? amount : amount / (eurRates[cur] ?? 1);
-    return `$${(eurAmount * usdRate).toFixed(2)}`;
-  }
+  const toCNY = formatRegistrarPrice;
+  const toUSD = formatRegistrarPrice;
 
   type TianhuTranslation = { src: string; dst: string | null; parts: { part_name: string; means: string[] }[] } | null;
   const [tianhuTranslation, setTianhuTranslation] = React.useState<TianhuTranslation>(null);
@@ -4415,7 +4414,9 @@ export default function LookupPage({
   }, [router.query.subscribe, sessionStatus]);
 
   const handleSearch = (query: string) => {
-    router.push(toSearchURI(query));
+    const url = toSearchURI(query);
+    if (url === router.asPath) return;
+    router.push(url);
   };
 
   useEffect(() => {

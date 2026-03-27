@@ -59,7 +59,7 @@ export default function PrivacyPage() {
   const isChinese = locale === "zh" || locale === "zh-tw";
   const siteName = settings.site_logo_text || settings.site_title || "X.RW";
   const pageTitle = isChinese ? "隐私政策" : "Privacy Policy";
-  const contactEmail = settings.contact_email || settings.admin_email || "";
+  const contactEmail = settings.about_contact_email || settings.admin_email || "";
 
   const sections: Section[] = [
     {

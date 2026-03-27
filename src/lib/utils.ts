@@ -113,7 +113,7 @@ export function toSearchURI(query: string | undefined | null) {
     locale = "en";
   }
 
-  return q ? `/${locale}/${encodeURIComponent(q)}` : `/${locale}`;
+  return q ? `/${locale}/${encodeURIComponent(q)}` : "/";
 }
 
 export function includeArgs(from: string, ...args: string[]): boolean {
