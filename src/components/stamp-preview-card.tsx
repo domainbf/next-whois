@@ -17,39 +17,26 @@ export type CardThemeDef = {
   hero: string; shimmer: string;
   badge: string; btn: string;
   cardBg: string; cardBorder: string; cardText: string;
-  layout?: "default" | "celebrate" | "neon" | "gradient" | "split" | "flash" | "classic" | "hero" | "minimal";
+  layout?: "default" | "celebrate" | "neon" | "gradient" | "split" | "flash";
   accent?: string; accentText?: string;
 };
 
 export const STAMP_CARD_THEMES: Record<string, CardThemeDef & { label: string; special?: string }> = {
-  app:       { label: "经典",     hero: "bg-gradient-to-br from-zinc-700 to-zinc-900",                           shimmer: "text-white font-black",    badge: "bg-white/15 text-white border border-white/25",         btn: "bg-zinc-800 text-white",       cardBg: "bg-white",    cardBorder: "border-gray-100",    cardText: "text-gray-900" },
-  glow:      { label: "光晕",     hero: "bg-gradient-to-br from-teal-400 to-teal-600",                           shimmer: "text-white font-black",    badge: "bg-teal-500 text-white border-0",                       btn: "bg-teal-500 text-white",       cardBg: "bg-white",    cardBorder: "border-teal-100",    cardText: "text-gray-900" },
-  midnight:  { label: "深夜",     hero: "bg-gradient-to-br from-slate-700 via-blue-900 to-slate-900",            shimmer: "text-white font-black",    badge: "bg-blue-500 text-white border-0",                       btn: "bg-blue-600 text-white",       cardBg: "bg-slate-900",cardBorder: "border-slate-700",   cardText: "text-white"    },
-  aurora:    { label: "极光",     hero: "bg-gradient-to-br from-violet-500 via-fuchsia-500 to-pink-400",         shimmer: "text-white font-black",    badge: "bg-fuchsia-500 text-white border-0",                    btn: "bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white", cardBg: "bg-white", cardBorder: "border-violet-100",  cardText: "text-gray-900" },
-  solar:     { label: "阳光",     hero: "bg-gradient-to-br from-amber-400 to-orange-600",                        shimmer: "text-white font-black",    badge: "bg-orange-500 text-white border-0",                     btn: "bg-orange-500 text-white",     cardBg: "bg-white",    cardBorder: "border-amber-100",   cardText: "text-gray-900" },
-  ink:       { label: "墨水",     hero: "bg-gradient-to-br from-zinc-800 via-zinc-900 to-black",                 shimmer: "text-white font-black",    badge: "bg-zinc-600 text-white border-0",                       btn: "bg-zinc-700 text-white",       cardBg: "bg-zinc-950", cardBorder: "border-zinc-800",    cardText: "text-white"    },
-  rose:      { label: "玫瑰",     hero: "bg-gradient-to-br from-pink-400 via-rose-500 to-red-400",               shimmer: "text-white font-black",    badge: "bg-white/20 text-white border border-white/30",         btn: "bg-rose-500 text-white",       cardBg: "bg-white",    cardBorder: "border-rose-100",    cardText: "text-gray-900" },
-  forest:    { label: "森林",     hero: "bg-gradient-to-br from-emerald-400 via-green-500 to-teal-600",          shimmer: "text-white font-black",    badge: "bg-white/20 text-white border border-white/30",         btn: "bg-emerald-600 text-white",    cardBg: "bg-white",    cardBorder: "border-emerald-100", cardText: "text-gray-900" },
-  ocean:     { label: "深海",     hero: "bg-gradient-to-br from-cyan-400 via-blue-500 to-indigo-700",            shimmer: "text-white font-black",    badge: "bg-cyan-400 text-slate-900 border-0",                   btn: "bg-cyan-500 text-white",       cardBg: "bg-slate-950",cardBorder: "border-slate-700",   cardText: "text-white"    },
-  gold:      { label: "金色",     hero: "bg-gradient-to-br from-yellow-300 via-amber-400 to-orange-400",         shimmer: "text-gray-900 font-black", badge: "bg-amber-900/70 text-amber-100 border-0",               btn: "bg-amber-500 text-white",      cardBg: "bg-white",    cardBorder: "border-amber-200",   cardText: "text-gray-900" },
-  crimson:   { label: "烈焰",     hero: "bg-gradient-to-br from-red-500 via-rose-600 to-red-800",                shimmer: "text-white font-black",    badge: "bg-white/20 text-white border border-white/30",         btn: "bg-red-600 text-white",        cardBg: "bg-white",    cardBorder: "border-red-100",     cardText: "text-gray-900" },
-  celebrate: { label: "庆典",     hero: "bg-gradient-to-br from-red-700 to-red-900",            layout: "celebrate", shimmer: "text-white font-black",    badge: "bg-amber-400 text-amber-900 border-0",                  btn: "bg-amber-500 text-white",      cardBg: "bg-white",    cardBorder: "border-amber-100",   cardText: "text-gray-900", special: "🎊" },
-  neon:      { label: "霓虹",     hero: "bg-[#050d18]",                                         layout: "neon",      shimmer: "text-white font-black",    badge: "bg-cyan-400 text-slate-900 border-0",                   btn: "bg-cyan-400 text-slate-900",   cardBg: "bg-[#050d18]",cardBorder: "border-slate-800",   cardText: "text-white",    special: "⚡" },
-  gradient:  { label: "渐变流光", hero: "bg-gradient-to-br from-rose-300 via-sky-300 to-emerald-300",layout: "gradient",shimmer: "text-gray-900 font-black", badge: "bg-black/10 text-gray-800 border border-black/20",      btn: "bg-gray-900 text-white",       cardBg: "bg-transparent",cardBorder: "border-0",           cardText: "text-gray-900", special: "✨" },
-  split:     { label: "分栏",     hero: "bg-black",                                              layout: "split",     shimmer: "text-white font-black",    badge: "bg-blue-500 text-white border-0",                       btn: "bg-gray-900 text-white",       cardBg: "bg-white",    cardBorder: "border-gray-100",    cardText: "text-gray-900", special: "◼" },
-  flash:          { label: "特卖",     hero: "bg-[#FF3800]",                                          layout: "flash",     shimmer: "text-white font-black",    badge: "bg-[#FF3800] text-white border-0",                      btn: "bg-orange-500 text-white",     cardBg: "bg-white",    cardBorder: "border-0",           cardText: "text-gray-900", special: "💥" },
-  /* ── Classic: Style A — gradient hero + floating card ── */
-  "blue-classic":   { label: "蓝·卡片",   hero: "bg-gradient-to-br from-blue-500 to-blue-700",           layout: "classic",   shimmer: "text-white font-black",    badge: "bg-blue-50 text-blue-700 border border-blue-200",       btn: "bg-blue-600 text-white",       cardBg: "bg-white",    cardBorder: "border-gray-100",    cardText: "text-gray-900" },
-  "purple-classic": { label: "紫·卡片",   hero: "bg-gradient-to-br from-violet-500 to-purple-700",       layout: "classic",   shimmer: "text-white font-black",    badge: "bg-violet-50 text-violet-700 border border-violet-200", btn: "bg-violet-600 text-white",     cardBg: "bg-white",    cardBorder: "border-gray-100",    cardText: "text-gray-900" },
-  "green-classic":  { label: "绿·卡片",   hero: "bg-gradient-to-br from-emerald-400 to-green-600",       layout: "classic",   shimmer: "text-white font-black",    badge: "bg-emerald-50 text-emerald-700 border border-emerald-200", btn: "bg-emerald-600 text-white",  cardBg: "bg-white",    cardBorder: "border-gray-100",    cardText: "text-gray-900" },
-  /* ── Hero: Style B — full-screen immersive gradient ── */
-  "blue-hero":      { label: "蓝·渐变",   hero: "bg-gradient-to-br from-blue-500 via-indigo-600 to-blue-800", layout: "hero",  shimmer: "text-white font-black",    badge: "bg-white/20 text-white border border-white/30",         btn: "bg-white/20 text-white border border-white/25", cardBg: "bg-transparent", cardBorder: "border-0", cardText: "text-white" },
-  "purple-hero":    { label: "紫·渐变",   hero: "bg-gradient-to-br from-violet-600 via-purple-600 to-indigo-700", layout: "hero", shimmer: "text-white font-black", badge: "bg-white/20 text-white border border-white/30",        btn: "bg-white/20 text-white border border-white/25", cardBg: "bg-transparent", cardBorder: "border-0", cardText: "text-white" },
-  "green-hero":     { label: "绿·渐变",   hero: "bg-gradient-to-br from-emerald-500 via-teal-600 to-green-700", layout: "hero",  shimmer: "text-white font-black", badge: "bg-white/20 text-white border border-white/30",         btn: "bg-white/20 text-white border border-white/25", cardBg: "bg-transparent", cardBorder: "border-0", cardText: "text-white" },
-  /* ── Minimal: Style C — compact centered card ── */
-  "blue-minimal":   { label: "蓝·简约",   hero: "bg-blue-500",                                           layout: "minimal",   shimmer: "text-white font-black",    badge: "bg-blue-50 text-blue-600 border border-blue-200",       btn: "bg-blue-600 text-white",       cardBg: "bg-white",    cardBorder: "border-gray-100",    cardText: "text-gray-900" },
-  "purple-minimal": { label: "紫·简约",   hero: "bg-violet-500",                                         layout: "minimal",   shimmer: "text-white font-black",    badge: "bg-violet-50 text-violet-600 border border-violet-200", btn: "bg-violet-600 text-white",     cardBg: "bg-white",    cardBorder: "border-gray-100",    cardText: "text-gray-900" },
-  "green-minimal":  { label: "绿·简约",   hero: "bg-emerald-500",                                        layout: "minimal",   shimmer: "text-white font-black",    badge: "bg-emerald-50 text-emerald-700 border border-emerald-200", btn: "bg-emerald-600 text-white",  cardBg: "bg-white",    cardBorder: "border-gray-100",    cardText: "text-gray-900" },
+  /* ── 8 standard themes — one per tag style, all default layout ── */
+  app:      { label: "极简", hero: "bg-gradient-to-br from-zinc-600 to-zinc-900",                 shimmer: "text-shimmer",              badge: "bg-zinc-100 text-zinc-600 border border-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:border-zinc-700",                              btn: "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900",    cardBg: "bg-background", cardBorder: "border-border/50", cardText: "text-foreground" },
+  official: { label: "官方", hero: "bg-gradient-to-br from-blue-600 to-indigo-800",               shimmer: "text-foreground font-black", badge: "bg-blue-50 text-blue-700 border border-blue-200/80 dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-800/60",                  btn: "bg-blue-700 text-white",                                         cardBg: "bg-background", cardBorder: "border-border/50", cardText: "text-foreground" },
+  aurora:   { label: "极光", hero: "bg-gradient-to-br from-violet-500 via-fuchsia-500 to-purple-700", shimmer: "text-foreground font-black", badge: "bg-violet-50 text-violet-700 border border-violet-200/80 dark:bg-violet-950/60 dark:text-violet-300 dark:border-violet-800/60", btn: "bg-violet-600 text-white",                                       cardBg: "bg-background", cardBorder: "border-border/50", cardText: "text-foreground" },
+  emerald:  { label: "翡翠", hero: "bg-gradient-to-br from-emerald-400 to-teal-700",               shimmer: "text-foreground font-black", badge: "bg-emerald-50 text-emerald-700 border border-emerald-200/80 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800/60", btn: "bg-emerald-600 text-white",                                    cardBg: "bg-background", cardBorder: "border-border/50", cardText: "text-foreground" },
+  solar:    { label: "暖阳", hero: "bg-gradient-to-br from-amber-400 to-orange-600",               shimmer: "text-foreground font-black", badge: "bg-amber-50 text-amber-700 border border-amber-200/80 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800/60",              btn: "bg-orange-500 text-white",                                       cardBg: "bg-background", cardBorder: "border-border/50", cardText: "text-foreground" },
+  dev:      { label: "开发", hero: "bg-gradient-to-br from-slate-600 to-[#0d1117]",                shimmer: "text-[#58a6ff] font-black font-mono", badge: "bg-[#161b22] text-[#58a6ff] border border-[#30363d]",                                                                        btn: "bg-[#238636] text-white",                                        cardBg: "bg-zinc-950",   cardBorder: "border-zinc-800",  cardText: "text-zinc-200" },
+  warning:  { label: "警示", hero: "bg-gradient-to-br from-yellow-400 to-amber-600",               shimmer: "text-foreground font-black", badge: "bg-yellow-50 text-yellow-800 border border-yellow-300/80 dark:bg-yellow-950/60 dark:text-yellow-300 dark:border-yellow-800/60",       btn: "bg-amber-500 text-white",                                        cardBg: "bg-background", cardBorder: "border-border/50", cardText: "text-foreground" },
+  premium:  { label: "尊享", hero: "bg-gradient-to-br from-purple-600 via-fuchsia-500 to-rose-500", shimmer: "text-foreground font-black", badge: "bg-fuchsia-50 text-fuchsia-700 border border-fuchsia-200/80 dark:bg-fuchsia-950/60 dark:text-fuchsia-300 dark:border-fuchsia-800/60", btn: "bg-gradient-to-r from-purple-600 to-fuchsia-500 text-white",   cardBg: "bg-background", cardBorder: "border-border/50", cardText: "text-foreground" },
+  /* ── 5 special themes ── */
+  celebrate: { label: "庆典",     layout: "celebrate", hero: "bg-gradient-to-br from-red-700 to-red-900",                    shimmer: "text-white font-black",    badge: "bg-amber-400 text-amber-900 border-0",    btn: "bg-amber-500 text-white",                                      cardBg: "bg-white",       cardBorder: "border-amber-100",  cardText: "text-gray-900", special: "🎊" },
+  neon:      { label: "霓虹",     layout: "neon",      hero: "bg-[#050d18]",                                                  shimmer: "text-white font-black",    badge: "bg-cyan-400 text-slate-900 border-0",     btn: "bg-gradient-to-r from-cyan-400 to-violet-600 text-white",     cardBg: "bg-[#050d18]",   cardBorder: "border-slate-800",  cardText: "text-white",    special: "⚡" },
+  gradient:  { label: "渐变流光", layout: "gradient",  hero: "bg-gradient-to-br from-rose-300 via-sky-300 to-emerald-300",   shimmer: "text-gray-900 font-black", badge: "bg-black/10 text-gray-800 border border-black/20", btn: "bg-gray-900 text-white",                              cardBg: "bg-transparent", cardBorder: "border-0",          cardText: "text-gray-900", special: "✨" },
+  split:     { label: "分栏",     layout: "split",     hero: "bg-black",                                                      shimmer: "text-white font-black",    badge: "bg-blue-500 text-white border-0",         btn: "bg-gray-900 text-white",                                       cardBg: "bg-white",       cardBorder: "border-gray-100",   cardText: "text-gray-900", special: "◼" },
+  flash:     { label: "特卖",     layout: "flash",     hero: "bg-[#FF3800]",                                                  shimmer: "text-white font-black",    badge: "bg-[#FF3800] text-white border-0",        btn: "bg-orange-500 text-white",                                     cardBg: "bg-white",       cardBorder: "border-0",          cardText: "text-gray-900", special: "💥" },
 };
 
 export interface StampPreviewData {
@@ -77,7 +64,7 @@ export function StampPreviewCard({
   themeKey: string;
   data?: StampPreviewData;
 }) {
-  const t = STAMP_CARD_THEMES[themeKey];
+  const t = STAMP_CARD_THEMES[themeKey] ?? STAMP_CARD_THEMES.app;
   if (!t) return null;
 
   const tagName    = data?.tagName    || DEMO.tagName;
@@ -159,7 +146,7 @@ export function StampPreviewCard({
       </div>
       <div className="px-4 pt-2 pb-1 text-center">
         <p className="text-white text-[13px] font-black leading-tight mb-1">{tagName}</p>
-        <p className="text-[8px] leading-relaxed" style={{color:"#4a5568"}}>{desc}</p>
+        <p className="text-[8px] leading-relaxed" style={{color:"rgba(120,138,158,0.9)"}}>{desc}</p>
       </div>
       <div className="px-4 pb-4 pt-1 flex flex-col items-center gap-1.5">
         <span className="inline-flex items-center gap-1 px-4 py-1.5 rounded-full text-[9px] font-bold text-white"
@@ -276,104 +263,34 @@ export function StampPreviewCard({
     </div>
   );
 
-  /* ── classic — Style A: gradient hero strip + floating card ── */
-  if (t.layout === "classic") return (
-    <div className="rounded-2xl overflow-hidden shadow-md">
-      {/* Hero strip */}
-      <div className={cn("relative px-3 pt-4 pb-8 flex flex-col items-center overflow-hidden", t.hero)}>
-        <div className="absolute inset-0 opacity-[0.06]"
-          style={{backgroundImage:"radial-gradient(circle,white 1px,transparent 1px)",backgroundSize:"12px 12px"}} />
-        {/* Decorative close X */}
-        <span className="absolute top-2.5 right-2.5 text-white/40 text-[8px] font-bold leading-none select-none">✕</span>
-        <div className="relative z-10 w-9 h-9 rounded-xl bg-white/20 border border-white/30 flex items-center justify-center shadow-lg">
-          <Icon className="w-4.5 h-4.5 text-white" style={{width:18,height:18}} />
-        </div>
-      </div>
-      {/* Floating card */}
-      <div className="relative -mt-4 mx-2 rounded-[14px] bg-white border border-gray-100 shadow-xl px-3 pt-3 pb-2.5">
-        <div className="flex justify-center mb-1.5">
-          <span className={cn("inline-flex items-center gap-1 text-[7px] font-semibold px-2 py-0.5 rounded-full", t.badge)}>
-            {tagLabel}
-          </span>
-        </div>
-        <p className="text-[11px] font-black text-center text-gray-900 leading-tight mb-1">{tagName}</p>
-        <p className="text-[7.5px] text-gray-500 text-center leading-relaxed">{desc}</p>
-      </div>
-      {/* CTA */}
-      <div className="px-2 pt-2 pb-3 bg-white flex justify-center">
-        <CtaBtn extra="rounded-lg" />
-      </div>
-    </div>
-  );
-
-  /* ── hero — Style B: full-screen immersive gradient ── */
-  if (t.layout === "hero") return (
-    <div className={cn("rounded-2xl overflow-hidden shadow-md flex flex-col relative", t.hero)} style={{minHeight:168}}>
-      <span className="absolute top-2.5 right-2.5 z-10 text-white/40 text-[8px] font-bold leading-none select-none">✕</span>
-      <div className="absolute inset-0 opacity-[0.05]"
-        style={{backgroundImage:"radial-gradient(circle,white 1px,transparent 1px)",backgroundSize:"14px 14px"}} />
-      {/* Center content */}
-      <div className="relative flex-1 flex flex-col items-center justify-center text-center px-4 pt-5 pb-3">
-        <div className="w-9 h-9 rounded-xl bg-white/20 border border-white/30 flex items-center justify-center shadow-lg mb-2.5">
-          <Icon className="text-white" style={{width:18,height:18}} />
-        </div>
-        <p className="text-[12px] font-black text-white leading-tight mb-1.5">{tagName}</p>
-        <span className={cn("inline-flex items-center gap-1 text-[7px] font-semibold px-2 py-0.5 rounded-full mb-2", t.badge)}>
-          {tagLabel}
-        </span>
-        <p className="text-[7.5px] text-white/70 leading-relaxed max-w-[120px]">{desc}</p>
-      </div>
-      {/* Bottom CTA */}
-      <div className="relative px-3 pb-3 space-y-1.5">
-        <CtaBtn extra="w-full justify-center rounded-xl px-0 py-1.5" />
-        <p className="text-center text-[6.5px] text-white/40 font-medium">关闭</p>
-      </div>
-    </div>
-  );
-
-  /* ── minimal — Style C: compact centered card ── */
-  if (t.layout === "minimal") return (
-    <div className="rounded-2xl overflow-hidden shadow-md bg-white relative flex flex-col items-center px-3 pt-5 pb-3">
-      {/* Decorative close */}
-      <span className="absolute top-2.5 right-2.5 text-gray-300 text-[8px] font-bold leading-none select-none">✕</span>
-      {/* Colored icon */}
-      <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center shadow-md mb-2.5", t.hero)}>
-        <Icon className="text-white" style={{width:18,height:18}} />
-      </div>
-      <p className="text-[12px] font-black text-center text-gray-900 leading-tight mb-1.5">{tagName}</p>
-      <p className="text-[7.5px] text-gray-500 text-center leading-relaxed mb-2.5 max-w-[110px]">{desc}</p>
-      <span className={cn("inline-flex items-center gap-1 text-[7px] font-semibold px-2 py-0.5 rounded mb-3", t.badge)}>
-        {tagLabel}
-      </span>
-      <CtaBtn extra="w-full justify-center rounded-xl px-0 py-1.5" />
-      <p className="text-[6.5px] font-mono text-gray-400 mt-2">{domain}</p>
-    </div>
-  );
-
   /* ── default standard themes ── */
+  const isDarkCard = t.cardBg === "bg-zinc-950" || t.cardBg === "bg-slate-900";
   return (
     <div className="rounded-2xl overflow-hidden border border-border/40 shadow-md">
-      <div className={cn("relative px-4 pt-5 pb-7 text-center overflow-hidden", t.hero)}>
-        <div className="absolute inset-0 opacity-[0.06]"
-          style={{ backgroundImage: "radial-gradient(circle, white 1px, transparent 1px)", backgroundSize: "16px 16px" }} />
-        <div className="absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-black/30 to-transparent" />
-        <div className="relative w-10 h-10 rounded-[12px] bg-white/20 border border-white/30 flex items-center justify-center mx-auto shadow-lg">
-          <Icon className="w-5 h-5 text-white" />
+      {/* ── Hero ── */}
+      <div className={cn("relative px-4 pt-6 pb-8 text-center overflow-hidden", t.hero)}>
+        <div className="absolute inset-0 opacity-[0.05]"
+          style={{ backgroundImage: "radial-gradient(circle, white 1px, transparent 1px)", backgroundSize: "14px 14px" }} />
+        <div className="absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-black/25 to-transparent pointer-events-none" />
+        <div className="relative w-11 h-11 rounded-2xl bg-white/20 border border-white/30 flex items-center justify-center mx-auto shadow-lg backdrop-blur-sm">
+          <Icon className="w-5 h-5 text-white drop-shadow" />
         </div>
-        <p className="text-[8px] text-white/70 font-mono mt-1.5 tracking-widest uppercase">{domain}</p>
+        <p className="text-[7.5px] text-white/60 font-mono mt-2 tracking-[0.18em] uppercase">{domain}</p>
       </div>
-      <div className={cn("relative -mt-4 mx-2.5 rounded-[14px] border shadow-lg px-3 pt-2.5 pb-2.5", t.cardBg, t.cardBorder)}>
-        <div className="flex items-start justify-between gap-1.5">
-          <span className={cn("text-[13px] font-black leading-tight", t.shimmer)}>{tagName}</span>
-          <span className={cn("inline-flex items-center gap-0.5 text-[7px] font-bold px-1.5 py-0.5 rounded-full shrink-0", t.badge)}>
-            <RiShieldCheckLine className="w-2 h-2" />{tagLabel}
+      {/* ── Floating card ── */}
+      <div className={cn("relative -mt-4 mx-2.5 rounded-[16px] border shadow-xl px-3 pt-3 pb-2.5", t.cardBg, t.cardBorder)}>
+        <div className="flex items-start justify-between gap-2">
+          <span className={cn("text-[13px] font-black leading-tight tracking-tight", t.shimmer)}>{tagName}</span>
+          <span className={cn("inline-flex items-center gap-0.5 text-[6.5px] font-bold px-1.5 py-0.5 rounded-full shrink-0 mt-0.5 whitespace-nowrap", t.badge)}>
+            <RiShieldCheckLine className="w-1.5 h-1.5" />{tagLabel}
           </span>
         </div>
         {desc && (
-          <p className={cn("text-[8px] mt-1 leading-relaxed", t.cardText === "text-white" ? "text-white/60" : "text-gray-500")}>{desc}</p>
+          <p className={cn("text-[7.5px] mt-1.5 leading-[1.6]", isDarkCard ? "text-zinc-500" : "text-muted-foreground/55")}>{desc}</p>
         )}
       </div>
-      <div className={cn("px-2.5 pt-2 pb-3 flex justify-center", t.cardBg)}>
+      {/* ── CTA ── */}
+      <div className={cn("px-2.5 pt-2.5 pb-3.5 flex justify-center", t.cardBg)}>
         <CtaBtn />
       </div>
     </div>

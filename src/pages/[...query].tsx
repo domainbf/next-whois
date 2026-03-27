@@ -4165,83 +4165,64 @@ export default function LookupPage({
     hero: string;       shimmer: string;
     badge: string;      btn: string;
     cardBg: string;     cardBorder: string; cardText: string;
-    layout?: "default" | "celebrate" | "neon" | "gradient" | "split" | "classic" | "hero" | "minimal";
+    layout?: "default" | "celebrate" | "neon" | "gradient" | "split" | "flash";
     accent?: string;    accentText?: string;
   };
   const CARD_THEMES: Record<string, CardThemeDef> = {
-    /* ── Existing 6 ── */
+    /* ── 8 standard themes — one per tag style, all default layout ── */
     app: {
-      hero: "bg-gradient-to-br from-zinc-700 to-zinc-900",
-      shimmer: "text-shimmer", badge: "bg-white/15 text-white border border-white/25",
-      btn: "bg-zinc-800 text-white hover:bg-zinc-700",
+      hero: "bg-gradient-to-br from-zinc-600 to-zinc-900",
+      shimmer: "text-shimmer", badge: "bg-zinc-100 text-zinc-600 border border-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:border-zinc-700",
+      btn: "bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900",
       cardBg: "bg-background", cardBorder: "border-border/50", cardText: "text-foreground",
     },
-    glow: {
-      hero: "bg-gradient-to-br from-teal-400 to-teal-600",
-      shimmer: "text-shimmer", badge: "bg-teal-500 text-white border-0",
-      btn: "bg-teal-500 text-white hover:bg-teal-600",
-      cardBg: "bg-background", cardBorder: "border-teal-200/60 dark:border-teal-800/40", cardText: "text-foreground",
-    },
-    midnight: {
-      hero: "bg-gradient-to-br from-slate-700 via-blue-900 to-slate-900",
-      shimmer: "text-shimmer-white", badge: "bg-blue-500 text-white border-0",
-      btn: "bg-blue-600 text-white hover:bg-blue-700",
-      cardBg: "bg-slate-900", cardBorder: "border-slate-700", cardText: "text-white",
+    official: {
+      hero: "bg-gradient-to-br from-blue-600 to-indigo-800",
+      shimmer: "text-foreground font-black", badge: "bg-blue-50 text-blue-700 border border-blue-200/80 dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-800/60",
+      btn: "bg-blue-700 text-white hover:bg-blue-800",
+      cardBg: "bg-background", cardBorder: "border-border/50", cardText: "text-foreground",
     },
     aurora: {
-      hero: "bg-gradient-to-br from-violet-500 via-fuchsia-500 to-pink-400",
-      shimmer: "text-shimmer", badge: "bg-fuchsia-500 text-white border-0",
-      btn: "bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white",
-      cardBg: "bg-background", cardBorder: "border-violet-200/60 dark:border-violet-800/40", cardText: "text-foreground",
+      hero: "bg-gradient-to-br from-violet-500 via-fuchsia-500 to-purple-700",
+      shimmer: "text-foreground font-black", badge: "bg-violet-50 text-violet-700 border border-violet-200/80 dark:bg-violet-950/60 dark:text-violet-300 dark:border-violet-800/60",
+      btn: "bg-violet-600 text-white hover:bg-violet-700",
+      cardBg: "bg-background", cardBorder: "border-border/50", cardText: "text-foreground",
+    },
+    emerald: {
+      hero: "bg-gradient-to-br from-emerald-400 to-teal-700",
+      shimmer: "text-foreground font-black", badge: "bg-emerald-50 text-emerald-700 border border-emerald-200/80 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800/60",
+      btn: "bg-emerald-600 text-white hover:bg-emerald-700",
+      cardBg: "bg-background", cardBorder: "border-border/50", cardText: "text-foreground",
     },
     solar: {
       hero: "bg-gradient-to-br from-amber-400 to-orange-600",
-      shimmer: "text-shimmer", badge: "bg-orange-500 text-white border-0",
+      shimmer: "text-foreground font-black", badge: "bg-amber-50 text-amber-700 border border-amber-200/80 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800/60",
       btn: "bg-orange-500 text-white hover:bg-orange-600",
-      cardBg: "bg-background", cardBorder: "border-amber-200/60 dark:border-amber-800/40", cardText: "text-foreground",
+      cardBg: "bg-background", cardBorder: "border-border/50", cardText: "text-foreground",
     },
-    ink: {
-      hero: "bg-gradient-to-br from-zinc-800 via-zinc-900 to-black",
-      shimmer: "text-shimmer-white", badge: "bg-zinc-600 text-white border-0",
-      btn: "bg-zinc-700 text-white hover:bg-zinc-600",
-      cardBg: "bg-zinc-950", cardBorder: "border-zinc-800", cardText: "text-white",
+    dev: {
+      hero: "bg-gradient-to-br from-slate-600 to-[#0d1117]",
+      shimmer: "text-[#58a6ff] font-black font-mono", badge: "bg-[#161b22] text-[#58a6ff] border border-[#30363d]",
+      btn: "bg-[#238636] text-white hover:bg-[#2ea043]",
+      cardBg: "bg-zinc-950", cardBorder: "border-zinc-800", cardText: "text-zinc-200",
     },
-    /* ── New colour themes (same default layout) ── */
-    rose: {
-      hero: "bg-gradient-to-br from-pink-400 via-rose-500 to-red-400",
-      shimmer: "text-shimmer", badge: "bg-white/20 text-white border border-white/30",
-      btn: "bg-rose-500 text-white hover:bg-rose-600",
-      cardBg: "bg-background", cardBorder: "border-rose-200/60 dark:border-rose-800/40", cardText: "text-foreground",
-    },
-    forest: {
-      hero: "bg-gradient-to-br from-emerald-400 via-green-500 to-teal-600",
-      shimmer: "text-shimmer", badge: "bg-white/20 text-white border border-white/30",
-      btn: "bg-emerald-600 text-white hover:bg-emerald-700",
-      cardBg: "bg-background", cardBorder: "border-emerald-200/60 dark:border-emerald-800/40", cardText: "text-foreground",
-    },
-    ocean: {
-      hero: "bg-gradient-to-br from-cyan-400 via-blue-500 to-indigo-700",
-      shimmer: "text-shimmer-white", badge: "bg-cyan-400 text-slate-900 border-0",
-      btn: "bg-cyan-500 text-white hover:bg-cyan-600",
-      cardBg: "bg-slate-950", cardBorder: "border-slate-700", cardText: "text-white",
-    },
-    gold: {
-      hero: "bg-gradient-to-br from-yellow-300 via-amber-400 to-orange-400",
-      shimmer: "text-shimmer", badge: "bg-amber-900/70 text-amber-100 border-0",
+    warning: {
+      hero: "bg-gradient-to-br from-yellow-400 to-amber-600",
+      shimmer: "text-foreground font-black", badge: "bg-yellow-50 text-yellow-800 border border-yellow-300/80 dark:bg-yellow-950/60 dark:text-yellow-300 dark:border-yellow-800/60",
       btn: "bg-amber-500 text-white hover:bg-amber-600",
-      cardBg: "bg-background", cardBorder: "border-amber-300/60 dark:border-amber-700/40", cardText: "text-foreground",
+      cardBg: "bg-background", cardBorder: "border-border/50", cardText: "text-foreground",
     },
-    crimson: {
-      hero: "bg-gradient-to-br from-red-500 via-rose-600 to-red-800",
-      shimmer: "text-shimmer-white", badge: "bg-white/20 text-white border border-white/30",
-      btn: "bg-red-600 text-white hover:bg-red-700",
-      cardBg: "bg-background", cardBorder: "border-red-200/60 dark:border-red-800/40", cardText: "text-foreground",
+    premium: {
+      hero: "bg-gradient-to-br from-purple-600 via-fuchsia-500 to-rose-500",
+      shimmer: "text-foreground font-black", badge: "bg-fuchsia-50 text-fuchsia-700 border border-fuchsia-200/80 dark:bg-fuchsia-950/60 dark:text-fuchsia-300 dark:border-fuchsia-800/60",
+      btn: "bg-gradient-to-r from-purple-600 to-fuchsia-500 text-white",
+      cardBg: "bg-background", cardBorder: "border-border/50", cardText: "text-foreground",
     },
-    /* ── Special layouts ── */
+    /* ── 5 special layout themes ── */
     celebrate: {
       layout: "celebrate",
       hero: "bg-gradient-to-br from-red-700 to-red-900",
-      shimmer: "text-shimmer-white", badge: "bg-amber-400 text-amber-900 border-0",
+      shimmer: "text-white font-black", badge: "bg-amber-400 text-amber-900 border-0",
       btn: "bg-amber-500 text-white hover:bg-amber-600",
       cardBg: "bg-white", cardBorder: "border-amber-100", cardText: "text-gray-900",
       accent: "bg-amber-500", accentText: "text-white",
@@ -4249,7 +4230,7 @@ export default function LookupPage({
     neon: {
       layout: "neon",
       hero: "bg-[#050d18]",
-      shimmer: "text-shimmer-white", badge: "bg-cyan-400 text-slate-900 border-0",
+      shimmer: "text-white font-black", badge: "bg-cyan-400 text-slate-900 border-0",
       btn: "bg-gradient-to-r from-cyan-400 to-violet-600 text-white",
       cardBg: "bg-[#050d18]", cardBorder: "border-slate-800", cardText: "text-white",
       accent: "text-cyan-400", accentText: "text-cyan-400",
@@ -4257,7 +4238,7 @@ export default function LookupPage({
     gradient: {
       layout: "gradient",
       hero: "bg-gradient-to-br from-rose-300 via-sky-300 to-emerald-300",
-      shimmer: "text-shimmer", badge: "bg-black/10 text-gray-800 border border-black/20",
+      shimmer: "text-gray-900 font-black", badge: "bg-black/10 text-gray-800 border border-black/20",
       btn: "bg-gray-900 text-white hover:bg-gray-800",
       cardBg: "bg-transparent", cardBorder: "border-0", cardText: "text-gray-900",
       accent: "bg-gray-900", accentText: "text-white",
@@ -4265,93 +4246,18 @@ export default function LookupPage({
     split: {
       layout: "split",
       hero: "bg-black",
-      shimmer: "text-shimmer", badge: "bg-blue-500 text-white border-0",
+      shimmer: "text-white font-black", badge: "bg-blue-500 text-white border-0",
       btn: "bg-gray-900 text-white hover:bg-black",
       cardBg: "bg-white", cardBorder: "border-border/50", cardText: "text-foreground",
       accent: "bg-blue-600", accentText: "text-white",
     },
     flash: {
-      layout: "flash" as any,
+      layout: "flash",
       hero: "bg-[#FF3800]",
-      shimmer: "text-shimmer", badge: "bg-[#FF3800] text-white border-0",
+      shimmer: "text-white font-black", badge: "bg-[#FF3800] text-white border-0",
       btn: "bg-gradient-to-r from-orange-500 to-red-600 text-white",
       cardBg: "bg-white", cardBorder: "border-0", cardText: "text-gray-900",
       accent: "bg-yellow-300", accentText: "text-black",
-    },
-    /* ── Classic layouts: Style A — gradient hero strip + floating white card ── */
-    "blue-classic": {
-      layout: "classic" as any,
-      hero: "bg-gradient-to-br from-blue-500 to-blue-700",
-      shimmer: "text-shimmer-white",
-      badge: "bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-800",
-      btn: "bg-blue-600 text-white hover:bg-blue-700",
-      cardBg: "bg-background", cardBorder: "border-border/50", cardText: "text-foreground",
-    },
-    "purple-classic": {
-      layout: "classic" as any,
-      hero: "bg-gradient-to-br from-violet-500 to-purple-700",
-      shimmer: "text-shimmer-white",
-      badge: "bg-violet-50 text-violet-700 border border-violet-200 dark:bg-violet-950/60 dark:text-violet-300 dark:border-violet-800",
-      btn: "bg-violet-600 text-white hover:bg-violet-700",
-      cardBg: "bg-background", cardBorder: "border-border/50", cardText: "text-foreground",
-    },
-    "green-classic": {
-      layout: "classic" as any,
-      hero: "bg-gradient-to-br from-emerald-400 to-green-600",
-      shimmer: "text-shimmer-white",
-      badge: "bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800",
-      btn: "bg-emerald-600 text-white hover:bg-emerald-700",
-      cardBg: "bg-background", cardBorder: "border-border/50", cardText: "text-foreground",
-    },
-    /* ── Hero layouts: Style B — full-screen immersive gradient ── */
-    "blue-hero": {
-      layout: "hero" as any,
-      hero: "bg-gradient-to-br from-blue-500 via-indigo-600 to-blue-800",
-      shimmer: "text-shimmer-white",
-      badge: "bg-white/20 text-white border border-white/30",
-      btn: "bg-white/20 text-white border border-white/30 hover:bg-white/30 backdrop-blur-sm",
-      cardBg: "bg-transparent", cardBorder: "border-0", cardText: "text-white",
-    },
-    "purple-hero": {
-      layout: "hero" as any,
-      hero: "bg-gradient-to-br from-violet-600 via-purple-600 to-indigo-700",
-      shimmer: "text-shimmer-white",
-      badge: "bg-white/20 text-white border border-white/30",
-      btn: "bg-white/20 text-white border border-white/30 hover:bg-white/30 backdrop-blur-sm",
-      cardBg: "bg-transparent", cardBorder: "border-0", cardText: "text-white",
-    },
-    "green-hero": {
-      layout: "hero" as any,
-      hero: "bg-gradient-to-br from-emerald-500 via-teal-600 to-green-700",
-      shimmer: "text-shimmer-white",
-      badge: "bg-white/20 text-white border border-white/30",
-      btn: "bg-white/20 text-white border border-white/30 hover:bg-white/30 backdrop-blur-sm",
-      cardBg: "bg-transparent", cardBorder: "border-0", cardText: "text-white",
-    },
-    /* ── Minimal layouts: Style C — compact centered card ── */
-    "blue-minimal": {
-      layout: "minimal" as any,
-      hero: "bg-blue-500",
-      shimmer: "text-shimmer-white",
-      badge: "bg-blue-50 text-blue-600 border border-blue-200 dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-800",
-      btn: "bg-blue-600 text-white hover:bg-blue-700",
-      cardBg: "bg-background", cardBorder: "border-border/50", cardText: "text-foreground",
-    },
-    "purple-minimal": {
-      layout: "minimal" as any,
-      hero: "bg-violet-500",
-      shimmer: "text-shimmer-white",
-      badge: "bg-violet-50 text-violet-600 border border-violet-200 dark:bg-violet-950/60 dark:text-violet-300 dark:border-violet-800",
-      btn: "bg-violet-600 text-white hover:bg-violet-700",
-      cardBg: "bg-background", cardBorder: "border-border/50", cardText: "text-foreground",
-    },
-    "green-minimal": {
-      layout: "minimal" as any,
-      hero: "bg-emerald-500",
-      shimmer: "text-shimmer-white",
-      badge: "bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800",
-      btn: "bg-emerald-600 text-white hover:bg-emerald-700",
-      cardBg: "bg-background", cardBorder: "border-border/50", cardText: "text-foreground",
     },
   };
 
@@ -5794,7 +5700,7 @@ export default function LookupPage({
                                 {/* ── Text ── */}
                                 <div className="px-8 pt-3 pb-3 text-center">
                                   <h2 className="text-[24px] font-black text-white leading-tight tracking-tight">{stamp.tagName}</h2>
-                                  <p className="text-[13px] mt-2 leading-relaxed max-w-[240px] mx-auto" style={{color:"#4a5568"}}>
+                                  <p className="text-[13px] mt-2 leading-relaxed max-w-[240px] mx-auto" style={{color:"rgba(120,138,160,0.88)"}}>
                                     {stamp.description || (isChinese
                                       ? `${result.domain || target} 已通过持有人验证。`
                                       : `${result.domain || target} has been verified and claimed.`
@@ -6033,139 +5939,7 @@ export default function LookupPage({
                             );
 
                             /* ════════════════════════════════════════
-                               Layout: classic — Style A
-                               Gradient hero strip + floating white card
-                            ════════════════════════════════════════ */
-                            if ((theme as any).layout === "classic") return (
-                              <div key={stamp.id} className="relative overflow-hidden">
-                                {/* ── Gradient hero strip ── */}
-                                <div className={cn("relative px-6 pt-8 pb-16 flex flex-col items-center overflow-hidden", theme.hero)}>
-                                  <div className="absolute inset-0 opacity-[0.06]"
-                                    style={{backgroundImage:"radial-gradient(circle,white 1px,transparent 1px)",backgroundSize:"16px 16px"}} />
-                                  <button onClick={() => setStampDetailOpen(false)}
-                                    className="absolute top-4 right-4 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-black/20 hover:bg-black/30 text-white transition-colors"
-                                    aria-label="Close">
-                                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                                      <path d="M1 1l10 10M11 1L1 11" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
-                                    </svg>
-                                  </button>
-                                  <div className="relative z-10 w-16 h-16 rounded-[18px] bg-white/20 backdrop-blur-sm border border-white/30 flex items-center justify-center shadow-2xl">
-                                    <StampIcon className="w-8 h-8 text-white drop-shadow" />
-                                  </div>
-                                </div>
-                                {/* ── Floating info card ── */}
-                                <div className="relative -mt-10 mx-4 rounded-2xl bg-white dark:bg-zinc-900 border border-gray-100 dark:border-zinc-800 shadow-2xl px-5 pt-5 pb-4">
-                                  <div className="flex justify-center mb-3">
-                                    <span className={cn("inline-flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1 rounded-full", theme.badge)}>
-                                      <RiShieldCheckLine className="w-3 h-3" />
-                                      {isChinese ? lbl.zh : lbl.en}
-                                    </span>
-                                  </div>
-                                  <h2 className="text-[22px] font-black text-center text-gray-900 dark:text-white leading-tight tracking-tight mb-2.5">{stamp.tagName}</h2>
-                                  <p className="text-[13px] text-gray-500 dark:text-gray-400 text-center leading-[1.6]">
-                                    {stamp.description || (isChinese ? `该域名 ${result.domain || target} 已通过官方认证。` : `${result.domain || target} has been officially verified.`)}
-                                  </p>
-                                </div>
-                                {/* ── CTA ── */}
-                                <div className="px-4 pt-4 pb-6">
-                                  {stamp.link
-                                    ? <a href={stamp.link} target="_blank" rel="noopener noreferrer"
-                                        className={cn("flex items-center justify-center gap-2 w-full py-3.5 rounded-xl text-[15px] font-bold transition-all active:scale-[0.98]", theme.btn)}>
-                                        {isChinese ? "访问主页" : "Visit Profile"}
-                                        <RiArrowRightSLine className="w-5 h-5 opacity-80" />
-                                      </a>
-                                    : <p className="text-center text-[12px] text-gray-400 dark:text-gray-500 py-1">{isChinese ? "未设置主页链接" : "No profile link"}</p>
-                                  }
-                                </div>
-                              </div>
-                            );
-
-                            /* ════════════════════════════════════════
-                               Layout: hero — Style B
-                               Full-screen immersive gradient
-                            ════════════════════════════════════════ */
-                            if ((theme as any).layout === "hero") return (
-                              <div key={stamp.id} className={cn("relative overflow-hidden flex flex-col", theme.hero)} style={{minHeight:400}}>
-                                <button onClick={() => setStampDetailOpen(false)}
-                                  className="absolute top-4 right-4 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-black/20 hover:bg-black/30 text-white transition-colors"
-                                  aria-label="Close">
-                                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                                    <path d="M1 1l10 10M11 1L1 11" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
-                                  </svg>
-                                </button>
-                                <div className="absolute inset-0 opacity-[0.05]"
-                                  style={{backgroundImage:"radial-gradient(circle,white 1px,transparent 1px)",backgroundSize:"18px 18px"}} />
-                                {/* Center content */}
-                                <div className="relative flex-1 flex flex-col items-center justify-center text-center px-8 pt-14 pb-6">
-                                  <div className="w-16 h-16 rounded-[18px] bg-white/20 backdrop-blur-sm border border-white/30 flex items-center justify-center shadow-2xl mb-5">
-                                    <StampIcon className="w-8 h-8 text-white drop-shadow" />
-                                  </div>
-                                  <h2 className="text-[22px] font-black text-white leading-tight tracking-tight mb-3">{stamp.tagName}</h2>
-                                  <span className={cn("inline-flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1 rounded-full mb-4", theme.badge)}>
-                                    <RiShieldCheckLine className="w-3 h-3" />
-                                    {isChinese ? lbl.zh : lbl.en}
-                                  </span>
-                                  <p className="text-[13px] text-white/75 leading-[1.6] max-w-[260px]">
-                                    {stamp.description || (isChinese ? `该域名 ${result.domain || target} 已通过官方认证。` : `${result.domain || target} has been officially verified.`)}
-                                  </p>
-                                </div>
-                                {/* Bottom CTA */}
-                                <div className="relative px-5 pb-8 space-y-2.5">
-                                  {stamp.link
-                                    ? <a href={stamp.link} target="_blank" rel="noopener noreferrer"
-                                        className={cn("flex items-center justify-center gap-2 w-full py-4 rounded-xl font-bold text-[15px] transition-all active:scale-[0.98]", theme.btn)}>
-                                        {isChinese ? "访问主页" : "Visit Profile"}
-                                        <RiArrowRightSLine className="w-5 h-5 opacity-80" />
-                                      </a>
-                                    : null
-                                  }
-                                  <button onClick={() => setStampDetailOpen(false)}
-                                    className="flex items-center justify-center w-full py-3 text-[13px] font-medium text-white/50 hover:text-white/75 transition-colors">
-                                    {isChinese ? "关闭" : "Close"}
-                                  </button>
-                                </div>
-                              </div>
-                            );
-
-                            /* ════════════════════════════════════════
-                               Layout: minimal — Style C
-                               Compact centered card, clean whitespace
-                            ════════════════════════════════════════ */
-                            if ((theme as any).layout === "minimal") return (
-                              <div key={stamp.id} className="relative flex flex-col items-center px-6 pt-8 pb-6 bg-white dark:bg-zinc-900">
-                                <button onClick={() => setStampDetailOpen(false)}
-                                  className="absolute top-4 right-4 w-7 h-7 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors"
-                                  aria-label="Close">
-                                  <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
-                                    <path d="M1 1l9 9M10 1L1 10" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/>
-                                  </svg>
-                                </button>
-                                {/* Icon */}
-                                <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg mb-4", theme.hero)}>
-                                  <StampIcon className="w-7 h-7 text-white" />
-                                </div>
-                                <h2 className="text-[20px] font-black text-center text-gray-900 dark:text-white leading-tight tracking-tight mb-2">{stamp.tagName}</h2>
-                                <p className="text-[13px] text-gray-500 dark:text-gray-400 text-center leading-[1.6] mb-4 max-w-[240px]">
-                                  {stamp.description || (isChinese ? `该域名 ${result.domain || target} 已通过官方认证。` : `${result.domain || target} has been officially verified.`)}
-                                </p>
-                                <span className={cn("inline-flex items-center gap-1.5 text-[10.5px] font-semibold px-2.5 py-1 rounded-md mb-5", theme.badge)}>
-                                  <RiShieldCheckLine className="w-2.5 h-2.5" />
-                                  {isChinese ? lbl.zh : lbl.en}
-                                </span>
-                                {stamp.link
-                                  ? <a href={stamp.link} target="_blank" rel="noopener noreferrer"
-                                      className={cn("flex items-center justify-center gap-2 w-full py-3.5 rounded-xl font-bold text-[15px] transition-all active:scale-[0.98] mb-3", theme.btn)}>
-                                      {isChinese ? "访问主页" : "Visit Profile"}
-                                      <RiArrowRightSLine className="w-5 h-5 opacity-80" />
-                                    </a>
-                                  : <div className="mb-3" />
-                                }
-                                <p className="text-[10px] font-mono text-gray-400 dark:text-gray-500">{result.domain || target}</p>
-                              </div>
-                            );
-
-                            /* ════════════════════════════════════════
-                               Layout: default (existing style)
+                               Layout: default
                             ════════════════════════════════════════ */
                             return (
                               <div key={stamp.id}>
@@ -6196,7 +5970,7 @@ export default function LookupPage({
                                       {isChinese ? lbl.zh : lbl.en}
                                     </span>
                                   </div>
-                                  {stamp.description && <p className="text-[12.5px] text-muted-foreground leading-relaxed mt-2">{stamp.description}</p>}
+                                  {stamp.description && <p className={cn("text-[12.5px] leading-relaxed mt-2", theme.cardBg === "bg-zinc-950" ? "text-zinc-500" : "text-muted-foreground")}>{stamp.description}</p>}
                                 </div>
                                 {/* ── CTA ── */}
                                 <div className="px-3.5 pt-3 pb-5">
