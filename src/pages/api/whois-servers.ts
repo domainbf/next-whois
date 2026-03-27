@@ -6,6 +6,7 @@ import {
   deleteCustomServer,
   CustomServerEntry,
 } from "@/lib/whois/custom-servers";
+import { requireAdmin } from "@/lib/admin";
 
 export const config = {
   maxDuration: 10,
@@ -26,6 +27,11 @@ export default async function handler(
     const servers = await getAllCustomServers();
     const userServers = await getUserManagedServers();
     return res.status(200).json({ success: true, servers, userServers });
+  }
+
+  if (req.method === "POST" || req.method === "DELETE") {
+    const adminErr = await requireAdmin(req, res);
+    if (adminErr) return;
   }
 
   if (req.method === "POST") {

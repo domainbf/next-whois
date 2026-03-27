@@ -1,4 +1,4 @@
-modules = ["nodejs-20", "web"]
+modules = ["nodejs-20", "web", "bash", "postgresql-16"]
 [agent]
 expertMode = true
 
@@ -17,6 +17,10 @@ author = "agent"
 task = "workflow.run"
 args = "Start application"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Batch Scrape TLDs"
+
 [[workflows.workflow]]
 name = "Start application"
 author = "agent"
@@ -29,6 +33,42 @@ waitForPort = 5000
 [workflows.workflow.metadata]
 outputType = "webview"
 
+[[workflows.workflow]]
+name = "Batch Scrape TLDs"
+author = "agent"
+
+[workflows.workflow.metadata]
+outputType = "console"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "node scripts/batch-scrape.mjs --type cc --force --concurrency 2 --delay 2500"
+
 [[ports]]
 localPort = 5000
 externalPort = 80
+
+[userenv]
+
+[userenv.shared]
+SUPABASE_URL = "https://zyhyufxaccjvmkbyivxz.supabase.co"
+RESEND_FROM_EMAIL = "noreply@x.rw"
+NEXT_PUBLIC_APP_URL = "https://x.rw"
+NEXTAUTH_SECRET = "3878ffd6c3e0ce5cf4b9d0fc239d41ae50c0cd8bbdc3a249a1d9a7ba1354a953"
+VERCEL_PROJECT_ID = "prj_iUBe5v2wht9SYe1SuFKyj0vMgyLR"
+WHOIS_TIMEOUT_MS = "10000"
+NEXT_PUBLIC_MAX_WHOIS_FOLLOW = "0"
+NEXT_PUBLIC_HISTORY_LIMIT = "-1"
+
+[userenv.development]
+NEXTAUTH_URL = "https://47ffe339-d299-4262-a870-555637e91b46-00-219t6rtphep5t.kirk.replit.dev"
+NEXT_PUBLIC_BASE_URL = "https://47ffe339-d299-4262-a870-555637e91b46-00-219t6rtphep5t.kirk.replit.dev"
+
+[postMerge]
+path = "scripts/post-merge.sh"
+timeoutMs = 60000
+
+[deployment]
+deploymentTarget = "autoscale"
+run = ["pnpm", "run", "start"]
+build = ["pnpm", "run", "build"]

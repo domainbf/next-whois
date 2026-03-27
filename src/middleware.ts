@@ -1,81 +1,25 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { match } from "@formatjs/intl-localematcher";
-import Negotiator from "negotiator";
 
-let locales = ["en", "zh", "zh-tw", "de", "ru", "ja", "fr", "ko"];
-let defaultLocale = "en";
-
-function getLocale(request: NextRequest): string {
-  const storedLocale = request.cookies.get("NEXT_LOCALE")?.value;
-  if (storedLocale && locales.includes(storedLocale)) {
-    return storedLocale;
-  }
-
-  let headers = {
-    "accept-language": request.headers.get("accept-language") || defaultLocale,
-  };
-
-  let languages = new Negotiator({ headers }).languages();
-
-  // Map browser language codes to our locale codes
-  const languageMap: { [key: string]: string } = {
-    "zh-tw": "zh-tw",
-    "zh-HK": "zh-tw",
-    "zh-MO": "zh-tw",
-    "zh-CN": "zh",
-    "zh-SG": "zh",
-  };
-
-  // Transform languages array based on our mapping
-  const mappedLanguages = languages.map((lang) => {
-    const baseLang = lang.toLowerCase().split("-")[0];
-    const fullLang = lang.replace("_", "-"); // normalize underscore to hyphen
-    return (
-      languageMap[fullLang] ||
-      languageMap[`${baseLang}-${baseLang.toUpperCase()}`] ||
-      baseLang
-    );
-  });
-
-  try {
-    return match(mappedLanguages, locales, defaultLocale);
-  } catch (error) {
-    return defaultLocale;
-  }
-}
-
+/**
+ * Middleware — pass-through only.
+ *
+ * Locale detection is handled entirely by the client (locale-context.tsx):
+ *   1. NEXT_LOCALE cookie (user's saved language preference)
+ *   2. navigator.language fallback
+ *
+ * We actively prevent any locale-based URL redirect caching that may have
+ * been left over from a previous version of this middleware.
+ */
 export function middleware(request: NextRequest) {
-  const pathname = request.nextUrl.pathname;
-
-  const currentLocale = locales.find(
-    (locale) => pathname === `/${locale}` || pathname.startsWith(`/${locale}/`),
-  );
-
-  const pathWithoutLocale = currentLocale
-    ? pathname.replace(`/${currentLocale}`, "")
-    : pathname;
-
-  const isDomainQuery =
-    pathWithoutLocale.split("/").length === 2 && pathWithoutLocale !== "/";
-  if (isDomainQuery) return;
-
-  const pathnameHasLocale = locales.some(
-    (locale) => pathname.startsWith(`/${locale}/`) || pathname === `/${locale}`,
-  );
-  if (pathnameHasLocale) return;
-
-  const locale = getLocale(request);
-  request.nextUrl.pathname = `/${locale}${pathname}`;
-  const response = NextResponse.redirect(request.nextUrl);
-  response.cookies.set("NEXT_LOCALE", locale, {
-    path: "/",
-    maxAge: 60 * 60 * 24 * 365,
-  });
-
-  return response;
+  const res = NextResponse.next();
+  // Prevent browsers from caching any response as a redirect.
+  // This clears stale redirect entries (e.g. old /zh or /en prefixed paths).
+  res.headers.set("Cache-Control", "no-store, must-revalidate");
+  return res;
 }
 
 export const config = {
-  matcher: ["/((?!_next|api|favicon.ico|icons|images|.*\\..*).*)"],
+  // Only run on HTML page routes, not on _next assets or API routes
+  matcher: ["/((?!_next/static|_next/image|api|favicon.ico|icons|images|.*\\..*).*)"],
 };

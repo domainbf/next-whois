@@ -1,9 +1,12 @@
 import { HISTORY_LIMIT } from "@/lib/env";
 
+export type RegStatus = "registered" | "unregistered" | "reserved" | "error" | "unknown";
+
 export type HistoryItem = {
   query: string;
   timestamp: number;
   queryType: "domain" | "ipv4" | "ipv6" | "asn" | "cidr";
+  regStatus?: RegStatus;
 };
 
 export function detectQueryType(query: string): HistoryItem["queryType"] {
@@ -60,7 +63,7 @@ export function listHistory(): HistoryItem[] {
   }
 }
 
-export function addHistory(query: string) {
+export function addHistory(query: string, regStatus?: RegStatus) {
   if (!query || query.length === 0 || !isLocalStorageAvailable()) return;
 
   try {
@@ -70,6 +73,7 @@ export function addHistory(query: string) {
       query: domain,
       timestamp: Date.now(),
       queryType: detectQueryType(domain),
+      ...(regStatus ? { regStatus } : {}),
     };
 
     history = history.filter((item) => item.query !== domain);
@@ -98,3 +102,7 @@ export function removeHistory(query: string) {
     console.warn("Failed to remove history from localStorage:", error);
   }
 }
+
+// no-op: search history is recorded server-side silently via lookup.ts
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export async function syncLocalHistoryToServer(_userId: string): Promise<void> {}

@@ -1,110 +1,39 @@
-import { cn, toSearchURI } from "@/lib/utils";
-import Link from "next/link";
-import { RiDeleteBinLine, RiHistoryLine, RiGlobalLine } from "@remixicon/react";
-import React, { useEffect, useMemo, useCallback } from "react";
+import { cn, toSearchURI, isSearchRoute } from "@/lib/utils";
+import React, { useEffect, useCallback } from "react";
 import { useRouter } from "next/router";
-import { detectQueryType, listHistory, removeHistory } from "@/lib/history";
-import { Badge } from "@/components/ui/badge";
+import Head from "next/head";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { SearchBox } from "@/components/search_box";
 import {
   KeyboardShortcut,
   SearchHotkeysText,
 } from "@/components/search_shortcuts";
-import { useTranslation, TranslationKey } from "@/lib/i18n";
+import { useTranslation } from "@/lib/i18n";
 import { motion } from "framer-motion";
 import { useSearchHotkeys } from "@/hooks/useSearchHotkeys";
-import { format } from "date-fns";
+import { getOrigin } from "@/lib/seo";
+import type { GetServerSideProps } from "next";
 
-function QueryTypeIcon({
-  type,
-  className,
-}: {
-  type: string;
-  className?: string;
-}) {
-  const config = {
-    domain: {
-      label: "",
-      icon: RiGlobalLine,
-      color: "text-blue-500",
-      bg: "bg-blue-500/10",
-    },
-    ipv4: {
-      label: "4",
-      icon: null,
-      color: "text-emerald-600",
-      bg: "bg-emerald-500/10",
-    },
-    ipv6: {
-      label: "6",
-      icon: null,
-      color: "text-purple-500",
-      bg: "bg-purple-500/10",
-    },
-    asn: {
-      label: "AS",
-      icon: null,
-      color: "text-orange-500",
-      bg: "bg-orange-500/10",
-    },
-    cidr: {
-      label: "/",
-      icon: null,
-      color: "text-pink-500",
-      bg: "bg-pink-500/10",
-    },
-  }[type] || {
-    label: "?",
-    icon: null,
-    color: "text-gray-500",
-    bg: "bg-gray-500/10",
-  };
-
-  if (config.icon) {
-    const Icon = config.icon;
-    return <Icon className={cn("w-3.5 h-3.5", config.color, className)} />;
-  }
+function XRWDisplay() {
   return (
-    <span className={cn("text-[9px] font-bold", config.color, className)}>
-      {config.label}
-    </span>
+    <div className="w-full flex flex-col items-center justify-center select-none gap-2">
+      <span className="text-shimmer text-4xl font-bold tracking-[0.22em]">
+        X.RW
+      </span>
+      <span className="text-[10px] text-muted-foreground/35 tracking-[0.22em] uppercase">
+        NiC.RW 提供技术支持
+      </span>
+    </div>
   );
 }
 
-function getDateGroupLabel(
-  timestamp: number,
-  t: (key: TranslationKey) => string,
-): string {
-  const date = new Date(timestamp);
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const yesterday = new Date(today.getTime() - 86400000);
-  const itemDate = new Date(
-    date.getFullYear(),
-    date.getMonth(),
-    date.getDate(),
-  );
-
-  if (itemDate.getTime() === today.getTime()) return t("today");
-  if (itemDate.getTime() === yesterday.getTime()) return t("yesterday");
-  if (date.getFullYear() === now.getFullYear()) return format(date, "MMM dd");
-  return format(date, "MMM dd, yyyy");
-}
-
-export default function HomePage() {
+export default function HomePage({ origin }: { origin: string }) {
   const { t } = useTranslation();
   const router = useRouter();
   const [loading, setLoading] = React.useState(false);
-  const [mounted, setMounted] = React.useState(false);
-  const [refreshTrigger, setRefreshTrigger] = React.useState(0);
 
   useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    const handleStart = () => setLoading(true);
+    const handleStart = (url: string) => { if (isSearchRoute(url)) setLoading(true); };
     const handleComplete = () => setLoading(false);
     router.events.on("routeChangeStart", handleStart);
     router.events.on("routeChangeComplete", handleComplete);
@@ -118,124 +47,132 @@ export default function HomePage() {
 
   useSearchHotkeys({});
 
-  const handleSearch = useCallback((query: string) => {
-    router.push(toSearchURI(query));
-  }, [router]);
-
-  const allHistory = useMemo(() => {
-    if (!mounted) return [];
-    return listHistory().sort((a, b) => b.timestamp - a.timestamp);
-  }, [mounted, refreshTrigger]);
-
-  const groupedHistory = useMemo(() => {
-    const groups: { label: string; items: typeof allHistory }[] = [];
-    if (allHistory.length === 0) return groups;
-    let currentLabel = "";
-    let currentGroup: typeof allHistory = [];
-    for (const item of allHistory) {
-      const label = getDateGroupLabel(item.timestamp, t);
-      if (label !== currentLabel) {
-        if (currentGroup.length > 0)
-          groups.push({ label: currentLabel, items: currentGroup });
-        currentLabel = label;
-        currentGroup = [item];
-      } else {
-        currentGroup.push(item);
-      }
-    }
-    if (currentGroup.length > 0)
-      groups.push({ label: currentLabel, items: currentGroup });
-    return groups;
-  }, [allHistory]);
-
-  const handleRemoveHistory = useCallback(
+  const handleSearch = useCallback(
     (query: string) => {
-      if (!mounted) return;
-      removeHistory(query);
-      setRefreshTrigger((prev) => prev + 1);
+      router.push(toSearchURI(query));
     },
-    [mounted],
+    [router],
   );
 
+  const siteUrl = origin || "";
+  const homeDescription = "免费在线 WHOIS / RDAP 域名查询工具，支持查询域名注册信息、注册商、注册日期、到期时间、DNS、状态等，支持国际域名和 IP 地址查询。";
+
   return (
+    <>
+    <Head>
+      <title>RDAP+WHOIS 域名查询 · 免费在线域名信息查询工具</title>
+      <meta name="description" content={homeDescription} />
+      <meta name="keywords" content="whois查询, rdap, 域名查询, 域名注册信息, 域名到期, whois工具, 域名信息, ip查询, 域名状态" />
+      <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large" />
+      <link rel="canonical" href={siteUrl + "/"} />
+
+      <meta property="og:type" content="website" />
+      <meta property="og:url" content={siteUrl + "/"} />
+      <meta property="og:title" content="RDAP+WHOIS 域名查询 · 免费在线域名信息查询工具" />
+      <meta property="og:description" content={homeDescription} />
+      <meta property="og:image" content={`${siteUrl}/api/og?theme=dark`} />
+      <meta property="og:image:width" content="1200" />
+      <meta property="og:image:height" content="630" />
+      <meta property="og:locale" content="zh_CN" />
+
+      <meta name="twitter:card" content="summary_large_image" />
+      <meta name="twitter:title" content="RDAP+WHOIS 域名查询" />
+      <meta name="twitter:description" content={homeDescription} />
+      <meta name="twitter:image" content={`${siteUrl}/api/og?theme=dark`} />
+
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "WebSite",
+            "name": "RDAP+WHOIS 域名查询",
+            "url": siteUrl,
+            "description": homeDescription,
+            "inLanguage": "zh-CN",
+            "potentialAction": {
+              "@type": "SearchAction",
+              "target": {
+                "@type": "EntryPoint",
+                "urlTemplate": `${siteUrl}/{search_term_string}`,
+              },
+              "query-input": "required name=search_term_string",
+            },
+          }),
+        }}
+      />
+    </Head>
     <ScrollArea className="w-full h-[calc(100vh-4rem)]">
       <main className="w-full max-w-5xl mx-auto px-4 sm:px-6 py-6 min-h-[calc(100vh-4rem)]">
-        <div className="mb-6">
+        <div className="mb-4">
           <div className="relative group">
             <SearchBox onSearch={handleSearch} loading={loading} autoFocus />
             <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-1 pointer-events-none opacity-50 group-hover:opacity-100 transition-opacity">
               <KeyboardShortcut k="/" />
             </div>
           </div>
-          <SearchHotkeysText className="mt-2 px-1 justify-end" />
+          <SearchHotkeysText className="hidden sm:flex mt-2 px-1 justify-end" />
         </div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.1 }}
-        >
-          {allHistory.length > 0 ? (
-            <div className="space-y-1">
-              {groupedHistory.map((group) => (
-                <div key={group.label}>
-                  <div className="flex items-center gap-3 py-2 px-1">
-                    <div className="h-px flex-1 bg-border" />
-                    <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider shrink-0">
-                      {group.label}
-                    </span>
-                    <div className="h-px flex-1 bg-border" />
-                  </div>
-                  {group.items.map((item) => (
-                    <Link
-                      key={`${item.query}-${item.timestamp}`}
-                      href={toSearchURI(item.query)}
-                      onClick={() => handleSearch(item.query)}
-                      className="group flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-muted/50 transition-colors"
-                    >
-                      <div className="w-7 h-7 rounded-md grid place-items-center border border-border bg-muted/20 group-hover:border-primary/30 shrink-0">
-                        <QueryTypeIcon type={item.queryType} />
-                      </div>
-                      <span className="text-sm font-medium truncate flex-1 min-w-0">
-                        {item.query}
-                      </span>
-                      <Badge
-                        variant="outline"
-                        className="text-[8px] px-1.5 py-0 uppercase tracking-wider shrink-0"
-                      >
-                        {item.queryType}
-                      </Badge>
-                      <span className="text-[11px] text-muted-foreground tabular-nums shrink-0">
-                        {format(item.timestamp, "h:mm a")}
-                      </span>
-                      <button
-                        className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-destructive/10 shrink-0"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          handleRemoveHistory(item.query);
-                        }}
-                      >
-                        <RiDeleteBinLine className="w-3.5 h-3.5 text-muted-foreground hover:text-destructive" />
-                      </button>
-                    </Link>
-                  ))}
+        {/* Mobile: centered X.RW brand display */}
+        {!loading && (
+          <div className="sm:hidden flex items-center justify-center" style={{ height: "calc(100vh - 16rem)" }}>
+            <XRWDisplay />
+          </div>
+        )}
+
+        {loading && (
+          <motion.div
+            initial={{ opacity: 1 }}
+            animate={{ opacity: 1 }}
+            className="space-y-6 mt-2"
+          >
+            <div className="text-center py-4">
+              <span className="text-shimmer text-base font-semibold tracking-wide select-none">
+                {t("loading_text")}
+              </span>
+            </div>
+            <div className="glass-panel border border-border rounded-xl p-6 sm:p-8">
+              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                <div className="space-y-3 flex-1">
+                  <div className="h-4 w-14 rounded-md bg-muted animate-pulse" />
+                  <div className="h-8 w-40 rounded-md bg-muted animate-pulse" />
+                  <div className="h-3 w-52 rounded-md bg-muted/70 animate-pulse" />
                 </div>
-              ))}
+                <div className="flex flex-col items-start sm:items-end gap-2">
+                  <div className="h-6 w-20 rounded-full bg-muted animate-pulse" />
+                  <div className="h-3 w-24 rounded-md bg-muted/60 animate-pulse" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-6 mt-8 pt-8 border-t border-border/50">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="space-y-1.5">
+                    <div className="h-3 w-16 rounded bg-muted/60 animate-pulse" />
+                    <div className="h-4 w-24 rounded bg-muted animate-pulse" />
+                    <div className="h-3 w-12 rounded bg-muted/50 animate-pulse" />
+                  </div>
+                ))}
+              </div>
             </div>
-          ) : (
-            <div className="text-center py-12">
-              <RiHistoryLine className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
-              <h3 className="text-sm font-medium text-muted-foreground mb-1">
-                {t("no_history_title")}
-              </h3>
-              <p className="text-xs text-muted-foreground/70">
-                {t("no_history_description")}
-              </p>
+            <div className="glass-panel border border-border rounded-xl p-6">
+              <div className="h-4 w-20 rounded bg-muted/70 animate-pulse mb-4" />
+              <div className="space-y-3">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="flex items-center gap-3">
+                    <div className="w-2 h-2 rounded-full bg-muted animate-pulse shrink-0" />
+                    <div className="h-4 w-36 rounded bg-muted animate-pulse" />
+                  </div>
+                ))}
+              </div>
             </div>
-          )}
-        </motion.div>
+          </motion.div>
+        )}
       </main>
     </ScrollArea>
+    </>
   );
 }
+
+export const getServerSideProps: GetServerSideProps = async ({ req }) => {
+  return { props: { origin: getOrigin(req) } };
+};

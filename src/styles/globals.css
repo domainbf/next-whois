@@ -131,6 +131,11 @@
   background: hsl(var(--card) / 0.95);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 1px 3px hsl(var(--foreground) / 0.04), 0 1px 2px hsl(var(--foreground) / 0.03);
+}
+
+.dark .glass-panel {
+  box-shadow: 0 1px 3px hsl(0 0% 0% / 0.3), 0 1px 2px hsl(0 0% 0% / 0.2);
 }
 
 .custom-scrollbar::-webkit-scrollbar {
@@ -152,6 +157,7 @@ html, body, #__next {
   height: 100%;
   margin: 0;
   padding: 0;
+  overflow-x: hidden;
 }
 
 .text-secondary {
@@ -177,4 +183,219 @@ button {
   -webkit-touch-callout: none;
   -webkit-user-select: none;
   user-select: none;
+}
+
+@keyframes dash-march {
+  to { stroke-dashoffset: -26; }
+}
+
+.animate-dash-march {
+  animation: dash-march 3s linear infinite;
+}
+
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes page-enter {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.page-enter {
+  animation: page-enter 0.12s ease-out both;
+  will-change: opacity;
+}
+
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.2s ease-out both;
+}
+
+.animate-scale-in {
+  animation: scale-in 0.2s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.stagger-1 { animation-delay: 0.04s; }
+.stagger-2 { animation-delay: 0.08s; }
+.stagger-3 { animation-delay: 0.12s; }
+.stagger-4 { animation-delay: 0.16s; }
+.stagger-5 { animation-delay: 0.20s; }
+
+@keyframes text-shimmer {
+  0% { background-position: 100% center; }
+  100% { background-position: 0% center; }
+}
+
+@keyframes text-float {
+  0%, 100% { transform: translateY(0px); opacity: 0.75; }
+  50% { transform: translateY(-2px); opacity: 1; }
+}
+
+.text-shimmer {
+  background: linear-gradient(
+    90deg,
+    hsl(var(--muted-foreground) / 0.5) 0%,
+    hsl(var(--muted-foreground) / 0.5) 30%,
+    hsl(var(--foreground)) 50%,
+    hsl(var(--muted-foreground) / 0.5) 70%,
+    hsl(var(--muted-foreground) / 0.5) 100%
+  );
+  background-size: 300% auto;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: text-shimmer 5.5s ease-in-out infinite, text-float 5s ease-in-out infinite;
+  display: inline-block;
+}
+
+@keyframes shimmer-white {
+  0%   { background-position: 100% center; }
+  100% { background-position: 0%   center; }
+}
+
+.text-shimmer-white {
+  background: linear-gradient(
+    90deg,
+    rgba(255,255,255,0.65) 0%,
+    rgba(255,255,255,0.65) 25%,
+    rgba(255,255,255,1)    50%,
+    rgba(255,255,255,0.65) 75%,
+    rgba(255,255,255,0.65) 100%
+  );
+  background-size: 300% auto;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: shimmer-white 3s ease-in-out infinite;
+  display: inline-block;
+}
+
+/* ── 已认领 badge — 流光扫光效果 ─────────────────────────────────── */
+@keyframes badge-beam {
+  0%   { transform: translateX(-180%) skewX(-18deg); opacity: 0; }
+  4%   { opacity: 1; }
+  38%  { transform: translateX(360%) skewX(-18deg); opacity: 0.85; }
+  39%  { opacity: 0; }
+  100% { transform: translateX(360%) skewX(-18deg); opacity: 0; }
+}
+
+.stamp-claimed-badge {
+  position: relative;
+  overflow: hidden;
+}
+
+.stamp-claimed-badge::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 30%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255,255,255,0.55) 45%,
+    rgba(255,255,255,0.75) 50%,
+    rgba(255,255,255,0.55) 55%,
+    transparent 100%
+  );
+  animation: badge-beam 3.2s cubic-bezier(0.4,0,0.6,1) infinite;
+  pointer-events: none;
+  border-radius: 999px;
+}
+
+/* iOS safe area for bottom navigation */
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/*
+ * Prevent iOS Safari from zooming the page when an input is focused.
+ * Safari zooms in whenever an input's computed font-size is below 16px.
+ * We force 16px on mobile; sm: breakpoint restores the designed smaller size.
+ */
+@media (max-width: 639px) {
+  input,
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="search"],
+  input[type="number"],
+  input[type="date"],
+  input[type="url"],
+  input[type="tel"],
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
+/* Eliminate 300 ms tap delay on all interactive elements on mobile */
+button,
+a,
+[role="button"],
+input[type="submit"],
+input[type="button"],
+label[for],
+select {
+  touch-action: manipulation;
+}
+
+/* Smooth scrolling — skip for users who prefer reduced motion */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+/* TLD Lifecycle hint – 流光闪烁 shimmer (3 rapid flashes → long pause → gentle pulse) */
+@keyframes lc-hint-shimmer {
+  /* Flash 1 */
+  0%   { opacity: 0.5; text-shadow: none; }
+  5%   { opacity: 1; color: #f59e0b; text-shadow: 0 0 8px rgba(245,158,11,.9), 0 0 18px rgba(245,158,11,.4); }
+  10%  { opacity: 0.5; text-shadow: none; }
+  /* Flash 2 */
+  15%  { opacity: 1; color: #f59e0b; text-shadow: 0 0 8px rgba(245,158,11,.9), 0 0 18px rgba(245,158,11,.4); }
+  20%  { opacity: 0.5; text-shadow: none; }
+  /* Flash 3 */
+  25%  { opacity: 1; color: #f59e0b; text-shadow: 0 0 8px rgba(245,158,11,.9), 0 0 18px rgba(245,158,11,.4); }
+  30%  { opacity: 0.5; text-shadow: none; }
+  /* Long pause */
+  78%  { opacity: 0.5; text-shadow: none; }
+  /* Periodic gentle pulse */
+  85%  { opacity: 0.85; color: #f59e0b; text-shadow: 0 0 6px rgba(245,158,11,.55); }
+  92%  { opacity: 0.5; text-shadow: none; }
+  100% { opacity: 0.5; text-shadow: none; }
+}
+
+.lc-hint-shimmer {
+  color: hsl(240 3.8% 46.1% / 0.65);
+  animation: lc-hint-shimmer 10s ease-in-out infinite;
+  animation-fill-mode: both;
+}
+
+/* Reduce all animations for users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

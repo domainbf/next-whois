@@ -6,12 +6,18 @@ import {
   RiSendPlaneLine,
   RiHistoryLine,
   RiLinkM,
+  RiErrorWarningLine,
+  RiInformationLine,
+  RiCloseLine,
 } from "@remixicon/react";
 import { motion, AnimatePresence } from "framer-motion";
-import { cn, isEnter } from "@/lib/utils";
+import { cn, isEnter, validateAndSanitizeInput, sanitizeInput } from "@/lib/utils";
 import { listHistory, HistoryItem } from "@/lib/history";
 import { Badge } from "@/components/ui/badge";
 import { useTranslation } from "@/lib/i18n";
+
+const MAX_INPUT_LENGTH = 300;
+const CHAR_COUNTER_THRESHOLD = 200;
 
 const commonDomains = [
   ".com",
@@ -154,6 +160,7 @@ export function SearchBox({
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const [selectedGroup, setSelectedGroup] = useState(-1);
   const [isEnterPressed, setIsEnterPressed] = useState(false);
+  const [validationError, setValidationError] = useState<{ message: string; isWarning: boolean } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
 
@@ -298,7 +305,7 @@ export function SearchBox({
 
     // Add history suggestions first
     const historySuggestions = history
-      .filter((item) => item.query.toLowerCase().includes(value.toLowerCase()))
+      .filter((item) => item.query && item.query.toLowerCase().includes(value.toLowerCase()))
       .map((item) => item.query);
 
     if (historySuggestions.length > 0) {
@@ -384,9 +391,11 @@ export function SearchBox({
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
+    const value = e.target.value.slice(0, MAX_INPUT_LENGTH);
     setInputValue(value);
-    const newSuggestions = generateSuggestions(value);
+    if (validationError) setValidationError(null);
+    const cleaned = sanitizeInput(value);
+    const newSuggestions = generateSuggestions(cleaned || value);
     setShowSuggestions(newSuggestions.length > 0);
     setSelectedIndex(-1);
   };
@@ -452,11 +461,24 @@ export function SearchBox({
   };
 
   const handleSearch = () => {
-    if (inputValue) {
-      onSearch(inputValue);
-      setShowSuggestions(false);
+    if (!inputValue) return;
+    const result = validateAndSanitizeInput(inputValue);
+    if (!result.valid) {
+      setValidationError({ message: t(result.errorKey as any, result.errorArgs as any), isWarning: false });
+      return;
     }
+    if (result.isWarning && result.errorKey) {
+      setValidationError({ message: t(result.errorKey as any, result.errorArgs as any), isWarning: true });
+    } else {
+      setValidationError(null);
+    }
+    onSearch(result.cleaned);
+    setShowSuggestions(false);
   };
+
+  const charCount = inputValue.length;
+  const showCounter = charCount >= CHAR_COUNTER_THRESHOLD;
+  const nearLimit = charCount >= MAX_INPUT_LENGTH - 20;
 
   return (
     <div className={cn("relative w-full", className)}>
@@ -469,36 +491,43 @@ export function SearchBox({
           value={inputValue}
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
-          onFocus={() => setShowSuggestions(suggestions.length > 0)}
+          onFocus={() => { setShowSuggestions(suggestions.length > 0); setValidationError(null); }}
+          maxLength={MAX_INPUT_LENGTH}
         />
-        <Button
-          size="icon"
-          variant="outline"
-          className={cn(
-            "absolute right-0 rounded-l-none border-l-0 transition-all duration-300",
-            (isEnterPressed || loading) && "bg-primary text-primary-foreground",
-            "hover:bg-primary hover:text-primary-foreground",
-          )}
-          onClick={handleSearch}
+        <motion.div
+          whileTap={{ scale: 0.9 }}
+          transition={{ type: "spring", stiffness: 600, damping: 32, mass: 0.6 }}
+          className="absolute right-0"
         >
-          {loading ? (
-            <RiLoader2Line className="w-4 h-4 animate-spin" />
-          ) : (
-            <RiSendPlaneLine className="w-4 h-4" />
-          )}
-        </Button>
-      </div>
-
-      <AnimatePresence mode="wait">
-        {showSuggestions && suggestions.length > 0 && (
-          <motion.div
-            ref={suggestionsRef}
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.1 }}
-            className="absolute z-50 w-full mt-1 bg-background/95 backdrop-blur-sm rounded-lg border shadow-lg overflow-hidden divide-y divide-border/50"
+          <Button
+            size="icon"
+            variant="outline"
+            className={cn(
+              "rounded-l-none border-l-0 transition-all duration-300",
+              (isEnterPressed || loading) && "bg-primary text-primary-foreground",
+              "hover:bg-primary hover:text-primary-foreground",
+            )}
+            onClick={handleSearch}
           >
+            {loading ? (
+              <RiLoader2Line className="w-4 h-4 animate-spin" />
+            ) : (
+              <RiSendPlaneLine className="w-4 h-4" />
+            )}
+          </Button>
+        </motion.div>
+
+        {/* Suggestions anchored to input row bottom — unaffected by validation banner */}
+        <AnimatePresence mode="wait">
+          {showSuggestions && suggestions.length > 0 && (
+            <motion.div
+              ref={suggestionsRef}
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.1 }}
+              className="absolute z-50 w-full top-full mt-1 bg-background/95 backdrop-blur-sm rounded-lg border shadow-lg overflow-hidden divide-y divide-border/50"
+            >
             {suggestions.map((group, groupIndex) => (
               <div key={group.type} className="relative">
                 <div>
@@ -549,6 +578,63 @@ export function SearchBox({
                 </div>
               </div>
             ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      <AnimatePresence>
+        {showCounter && (
+          <motion.div
+            key="char-counter"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="flex justify-end mt-1 px-1"
+          >
+            <span className={cn(
+              "text-[11px] tabular-nums",
+              nearLimit ? "text-red-500 dark:text-red-400 font-medium" : "text-muted-foreground/50"
+            )}>
+              {charCount} / {MAX_INPUT_LENGTH}
+            </span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {validationError && !(showSuggestions && suggestions.length > 0) && (
+          <motion.div
+            key="validation-error"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.18, ease: "easeOut" }}
+            className="overflow-hidden"
+          >
+            <div
+              className={cn(
+                "flex items-start gap-2 mt-2 px-3 py-2 rounded-lg border",
+                validationError.isWarning
+                  ? "bg-amber-50/80 dark:bg-amber-950/30 border-amber-200/70 dark:border-amber-800/40 text-amber-700 dark:text-amber-400"
+                  : "bg-red-50/80 dark:bg-red-950/30 border-red-200/70 dark:border-red-800/40 text-red-700 dark:text-red-400"
+              )}
+            >
+              {validationError.isWarning ? (
+                <RiInformationLine className="w-4 h-4 mt-0.5 shrink-0" />
+              ) : (
+                <RiErrorWarningLine className="w-4 h-4 mt-0.5 shrink-0" />
+              )}
+              <span className="text-sm leading-snug flex-1">{validationError.message}</span>
+              <button
+                onClick={() => setValidationError(null)}
+                className="shrink-0 opacity-60 hover:opacity-100 transition-opacity"
+                aria-label="dismiss"
+              >
+                <RiCloseLine className="w-4 h-4" />
+              </button>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
