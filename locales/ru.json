@@ -1596,5 +1596,7 @@
     "label_online": "Доступен",
     "label_offline": "Недоступен",
     "redirect_chain": "Цепочка редиректов"
-  }
+  },
+  "nav_directory": "Навигатор",
+  "nav_directory_desc": "Каталог инструментов для доменов"
 }

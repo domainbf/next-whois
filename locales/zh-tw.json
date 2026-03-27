@@ -1596,5 +1596,7 @@
     "label_online": "可達",
     "label_offline": "離線 / 不可達",
     "redirect_chain": "跳轉鏈路"
-  }
+  },
+  "nav_directory": "網域導航",
+  "nav_directory_desc": "精選網域行業工具與平台導航"
 }

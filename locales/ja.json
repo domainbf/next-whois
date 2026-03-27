@@ -1596,5 +1596,7 @@
     "label_online": "オンライン",
     "label_offline": "オフライン / 到達不能",
     "redirect_chain": "リダイレクトチェーン"
-  }
+  },
+  "nav_directory": "ドメインナビ",
+  "nav_directory_desc": "厳選ドメインツール・プラットフォーム一覧"
 }

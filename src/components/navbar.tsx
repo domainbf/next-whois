@@ -22,6 +22,9 @@ import {
   RiInformationLine,
   RiHeart3Line,
   RiFileList2Line,
+  RiCompassLine,
+  RiWifiLine,
+  RiArrowLeftSLine,
 } from "@remixicon/react";
 import { useTheme } from "next-themes";
 import { motion, AnimatePresence } from "framer-motion";
@@ -285,7 +288,8 @@ export function ThemeToggle() {
 interface NavItem {
   labelKey: TranslationKey;
   descKey: TranslationKey;
-  href: string;
+  href?: string;
+  subPanel?: string;
   icon: React.ReactNode;
   external?: boolean;
   settingKey?: string;
@@ -296,34 +300,54 @@ interface NavGroup {
   items: NavItem[];
 }
 
+interface SubPanelItem {
+  href: string;
+  labelKey: TranslationKey;
+  descKey: TranslationKey;
+  icon: React.ReactNode;
+  colorClass: string;
+  bgClass: string;
+  settingKey?: string;
+}
+
+const TOOLS_SUB_ITEMS: SubPanelItem[] = [
+  { href: "/dns",  labelKey: "nav_dns",         descKey: "nav_dns_desc",       icon: <RiServerLine className="h-5 w-5" />,    colorClass: "text-violet-600 dark:text-violet-400", bgClass: "bg-violet-500/10", settingKey: "enable_dns" },
+  { href: "/ip",   labelKey: "nav_ip",          descKey: "nav_ip_desc",        icon: <RiMapPinLine className="h-5 w-5" />,    colorClass: "text-blue-600 dark:text-blue-400",    bgClass: "bg-blue-500/10",   settingKey: "enable_ip" },
+  { href: "/ssl",  labelKey: "nav_ssl",         descKey: "nav_ssl_desc",       icon: <RiLockLine className="h-5 w-5" />,      colorClass: "text-emerald-600 dark:text-emerald-400", bgClass: "bg-emerald-500/10", settingKey: "enable_ssl" },
+  { href: "/icp",  labelKey: "nav_icp",         descKey: "nav_icp_desc",       icon: <RiFileList2Line className="h-5 w-5" />, colorClass: "text-amber-600 dark:text-amber-400",  bgClass: "bg-amber-500/10" },
+  { href: "/http", labelKey: "http.page_title", descKey: "http.page_subtitle", icon: <RiWifiLine className="h-5 w-5" />,      colorClass: "text-sky-600 dark:text-sky-400",      bgClass: "bg-sky-500/10" },
+];
+
 const NAV_GROUPS: NavGroup[] = [
   {
     groupKey: "nav_section_tools",
     items: [
-      { labelKey: "nav_domain_lookup", descKey: "nav_domain_lookup_desc", href: "/",       icon: <RiGlobalLine className="h-6 w-6" /> },
-      { labelKey: "nav_dns",           descKey: "nav_dns_desc",           href: "/dns",    icon: <RiServerLine className="h-6 w-6" />, settingKey: "enable_dns" },
-      { labelKey: "nav_ssl",           descKey: "nav_ssl_desc",           href: "/ssl",    icon: <RiLockLine className="h-6 w-6" />, settingKey: "enable_ssl" },
-      { labelKey: "nav_ip",            descKey: "nav_ip_desc",            href: "/ip",     icon: <RiMapPinLine className="h-6 w-6" />, settingKey: "enable_ip" },
-      { labelKey: "nav_icp",           descKey: "nav_icp_desc",           href: "/icp",    icon: <RiFileList2Line className="h-6 w-6" /> },
-      { labelKey: "nav_tools",         descKey: "nav_tools_desc",         href: "/tools",  icon: <RiToolsLine className="h-6 w-6" /> },
+      { labelKey: "nav_domain_lookup", descKey: "nav_domain_lookup_desc", href: "/",        icon: <RiGlobalLine className="h-6 w-6" /> },
+      { labelKey: "nav_tools",         descKey: "nav_tools_desc",         subPanel: "tools", icon: <RiToolsLine className="h-6 w-6" /> },
     ],
   },
   {
     groupKey: "nav_section_info",
     items: [
-      { labelKey: "nav_api_docs", descKey: "nav_api_docs_desc", href: "/docs",    icon: <RiCodeSSlashLine className="h-6 w-6" />, settingKey: "enable_docs" },
-      { labelKey: "nav_tlds",     descKey: "nav_tlds_desc",     href: "/tlds",    icon: <RiServerLine className="h-6 w-6" /> },
-      { labelKey: "nav_about",    descKey: "nav_about_desc",    href: "/about",   icon: <RiInformationLine className="h-6 w-6" />, settingKey: "enable_about" },
-      { labelKey: "nav_sponsor",  descKey: "nav_sponsor_desc",  href: "/sponsor", icon: <RiHeart3Line className="h-6 w-6" />, settingKey: "enable_sponsor" },
+      { labelKey: "nav_api_docs",   descKey: "nav_api_docs_desc",   href: "/docs",    icon: <RiCodeSSlashLine className="h-6 w-6" />, settingKey: "enable_docs" },
+      { labelKey: "nav_tlds",       descKey: "nav_tlds_desc",       href: "/tlds",    icon: <RiServerLine className="h-6 w-6" /> },
+      { labelKey: "nav_directory",  descKey: "nav_directory_desc",  href: "/nav",     icon: <RiCompassLine className="h-6 w-6" /> },
+      { labelKey: "nav_about",      descKey: "nav_about_desc",      href: "/about",   icon: <RiInformationLine className="h-6 w-6" />, settingKey: "enable_about" },
+      { labelKey: "nav_sponsor",    descKey: "nav_sponsor_desc",    href: "/sponsor", icon: <RiHeart3Line className="h-6 w-6" />, settingKey: "enable_sponsor" },
     ],
   },
 ];
 
 export function NavDrawer() {
   const [open, setOpen] = React.useState(false);
+  const [subPanel, setSubPanel] = React.useState<string | null>(null);
   const settings = useSiteSettings();
   const { t } = useTranslation();
   const logoText = settings.site_logo_text || "X.RW";
+
+  React.useEffect(() => {
+    if (!open) setSubPanel(null);
+  }, [open]);
 
   const visibleGroups = NAV_GROUPS.map(group => ({
     ...group,
@@ -331,6 +355,10 @@ export function NavDrawer() {
       !item.settingKey || !!(settings as unknown as Record<string, string>)[item.settingKey]
     ),
   })).filter(group => group.items.length > 0);
+
+  const visibleSubItems = TOOLS_SUB_ITEMS.filter(item =>
+    !item.settingKey || !!(settings as unknown as Record<string, string>)[item.settingKey]
+  );
 
   return (
     <Drawer open={open} onOpenChange={setOpen}>
@@ -359,67 +387,161 @@ export function NavDrawer() {
         </motion.button>
       </DrawerTrigger>
 
-      <DrawerContent className="pb-safe">
-        <div className="px-4 pt-2 pb-8">
-          <div className="flex items-center justify-between mb-5">
-            <div>
-              <p className="text-base font-semibold tracking-tight">
-                {logoText}
-              </p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {t("nav_version_menu", { version: VERSION })}
-              </p>
-            </div>
-            <DrawerClose asChild>
-              <button className="rounded-full p-1.5 hover:bg-muted transition-colors touch-manipulation">
-                <RiCloseLine className="h-4 w-4 text-muted-foreground" />
-              </button>
-            </DrawerClose>
-          </div>
+      <DrawerContent className="pb-safe overflow-hidden">
+        <AnimatePresence mode="wait" initial={false}>
+          {!subPanel ? (
+            <motion.div
+              key="main"
+              initial={{ x: "-100%", opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: "-100%", opacity: 0 }}
+              transition={{ type: "spring", stiffness: 400, damping: 35 }}
+              className="px-4 pt-2 pb-8"
+            >
+              <div className="flex items-center justify-between mb-5">
+                <div>
+                  <p className="text-base font-semibold tracking-tight">{logoText}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {t("nav_version_menu", { version: VERSION })}
+                  </p>
+                </div>
+                <DrawerClose asChild>
+                  <button className="rounded-full p-1.5 hover:bg-muted transition-colors touch-manipulation">
+                    <RiCloseLine className="h-4 w-4 text-muted-foreground" />
+                  </button>
+                </DrawerClose>
+              </div>
 
-          <div className="space-y-5">
-            {visibleGroups.map((group) => (
-              <div key={group.groupKey}>
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60 mb-2.5 px-0.5">
-                  {t(group.groupKey)}
-                </p>
-                <div className="grid grid-cols-3 gap-2.5">
-                  {group.items.map((item) => (
-                    <DrawerClose key={item.href} asChild>
-                      <Link href={item.href} className="touch-manipulation">
-                        <motion.div
-                          className={cn(
-                            "flex flex-col items-center gap-2 p-3.5 rounded-2xl",
-                            "border border-border/60 bg-muted/30",
-                            "hover:bg-muted/60 hover:border-primary/30",
-                            "transition-colors duration-150 cursor-pointer",
-                            "text-center",
-                          )}
-                          whileTap={{ scale: 0.95 }}
-                        >
-                          <div className="p-2 rounded-xl bg-primary/10 text-primary">
-                            {item.icon}
-                          </div>
-                          <div>
+              <div className="space-y-5">
+                {visibleGroups.map((group) => (
+                  <div key={group.groupKey}>
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60 mb-2.5 px-0.5">
+                      {t(group.groupKey)}
+                    </p>
+                    <div className="grid grid-cols-3 gap-2.5">
+                      {group.items.map((item) => {
+                        const cardContent = (
+                          <motion.div
+                            className={cn(
+                              "flex flex-col items-center gap-2 p-3.5 rounded-2xl",
+                              "border border-border/60 bg-muted/30",
+                              "hover:bg-muted/60 hover:border-primary/30",
+                              "transition-colors duration-150 cursor-pointer text-center",
+                            )}
+                            whileTap={{ scale: 0.95 }}
+                          >
+                            <div className="p-2 rounded-xl bg-primary/10 text-primary">
+                              {item.icon}
+                            </div>
                             <p className="text-xs font-medium leading-tight">
                               {t(item.labelKey)}
                             </p>
-                          </div>
-                        </motion.div>
-                      </Link>
-                    </DrawerClose>
-                  ))}
+                          </motion.div>
+                        );
+
+                        if (item.subPanel) {
+                          return (
+                            <button
+                              key={item.subPanel}
+                              type="button"
+                              className="touch-manipulation w-full text-left"
+                              onClick={() => setSubPanel(item.subPanel!)}
+                            >
+                              {cardContent}
+                            </button>
+                          );
+                        }
+
+                        return (
+                          <DrawerClose key={item.href} asChild>
+                            <Link href={item.href!} className="touch-manipulation">
+                              {cardContent}
+                            </Link>
+                          </DrawerClose>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-5 pt-4 border-t border-border/40">
+                <p className="text-[11px] text-muted-foreground text-center">
+                  {t("nav_tagline")}
+                </p>
+              </div>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="tools-sub"
+              initial={{ x: "100%", opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: "100%", opacity: 0 }}
+              transition={{ type: "spring", stiffness: 400, damping: 35 }}
+              className="px-4 pt-2 pb-8"
+            >
+              <div className="flex items-center gap-2 mb-5">
+                <button
+                  type="button"
+                  onClick={() => setSubPanel(null)}
+                  className="p-1.5 rounded-lg hover:bg-muted transition-colors touch-manipulation text-muted-foreground hover:text-foreground"
+                >
+                  <RiArrowLeftSLine className="h-5 w-5" />
+                </button>
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 rounded-lg bg-primary/10 text-primary">
+                    <RiToolsLine className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold leading-tight">{t("nav_tools")}</p>
+                    <p className="text-[10px] text-muted-foreground">{t("tools_builtin_subtitle")}</p>
+                  </div>
+                </div>
+                <div className="ml-auto">
+                  <DrawerClose asChild>
+                    <button className="rounded-full p-1.5 hover:bg-muted transition-colors touch-manipulation">
+                      <RiCloseLine className="h-4 w-4 text-muted-foreground" />
+                    </button>
+                  </DrawerClose>
                 </div>
               </div>
-            ))}
-          </div>
 
-          <div className="mt-5 pt-4 border-t border-border/40">
-            <p className="text-[11px] text-muted-foreground text-center">
-              {t("nav_tagline")}
-            </p>
-          </div>
-        </div>
+              <div className="space-y-2">
+                {visibleSubItems.map((item) => (
+                  <DrawerClose key={item.href} asChild>
+                    <Link href={item.href} className="touch-manipulation block">
+                      <motion.div
+                        whileTap={{ scale: 0.97 }}
+                        className="flex items-center gap-3 p-3 rounded-xl border border-border/50 bg-muted/10 hover:bg-muted/40 hover:border-primary/20 transition-all duration-150 cursor-pointer"
+                      >
+                        <div className={cn("p-2 rounded-lg shrink-0", item.bgClass, item.colorClass)}>
+                          {item.icon}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold leading-tight">{t(item.labelKey)}</p>
+                          <p className="text-[10px] text-muted-foreground mt-0.5 leading-snug line-clamp-1">
+                            {t(item.descKey)}
+                          </p>
+                        </div>
+                      </motion.div>
+                    </Link>
+                  </DrawerClose>
+                ))}
+              </div>
+
+              <div className="mt-4 pt-3 border-t border-border/30">
+                <DrawerClose asChild>
+                  <Link href="/tools" className="touch-manipulation block">
+                    <div className="flex items-center justify-between px-1 py-2 text-muted-foreground hover:text-foreground transition-colors">
+                      <span className="text-xs">{t("tools_builtin_title")} →</span>
+                      <span className="text-[10px] text-muted-foreground/50">/tools</span>
+                    </div>
+                  </Link>
+                </DrawerClose>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </DrawerContent>
     </Drawer>
   );

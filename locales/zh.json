@@ -1596,5 +1596,7 @@
     "label_online": "可达",
     "label_offline": "离线 / 不可达",
     "redirect_chain": "跳转链路"
-  }
+  },
+  "nav_directory": "域名导航",
+  "nav_directory_desc": "精选域名行业工具与平台导航"
 }

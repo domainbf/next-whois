@@ -2,15 +2,21 @@ import React from "react";
 import Head from "next/head";
 import Link from "next/link";
 import {
-  RiArrowLeftSLine, RiExternalLinkLine, RiToolsLine, RiFireLine,
-  RiServerLine, RiMapPinLine, RiLockLine, RiFileList2Line, RiWifiLine,
+  RiArrowLeftSLine,
+  RiToolsLine,
+  RiServerLine,
+  RiMapPinLine,
+  RiLockLine,
+  RiFileList2Line,
+  RiWifiLine,
+  RiArrowRightLine,
+  RiCompassLine,
 } from "@remixicon/react";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { TOOL_CATEGORIES, Tool } from "@/lib/tools-data";
 import { motion } from "framer-motion";
 import { useTranslation, TranslationKey } from "@/lib/i18n";
-import { useSession } from "next-auth/react";
 import { useSiteSettings } from "@/lib/site-settings";
+import { cn } from "@/lib/utils";
 
 interface BuiltinTool {
   href: string;
@@ -18,108 +24,76 @@ interface BuiltinTool {
   labelKey: TranslationKey;
   descKey: TranslationKey;
   colorClass: string;
+  bgClass: string;
   settingKey?: string;
 }
 
 const BUILTIN_TOOLS: BuiltinTool[] = [
-  { href: "/dns",  icon: <RiServerLine className="w-5 h-5" />,      labelKey: "nav_dns",  descKey: "nav_dns_desc",  colorClass: "bg-violet-500/10 text-violet-600 dark:text-violet-400", settingKey: "enable_dns" },
-  { href: "/ip",   icon: <RiMapPinLine className="w-5 h-5" />,      labelKey: "nav_ip",   descKey: "nav_ip_desc",   colorClass: "bg-blue-500/10 text-blue-600 dark:text-blue-400",       settingKey: "enable_ip" },
-  { href: "/ssl",  icon: <RiLockLine className="w-5 h-5" />,        labelKey: "nav_ssl",  descKey: "nav_ssl_desc",  colorClass: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400", settingKey: "enable_ssl" },
-  { href: "/icp",  icon: <RiFileList2Line className="w-5 h-5" />,   labelKey: "nav_icp",  descKey: "nav_icp_desc",  colorClass: "bg-amber-500/10 text-amber-600 dark:text-amber-400" },
-  { href: "/http", icon: <RiWifiLine className="w-5 h-5" />,        labelKey: "http.page_title", descKey: "http.page_subtitle", colorClass: "bg-sky-500/10 text-sky-600 dark:text-sky-400" },
+  {
+    href: "/dns",
+    icon: <RiServerLine className="w-6 h-6" />,
+    labelKey: "nav_dns",
+    descKey: "nav_dns_desc",
+    colorClass: "text-violet-600 dark:text-violet-400",
+    bgClass: "bg-violet-500/10 dark:bg-violet-500/15",
+    settingKey: "enable_dns",
+  },
+  {
+    href: "/ip",
+    icon: <RiMapPinLine className="w-6 h-6" />,
+    labelKey: "nav_ip",
+    descKey: "nav_ip_desc",
+    colorClass: "text-blue-600 dark:text-blue-400",
+    bgClass: "bg-blue-500/10 dark:bg-blue-500/15",
+    settingKey: "enable_ip",
+  },
+  {
+    href: "/ssl",
+    icon: <RiLockLine className="w-6 h-6" />,
+    labelKey: "nav_ssl",
+    descKey: "nav_ssl_desc",
+    colorClass: "text-emerald-600 dark:text-emerald-400",
+    bgClass: "bg-emerald-500/10 dark:bg-emerald-500/15",
+    settingKey: "enable_ssl",
+  },
+  {
+    href: "/icp",
+    icon: <RiFileList2Line className="w-6 h-6" />,
+    labelKey: "nav_icp",
+    descKey: "nav_icp_desc",
+    colorClass: "text-amber-600 dark:text-amber-400",
+    bgClass: "bg-amber-500/10 dark:bg-amber-500/15",
+  },
+  {
+    href: "/http",
+    icon: <RiWifiLine className="w-6 h-6" />,
+    labelKey: "http.page_title",
+    descKey: "http.page_subtitle",
+    colorClass: "text-sky-600 dark:text-sky-400",
+    bgClass: "bg-sky-500/10 dark:bg-sky-500/15",
+  },
 ];
 
-const CLICKS_KEY = "tool_clicks";
-
-function loadLocalClicks(): Record<string, number> {
-  if (typeof window === "undefined") return {};
-  try {
-    return JSON.parse(localStorage.getItem(CLICKS_KEY) || "{}");
-  } catch {
-    return {};
-  }
-}
-
-function saveLocalClick(url: string, prev: Record<string, number>): Record<string, number> {
-  const next = { ...prev, [url]: (prev[url] || 0) + 1 };
-  try {
-    localStorage.setItem(CLICKS_KEY, JSON.stringify(next));
-  } catch {}
-  return next;
-}
-
-function mergeClicks(
-  local: Record<string, number>,
-  remote: Record<string, number>
-): Record<string, number> {
-  const merged: Record<string, number> = { ...remote };
-  for (const [url, count] of Object.entries(local)) {
-    merged[url] = Math.max(merged[url] ?? 0, count);
-  }
-  return merged;
-}
-
 export default function ToolsPage() {
-  const { t, locale } = useTranslation();
-  const { data: session } = useSession();
+  const { t } = useTranslation();
   const settings = useSiteSettings();
   const siteLabel = settings.site_logo_text || "X.RW";
 
-  const visibleBuiltins = BUILTIN_TOOLS.filter(tool =>
-    !tool.settingKey || !!(settings as unknown as Record<string, string>)[tool.settingKey]
+  const visibleTools = BUILTIN_TOOLS.filter(
+    (tool) =>
+      !tool.settingKey ||
+      !!(settings as unknown as Record<string, string>)[tool.settingKey]
   );
-
-  // Initialise from localStorage immediately so the sort order is stable from
-  // the very first render — avoids any reorder flash when the component mounts.
-  const [clicks, setClicks] = React.useState<Record<string, number>>(loadLocalClicks);
-
-  // Guard: fetch remote click counts only once per page load, regardless of
-  // how many times the session object reference changes (e.g. on tab refocus).
-  const fetchedRef = React.useRef(false);
-  React.useEffect(() => {
-    if (fetchedRef.current) return;
-    fetchedRef.current = true;
-
-    fetch("/api/tools/clicks")
-      .then((r) => r.json())
-      .then((json) => {
-        if (json.clicks) {
-          setClicks((prev) => mergeClicks(prev, json.clicks));
-        }
-      })
-      .catch(() => {});
-  }, []);
-
-  const isChinese = locale === "zh" || locale === "zh-tw";
-  const getDesc = (tool: Tool) => (isChinese ? tool.desc : tool.descEn);
-
-  const handleClick = (url: string) => {
-    setClicks((prev) => {
-      const updated = saveLocalClick(url, prev);
-      fetch("/api/tools/click", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url }),
-      }).catch(() => {});
-      return updated;
-    });
-  };
-
-  const sortedCategories = TOOL_CATEGORIES.map((cat) => {
-    const sorted = [...cat.tools].sort(
-      (a, b) => (clicks[b.url] || 0) - (clicks[a.url] || 0)
-    );
-    return { ...cat, tools: sorted };
-  });
 
   return (
     <>
       <Head>
-        <title key="site-title">{`${t("tools.page_title")} — ${siteLabel}`}</title>
+        <title key="site-title">{`${t("nav_tools")} — ${siteLabel}`}</title>
       </Head>
       <ScrollArea className="w-full h-[calc(100vh-4rem)]">
-        <main className="w-full max-w-3xl mx-auto px-4 sm:px-6 py-6">
-          <div className="flex items-center gap-3 mb-6">
+        <main className="w-full max-w-2xl mx-auto px-4 sm:px-6 py-6">
+
+          <div className="flex items-center gap-3 mb-7">
             <Link
               href="/"
               className="p-1.5 rounded-lg hover:bg-muted/60 transition-colors text-muted-foreground hover:text-foreground"
@@ -131,106 +105,61 @@ export default function ToolsPage() {
                 <RiToolsLine className="w-5 h-5" />
               </div>
               <div>
-                <h1 className="text-lg font-bold leading-none">
-                  {t("tools.page_title")}
-                </h1>
-                <p className="text-[11px] text-muted-foreground mt-0.5">
-                  {t("tools.page_subtitle")}
-                </p>
+                <h1 className="text-lg font-bold leading-none">{t("nav_tools")}</h1>
+                <p className="text-[11px] text-muted-foreground mt-0.5">{t("tools_builtin_subtitle")}</p>
               </div>
             </div>
           </div>
 
-          {visibleBuiltins.length > 0 && (
-            <section className="mb-8">
-              <div className="flex items-center gap-3 mb-3">
-                <h2 className="text-base font-bold tracking-tight">{t("tools_builtin_title")}</h2>
-                <div className="h-px flex-1 bg-border" />
-                <span className="text-[10px] text-muted-foreground tabular-nums">{visibleBuiltins.length}</span>
-              </div>
-              <p className="text-xs text-muted-foreground mb-3">{t("tools_builtin_subtitle")}</p>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                {visibleBuiltins.map((tool) => (
-                  <Link key={tool.href} href={tool.href}>
-                    <motion.div
-                      whileTap={{ scale: 0.94 }}
-                      className="flex items-center gap-3 p-3 rounded-xl border border-border bg-muted/10 hover:bg-muted/40 hover:border-primary/30 transition-all duration-150 cursor-pointer"
-                    >
-                      <div className={`p-2 rounded-lg shrink-0 ${tool.colorClass}`}>
-                        {tool.icon}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold leading-tight truncate">{t(tool.labelKey)}</p>
-                        <p className="text-[10px] text-muted-foreground leading-snug line-clamp-2 mt-0.5">{t(tool.descKey)}</p>
-                      </div>
-                    </motion.div>
-                  </Link>
-                ))}
-              </div>
-            </section>
-          )}
-
-          <div className="space-y-8">
-            {sortedCategories.map((cat) => (
-              <section key={cat.id}>
-                <div className="flex items-center gap-3 mb-3">
-                  <h2 className="text-base font-bold tracking-tight">
-                    {t(cat.titleKey as Parameters<typeof t>[0])}
-                  </h2>
-                  {clicks && Object.keys(clicks).length > 0 && (
-                    <span className="inline-flex items-center gap-0.5 text-[9px] text-orange-500/70 font-medium">
-                      <RiFireLine className="w-3 h-3" />
-                      {isChinese ? "按点击排序" : "sorted by clicks"}
-                    </span>
+          <div className="grid grid-cols-1 gap-3">
+            {visibleTools.map((tool) => (
+              <Link key={tool.href} href={tool.href}>
+                <motion.div
+                  whileTap={{ scale: 0.97 }}
+                  className={cn(
+                    "group flex items-center gap-4 p-4 rounded-2xl border transition-all duration-150 cursor-pointer",
+                    "border-border bg-card hover:bg-muted/30 hover:border-primary/30 hover:shadow-sm"
                   )}
-                  <div className="h-px flex-1 bg-border" />
-                  <span className="text-[10px] text-muted-foreground tabular-nums">
-                    {cat.tools.length}
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2.5">
-                  {cat.tools.map((tool, ti) => {
-                    const clickCount = clicks[tool.url] || 0;
-                    return (
-                      <motion.a
-                        key={`${tool.url}-${ti}`}
-                        href={tool.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        whileTap={{ scale: 0.94 }}
-                        onClick={() => handleClick(tool.url)}
-                        className="group flex flex-col gap-1 p-3 rounded-xl border border-border bg-muted/10 hover:bg-muted/40 hover:border-primary/30 transition-all duration-150 cursor-pointer"
-                      >
-                        <div className="flex items-start justify-between gap-1">
-                          <span className="text-sm font-semibold leading-tight truncate">
-                            {tool.name}
-                          </span>
-                          <div className="flex items-center gap-1 shrink-0">
-                            {clickCount > 0 && (
-                              <span className="text-[9px] text-orange-500/60 tabular-nums">
-                                {clickCount}
-                              </span>
-                            )}
-                            <RiExternalLinkLine className="w-3 h-3 text-muted-foreground/40 group-hover:text-primary/60 transition-colors mt-0.5" />
-                          </div>
-                        </div>
-                        <span className="text-[11px] text-muted-foreground leading-snug line-clamp-2">
-                          {getDesc(tool)}
-                        </span>
-                      </motion.a>
-                    );
-                  })}
-                </div>
-              </section>
+                >
+                  <div className={cn("p-3 rounded-xl shrink-0", tool.bgClass, tool.colorClass)}>
+                    {tool.icon}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
+                      {t(tool.labelKey)}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
+                      {t(tool.descKey)}
+                    </p>
+                  </div>
+                  <RiArrowRightLine className="w-4 h-4 text-muted-foreground/30 group-hover:text-primary/50 shrink-0 transition-colors" />
+                </motion.div>
+              </Link>
             ))}
           </div>
 
-          <div className="mt-10 pt-6 border-t border-border/40 text-center">
-            <p className="text-[11px] text-muted-foreground/50">
-              {t("tools.footer")}
-            </p>
+          <div className="mt-6">
+            <Link href="/nav">
+              <motion.div
+                whileTap={{ scale: 0.97 }}
+                className="group flex items-center gap-4 p-4 rounded-2xl border border-dashed border-border/50 bg-muted/5 hover:bg-muted/20 hover:border-primary/20 transition-all duration-150 cursor-pointer"
+              >
+                <div className="p-3 rounded-xl shrink-0 bg-muted/30 text-muted-foreground group-hover:text-primary transition-colors">
+                  <RiCompassLine className="w-6 h-6" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-muted-foreground group-hover:text-foreground transition-colors">
+                    {t("nav_directory")}
+                  </p>
+                  <p className="text-xs text-muted-foreground/60 mt-0.5 leading-snug">
+                    {t("nav_directory_desc")}
+                  </p>
+                </div>
+                <RiArrowRightLine className="w-4 h-4 text-muted-foreground/20 group-hover:text-primary/40 shrink-0 transition-colors" />
+              </motion.div>
+            </Link>
           </div>
+
         </main>
       </ScrollArea>
     </>

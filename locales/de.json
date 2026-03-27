@@ -1596,5 +1596,7 @@
     "label_online": "Erreichbar",
     "label_offline": "Offline / Nicht erreichbar",
     "redirect_chain": "Weiterleitungskette"
-  }
+  },
+  "nav_directory": "Domain-Nav",
+  "nav_directory_desc": "Ausgewähltes Domain-Tools-Verzeichnis"
 }

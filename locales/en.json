@@ -1596,5 +1596,7 @@
     "label_online": "Online",
     "label_offline": "Offline / Unreachable",
     "redirect_chain": "Redirect Chain"
-  }
+  },
+  "nav_directory": "Domain Nav",
+  "nav_directory_desc": "Curated domain tools & platforms directory"
 }

@@ -1596,5 +1596,7 @@
     "label_online": "En ligne",
     "label_offline": "Hors ligne / Inaccessible",
     "redirect_chain": "Chaîne de redirections"
-  }
+  },
+  "nav_directory": "Nav Domaines",
+  "nav_directory_desc": "Répertoire d'outils pour les domaines"
 }
