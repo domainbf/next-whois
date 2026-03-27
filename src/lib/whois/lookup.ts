@@ -619,6 +619,12 @@ export async function lookupWhoisWithCache(
 // meaningfully delaying the response when WHOIS is truly slow.
 const WHOIS_MERGE_WAIT_MS = 350;
 
+// After WHOIS succeeds (possibly with empty data), wait at most this long for
+// RDAP to finish before giving up on it.  RDAP often wins the race on warm
+// connections but can be slow on first query (cold TLS / DNS).  2 500 ms
+// lets a cold RDAP request complete (total cap is still RDAP_TIMEOUT = 5 s).
+const RDAP_MERGE_WAIT_MS = 2_500;
+
 // Separate timeout caps for each protocol.
 // RDAP: ccTLD overrides now bypass IANA bootstrap (fast direct fetch) — 5 s
 //       gives ccTLD RDAP servers (sometimes slow) enough headroom.
@@ -795,14 +801,16 @@ export async function lookupWhois(domain: string): Promise<WhoisResult> {
       ? { status: "fulfilled", value: whoisWithDeadline }
       : { status: "rejected", reason: new Error("WHOIS merge deadline") };
   } else if (first?.tag === "whois") {
-    // WHOIS finished first — use it immediately, wait briefly for RDAP enrichment
+    // WHOIS finished first — use it, but give RDAP up to RDAP_MERGE_WAIT_MS to
+    // complete before giving up.  This is longer than WHOIS_MERGE_WAIT_MS because
+    // RDAP can be slow on cold connections and delivers much richer data.
     whoisSettled = { status: "fulfilled", value: first.value };
     if (skipRdap) {
       rdapSettled = { status: "rejected", reason: new Error("RDAP skipped for this TLD") };
     } else {
       const rdapWithDeadline = await Promise.race([
         rdapPromise.then(v => v, () => null),
-        new Promise<null>(resolve => setTimeout(() => resolve(null), WHOIS_MERGE_WAIT_MS)),
+        new Promise<null>(resolve => setTimeout(() => resolve(null), RDAP_MERGE_WAIT_MS)),
       ]);
       rdapSettled = rdapWithDeadline !== null
         ? { status: "fulfilled", value: rdapWithDeadline }
