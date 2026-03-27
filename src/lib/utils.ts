@@ -86,7 +86,8 @@ export function useSaver() {
   };
 }
 
-export function toSearchURI(query: string) {
+export function toSearchURI(query: string | undefined | null) {
+  if (!query) return "/";
   const q = query.trim();
   let locale = "en";
 

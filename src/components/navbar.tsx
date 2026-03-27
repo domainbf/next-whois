@@ -184,7 +184,7 @@ function HistoryDrawer() {
                       key={`${item.query}-${item.timestamp}`}
                     >
                       <Link
-                        href={toSearchURI(item.query)}
+                        href={item.query ? toSearchURI(item.query) : "/"}
                         className="group flex items-center gap-2.5 px-3 py-2.5 rounded-lg hover:bg-muted/50 active:bg-muted transition-colors touch-manipulation"
                       >
                         <div className="w-7 h-7 rounded-md grid place-items-center border border-border bg-muted/20 shrink-0">
@@ -418,22 +418,25 @@ export function NavDrawer() {
                     <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60 mb-2.5 px-0.5">
                       {t(group.groupKey)}
                     </p>
-                    <div className="grid grid-cols-3 gap-2.5">
+                    <div className={cn(
+                      "grid gap-2.5",
+                      group.items.length <= 2 ? "grid-cols-2" : "grid-cols-3"
+                    )}>
                       {group.items.map((item) => {
                         const cardContent = (
                           <motion.div
                             className={cn(
                               "flex flex-col items-center gap-2 p-3.5 rounded-2xl",
-                              "border border-border/60 bg-muted/30",
-                              "hover:bg-muted/60 hover:border-primary/30",
-                              "transition-colors duration-150 cursor-pointer text-center",
+                              "border border-border/50 bg-background",
+                              "hover:bg-muted/50 hover:border-primary/25 hover:shadow-sm",
+                              "transition-all duration-150 cursor-pointer text-center",
                             )}
-                            whileTap={{ scale: 0.95 }}
+                            whileTap={{ scale: 0.94 }}
                           >
-                            <div className="p-2 rounded-xl bg-primary/10 text-primary">
+                            <div className="p-2.5 rounded-xl bg-muted/60 text-foreground/70">
                               {item.icon}
                             </div>
-                            <p className="text-xs font-medium leading-tight">
+                            <p className="text-xs font-semibold leading-tight text-foreground/80">
                               {t(item.labelKey)}
                             </p>
                           </motion.div>
@@ -532,9 +535,9 @@ export function NavDrawer() {
               <div className="mt-4 pt-3 border-t border-border/30">
                 <DrawerClose asChild>
                   <Link href="/tools" className="touch-manipulation block">
-                    <div className="flex items-center justify-between px-1 py-2 text-muted-foreground hover:text-foreground transition-colors">
-                      <span className="text-xs">{t("tools_builtin_title")} →</span>
-                      <span className="text-[10px] text-muted-foreground/50">/tools</span>
+                    <div className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-muted/20 hover:bg-muted/40 transition-colors">
+                      <span className="text-xs font-medium text-muted-foreground">{t("tools_builtin_title")}</span>
+                      <span className="text-xs text-muted-foreground/40">→</span>
                     </div>
                   </Link>
                 </DrawerClose>
