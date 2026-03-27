@@ -17,7 +17,7 @@ import {
   RiCheckLine, RiLoader4Line, RiFileCopyLine, RiUser3Line,
   RiQuillPenLine, RiArrowRightLine, RiShieldLine,
   RiBankCardLine, RiPriceTag3Line, RiLockLine, RiGiftLine,
-  RiShieldCheckLine,
+  RiShieldCheckLine, RiAlertLine,
 } from "@remixicon/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSession } from "next-auth/react";
@@ -153,20 +153,48 @@ function QrCard({ title, url, icon, accentClass, subtitle }: {
   );
 }
 
-function CryptoCard({ symbol, name, address, icon, color }: {
+/**
+ * Auto-detect the likely USDT network from the wallet address format.
+ * Tron addresses: start with "T" and are 34 characters.
+ * Ethereum-compatible: start with "0x" and are 42 characters.
+ */
+function detectCryptoNetwork(address: string): string | null {
+  if (/^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(address)) return "TRC20 (Tron)";
+  if (/^0x[0-9a-fA-F]{40}$/.test(address)) return "ERC20 (Ethereum)";
+  return null;
+}
+
+function CryptoCard({ symbol, name, address, icon, color, network }: {
   symbol: string; name: string; address: string; icon: React.ReactNode; color: string;
+  network?: string;
 }) {
+  const displayNetwork = network || (symbol === "USDT" ? detectCryptoNetwork(address) : null);
+
   return (
     <div className={cn("rounded-2xl border bg-card p-4 space-y-3", color)}>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-wrap">
         {icon}
         <span className="font-semibold text-sm">{name}</span>
         <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted font-mono border border-border/50">{symbol}</span>
+        {displayNetwork && (
+          <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 font-semibold border border-amber-300/60 dark:border-amber-700/50">
+            {displayNetwork}
+          </span>
+        )}
       </div>
       <div className="flex items-center gap-2 bg-muted/40 rounded-xl px-3 py-2 border border-border/40">
         <code className="text-[11px] font-mono text-muted-foreground flex-1 truncate">{address}</code>
         <CopyButton text={address} />
       </div>
+      {displayNetwork && (
+        <div className="flex items-start gap-2 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200/70 dark:border-red-800/40 px-3 py-2.5">
+          <RiAlertLine className="w-3.5 h-3.5 text-red-500 dark:text-red-400 mt-0.5 shrink-0" />
+          <p className="text-[11px] text-red-700 dark:text-red-400 leading-snug">
+            <span className="font-bold">仅支持 {displayNetwork} 网络转账。</span>
+            <span className="opacity-90"> 请勿使用其他网络（如 ERC20、BEP20、Polygon 等），否则资产将永久丢失且无法追回。</span>
+          </p>
+        </div>
+      )}
     </div>
   );
 }
@@ -418,6 +446,7 @@ export default function SponsorPage() {
   const btcAddr = settings.sponsor_crypto_btc;
   const ethAddr = settings.sponsor_crypto_eth;
   const usdtAddr = settings.sponsor_crypto_usdt;
+  const usdtNetwork = settings.sponsor_crypto_usdt_network;
   const okxAddr = settings.sponsor_crypto_okx;
 
   const paymentEnabled = !!(
@@ -614,7 +643,7 @@ export default function SponsorPage() {
                   <div className="grid gap-2.5">
                     {btcAddr && <CryptoCard symbol="BTC" name="Bitcoin" address={btcAddr} color="hover:border-amber-200 dark:hover:border-amber-800/40" icon={<RiBitCoinLine className="w-5 h-5 text-amber-500" />} />}
                     {ethAddr && <CryptoCard symbol="ETH" name="Ethereum" address={ethAddr} color="hover:border-indigo-200 dark:hover:border-indigo-800/40" icon={<RiBitCoinLine className="w-5 h-5 text-indigo-500" />} />}
-                    {usdtAddr && <CryptoCard symbol="USDT" name="Tether (TRC20)" address={usdtAddr} color="hover:border-teal-200 dark:hover:border-teal-800/40" icon={<RiBitCoinLine className="w-5 h-5 text-teal-500" />} />}
+                    {usdtAddr && <CryptoCard symbol="USDT" name="Tether" address={usdtAddr} color="hover:border-teal-200 dark:hover:border-teal-800/40" icon={<RiBitCoinLine className="w-5 h-5 text-teal-500" />} network={usdtNetwork || undefined} />}
                     {okxAddr && <CryptoCard symbol="OKX" name={`OKX / ${t("sponsor.wallet")}`} address={okxAddr} color="hover:border-slate-300 dark:hover:border-slate-600" icon={<RiBitCoinLine className="w-5 h-5 text-slate-500" />} />}
                   </div>
                 </div>

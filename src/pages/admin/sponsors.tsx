@@ -240,10 +240,11 @@ function SponsorSettingsPanel() {
           sponsor_wechat_qr:   settings.sponsor_wechat_qr,
           sponsor_github_url:  settings.sponsor_github_url,
           sponsor_paypal_url:  settings.sponsor_paypal_url,
-          sponsor_crypto_btc:  settings.sponsor_crypto_btc,
-          sponsor_crypto_eth:  settings.sponsor_crypto_eth,
-          sponsor_crypto_usdt: settings.sponsor_crypto_usdt,
-          sponsor_crypto_okx:  settings.sponsor_crypto_okx,
+          sponsor_crypto_btc:          settings.sponsor_crypto_btc,
+          sponsor_crypto_eth:          settings.sponsor_crypto_eth,
+          sponsor_crypto_usdt:         settings.sponsor_crypto_usdt,
+          sponsor_crypto_usdt_network: settings.sponsor_crypto_usdt_network,
+          sponsor_crypto_okx:          settings.sponsor_crypto_okx,
           sponsor_extra_links: settings.sponsor_extra_links,
         }),
       });
@@ -344,7 +345,8 @@ function SponsorSettingsPanel() {
           {([
             { key: "sponsor_crypto_btc",  label: "BTC (Bitcoin)", placeholder: "bc1q...", color: "text-amber-600 dark:text-amber-400" },
             { key: "sponsor_crypto_eth",  label: "ETH (Ethereum)", placeholder: "0x...", color: "text-indigo-600 dark:text-indigo-400" },
-            { key: "sponsor_crypto_usdt", label: "USDT (TRC20/ERC20)", placeholder: "T... 或 0x...", color: "text-teal-600 dark:text-teal-400" },
+            { key: "sponsor_crypto_usdt", label: "USDT 钱包地址", placeholder: "T... 或 0x...", color: "text-teal-600 dark:text-teal-400" },
+            { key: "sponsor_crypto_usdt_network", label: "USDT 转账网络（如 TRC20 (Tron)）", placeholder: "TRC20 (Tron)", color: "text-teal-600 dark:text-teal-400" },
             { key: "sponsor_crypto_okx",  label: "OKX / Web3 钱包", placeholder: "0x...", color: "text-slate-600 dark:text-slate-400" },
           ] as const).map(({ key, label, placeholder, color }) => (
             <div key={key}>
