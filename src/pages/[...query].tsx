@@ -7,7 +7,6 @@ import {
   isSearchRoute,
   toSearchURI,
   useClipboard,
-  useSaver,
 } from "@/lib/utils";
 import { GetServerSidePropsContext } from "next";
 import { getServerSession } from "next-auth/next";
@@ -1218,13 +1217,11 @@ function ResponsePanel({
   rdapContent,
   target,
   copy,
-  save,
 }: {
   whoisContent: string;
   rdapContent?: string;
   target: string;
   copy: (text: string) => void;
-  save: (filename: string, content: string) => void;
 }) {
   const { t } = useTranslation();
   const hasWhois = !!whoisContent;
@@ -1235,10 +1232,6 @@ function ResponsePanel({
 
   const currentContent =
     activeTab === "whois" ? whoisContent : rdapContent || "";
-  const currentFilename =
-    activeTab === "whois"
-      ? `${target.replace(/\./g, "-")}-whois.txt`
-      : `${target.replace(/\./g, "-")}-rdap.json`;
 
   return (
     <div className="bg-white dark:bg-zinc-950 text-zinc-700 dark:text-zinc-300 rounded-xl overflow-hidden border border-border flex flex-col shadow-lg h-full">
@@ -1278,13 +1271,6 @@ function ResponsePanel({
           >
             <RiFileCopyLine className="w-3 h-3" />
             {t("copy")}
-          </button>
-          <button
-            onClick={() => save(currentFilename, currentContent)}
-            className="text-[10px] text-muted-foreground hover:text-foreground transition-colors uppercase font-medium tracking-wide flex items-center gap-1"
-          >
-            <RiDownloadLine className="w-3 h-3" />
-            {t("save")}
           </button>
         </div>
       </div>
@@ -4159,7 +4145,6 @@ export default function LookupPage({
   const [imgTheme, setImgTheme] = React.useState<"light" | "dark">("light");
   const [imgActing, setImgActing] = React.useState<"download" | "copy" | null>(null);
   const copy = useClipboard();
-  const save = useSaver();
   useSearchHotkeys({});
 
   useEffect(() => {
@@ -4904,7 +4889,6 @@ export default function LookupPage({
                     rdapContent={result!.rawRdapContent}
                     target={target}
                     copy={copy}
-                    save={save}
                   />
                 </div>
               )}
@@ -6434,7 +6418,6 @@ export default function LookupPage({
                           rdapContent={result.rawRdapContent}
                           target={target}
                           copy={copy}
-                          save={save}
                         />
                       </div>
                     )}
