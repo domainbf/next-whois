@@ -4575,7 +4575,7 @@ export default function LookupPage({
       </Head>
       <ScrollArea className="w-full h-[calc(100vh-4rem)]">
         <main className="w-full max-w-5xl mx-auto px-4 sm:px-6 py-6 min-h-[calc(100vh-4rem)]">
-          <div className="mb-6">
+          <div className="mb-6 relative z-10">
             <div className="relative group">
               <SearchBox
                 initialValue={target}
