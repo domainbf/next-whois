@@ -91,10 +91,11 @@ export function toSearchURI(query: string | undefined | null) {
   const q = query.trim();
   let locale = "en";
 
+  const VALID = ["en", "zh", "zh-tw", "de", "ru", "ja", "fr", "ko"];
   if (typeof window !== "undefined") {
     const path = window.location.pathname;
     const match = path.match(/^\/([a-z]{2}(?:-[a-z]{2})?)(\/|$)/);
-    if (match) {
+    if (match && VALID.includes(match[1])) {
       locale = match[1];
     } else {
       locale =
@@ -104,12 +105,11 @@ export function toSearchURI(query: string | undefined | null) {
           ?.split("=")[1] ||
         navigator.language.split("-")[0] ||
         "en";
-      if (!["en", "zh", "zh-tw", "de", "ru", "ja", "fr", "ko"].includes(locale))
-        locale = "en";
+      if (!VALID.includes(locale)) locale = "en";
     }
   }
 
-  if (!["en", "zh", "zh-tw", "de", "ru", "ja", "fr", "ko"].includes(locale)) {
+  if (!VALID.includes(locale)) {
     locale = "en";
   }
 

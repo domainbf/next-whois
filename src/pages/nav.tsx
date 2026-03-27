@@ -1,10 +1,14 @@
-import { useEffect } from "react";
-import { useRouter } from "next/router";
+import { GetServerSideProps } from "next";
+
+export const getServerSideProps: GetServerSideProps = async () => {
+  return {
+    redirect: {
+      destination: "/directory",
+      permanent: true,
+    },
+  };
+};
 
 export default function NavRedirect() {
-  const router = useRouter();
-  useEffect(() => {
-    router.replace("/directory");
-  }, [router]);
   return null;
 }

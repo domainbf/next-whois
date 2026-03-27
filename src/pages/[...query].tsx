@@ -1356,8 +1356,14 @@ export async function getServerSideProps(context: GetServerSidePropsContext) {
 
   // If cleaning changed the URL (spaces removed, protocol stripped, path trimmed…),
   // redirect to the canonical clean URL to avoid duplicate/broken results.
+  // Preserve the locale prefix so the URL stays consistent (e.g. /zh/www.x.rw → /zh/x.rw).
   if (looksLikeQuery(target) && `/${target}` !== `/${rawPath}`) {
-    return { redirect: { destination: `/${target}`, permanent: false } };
+    const redirectLocale = hasLocalePrefix
+      ? querySegments[0]
+      : (context.req.cookies["NEXT_LOCALE"] && VALID_LOCALES.has(context.req.cookies["NEXT_LOCALE"])
+          ? context.req.cookies["NEXT_LOCALE"]
+          : "en");
+    return { redirect: { destination: `/${redirectLocale}/${target}`, permanent: false } };
   }
 
   // If it still doesn't look like any known query type, redirect to home
