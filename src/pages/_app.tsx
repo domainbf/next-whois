@@ -181,72 +181,6 @@ const pageVariants = {
   },
 };
 
-// ── Top route-progress bar (like YouTube / GitHub) ──────────────────────────
-type BarPhase = "idle" | "loading" | "done";
-
-function RouteProgressBar() {
-  const router = useRouter();
-  const [phase, setPhase] = React.useState<BarPhase>("idle");
-  const [width, setWidth]   = React.useState(0);
-  const slowTimer  = React.useRef<ReturnType<typeof setTimeout>  | null>(null);
-  const doneTimer  = React.useRef<ReturnType<typeof setTimeout>  | null>(null);
-
-  React.useEffect(() => {
-    const start = () => {
-      if (slowTimer.current)  clearTimeout(slowTimer.current);
-      if (doneTimer.current)  clearTimeout(doneTimer.current);
-      setPhase("loading");
-      setWidth(28);
-      slowTimer.current = setTimeout(() => setWidth(72), 120);
-    };
-    const finish = () => {
-      if (slowTimer.current) clearTimeout(slowTimer.current);
-      setWidth(100);
-      setPhase("done");
-      doneTimer.current = setTimeout(() => {
-        setPhase("idle");
-        setWidth(0);
-      }, 380);
-    };
-    router.events.on("routeChangeStart",    start);
-    router.events.on("routeChangeComplete", finish);
-    router.events.on("routeChangeError",    finish);
-    return () => {
-      router.events.off("routeChangeStart",    start);
-      router.events.off("routeChangeComplete", finish);
-      router.events.off("routeChangeError",    finish);
-      if (slowTimer.current) clearTimeout(slowTimer.current);
-      if (doneTimer.current) clearTimeout(doneTimer.current);
-    };
-  }, [router]);
-
-  if (phase === "idle") return null;
-
-  const barTransition =
-    width === 100 ? "width 0.15s ease-in" :
-    width === 28  ? "width 0.1s ease-out" :
-                    "width 9s cubic-bezier(0.04, 0.6, 0.22, 1)";
-
-  return (
-    <div
-      className="fixed top-0 left-0 right-0 z-[9999] h-[2.5px] pointer-events-none"
-      style={{
-        opacity: phase === "done" ? 0 : 1,
-        transition: phase === "done" ? "opacity 0.25s ease-out 0.12s" : undefined,
-      }}
-    >
-      <div
-        style={{
-          height: "100%",
-          width: `${width}%`,
-          background: "linear-gradient(90deg, hsl(var(--primary)) 0%, hsl(var(--primary) / 0.75) 100%)",
-          transition: barTransition,
-          boxShadow: "0 0 8px hsl(var(--primary) / 0.5)",
-        }}
-      />
-    </div>
-  );
-}
 
 export default function App({ Component, pageProps: { session, ...pageProps } }: AppProps) {
   const origin: string = pageProps.origin || process.env.NEXT_PUBLIC_SITE_URL || "";
@@ -278,7 +212,6 @@ export default function App({ Component, pageProps: { session, ...pageProps } }:
           <div className="absolute inset-0 bg-gradient-to-b from-transparent via-background/20 to-background" />
         </div>
         <MaintenanceGate>
-        <RouteProgressBar />
         <div className="relative w-full min-h-screen font-sans">
           {!isAdminPage && <AnnouncementBanner />}
           {!isAdminPage && <Navbar />}

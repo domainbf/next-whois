@@ -36,20 +36,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const countRows = await many<{ count: string }>(countQ, countParams);
       const total = parseInt(countRows[0]?.count ?? "0");
 
-      const typeCountRows = await many<{ issue_type: string; cnt: string }>(
-        `SELECT unnested AS issue_type, COUNT(*) AS cnt
-         FROM (
-           SELECT jsonb_array_elements_text(issue_types::jsonb) AS unnested
-           FROM feedback
-           WHERE issue_types IS NOT NULL AND issue_types != '' AND issue_types != '[]'
-         ) sub
-         GROUP BY unnested
-         ORDER BY cnt DESC`,
-        []
-      );
       const typeCounts: Record<string, number> = {};
-      for (const row of typeCountRows) {
-        typeCounts[row.issue_type] = parseInt(row.cnt);
+      try {
+        const typeCountRows = await many<{ issue_type: string; cnt: string }>(
+          `SELECT unnested AS issue_type, COUNT(*) AS cnt
+           FROM (
+             SELECT jsonb_array_elements_text(issue_types::jsonb) AS unnested
+             FROM feedback
+             WHERE issue_types IS NOT NULL
+               AND issue_types != ''
+               AND issue_types != '[]'
+               AND issue_types ~ '^\\s*\\['
+           ) sub
+           GROUP BY unnested
+           ORDER BY cnt DESC`,
+          []
+        );
+        for (const row of typeCountRows) {
+          typeCounts[row.issue_type] = parseInt(row.cnt);
+        }
+      } catch {
+        // issue_types column contains non-JSON rows — skip type aggregation gracefully
       }
 
       return res.json({ feedback: rows, total, typeCounts });
