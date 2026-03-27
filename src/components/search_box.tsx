@@ -491,7 +491,7 @@ export function SearchBox({
           value={inputValue}
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
-          onFocus={() => setShowSuggestions(suggestions.length > 0)}
+          onFocus={() => { setShowSuggestions(suggestions.length > 0); setValidationError(null); }}
           maxLength={MAX_INPUT_LENGTH}
         />
         <motion.div
@@ -604,7 +604,7 @@ export function SearchBox({
       </AnimatePresence>
 
       <AnimatePresence>
-        {validationError && (
+        {validationError && !(showSuggestions && suggestions.length > 0) && (
           <motion.div
             key="validation-error"
             initial={{ opacity: 0, height: 0 }}
