@@ -149,12 +149,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       many(
         `SELECT id, query, query_type, created_at, reg_status, expiration_date,
                 remaining_days, value_tier
-         FROM search_history WHERE user_id = $1
+         FROM (
+           SELECT DISTINCT ON (LOWER(query)) id, query, query_type, created_at,
+                  reg_status, expiration_date, remaining_days, value_tier
+           FROM search_history WHERE user_id = $1
+           ORDER BY LOWER(query), created_at DESC
+         ) sub
          ORDER BY created_at DESC LIMIT $2 OFFSET $3`,
         [userId, limit, offset],
       ),
       one<{ count: string }>(
-        "SELECT COUNT(*) AS count FROM search_history WHERE user_id = $1",
+        "SELECT COUNT(DISTINCT LOWER(query)) AS count FROM search_history WHERE user_id = $1",
         [userId],
       ),
     ]);

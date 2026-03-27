@@ -237,8 +237,8 @@ export default function AdminSearchRecordsPage() {
               { label: "可注册",   value: data.stats.available,   color: "text-emerald-500",        title: "当前可注册的域名数" },
               { label: "即将到期", value: data.stats.expiring,    color: "text-orange-500",         title: "90天内到期的域名数" },
               { label: "高价值",   value: data.stats.highValue,   color: "text-violet-500",         title: "高价值可用域名数" },
-              { label: "匿名查询", value: data.stats.anonymous,   color: "text-muted-foreground/70", title: "最后一次由匿名用户搜索的域名数" },
-              { label: "已登录",   value: data.stats.logged,      color: "text-primary/70",         title: "最后一次由登录用户搜索的域名数" },
+              { label: "匿名查询", value: data.stats.anonymous,   color: "text-muted-foreground/70", title: "匿名用户的总查询次数（每次查询均计入）" },
+              { label: "已登录",   value: data.stats.logged,      color: "text-primary/70",         title: "已登录用户的总查询次数（每次查询均计入）" },
             ].map(({ label, value, color, title }) => (
               <div key={label} className="glass-panel border border-border rounded-xl p-2.5 text-center" title={title}>
                 <p className={cn("text-lg font-bold tabular-nums leading-tight", color)}>{value.toLocaleString()}</p>

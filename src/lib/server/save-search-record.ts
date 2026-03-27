@@ -135,28 +135,14 @@ export async function saveSearchRecord(
       maybeSendHighValueAlert(cleanQuery, queryType, regStatus, checkedByEmail).catch(() => {});
     }
 
-    if (userId) {
-      // Logged-in users: upsert (keep latest per user+domain, so their dashboard is clean)
-      await run(
-        `DELETE FROM search_history WHERE user_id = $1 AND LOWER(query) = $2`,
-        [userId, cleanQuery],
-      );
-      await run(
-        `INSERT INTO search_history
-           (id, user_id, query, query_type, reg_status, expiration_date, remaining_days, value_tier)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-        [randomBytes(8).toString("hex"), userId, cleanQuery, queryType, regStatus, expDate, remDays, valueTier],
-      );
-    } else {
-      // Anonymous users: always insert a fresh record — no deduplication.
-      // This gives the admin a complete log of every individual search event,
-      // since anonymous users have no history dashboard to show duplicates on.
-      await run(
-        `INSERT INTO search_history
-           (id, user_id, query, query_type, reg_status, expiration_date, remaining_days, value_tier)
-         VALUES ($1, NULL, $2, $3, $4, $5, $6, $7)`,
-        [randomBytes(8).toString("hex"), cleanQuery, queryType, regStatus, expDate, remDays, valueTier],
-      );
-    }
+    // Always insert a fresh record for every search event — both logged-in and anonymous.
+    // This ensures every query is counted in admin stats regardless of who performed it.
+    // The user history API uses DISTINCT ON to deduplicate for the user-facing display.
+    await run(
+      `INSERT INTO search_history
+         (id, user_id, query, query_type, reg_status, expiration_date, remaining_days, value_tier)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [randomBytes(8).toString("hex"), userId ?? null, cleanQuery, queryType, regStatus, expDate, remDays, valueTier],
+    );
   } catch {}
 }

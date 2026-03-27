@@ -203,17 +203,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       one<{ count: string }>("SELECT COUNT(DISTINCT LOWER(query)) AS count FROM search_history WHERE query_type = 'domain' AND reg_status = 'registered'"),
       one<{ count: string }>("SELECT COUNT(*) AS count FROM search_history"),
       one<{ count: string }>("SELECT COUNT(DISTINCT user_id) AS count FROM search_history WHERE user_id IS NOT NULL"),
-      // anon/logged: distinct domains where the MOST RECENT search was anon/logged
-      one<{ count: string }>(`
-        SELECT COUNT(*) AS count FROM (
-          SELECT DISTINCT ON (LOWER(query)) query, user_id
-          FROM search_history ORDER BY LOWER(query), created_at DESC
-        ) sub WHERE user_id IS NULL`),
-      one<{ count: string }>(`
-        SELECT COUNT(*) AS count FROM (
-          SELECT DISTINCT ON (LOWER(query)) query, user_id
-          FROM search_history ORDER BY LOWER(query), created_at DESC
-        ) sub WHERE user_id IS NOT NULL`),
+      // anon/logged: total raw event counts (not distinct domains)
+      one<{ count: string }>("SELECT COUNT(*) AS count FROM search_history WHERE user_id IS NULL"),
+      one<{ count: string }>("SELECT COUNT(*) AS count FROM search_history WHERE user_id IS NOT NULL"),
     ]);
 
     // ── Daily stats (30 days) ─────────────────────────────────────────────────
