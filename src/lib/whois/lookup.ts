@@ -32,7 +32,7 @@ function l1Set(key: string, value: WhoisResult) {
 }
 import { analyzeWhois } from "@/lib/whois/common_parser";
 import { extractDomain } from "@/lib/utils";
-import { lookupRdap, convertRdapToWhoisResult } from "@/lib/whois/rdap_client";
+import { lookupRdap, convertRdapToWhoisResult, RDAP_DIRECT_CCTLDS } from "@/lib/whois/rdap_client";
 // whoiser is ESM-only; use dynamic import() so CJS serverless can load it.
 // The module promise is held at module level so subsequent calls are instant
 // (Node.js caches the fulfilled promise rather than re-parsing the bundle).
@@ -60,6 +60,7 @@ import { lookupTianhu } from "@/lib/whois/tianhu-fallback";
 import { isTldFallbackEnabled, recordTldNativeFailure, recordTldNativeSuccess, forceTldFallback } from "@/lib/whois/tld-fallback-gate";
 import { isRdapSkipped, markRdapSkipped, markRdapSupported, initRdapSkipCache } from "@/lib/whois/tld-rdap-skip";
 import { getCnReservedSldInfo } from "@/lib/whois/cn-reserved-sld";
+import { getGtldWhoisServer } from "@/lib/whois/whois_gtld_bootstrap";
 
 class ScraperRequiredError extends Error {
   registryUrl: string;
@@ -418,11 +419,16 @@ async function getLookupWhois(domain: string): Promise<WhoisRawResult> {
     throw new Error(`No public WHOIS server available for .${tld || tldSuffix} domains`);
   }
 
+  // Look up WHOIS server from local bootstrap before falling back to IANA auto-discovery.
+  // This avoids a live query to whois.iana.org for 1100+ known gTLDs.
+  const bootstrapWhoisHost = getGtldWhoisServer(tld) ?? getGtldWhoisServer(tldSuffix);
+
   const { whoisDomain } = await getWhoiser();
   const data = await whoisDomain(domainToQuery, {
     raw: true,
     follow,
     timeout: LOOKUP_TIMEOUT,
+    ...(bootstrapWhoisHost ? { host: bootstrapWhoisHost } : {}),
   });
 
   const servers = Object.keys(data);
@@ -468,6 +474,7 @@ function mergeResults(
     registrarURL: pickStr(rdap.registrarURL, whoisParsed.registrarURL),
     ianaId: pickStr(rdap.ianaId, whoisParsed.ianaId),
     whoisServer: pickStr(rdap.whoisServer, whoisParsed.whoisServer),
+    registryDomainId: pickStr(rdap.registryDomainId, whoisParsed.registryDomainId),
     updatedDate: pickStr(rdap.updatedDate, whoisParsed.updatedDate),
     creationDate: pickStr(rdap.creationDate, whoisParsed.creationDate),
     expirationDate: pickStr(rdap.expirationDate, whoisParsed.expirationDate),
@@ -479,16 +486,23 @@ function mergeResults(
       rdap.registrantOrganization,
       whoisParsed.registrantOrganization,
     ),
-    registrantProvince: pickStr(
-      rdap.registrantProvince,
-      whoisParsed.registrantProvince,
-    ),
-    registrantCountry: pickStr(
-      rdap.registrantCountry,
-      whoisParsed.registrantCountry,
-    ),
+    registrantCountry: pickStr(rdap.registrantCountry, whoisParsed.registrantCountry),
+    registrantProvince: pickStr(rdap.registrantProvince, whoisParsed.registrantProvince),
+    registrantCity: pickStr(rdap.registrantCity, whoisParsed.registrantCity),
+    registrantAddress: pickStr(rdap.registrantAddress, whoisParsed.registrantAddress),
+    registrantPostalCode: pickStr(rdap.registrantPostalCode, whoisParsed.registrantPostalCode),
     registrantPhone: pickStr(rdap.registrantPhone, whoisParsed.registrantPhone),
+    registrantFax: pickStr(rdap.registrantFax, whoisParsed.registrantFax),
     registrantEmail: pickStr(rdap.registrantEmail, whoisParsed.registrantEmail),
+    adminName: pickStr(rdap.adminName, whoisParsed.adminName),
+    adminOrganization: pickStr(rdap.adminOrganization, whoisParsed.adminOrganization),
+    adminCountry: pickStr(rdap.adminCountry, whoisParsed.adminCountry),
+    adminEmail: pickStr(rdap.adminEmail, whoisParsed.adminEmail),
+    adminPhone: pickStr(rdap.adminPhone, whoisParsed.adminPhone),
+    techName: pickStr(rdap.techName, whoisParsed.techName),
+    techOrganization: pickStr(rdap.techOrganization, whoisParsed.techOrganization),
+    techEmail: pickStr(rdap.techEmail, whoisParsed.techEmail),
+    techPhone: pickStr(rdap.techPhone, whoisParsed.techPhone),
     abuseEmail: pickStr(rdap.abuseEmail, whoisParsed.abuseEmail),
     abusePhone: pickStr(rdap.abusePhone, whoisParsed.abusePhone),
     dnssec: pickStr(rdap.dnssec, whoisParsed.dnssec),
@@ -638,6 +652,18 @@ const WHOIS_TIMEOUT = intEnv("WHOIS_TIMEOUT_MS", 4_000);
 // TCP is still open, whichever responds first wins.
 const FALLBACK_START_MS = intEnv("FALLBACK_START_MS", 1_200);
 
+// For rdapIsDirect ccTLDs: WHOIS is normally skipped from the race entirely
+// so a fast RDAP response costs zero extra TCP connections.  But on cold Vercel
+// starts the RDAP server may take 3–5 s to respond, and the sequential fallback
+// (RDAP_TIMEOUT + WHOIS_TIMEOUT = 9 s) can be painfully slow.
+//
+// Shadow WHOIS: after this delay, WHOIS is launched in PARALLEL with the still-
+// pending RDAP promise.  This caps total worst-case latency at
+//   max(RDAP_TIMEOUT, RDAP_DIRECT_WHOIS_SHADOW_MS + WHOIS_TIMEOUT) = max(5 s, 6 s) = 6 s
+// instead of 5 + 4 = 9 s, while still letting a fast RDAP (<2 s) win without
+// ever opening a WHOIS TCP connection.
+const RDAP_DIRECT_WHOIS_SHADOW_MS = intEnv("RDAP_DIRECT_WHOIS_SHADOW_MS", 2_000);
+
 export async function lookupWhois(domain: string): Promise<WhoisResult> {
   const startTime = performance.now();
   const elapsed = () => (performance.now() - startTime) / 1000;
@@ -646,9 +672,15 @@ export async function lookupWhois(domain: string): Promise<WhoisResult> {
   // ── Initialise RDAP-skip cache (no-op after first call) ──────────────────
   await initRdapSkipCache();
 
-  // ── Determine strategy: skip RDAP? start yisi in parallel? ───────────────
+  // ── Determine strategy: skip RDAP? skip WHOIS race? start yisi early? ────
   const tldSuffix = domain.split(".").pop()?.toLowerCase() ?? "";
   const skipRdap = isDomainQuery && isRdapSkipped(tldSuffix);
+
+  // For ccTLDs with a known direct RDAP endpoint, RDAP is the primary and only
+  // protocol for the initial race.  WHOIS only runs as a sequential fallback if
+  // RDAP fails completely, saving a parallel TCP connection and the WHOIS_MERGE_WAIT
+  // delay on every successful RDAP query for these 168 TLDs.
+  const rdapIsDirect = isDomainQuery && !skipRdap && RDAP_DIRECT_CCTLDS.has(tldSuffix);
 
   // Check fallback gate upfront — if already enabled we race yisi/tianhu
   // alongside native from the start rather than only as last resort.
@@ -666,7 +698,40 @@ export async function lookupWhois(domain: string): Promise<WhoisResult> {
     : withTimeout(lookupRdap(domain), RDAP_TIMEOUT);
 
   // WHOIS TCP is inherently slower; give it a bit more headroom.
-  const whoisPromise = withTimeout(getLookupWhois(domain), WHOIS_TIMEOUT);
+  // For rdapIsDirect TLDs, WHOIS is not started here — it only runs as a
+  // sequential fallback below if RDAP fails completely.
+  const whoisPromise = rdapIsDirect
+    ? Promise.resolve<{ raw: string; structured: Record<string, unknown>; server?: string }>({ raw: "", structured: {} })
+    : withTimeout(getLookupWhois(domain), WHOIS_TIMEOUT);
+
+  // Shadow WHOIS for rdapIsDirect TLDs:
+  // Starts a WHOIS query after RDAP_DIRECT_WHOIS_SHADOW_MS if RDAP hasn't yet
+  // resolved.  This means:
+  //   • If RDAP is fast (< 2 s): shadow timer never fires, zero WHOIS overhead.
+  //   • If RDAP is slow (cold start / server issues): WHOIS runs in parallel
+  //     starting at t=2 s, so by the time RDAP times out at t=5 s WHOIS has
+  //     had 3 s of runway and is likely already done.
+  //
+  // The promise is created here so both the taggedRacers AND the sequential
+  // fallback branch share the same in-flight TCP connection (no double query).
+  type WhoisRaw = { raw: string; structured: Record<string, unknown>; server?: string };
+  let _shadowCancelled = false;
+  let _shadowTimerId: ReturnType<typeof setTimeout> | null = null;
+  const shadowWhoisPromise: Promise<WhoisRaw | null> = rdapIsDirect
+    ? new Promise<WhoisRaw | null>(resolve => {
+        _shadowTimerId = setTimeout(async () => {
+          if (_shadowCancelled) { resolve(null); return; }
+          try {
+            const r = await withTimeout(getLookupWhois(domain), WHOIS_TIMEOUT);
+            resolve(_shadowCancelled ? null : r);
+          } catch {
+            resolve(null);
+          }
+        }, RDAP_DIRECT_WHOIS_SHADOW_MS);
+      })
+    : Promise.resolve(null);
+  // Call to suppress linter warning about unused variable
+  void _shadowTimerId;
 
   // Yisi / Tianhu: started immediately when the fallback gate is already open.
   // This lets a fast third-party response beat a slow native timeout.
@@ -694,10 +759,11 @@ export async function lookupWhois(domain: string): Promise<WhoisResult> {
         // Wait for EITHER all native lookups to settle OR the eager-start timer,
         // whichever comes first.  This way a slow WHOIS TCP server doesn't block
         // the response — fallbacks start racing at FALLBACK_START_MS.
+        // For rdapIsDirect TLDs WHOIS is not in-flight, so we only wait on RDAP.
         await Promise.race([
           Promise.allSettled([
             ...(skipRdap ? [] : [rdapPromise]),
-            whoisPromise,
+            ...(rdapIsDirect ? [] : [whoisPromise]),
           ]),
           new Promise<void>(resolve => setTimeout(resolve, FALLBACK_START_MS)),
         ]);
@@ -742,10 +808,24 @@ export async function lookupWhois(domain: string): Promise<WhoisResult> {
         () => null,
       ),
     ]),
-    whoisPromise.then(
-      v => ({ tag: "whois" as const, value: v }),
-      () => null,
-    ),
+    // For non-rdapIsDirect TLDs, WHOIS runs in the race immediately.
+    // For rdapIsDirect TLDs, WHOIS is NOT in the race immediately — instead the
+    // shadow WHOIS (below) starts after RDAP_DIRECT_WHOIS_SHADOW_MS delay.
+    ...(rdapIsDirect ? [] : [
+      whoisPromise.then(
+        v => ({ tag: "whois" as const, value: v }),
+        () => null,
+      ),
+    ]),
+    // Shadow WHOIS for rdapIsDirect TLDs: starts at t=2 s if RDAP is still pending.
+    // Allows WHOIS to be in-flight before RDAP's 5 s timeout, reducing worst-case
+    // from 9 s (RDAP_TIMEOUT + WHOIS_TIMEOUT) to 6 s (RDAP_DIRECT_WHOIS_SHADOW_MS + WHOIS_TIMEOUT).
+    ...(rdapIsDirect ? [
+      shadowWhoisPromise.then(
+        v => (v ? { tag: "whois" as const, value: v } : null),
+        () => null,
+      ),
+    ] : []),
     // Yisi started early (when fallback gate already open)
     ...(useFallbackEarly ? [
       yisiEarlyPromise.then(
@@ -772,6 +852,9 @@ export async function lookupWhois(domain: string): Promise<WhoisResult> {
 
   // If yisi/tianhu won the race (either early or progressive), return early.
   if (first?.tag === "yisi_early" || first?.tag === "yisi_progressive") {
+    // Cancel the shadow WHOIS — no longer needed
+    _shadowCancelled = true;
+    if (_shadowTimerId !== null) clearTimeout(_shadowTimerId);
     // Settle quietly in background for RDAP learning only
     if (!skipRdap) {
       Promise.allSettled([rdapPromise]).then(([r]) => {
@@ -791,19 +874,30 @@ export async function lookupWhois(domain: string): Promise<WhoisResult> {
   }
 
   if (first?.tag === "rdap") {
-    // RDAP finished first with good data — wait briefly for WHOIS raw merging
     rdapSettled = { status: "fulfilled", value: first.value };
-    const whoisWithDeadline = await Promise.race([
-      whoisPromise.then(v => v, () => null),
-      new Promise<null>(resolve => setTimeout(() => resolve(null), WHOIS_MERGE_WAIT_MS)),
-    ]);
-    whoisSettled = whoisWithDeadline !== null
-      ? { status: "fulfilled", value: whoisWithDeadline }
-      : { status: "rejected", reason: new Error("WHOIS merge deadline") };
+    if (rdapIsDirect) {
+      // RDAP direct ccTLD won — WHOIS was never started, skip merge wait entirely.
+      // Return RDAP result immediately with no additional latency.
+      // Cancel the shadow WHOIS so its timer doesn't open a needless TCP connection.
+      _shadowCancelled = true;
+      if (_shadowTimerId !== null) clearTimeout(_shadowTimerId);
+      whoisSettled = { status: "rejected", reason: new Error("WHOIS skipped (RDAP-direct ccTLD)") };
+    } else {
+      // RDAP finished first with good data — wait briefly for WHOIS raw merging
+      const whoisWithDeadline = await Promise.race([
+        whoisPromise.then(v => v, () => null),
+        new Promise<null>(resolve => setTimeout(() => resolve(null), WHOIS_MERGE_WAIT_MS)),
+      ]);
+      whoisSettled = whoisWithDeadline !== null
+        ? { status: "fulfilled", value: whoisWithDeadline }
+        : { status: "rejected", reason: new Error("WHOIS merge deadline") };
+    }
   } else if (first?.tag === "whois") {
     // WHOIS finished first — use it, but give RDAP up to RDAP_MERGE_WAIT_MS to
     // complete before giving up.  This is longer than WHOIS_MERGE_WAIT_MS because
     // RDAP can be slow on cold connections and delivers much richer data.
+    // For rdapIsDirect TLDs, this branch is reached when the shadow WHOIS wins
+    // (fires at t=2 s and completes before RDAP times out at t=5 s).
     whoisSettled = { status: "fulfilled", value: first.value };
     if (skipRdap) {
       rdapSettled = { status: "rejected", reason: new Error("RDAP skipped for this TLD") };
@@ -817,13 +911,32 @@ export async function lookupWhois(domain: string): Promise<WhoisResult> {
         : { status: "rejected", reason: new Error("RDAP merge deadline") };
     }
   } else {
-    // All native lookups failed — settle both definitively
+    // All native lookups failed — settle definitively.
     if (skipRdap) {
       rdapSettled = { status: "rejected", reason: new Error("RDAP skipped for this TLD") };
       whoisSettled = await whoisPromise.then(
         v => ({ status: "fulfilled" as const, value: v }),
         e => ({ status: "rejected" as const, reason: e }),
       );
+    } else if (rdapIsDirect) {
+      // RDAP-direct ccTLD: all tagged racers failed (RDAP timeout + shadow WHOIS
+      // either still in flight or already failed).
+      // Await both — shadow WHOIS may still have a result even at this point.
+      rdapSettled = await rdapPromise.then(
+        v => ({ status: "fulfilled" as const, value: v }),
+        e => ({ status: "rejected" as const, reason: e }),
+      );
+      // Prefer the already-running shadow WHOIS (avoids a second TCP connection).
+      // If shadow is null/failed, fall back to a fresh WHOIS query as last resort.
+      const shadowResult = await shadowWhoisPromise.catch(() => null);
+      if (shadowResult !== null) {
+        whoisSettled = { status: "fulfilled" as const, value: shadowResult };
+      } else {
+        whoisSettled = await withTimeout(getLookupWhois(domain), WHOIS_TIMEOUT).then(
+          v => ({ status: "fulfilled" as const, value: v }),
+          e => ({ status: "rejected" as const, reason: e }),
+        );
+      }
     } else {
       [rdapSettled, whoisSettled] = await Promise.allSettled([rdapPromise, whoisPromise]);
     }
