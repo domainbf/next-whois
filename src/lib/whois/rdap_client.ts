@@ -266,6 +266,13 @@ const CCTLD_RDAP_OVERRIDES: Record<string, string> = {
 };
 
 /**
+ * Set of all ccTLDs with a known direct RDAP endpoint (keys of CCTLD_RDAP_OVERRIDES).
+ * Used by lookup.ts to skip the parallel WHOIS race for these TLDs — RDAP is
+ * the primary protocol and WHOIS only runs as a sequential fallback if RDAP fails.
+ */
+export const RDAP_DIRECT_CCTLDS = new Set<string>(Object.keys(CCTLD_RDAP_OVERRIDES));
+
+/**
  * Per-TLD RDAP timeout overrides (milliseconds).
  * Used for registries that are consistently slow to respond.
  * Default timeout is 4000ms; entries here extend that for specific TLDs.
@@ -373,6 +380,42 @@ function extractVcardField(vcardArray: any[], fieldName: string): string {
   return "Unknown";
 }
 
+/**
+ * Extract a specific component from a vCard `adr` field.
+ * vCard 4.0 adr format: [po-box, ext-addr, street, locality, region, postal-code, country]
+ */
+function extractVcardAdr(vcardArray: any[], component: "street" | "locality" | "region" | "postal-code" | "country"): string {
+  if (!vcardArray || !Array.isArray(vcardArray)) return "Unknown";
+  const idxMap = { street: 2, locality: 3, region: 4, "postal-code": 5, country: 6 };
+  const idx = idxMap[component];
+  for (const entry of vcardArray) {
+    if (Array.isArray(entry) && entry[0] === "adr") {
+      const val = Array.isArray(entry[3]) ? entry[3][idx] : undefined;
+      if (val && String(val).trim()) return String(val).trim();
+    }
+  }
+  return "Unknown";
+}
+
+/**
+ * Extract fax number from vCard tel entries with type=fax.
+ */
+function extractVcardFax(vcardArray: any[]): string {
+  if (!vcardArray || !Array.isArray(vcardArray)) return "Unknown";
+  for (const entry of vcardArray) {
+    if (Array.isArray(entry) && entry[0] === "tel") {
+      const params = entry[1] as Record<string, any> | undefined;
+      if (params && (
+        String(params.type || "").toLowerCase().includes("fax") ||
+        String(params["type"] || "").toLowerCase().includes("fax")
+      )) {
+        return String(entry[3] || "Unknown").replace(/^tel:/i, "").trim();
+      }
+    }
+  }
+  return "Unknown";
+}
+
 function parseRdapEntity(entities: any[]): {
   registrar: string;
   registrarURL: string;
@@ -381,8 +424,21 @@ function parseRdapEntity(entities: any[]): {
   registrantOrganization: string;
   registrantCountry: string;
   registrantProvince: string;
+  registrantCity: string;
+  registrantAddress: string;
+  registrantPostalCode: string;
   registrantPhone: string;
+  registrantFax: string;
   registrantEmail: string;
+  adminName: string;
+  adminOrganization: string;
+  adminCountry: string;
+  adminEmail: string;
+  adminPhone: string;
+  techName: string;
+  techOrganization: string;
+  techEmail: string;
+  techPhone: string;
   abuseEmail: string;
   abusePhone: string;
 } {
@@ -393,15 +449,29 @@ function parseRdapEntity(entities: any[]): {
   let registrantOrganization = "Unknown";
   let registrantCountry = "Unknown";
   let registrantProvince = "Unknown";
+  let registrantCity = "Unknown";
+  let registrantAddress = "Unknown";
+  let registrantPostalCode = "Unknown";
   let registrantPhone = "Unknown";
+  let registrantFax = "Unknown";
   let registrantEmail = "Unknown";
+  let adminName = "Unknown";
+  let adminOrganization = "Unknown";
+  let adminCountry = "Unknown";
+  let adminEmail = "Unknown";
+  let adminPhone = "Unknown";
+  let techName = "Unknown";
+  let techOrganization = "Unknown";
+  let techEmail = "Unknown";
+  let techPhone = "Unknown";
   let abuseEmail = "Unknown";
   let abusePhone = "Unknown";
 
   for (const entity of entities) {
     if (entity.roles?.includes("registrar")) {
       if (entity.vcardArray?.[1]) {
-        registrar = extractVcardField(entity.vcardArray[1], "fn") || registrar;
+        const fn = extractVcardField(entity.vcardArray[1], "fn");
+        if (fn && fn !== "Unknown") registrar = fn;
       }
       if (entity.publicIds) {
         const ianaEntry = entity.publicIds.find(
@@ -409,13 +479,15 @@ function parseRdapEntity(entities: any[]): {
         );
         if (ianaEntry) ianaId = ianaEntry.identifier;
       }
-      // Extract registrar URL from RDAP links
-      if (entity.links) {
-        const selfLink = entity.links.find(
-          (l: any) => l.rel === "self" || l.type === "application/rdap+json",
-        );
+      // Prefer explicit `url` field on entity, then fall back to links
+      if (entity.url && entity.url.startsWith("http")) {
+        registrarURL = entity.url;
+      } else if (entity.links) {
         const aboutLink = entity.links.find(
           (l: any) => l.rel === "about" || l.rel === "related",
+        );
+        const selfLink = entity.links.find(
+          (l: any) => l.rel === "self" || l.type === "application/rdap+json",
         );
         const anyLink = entity.links.find((l: any) => l.href?.startsWith("http"));
         const best = aboutLink || selfLink || anyLink;
@@ -423,12 +495,14 @@ function parseRdapEntity(entities: any[]): {
           registrarURL = best.href;
         }
       }
-      // Also check nested entities inside registrar for abuse contact
+      // Check nested entities inside registrar for abuse contact
       if (entity.entities) {
         for (const sub of entity.entities) {
           if (sub.roles?.includes("abuse") && sub.vcardArray?.[1]) {
-            abuseEmail = extractVcardField(sub.vcardArray[1], "email") || abuseEmail;
-            abusePhone = extractVcardField(sub.vcardArray[1], "tel") || abusePhone;
+            const email = extractVcardField(sub.vcardArray[1], "email");
+            const phone = extractVcardField(sub.vcardArray[1], "tel");
+            if (email && email !== "Unknown") abuseEmail = email;
+            if (phone && phone !== "Unknown") abusePhone = phone.replace(/^tel:/i, "").trim();
           }
         }
       }
@@ -436,24 +510,73 @@ function parseRdapEntity(entities: any[]): {
 
     // Top-level abuse entity
     if (entity.roles?.includes("abuse") && entity.vcardArray?.[1]) {
-      abuseEmail = extractVcardField(entity.vcardArray[1], "email") || abuseEmail;
-      abusePhone = extractVcardField(entity.vcardArray[1], "tel") || abusePhone;
+      const email = extractVcardField(entity.vcardArray[1], "email");
+      const phone = extractVcardField(entity.vcardArray[1], "tel");
+      if (email && email !== "Unknown") abuseEmail = email;
+      if (phone && phone !== "Unknown") abusePhone = phone.replace(/^tel:/i, "").trim();
     }
 
     if (entity.roles?.includes("registrant") && entity.vcardArray?.[1]) {
-      registrantName = extractVcardField(entity.vcardArray[1], "fn") || registrantName;
-      registrantOrganization =
-        extractVcardField(entity.vcardArray[1], "org") ||
-        registrantOrganization;
-      registrantCountry =
-        extractVcardField(entity.vcardArray[1], "country-name") ||
-        registrantCountry;
-      registrantProvince =
-        extractVcardField(entity.vcardArray[1], "region") || registrantProvince;
-      registrantPhone =
-        extractVcardField(entity.vcardArray[1], "tel") || registrantPhone;
-      registrantEmail =
-        extractVcardField(entity.vcardArray[1], "email") || registrantEmail;
+      const vc = entity.vcardArray[1];
+      const fn = extractVcardField(vc, "fn");
+      const org = extractVcardField(vc, "org");
+      const country = extractVcardField(vc, "country-name") !== "Unknown"
+        ? extractVcardField(vc, "country-name")
+        : extractVcardAdr(vc, "country");
+      const province = extractVcardField(vc, "region") !== "Unknown"
+        ? extractVcardField(vc, "region")
+        : extractVcardAdr(vc, "region");
+      const city = extractVcardAdr(vc, "locality");
+      const address = extractVcardAdr(vc, "street");
+      const postal = extractVcardAdr(vc, "postal-code");
+      const phone = extractVcardField(vc, "tel");
+      const fax = extractVcardFax(vc);
+      const email = extractVcardField(vc, "email");
+
+      if (fn && fn !== "Unknown") registrantName = fn;
+      if (org && org !== "Unknown") registrantOrganization = org;
+      if (country && country !== "Unknown") registrantCountry = country;
+      if (province && province !== "Unknown") registrantProvince = province;
+      if (city && city !== "Unknown") registrantCity = city;
+      if (address && address !== "Unknown") registrantAddress = address;
+      if (postal && postal !== "Unknown") registrantPostalCode = postal;
+      if (phone && phone !== "Unknown") registrantPhone = phone.replace(/^tel:/i, "").trim();
+      if (fax && fax !== "Unknown") registrantFax = fax;
+      if (email && email !== "Unknown") registrantEmail = email;
+    }
+
+    // Administrative contact
+    if (entity.roles?.includes("administrative") && entity.vcardArray?.[1]) {
+      const vc = entity.vcardArray[1];
+      const fn = extractVcardField(vc, "fn");
+      const org = extractVcardField(vc, "org");
+      const country = extractVcardField(vc, "country-name") !== "Unknown"
+        ? extractVcardField(vc, "country-name")
+        : extractVcardAdr(vc, "country");
+      const phone = extractVcardField(vc, "tel");
+      const email = extractVcardField(vc, "email");
+
+      if (fn && fn !== "Unknown" && adminName === "Unknown") adminName = fn;
+      if (org && org !== "Unknown" && adminOrganization === "Unknown") adminOrganization = org;
+      if (country && country !== "Unknown" && adminCountry === "Unknown") adminCountry = country;
+      if (phone && phone !== "Unknown" && adminPhone === "Unknown")
+        adminPhone = phone.replace(/^tel:/i, "").trim();
+      if (email && email !== "Unknown" && adminEmail === "Unknown") adminEmail = email;
+    }
+
+    // Technical contact
+    if (entity.roles?.includes("technical") && entity.vcardArray?.[1]) {
+      const vc = entity.vcardArray[1];
+      const fn = extractVcardField(vc, "fn");
+      const org = extractVcardField(vc, "org");
+      const phone = extractVcardField(vc, "tel");
+      const email = extractVcardField(vc, "email");
+
+      if (fn && fn !== "Unknown" && techName === "Unknown") techName = fn;
+      if (org && org !== "Unknown" && techOrganization === "Unknown") techOrganization = org;
+      if (phone && phone !== "Unknown" && techPhone === "Unknown")
+        techPhone = phone.replace(/^tel:/i, "").trim();
+      if (email && email !== "Unknown" && techEmail === "Unknown") techEmail = email;
     }
   }
 
@@ -465,8 +588,21 @@ function parseRdapEntity(entities: any[]): {
     registrantOrganization,
     registrantCountry,
     registrantProvince,
+    registrantCity,
+    registrantAddress,
+    registrantPostalCode,
     registrantPhone,
+    registrantFax,
     registrantEmail,
+    adminName,
+    adminOrganization,
+    adminCountry,
+    adminEmail,
+    adminPhone,
+    techName,
+    techOrganization,
+    techEmail,
+    techPhone,
     abuseEmail,
     abusePhone,
   };
@@ -555,6 +691,7 @@ export async function convertRdapToWhoisResult(
     registrarURL: entityData.registrarURL,
     ianaId: entityData.ianaId,
     whoisServer: "https://rdap.org",
+    registryDomainId: rdapData.handle || "Unknown",
     updatedDate,
     creationDate,
     expirationDate,
@@ -562,10 +699,23 @@ export async function convertRdapToWhoisResult(
     nameServers,
     registrantName: entityData.registrantName,
     registrantOrganization: entityData.registrantOrganization,
-    registrantProvince: entityData.registrantProvince,
     registrantCountry: entityData.registrantCountry,
+    registrantProvince: entityData.registrantProvince,
+    registrantCity: entityData.registrantCity,
+    registrantAddress: entityData.registrantAddress,
+    registrantPostalCode: entityData.registrantPostalCode,
     registrantPhone: entityData.registrantPhone,
+    registrantFax: entityData.registrantFax,
     registrantEmail: entityData.registrantEmail,
+    adminName: entityData.adminName,
+    adminOrganization: entityData.adminOrganization,
+    adminCountry: entityData.adminCountry,
+    adminEmail: entityData.adminEmail,
+    adminPhone: entityData.adminPhone,
+    techName: entityData.techName,
+    techOrganization: entityData.techOrganization,
+    techEmail: entityData.techEmail,
+    techPhone: entityData.techPhone,
     abuseEmail: entityData.abuseEmail,
     abusePhone: entityData.abusePhone,
     dnssec: rdapData.secureDNS?.delegationSigned
