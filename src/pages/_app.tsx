@@ -197,7 +197,7 @@ export default function App({ Component, pageProps: { session, ...pageProps } }:
 
   return (
     <SessionProvider session={session}>
-    <LocaleProvider initialLocale={router.locale}>
+    <LocaleProvider>
     <SiteSettingsProvider>
       <AppHead origin={origin} />
       <Toaster />

@@ -16,10 +16,6 @@ const nextConfig = {
   poweredByHeader: false,
   compress: true,
   optimizeFonts: true,
-  i18n: {
-    locales: ['en', 'zh', 'zh-tw', 'de', 'ru', 'ja', 'fr', 'ko'],
-    defaultLocale: 'en',
-  },
   images: {
     formats: ['image/avif', 'image/webp'],
     minimumCacheTTL: 86400,
