@@ -1350,9 +1350,12 @@ export async function getServerSideProps(context: GetServerSidePropsContext) {
   const displayTarget = targetToDisplayName(target);
 
   const looksLikeQuery = (t: string) =>
-    t.includes(".") ||
-    /^AS\d+$/i.test(t) ||
-    /^([0-9a-fA-F]{0,4}:){1,7}[0-9a-fA-F]{0,4}/.test(t);
+    // Reject bare TLDs like ".cc" or ".com" — a leading dot means an empty
+    // label before it, which is never a valid domain, IP, or ASN.
+    !t.startsWith(".") &&
+    (t.includes(".") ||
+      /^AS\d+$/i.test(t) ||
+      /^([0-9a-fA-F]{0,4}:){1,7}[0-9a-fA-F]{0,4}/.test(t));
 
   // If cleaning changed the URL (spaces removed, protocol stripped, path trimmed…),
   // redirect to the canonical clean URL to avoid duplicate/broken results.
