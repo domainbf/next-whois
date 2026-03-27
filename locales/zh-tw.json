@@ -1573,5 +1573,28 @@
   "common": {
     "retry": "重試",
     "cancel": "取消"
+  },
+  "nav_tools": "工具箱",
+  "nav_tools_desc": "DNS · IP · SSL · ICP · HTTP — 全套內建工具",
+  "nav_section_tools": "查詢 & 工具",
+  "nav_section_info": "資訊 & 連結",
+  "tools_builtin_title": "內建工具",
+  "tools_builtin_subtitle": "直接執行，無需跳轉第三方",
+  "http": {
+    "page_title": "HTTP 檢測",
+    "page_subtitle": "檢測網址的狀態碼、跳轉鏈路和回應時間",
+    "placeholder": "https://example.com",
+    "btn_check": "檢測",
+    "result_status": "狀態碼",
+    "result_latency": "回應時間",
+    "result_url": "最終網址",
+    "result_redirects": "跳轉次數",
+    "result_server": "伺服器",
+    "result_content_type": "內容類型",
+    "err_invalid_url": "請輸入合法網址（https://...）",
+    "err_fetch_failed": "請求失敗",
+    "label_online": "可達",
+    "label_offline": "離線 / 不可達",
+    "redirect_chain": "跳轉鏈路"
   }
 }

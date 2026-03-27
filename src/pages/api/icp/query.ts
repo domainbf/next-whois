@@ -112,17 +112,30 @@ export default async function handler(
 
   try {
     const upstream = `${UPSTREAM_BASE}/query/${encodeURIComponent(type)}?search=${encodeURIComponent(search)}&pageNum=${pageNum}&pageSize=${pageSize}`;
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 12000);
+
+    async function fetchUpstream(): Promise<Response> {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 12000);
+      try {
+        return await fetch(upstream, {
+          signal: controller.signal,
+          headers: { Accept: "application/json", "User-Agent": "NextWhois/2.0" },
+        });
+      } finally {
+        clearTimeout(timer);
+      }
+    }
 
     let upstreamRes: Response;
     try {
-      upstreamRes = await fetch(upstream, {
-        signal: controller.signal,
-        headers: { Accept: "application/json", "User-Agent": "NextWhois/2.0" },
-      });
-    } finally {
-      clearTimeout(timer);
+      upstreamRes = await fetchUpstream();
+      if (!upstreamRes.ok && upstreamRes.status >= 500) {
+        await new Promise(r => setTimeout(r, 1200));
+        upstreamRes = await fetchUpstream();
+      }
+    } catch (firstErr) {
+      await new Promise(r => setTimeout(r, 1200));
+      upstreamRes = await fetchUpstream();
     }
 
     if (!upstreamRes.ok) {

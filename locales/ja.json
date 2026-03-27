@@ -1573,5 +1573,28 @@
   "common": {
     "retry": "再試行",
     "cancel": "キャンセル"
+  },
+  "nav_tools": "ツールボックス",
+  "nav_tools_desc": "DNS · IP · SSL · ICP · HTTP — すべての組み込みツール",
+  "nav_section_tools": "クエリ & ツール",
+  "nav_section_info": "情報 & リンク",
+  "tools_builtin_title": "組み込みツール",
+  "tools_builtin_subtitle": "サードパーティへのリダイレクトなし",
+  "http": {
+    "page_title": "HTTP チェック",
+    "page_subtitle": "HTTPステータス・リダイレクト・応答時間を確認",
+    "placeholder": "https://example.com",
+    "btn_check": "チェック",
+    "result_status": "ステータス",
+    "result_latency": "応答時間",
+    "result_url": "最終URL",
+    "result_redirects": "リダイレクト数",
+    "result_server": "サーバー",
+    "result_content_type": "コンテンツタイプ",
+    "err_invalid_url": "有効なURLを入力してください (https://...)",
+    "err_fetch_failed": "リクエスト失敗",
+    "label_online": "オンライン",
+    "label_offline": "オフライン / 到達不能",
+    "redirect_chain": "リダイレクトチェーン"
   }
 }

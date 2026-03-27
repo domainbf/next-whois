@@ -1573,5 +1573,28 @@
   "common": {
     "retry": "Retry",
     "cancel": "Cancel"
+  },
+  "nav_tools": "Tools Hub",
+  "nav_tools_desc": "DNS · IP · SSL · ICP · HTTP — all built-in tools",
+  "nav_section_tools": "Query & Tools",
+  "nav_section_info": "Info & Links",
+  "tools_builtin_title": "Built-in Tools",
+  "tools_builtin_subtitle": "Run directly — no third-party redirect",
+  "http": {
+    "page_title": "HTTP Check",
+    "page_subtitle": "Check HTTP status, redirect chain & response time",
+    "placeholder": "https://example.com",
+    "btn_check": "Check",
+    "result_status": "Status",
+    "result_latency": "Response Time",
+    "result_url": "Final URL",
+    "result_redirects": "Redirects",
+    "result_server": "Server",
+    "result_content_type": "Content-Type",
+    "err_invalid_url": "Please enter a valid URL (https://...)",
+    "err_fetch_failed": "Request failed",
+    "label_online": "Online",
+    "label_offline": "Offline / Unreachable",
+    "redirect_chain": "Redirect Chain"
   }
 }

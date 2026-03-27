@@ -1573,5 +1573,28 @@
   "common": {
     "retry": "重试",
     "cancel": "取消"
+  },
+  "nav_tools": "工具箱",
+  "nav_tools_desc": "DNS · IP · SSL · ICP · HTTP — 全套内置工具",
+  "nav_section_tools": "查询 & 工具",
+  "nav_section_info": "信息 & 链接",
+  "tools_builtin_title": "内置工具",
+  "tools_builtin_subtitle": "直接运行，无需跳转第三方",
+  "http": {
+    "page_title": "HTTP 检测",
+    "page_subtitle": "检测网址的状态码、跳转链路和响应时间",
+    "placeholder": "https://example.com",
+    "btn_check": "检测",
+    "result_status": "状态码",
+    "result_latency": "响应时间",
+    "result_url": "最终地址",
+    "result_redirects": "跳转次数",
+    "result_server": "服务器",
+    "result_content_type": "内容类型",
+    "err_invalid_url": "请输入合法的网址（https://...）",
+    "err_fetch_failed": "请求失败",
+    "label_online": "可达",
+    "label_offline": "离线 / 不可达",
+    "redirect_chain": "跳转链路"
   }
 }

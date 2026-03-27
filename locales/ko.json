@@ -1573,5 +1573,28 @@
   "common": {
     "retry": "재시도",
     "cancel": "취소"
+  },
+  "nav_tools": "도구 모음",
+  "nav_tools_desc": "DNS · IP · SSL · ICP · HTTP — 모든 내장 도구",
+  "nav_section_tools": "조회 & 도구",
+  "nav_section_info": "정보 & 링크",
+  "tools_builtin_title": "내장 도구",
+  "tools_builtin_subtitle": "직접 실행 — 서드파티 리디렉션 없음",
+  "http": {
+    "page_title": "HTTP 검사",
+    "page_subtitle": "HTTP 상태, 리디렉션 체인 및 응답 시간 확인",
+    "placeholder": "https://example.com",
+    "btn_check": "검사",
+    "result_status": "상태",
+    "result_latency": "응답 시간",
+    "result_url": "최종 URL",
+    "result_redirects": "리디렉션",
+    "result_server": "서버",
+    "result_content_type": "콘텐츠 유형",
+    "err_invalid_url": "올바른 URL을 입력하세요 (https://...)",
+    "err_fetch_failed": "요청 실패",
+    "label_online": "온라인",
+    "label_offline": "오프라인 / 접근 불가",
+    "redirect_chain": "리디렉션 체인"
   }
 }

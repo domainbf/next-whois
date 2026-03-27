@@ -1573,5 +1573,28 @@
   "common": {
     "retry": "Réessayer",
     "cancel": "Annuler"
+  },
+  "nav_tools": "Outils",
+  "nav_tools_desc": "DNS · IP · SSL · ICP · HTTP — tous les outils intégrés",
+  "nav_section_tools": "Requêtes & Outils",
+  "nav_section_info": "Infos & Liens",
+  "tools_builtin_title": "Outils intégrés",
+  "tools_builtin_subtitle": "Exécutez directement — sans redirection tierce",
+  "http": {
+    "page_title": "Vérification HTTP",
+    "page_subtitle": "Vérifier le statut HTTP, les redirections et le temps de réponse",
+    "placeholder": "https://example.com",
+    "btn_check": "Vérifier",
+    "result_status": "Statut",
+    "result_latency": "Temps de réponse",
+    "result_url": "URL finale",
+    "result_redirects": "Redirections",
+    "result_server": "Serveur",
+    "result_content_type": "Type de contenu",
+    "err_invalid_url": "Veuillez entrer une URL valide (https://...)",
+    "err_fetch_failed": "Requête échouée",
+    "label_online": "En ligne",
+    "label_offline": "Hors ligne / Inaccessible",
+    "redirect_chain": "Chaîne de redirections"
   }
 }

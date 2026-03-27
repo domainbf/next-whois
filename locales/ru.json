@@ -1573,5 +1573,28 @@
   "common": {
     "retry": "Повторить",
     "cancel": "Отменить"
+  },
+  "nav_tools": "Инструменты",
+  "nav_tools_desc": "DNS · IP · SSL · ICP · HTTP — все встроенные инструменты",
+  "nav_section_tools": "Запросы & Инструменты",
+  "nav_section_info": "Инфо & Ссылки",
+  "tools_builtin_title": "Встроенные инструменты",
+  "tools_builtin_subtitle": "Запускайте напрямую — без перенаправления",
+  "http": {
+    "page_title": "HTTP-проверка",
+    "page_subtitle": "Проверить HTTP-статус, редиректы и время ответа",
+    "placeholder": "https://example.com",
+    "btn_check": "Проверить",
+    "result_status": "Статус",
+    "result_latency": "Время ответа",
+    "result_url": "Финальный URL",
+    "result_redirects": "Редиректы",
+    "result_server": "Сервер",
+    "result_content_type": "Тип контента",
+    "err_invalid_url": "Введите корректный URL (https://...)",
+    "err_fetch_failed": "Запрос не удался",
+    "label_online": "Доступен",
+    "label_offline": "Недоступен",
+    "redirect_chain": "Цепочка редиректов"
   }
 }

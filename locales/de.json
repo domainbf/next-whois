@@ -1573,5 +1573,28 @@
   "common": {
     "retry": "Wiederholen",
     "cancel": "Abbrechen"
+  },
+  "nav_tools": "Tools",
+  "nav_tools_desc": "DNS · IP · SSL · ICP · HTTP — alle integrierten Tools",
+  "nav_section_tools": "Abfrage & Tools",
+  "nav_section_info": "Info & Links",
+  "tools_builtin_title": "Integrierte Tools",
+  "tools_builtin_subtitle": "Direkt ausführen — keine Drittanbieter-Weiterleitung",
+  "http": {
+    "page_title": "HTTP-Prüfung",
+    "page_subtitle": "HTTP-Status, Weiterleitungen und Antwortzeit prüfen",
+    "placeholder": "https://example.com",
+    "btn_check": "Prüfen",
+    "result_status": "Status",
+    "result_latency": "Antwortzeit",
+    "result_url": "Endgültige URL",
+    "result_redirects": "Weiterleitungen",
+    "result_server": "Server",
+    "result_content_type": "Inhaltstyp",
+    "err_invalid_url": "Bitte geben Sie eine gültige URL ein (https://...)",
+    "err_fetch_failed": "Anfrage fehlgeschlagen",
+    "label_online": "Erreichbar",
+    "label_offline": "Offline / Nicht erreichbar",
+    "redirect_chain": "Weiterleitungskette"
   }
 }
