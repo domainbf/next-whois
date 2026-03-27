@@ -29,6 +29,8 @@ import {
   RiHeartLine,
   RiExternalLinkLine,
   RiUserLine,
+  RiQuestionAnswerLine,
+  RiFileTextLine,
 } from "@remixicon/react";
 
 function FaviconImage({ url, name }: { url: string; name: string }) {
@@ -147,6 +149,36 @@ const SUB_PAGES = [
     titleEn: "API Docs",
     desc: "接入我们的查询 API，构建你自己的应用",
     descEn: "Integrate our lookup API to build your own applications",
+  },
+  {
+    href: "/faq",
+    settingKey: "",
+    icon: RiQuestionAnswerLine,
+    color: "bg-sky-100 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400",
+    title: "帮助中心",
+    titleEn: "FAQ",
+    desc: "常见问题解答，了解平台使用方法",
+    descEn: "Frequently asked questions about using this platform",
+  },
+  {
+    href: "/privacy",
+    settingKey: "",
+    icon: RiShieldCheckLine,
+    color: "bg-slate-100 dark:bg-slate-800/60 text-slate-600 dark:text-slate-400",
+    title: "隐私政策",
+    titleEn: "Privacy Policy",
+    desc: "了解我们如何收集和处理您的数据",
+    descEn: "How we collect and handle your data",
+  },
+  {
+    href: "/terms",
+    settingKey: "",
+    icon: RiFileTextLine,
+    color: "bg-orange-100 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400",
+    title: "服务条款",
+    titleEn: "Terms of Service",
+    desc: "使用本平台须遵守的相关条款与规定",
+    descEn: "Terms and conditions for using this platform",
   },
 ];
 

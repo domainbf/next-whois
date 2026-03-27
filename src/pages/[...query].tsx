@@ -3732,7 +3732,7 @@ function AvailableDomainCard({ domain, locale, isPremiumByWhois = false }: { dom
   }, [domain]);
 
   React.useEffect(() => {
-    fetch("https://api.frankfurter.app/latest")
+    fetch("https://api.frankfurter.dev/v1/latest")
       .then((r) => r.json())
       .then((data) => { if (data?.rates) setEurRates(data.rates); })
       .catch(() => {});
@@ -3756,15 +3756,11 @@ function AvailableDomainCard({ domain, locale, isPremiumByWhois = false }: { dom
   }, [rawPrices, eurRates]);
 
   function formatPrice(amount: number, currency: string): string {
-    const cur = currency.toUpperCase();
-    const SYMBOLS: Record<string, string> = {
-      USD: "$", EUR: "€", CNY: "¥", GBP: "£",
-      CAD: "CA$", AUD: "A$", HKD: "HK$", SGD: "S$",
-      NZD: "NZ$", TWD: "NT$", KRW: "₩", JPY: "¥",
-    };
-    const sym = SYMBOLS[cur] ?? (cur + "\u00a0");
-    const decimals = ["JPY", "KRW"].includes(cur) ? 0 : 2;
-    return `${sym}${amount.toFixed(decimals)}`;
+    const cur = (currency ?? "").toUpperCase();
+    if (cur === "CNY") return `¥${amount.toFixed(2)}`;
+    const cnyRate = eurRates["CNY"] ?? 7.82;
+    const eurAmount = cur === "EUR" ? amount : amount / (eurRates[cur] ?? 1);
+    return `¥${(eurAmount * cnyRate).toFixed(2)}`;
   }
 
   const tldForDisplay = domain.substring(domain.lastIndexOf(".")).toLowerCase();
@@ -4336,23 +4332,18 @@ export default function LookupPage({
   };
   const [eurRates, setEurRates] = React.useState<Record<string, number>>(FALLBACK_EUR_RATES);
   useEffect(() => {
-    if (!isChinese) return;
-    fetch("https://api.frankfurter.app/latest")
+    fetch("https://api.frankfurter.dev/v1/latest")
       .then((r) => r.json())
       .then((d) => { if (d?.rates) setEurRates(d.rates); })
       .catch(() => {});
-  }, [isChinese]);
+  }, []);
 
   function formatRegistrarPrice(amount: number, currency: string): string {
     const cur = (currency ?? "").toUpperCase();
-    const SYMBOLS: Record<string, string> = {
-      USD: "$", EUR: "€", CNY: "¥", GBP: "£",
-      CAD: "CA$", AUD: "A$", HKD: "HK$", SGD: "S$",
-      NZD: "NZ$", TWD: "NT$", KRW: "₩", JPY: "¥",
-    };
-    const sym = SYMBOLS[cur] ?? (cur ? cur + "\u00a0" : "$");
-    const decimals = ["JPY", "KRW"].includes(cur) ? 0 : 2;
-    return `${sym}${amount.toFixed(decimals)}`;
+    if (cur === "CNY") return `¥${amount.toFixed(2)}`;
+    const cnyRate = eurRates["CNY"] ?? 7.82;
+    const eurAmount = cur === "EUR" ? amount : amount / (eurRates[cur] ?? 1);
+    return `¥${(eurAmount * cnyRate).toFixed(2)}`;
   }
   const toCNY = formatRegistrarPrice;
   const toUSD = formatRegistrarPrice;
