@@ -139,7 +139,7 @@ export default function ToolsPage() {
           </div>
 
           <div className="mt-6">
-            <Link href="/nav">
+            <Link href="/directory">
               <motion.div
                 whileTap={{ scale: 0.97 }}
                 className="group flex items-center gap-4 p-4 rounded-2xl border border-dashed border-border/50 bg-muted/5 hover:bg-muted/20 hover:border-primary/20 transition-all duration-150 cursor-pointer"

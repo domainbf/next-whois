@@ -331,7 +331,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { labelKey: "nav_api_docs",   descKey: "nav_api_docs_desc",   href: "/docs",    icon: <RiCodeSSlashLine className="h-6 w-6" />, settingKey: "enable_docs" },
       { labelKey: "nav_tlds",       descKey: "nav_tlds_desc",       href: "/tlds",    icon: <RiServerLine className="h-6 w-6" /> },
-      { labelKey: "nav_directory",  descKey: "nav_directory_desc",  href: "/nav",     icon: <RiCompassLine className="h-6 w-6" /> },
+      { labelKey: "nav_directory",  descKey: "nav_directory_desc",  href: "/directory", icon: <RiCompassLine className="h-6 w-6" /> },
       { labelKey: "nav_about",      descKey: "nav_about_desc",      href: "/about",   icon: <RiInformationLine className="h-6 w-6" />, settingKey: "enable_about" },
       { labelKey: "nav_sponsor",    descKey: "nav_sponsor_desc",    href: "/sponsor", icon: <RiHeart3Line className="h-6 w-6" />, settingKey: "enable_sponsor" },
     ],

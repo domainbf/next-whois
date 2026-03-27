@@ -382,7 +382,7 @@ export function getWindowHref(): string {
 }
 
 const STATIC_PAGE_PREFIXES = [
-  "/", "/docs", "/tools", "/nav", "/tlds", "/whois-servers",
+  "/", "/docs", "/tools", "/directory", "/tlds", "/whois-servers",
   "/stamp", "/remind", "/api",
   "/login", "/register", "/dashboard",
   "/dns", "/ssl", "/ip", "/icp",
