@@ -21,17 +21,38 @@ export type WhoisAnalyzeResult = {
   registrarURL: string;
   ianaId: string;
   whoisServer: string;
+  registryDomainId: string;
   updatedDate: string;
   creationDate: string;
   expirationDate: string;
   status: DomainStatusProps[];
   nameServers: string[];
+
+  // Registrant contact
   registrantName: string;
   registrantOrganization: string;
-  registrantProvince: string;
   registrantCountry: string;
+  registrantProvince: string;
+  registrantCity: string;
+  registrantAddress: string;
+  registrantPostalCode: string;
   registrantPhone: string;
+  registrantFax: string;
   registrantEmail: string;
+
+  // Administrative contact
+  adminName: string;
+  adminOrganization: string;
+  adminCountry: string;
+  adminEmail: string;
+  adminPhone: string;
+
+  // Technical contact
+  techName: string;
+  techOrganization: string;
+  techEmail: string;
+  techPhone: string;
+
   abuseEmail: string;
   abusePhone: string;
   dnssec: string;
@@ -67,17 +88,38 @@ export const initialWhoisAnalyzeResult: WhoisAnalyzeResult = {
   registrarURL: "Unknown",
   ianaId: "N/A",
   whoisServer: "Unknown",
+  registryDomainId: "Unknown",
   updatedDate: "Unknown",
   creationDate: "Unknown",
   expirationDate: "Unknown",
   status: [],
   nameServers: [],
+
+  // Registrant contact
   registrantName: "Unknown",
   registrantOrganization: "Unknown",
-  registrantProvince: "Unknown",
   registrantCountry: "Unknown",
+  registrantProvince: "Unknown",
+  registrantCity: "Unknown",
+  registrantAddress: "Unknown",
+  registrantPostalCode: "Unknown",
   registrantPhone: "Unknown",
+  registrantFax: "Unknown",
   registrantEmail: "Unknown",
+
+  // Administrative contact
+  adminName: "Unknown",
+  adminOrganization: "Unknown",
+  adminCountry: "Unknown",
+  adminEmail: "Unknown",
+  adminPhone: "Unknown",
+
+  // Technical contact
+  techName: "Unknown",
+  techOrganization: "Unknown",
+  techEmail: "Unknown",
+  techPhone: "Unknown",
+
   abuseEmail: "Unknown",
   abusePhone: "Unknown",
   dnssec: "",
