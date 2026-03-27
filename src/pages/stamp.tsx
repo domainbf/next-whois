@@ -43,7 +43,9 @@ import {
   RiInformationLine,
 } from "@remixicon/react";
 import { toast } from "sonner";
-import { StampPreviewCard } from "@/components/stamp-preview-card";
+import { StampPreviewCard, STAMP_CARD_THEMES } from "@/components/stamp-preview-card";
+
+const SPECIAL_THEME_IDS = ["celebrate", "neon", "gradient", "split", "flash"] as const;
 
 const CARD_THEME_OPTIONS: {
   id: string; label: string; enLabel: string; hero: string; dot: string;
@@ -499,7 +501,9 @@ export default function StampPage() {
   const defaultForm = { tagName: "", tagStyle: "personal", cardTheme: "app", link: "", description: "", nickname: "", email: "" };
 
   const [hydrated, setHydrated] = React.useState(false);
-  const [existingStamps, setExistingStamps] = React.useState<{ id: string; tagName: string; tagStyle: string; nickname: string }[]>([]);
+  const [existingStamps, setExistingStamps] = React.useState<{ id: string; tagName: string; tagStyle: string; cardTheme: string; link: string; description: string; nickname: string }[]>([]);
+  const [previewThemeKey, setPreviewThemeKey] = React.useState<string | null>(null);
+  const [cardThemeManual, setCardThemeManual] = React.useState(false);
   const [existingExpanded, setExistingExpanded] = React.useState(false);
   const [step, setStep] = React.useState<Step>("form");
   const [direction, setDirection] = React.useState(1);
@@ -598,7 +602,16 @@ export default function StampPage() {
     if (!domain) return;
     fetch(`/api/stamp/check?domain=${encodeURIComponent(domain)}`)
       .then(r => r.json())
-      .then(data => { if (Array.isArray(data.stamps)) setExistingStamps(data.stamps); })
+      .then(data => {
+        if (Array.isArray(data.stamps)) {
+          setExistingStamps(data.stamps);
+          // Sync cardTheme from DB — only if user hasn't manually picked a theme yet
+          const first = data.stamps[0];
+          if (first?.cardTheme && !cardThemeManual) {
+            setForm(prev => ({ ...prev, cardTheme: first.cardTheme }));
+          }
+        }
+      })
       .catch(() => {});
   }, [domain]);
 
@@ -610,11 +623,15 @@ export default function StampPage() {
   }
 
   function update(field: string, value: string) {
+    if (field === "cardTheme") setCardThemeManual(true);
     setForm((prev) => {
       const next = { ...prev, [field]: value };
       if (field === "tagStyle") {
-        const ts = TAG_STYLES.find(s => s.id === value);
-        if (ts) next.cardTheme = ts.theme;
+        const isSpecial = (SPECIAL_THEME_IDS as readonly string[]).includes(prev.cardTheme);
+        if (!isSpecial) {
+          const ts = TAG_STYLES.find(s => s.id === value);
+          if (ts) next.cardTheme = ts.theme;
+        }
       }
       return next;
     });
@@ -1021,6 +1038,68 @@ export default function StampPage() {
                         </div>
                       )}
 
+                      {/* Member vs Free benefits banner */}
+                      <div className={cn(
+                        "rounded-2xl border overflow-hidden text-[10px]",
+                        isMember
+                          ? "border-violet-200/60 dark:border-violet-800/40 bg-violet-50/60 dark:bg-violet-950/20"
+                          : "border-amber-200/60 dark:border-amber-800/40 bg-amber-50/40 dark:bg-amber-950/10"
+                      )}>
+                        {/* header */}
+                        <div className={cn(
+                          "flex items-center justify-between px-4 py-2.5 border-b",
+                          isMember
+                            ? "border-violet-200/40 dark:border-violet-800/30 bg-violet-100/50 dark:bg-violet-900/20"
+                            : "border-amber-200/40 dark:border-amber-800/30 bg-amber-100/30 dark:bg-amber-900/10"
+                        )}>
+                          <div className="flex items-center gap-1.5">
+                            <RiVipCrownLine className={cn("w-3.5 h-3.5", isMember ? "text-violet-500" : "text-amber-500")} />
+                            <span className={cn("font-bold tracking-wide text-[10.5px]", isMember ? "text-violet-700 dark:text-violet-300" : "text-amber-700 dark:text-amber-400")}>
+                              {isMember ? (isZh ? "会员已激活" : "Member Active") : (isZh ? "普通用户 · 部分功能受限" : "Free User · Limited Features")}
+                            </span>
+                          </div>
+                          {!isMember && (
+                            <Link href="/payment/checkout"
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full font-semibold text-white bg-gradient-to-r from-violet-600 to-fuchsia-500 hover:opacity-90 transition-opacity text-[9.5px]">
+                              <RiVipCrownLine className="w-2.5 h-2.5" />{isZh ? "立即升级" : "Upgrade"}
+                            </Link>
+                          )}
+                        </div>
+                        {/* comparison grid */}
+                        <div className="grid grid-cols-2 divide-x divide-border/40 dark:divide-border/20">
+                          {/* free */}
+                          <div className="px-3.5 py-2.5 space-y-1.5">
+                            <p className="font-bold text-muted-foreground/60 uppercase tracking-widest text-[8.5px] mb-1.5">{isZh ? "普通用户" : "Free"}</p>
+                            {[
+                              isZh ? "标签名最多 5 字" : "Tag name: max 5 chars",
+                              isZh ? "仅「个人」标签样式" : "Only 'Personal' style",
+                              isZh ? "8 种标准卡片配色" : "8 standard card themes",
+                              isZh ? "无链接与介绍" : "No link or description",
+                            ].map((item, i) => (
+                              <div key={i} className="flex items-center gap-1.5 text-muted-foreground/60">
+                                <span className="w-3 h-3 rounded-full bg-muted/60 flex items-center justify-center shrink-0 text-[7px]">✕</span>
+                                {item}
+                              </div>
+                            ))}
+                          </div>
+                          {/* member */}
+                          <div className="px-3.5 py-2.5 space-y-1.5">
+                            <p className={cn("font-bold uppercase tracking-widest text-[8.5px] mb-1.5", isMember ? "text-violet-500" : "text-amber-500/70")}>{isZh ? "会员专属" : "Members"}</p>
+                            {[
+                              isZh ? "标签名最多 20 字" : "Tag name: up to 20 chars",
+                              isZh ? "全部 8 种标签样式" : "All 8 badge styles",
+                              isZh ? "5 种动态特殊排版" : "5 animated special layouts",
+                              isZh ? "自定义链接与介绍" : "Custom link & description",
+                            ].map((item, i) => (
+                              <div key={i} className={cn("flex items-center gap-1.5", isMember ? "text-violet-700 dark:text-violet-300" : "text-muted-foreground/50")}>
+                                <RiCheckLine className={cn("w-3 h-3 shrink-0", isMember ? "text-violet-500" : "text-amber-400/60")} />
+                                {item}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
                       {/* Form card */}
                       <div className="space-y-4">
                         <div className="glass-panel border border-border rounded-2xl p-5 space-y-5">
@@ -1139,6 +1218,90 @@ export default function StampPage() {
                                 );
                               })}
                             </div>
+                          </div>
+
+                          {/* Card Layout — special themes (member-only) */}
+                          <div>
+                            <div className="flex items-center justify-between mb-2.5">
+                              <div className="flex items-center gap-1.5">
+                                <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">{isZh ? "卡片排版" : "Card Layout"}</Label>
+                                {!isMember && (
+                                  <span className="inline-flex items-center gap-0.5 text-[9px] font-semibold text-violet-600 dark:text-violet-400">
+                                    <RiVipCrownLine className="w-2.5 h-2.5" />{isZh ? "会员专属" : "Members Only"}
+                                  </span>
+                                )}
+                              </div>
+                              {/* current standard theme chip */}
+                              {!(SPECIAL_THEME_IDS as readonly string[]).includes(form.cardTheme) && (
+                                <span className="text-[9px] text-muted-foreground/60 font-mono">
+                                  {isZh ? STAMP_CARD_THEMES[form.cardTheme]?.label : form.cardTheme}
+                                </span>
+                              )}
+                            </div>
+                            {/* 5 special theme swatches */}
+                            <div className="grid grid-cols-5 gap-1.5">
+                              {(SPECIAL_THEME_IDS as readonly string[]).map((themeId) => {
+                                const th = STAMP_CARD_THEMES[themeId];
+                                if (!th) return null;
+                                const isSpecialSelected = form.cardTheme === themeId;
+                                const locked = !isMember;
+                                return (
+                                  <button
+                                    key={themeId}
+                                    type="button"
+                                    onClick={() => {
+                                      if (locked) { toast.info(isZh ? "升级会员解锁特殊排版" : "Upgrade to unlock special layouts"); return; }
+                                      if (isSpecialSelected) {
+                                        // deselect → restore tagStyle default
+                                        const ts = TAG_STYLES.find(s => s.id === form.tagStyle);
+                                        setCardThemeManual(false);
+                                        setForm(prev => ({ ...prev, cardTheme: ts?.theme || "app" }));
+                                      } else {
+                                        update("cardTheme", themeId);
+                                        setPreviewThemeKey(themeId);
+                                      }
+                                    }}
+                                    className={cn(
+                                      "relative flex flex-col overflow-hidden rounded-xl border-2 transition-all duration-150",
+                                      locked ? "opacity-50 cursor-not-allowed border-border/20"
+                                        : isSpecialSelected ? "border-violet-400 dark:border-violet-500 shadow-md shadow-violet-500/15"
+                                        : "border-border/40 hover:border-border/70"
+                                    )}
+                                  >
+                                    {/* swatch */}
+                                    <div className={cn("h-10 w-full flex items-center justify-center", th.hero)}>
+                                      {locked
+                                        ? <RiVipCrownLine className="w-3.5 h-3.5 text-white/70 drop-shadow" />
+                                        : isSpecialSelected
+                                          ? <RiCheckLine className="w-3.5 h-3.5 text-white drop-shadow" />
+                                          : <span className="text-[11px]">{th.special || "✨"}</span>
+                                      }
+                                    </div>
+                                    <div className={cn("px-0.5 py-1 text-center", isSpecialSelected ? "bg-violet-50 dark:bg-violet-950/40" : "bg-background")}>
+                                      <p className={cn("text-[8.5px] font-semibold leading-none tracking-tight",
+                                        isSpecialSelected ? "text-violet-600 dark:text-violet-400" : "text-foreground/70")}>
+                                        {th.label}
+                                      </p>
+                                    </div>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                            {/* Current theme label when special is selected */}
+                            {(SPECIAL_THEME_IDS as readonly string[]).includes(form.cardTheme) && (
+                              <p className="text-[9.5px] text-muted-foreground/60 mt-1.5 flex items-center gap-1">
+                                <RiCheckboxCircleLine className="w-3 h-3 text-violet-400" />
+                                {isZh ? `已选特殊排版：${STAMP_CARD_THEMES[form.cardTheme]?.label}` : `Special layout selected: ${form.cardTheme}`}
+                                <button type="button" className="text-muted-foreground/40 hover:text-muted-foreground underline ml-1"
+                                  onClick={() => {
+                                    const ts = TAG_STYLES.find(s => s.id === form.tagStyle);
+                                    setCardThemeManual(false);
+                                    setForm(prev => ({ ...prev, cardTheme: ts?.theme || "app" }));
+                                  }}>
+                                  {isZh ? "重置" : "Reset"}
+                                </button>
+                              </p>
+                            )}
                           </div>
 
                           {/* Link (optional) — members only */}
@@ -2227,6 +2390,80 @@ export default function StampPage() {
                                   {s("use_this_style")}
                                 </button>
                               </>
+                            )}
+                          </div>
+                        </div>
+                      </motion.div>
+                    </>
+                  );
+                })()}
+              </AnimatePresence>
+
+              {/* Card Layout preview popup */}
+              <AnimatePresence>
+                {previewThemeKey && isMember && (() => {
+                  const th = STAMP_CARD_THEMES[previewThemeKey];
+                  if (!th) return null;
+                  const styleObj = TAG_STYLES.find(ts => ts.id === form.tagStyle) || TAG_STYLES[0];
+                  const badgeLabel = s((`badge_${form.tagStyle}`) as StampKey) || s("badge_default");
+                  const previewName = form.tagName.trim() || t("stamp.brand_name_placeholder" as TranslationKey);
+                  const isSelected = form.cardTheme === previewThemeKey;
+                  return (
+                    <>
+                      <motion.div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px]"
+                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                        onClick={() => setPreviewThemeKey(null)} />
+                      <motion.div className="fixed inset-0 z-50 flex items-center justify-center px-4"
+                        initial={{ scale: 0.93, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.93, opacity: 0 }}
+                        transition={{ type: "spring", damping: 24, stiffness: 300 }}
+                        onClick={(e) => { if (e.target === e.currentTarget) setPreviewThemeKey(null); }}
+                      >
+                        <div className="bg-background border border-border rounded-2xl shadow-2xl overflow-hidden w-full max-w-sm">
+                          <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-border/50">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-semibold">{isZh ? "特殊排版预览" : "Special Layout Preview"}</span>
+                              <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[9px] font-bold"
+                                style={{background:"rgba(124,58,237,0.08)",color:"#7C3AED",border:"1px solid rgba(124,58,237,0.2)"}}>
+                                {th.label}
+                              </span>
+                            </div>
+                            <button type="button" onClick={() => setPreviewThemeKey(null)}
+                              className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors">
+                              <RiCloseLine className="w-4 h-4" />
+                            </button>
+                          </div>
+                          <div className="px-4 py-4">
+                            <div className="rounded-[18px] overflow-hidden shadow-md">
+                              <StampPreviewCard
+                                themeKey={previewThemeKey}
+                                data={{
+                                  tagName: previewName,
+                                  domain: domain || undefined,
+                                  description: form.description || undefined,
+                                  link: form.link || undefined,
+                                  tagLabel: badgeLabel,
+                                  icon: styleObj.icon,
+                                }}
+                              />
+                            </div>
+                          </div>
+                          <div className="px-4 pb-4 flex gap-2">
+                            <button type="button" onClick={() => setPreviewThemeKey(null)}
+                              className="px-4 py-2.5 rounded-xl border border-border text-sm font-medium text-muted-foreground hover:bg-muted/50 transition-colors">
+                              {t("common.cancel")}
+                            </button>
+                            {isSelected ? (
+                              <button type="button" onClick={() => setPreviewThemeKey(null)}
+                                className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity flex items-center justify-center gap-1.5">
+                                <RiCheckLine className="w-4 h-4" />
+                                {s("selected")}
+                              </button>
+                            ) : (
+                              <button type="button"
+                                onClick={() => { update("cardTheme", previewThemeKey); setPreviewThemeKey(null); }}
+                                className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity">
+                                {isZh ? "使用此排版" : "Use This Layout"}
+                              </button>
                             )}
                           </div>
                         </div>
