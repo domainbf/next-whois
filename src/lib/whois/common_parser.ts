@@ -388,9 +388,6 @@ export async function analyzeWhois(data: string): Promise<WhoisAnalyzeResult> {
       case "bureau d'enregistrement":
         result.registrar = result.registrar === "Unknown" ? value : result.registrar;
         break;
-      case "registrar url":
-        result.registrarURL = value;
-        break;
       case "iana id":
         result.ianaId = value;
         break;
@@ -429,9 +426,23 @@ export async function analyzeWhois(data: string): Promise<WhoisAnalyzeResult> {
       case "modifié le":
       case "fecha de modificacion":
       case "actualizado":
-        if (result.updatedDate === "Unknown") result.updatedDate = analyzeTime(value);
-        break;
       case "changed":
+      case "last modification":
+      case "modified date":
+      case "last modified date":
+      case "record last updated":
+      case "record modified":
+      case "last update date":
+      case "domain updated":
+      case "last-modified-date":
+      case "senast ändrad":
+      case "viimeksi muokattu":
+      case "sist endret":
+      case "sidst ændret":
+      case "senest opdateret":
+      case "letzte änderung":
+      case "última modificación":
+      case "última atualização":
         if (result.updatedDate === "Unknown") result.updatedDate = analyzeTime(value);
         break;
       case "creation date":
@@ -457,6 +468,7 @@ export async function analyzeWhois(data: string): Promise<WhoisAnalyzeResult> {
       case "entry created":
       case "domain registration date":
       case "first registered":
+      case "first registration date":
       case "registered":
       case "register date":
       case "start date":
@@ -468,9 +480,22 @@ export async function analyzeWhois(data: string): Promise<WhoisAnalyzeResult> {
       case "criado em":
       case "data de registro":
       case "anniversary":
+      case "inception date":
+      case "domain inception date":
+      case "record created":
+      case "created at":
+      case "activation time":
+      case "delegated on":
+      case "delegated":
+      case "fecha de alta":
+      case "registreringsdatum":
+      case "rekisteröintipäivä":
+      case "registreringsdato":
+      case "domainregistrierung":
         if (result.creationDate === "Unknown") result.creationDate = analyzeTime(value);
         break;
       case "domain name commencement date":
+      case "domain commencement date":
         if (result.creationDate === "Unknown") result.creationDate = analyzeTime(value);
         break;
       case "expiration date":
@@ -490,6 +515,7 @@ export async function analyzeWhois(data: string): Promise<WhoisAnalyzeResult> {
       case "ablaufdatum":
       case "expires (utc)":
       case "expiration date (utc)":
+      case "expiration time":
       case "renewal date":
       case "due date":
       case "valid-date":
@@ -504,12 +530,21 @@ export async function analyzeWhois(data: string): Promise<WhoisAnalyzeResult> {
       case "vence em":
       case "ablauf":
       case "laufzeit bis":
-        if (result.expirationDate === "Unknown") result.expirationDate = analyzeTime(value);
-        break;
-      case "registrar registration expiration date":
-        if (result.expirationDate === "Unknown") result.expirationDate = analyzeTime(value);
-        break;
       case "registry expiry date":
+      case "registrar registration expiration date":
+      case "registration expiry date":
+      case "expiration-date (registrar)":
+      case "domain renewal date":
+      case "renewal deadline":
+      case "validity":
+      case "validity date":
+      case "valid through":
+      case "valid to":
+      case "valid-till":
+      case "gyldig til":
+      case "keston loppupäivä":
+      case "giltig till":
+      case "verfallsdatum":
         if (result.expirationDate === "Unknown") result.expirationDate = analyzeTime(value);
         break;
       case "state": {
@@ -530,41 +565,61 @@ export async function analyzeWhois(data: string): Promise<WhoisAnalyzeResult> {
       case "name server":
       case "name server (db)":
       case "host name":
+      case "hostname":
       case "nameserver":
       case "ns":
       case "ns1":
       case "ns2":
       case "ns3":
       case "ns4":
+      case "ns5":
+      case "ns6":
       case "dns":
       case "dns1":
       case "dns2":
       case "dns3":
       case "dns4":
+      case "primary nameserver":
+      case "secondary nameserver":
       case "serveur dns":
-        result.nameServers.push(value.split(/\s+/)[0]);
-        break;
       case "nameservers":
       case "name servers":
-        result.nameServers.push(value.split(/\s+/)[0]);
-        break;
       case "nserver":
-        result.nameServers.push(value.split(/\s+/)[0]);
+      case "p":
+      // Split on commas (e.g. "ns1.foo.com, ns2.foo.com") then strip IPs
+        for (const nsEntry of value.split(",")) {
+          const ns = nsEntry.trim().split(/\s+/)[0];
+          if (ns && ns.includes(".")) result.nameServers.push(ns);
+        }
         break;
+      // ── Registry domain ID ────────────────────────────────────────────────
+      case "registry domain id":
+      case "domain id":
+      case "domain-id":
+      case "roid":
+        if (result.registryDomainId === "Unknown") result.registryDomainId = value;
+        break;
+
+      // ── Registrant name ────────────────────────────────────────────────────
       case "registrant name":
-        if (!isRedactedValue(value)) result.registrantName = value;
+      case "registrant contact name":
+      case "holder":
+      case "owner":
+        if (!isRedactedValue(value) && result.registrantName === "Unknown")
+          result.registrantName = value;
         break;
+
+      // ── Registrant organization ────────────────────────────────────────────
       case "registrant organization":
+      case "registrant organisation":
+      case "registrant org":
         if (!isRedactedValue(value)) result.registrantOrganization = value;
         break;
       case "organization":
-        if (!isRedactedValue(value)) result.registrantOrganization = value;
-        break;
       case "organisation":
-        if (!isRedactedValue(value)) result.registrantOrganization = value;
-        break;
       case "org-name":
-        if (!isRedactedValue(value)) result.registrantOrganization = value;
+        if (!isRedactedValue(value) && result.registrantOrganization === "Unknown")
+          result.registrantOrganization = value;
         break;
       case "registrant":
         if (!isRedactedValue(value)) result.registrantOrganization = value;
@@ -576,35 +631,180 @@ export async function analyzeWhois(data: string): Promise<WhoisAnalyzeResult> {
         )
           result.registrantOrganization = value;
         break;
+
+      // ── Registrant state/province ─────────────────────────────────────────
       case "registrant state/province":
-        if (!isRedactedValue(value)) result.registrantProvince = value;
+      case "registrant state":
+      case "registrant province":
+      case "province":
+        if (!isRedactedValue(value) && result.registrantProvince === "Unknown")
+          result.registrantProvince = value;
         break;
+
+      // ── Registrant city ────────────────────────────────────────────────────
+      case "registrant city":
+      case "registrant locality":
       case "city":
-        if (!isRedactedValue(value)) result.registrantProvince = value;
+      case "locality":
+        if (!isRedactedValue(value) && result.registrantCity === "Unknown")
+          result.registrantCity = value;
         break;
+
+      // ── Registrant street address ──────────────────────────────────────────
+      case "registrant street":
+      case "registrant address":
+      case "registrant street1":
+      case "registrant street2":
+      case "registrant street3":
+      case "street":
+      case "address":
+      case "addr":
+        if (!isRedactedValue(value) && result.registrantAddress === "Unknown")
+          result.registrantAddress = value;
+        break;
+
+      // ── Registrant postal code ─────────────────────────────────────────────
+      case "registrant postal code":
+      case "registrant zip":
+      case "registrant zip code":
+      case "postal code":
+      case "zip code":
+      case "zip":
+      case "postcode":
+      case "postalcode":
+      case "postal-code":
+        if (!isRedactedValue(value) && result.registrantPostalCode === "Unknown")
+          result.registrantPostalCode = value;
+        break;
+
+      // ── Registrant country ────────────────────────────────────────────────
       case "registrant country":
+      case "registrant country code":
+      case "registrant country/economy":
         if (!isRedactedValue(value)) result.registrantCountry = value;
         break;
       case "country":
-        if (!isRedactedValue(value)) result.registrantCountry = value;
+      case "country-code":
+        if (!isRedactedValue(value) && result.registrantCountry === "Unknown")
+          result.registrantCountry = value;
         break;
+
+      // ── Registrant phone ──────────────────────────────────────────────────
       case "registrant phone":
-        if (!isRedactedValue(value))
-          result.registrantPhone = value.replace("tel:", "").trim();
+      case "registrant phone number":
+      case "registrant telephone":
+      case "phone":
+      case "telephone":
+        if (!isRedactedValue(value) && result.registrantPhone === "Unknown")
+          result.registrantPhone = value.replace(/^tel:/i, "").trim();
         break;
+
+      // ── Registrant fax ────────────────────────────────────────────────────
+      case "registrant fax":
+      case "registrant fax ext":
+      case "fax":
+      case "fax-no":
+      case "fax no":
+      case "telefax":
+        if (!isRedactedValue(value) && result.registrantFax === "Unknown")
+          result.registrantFax = value.replace(/^tel:/i, "").trim();
+        break;
+
+      // ── Administrative contact ────────────────────────────────────────────
+      case "admin name":
+      case "administrative name":
+      case "admin contact name":
+      case "admin contact":
+      case "administrative contact":
+      case "administrative contact name":
+      case "ac":
+      case "admin id":
+        if (!isRedactedValue(value) && result.adminName === "Unknown")
+          result.adminName = value;
+        break;
+      case "admin organization":
+      case "admin organisation":
+      case "admin org":
+      case "administrative organization":
+      case "administrative organisation":
+        if (!isRedactedValue(value) && result.adminOrganization === "Unknown")
+          result.adminOrganization = value;
+        break;
+      case "admin email":
+      case "admin e-mail":
+      case "administrative email":
+      case "administrative e-mail":
+      case "admin contact email":
+      case "ac e-mail":
+        if (!isRedactedValue(value) && result.adminEmail === "Unknown")
+          result.adminEmail = value;
+        break;
+      case "admin phone":
+      case "admin telephone":
+      case "administrative phone":
+      case "administrative telephone":
+      case "admin contact phone":
+        if (!isRedactedValue(value) && result.adminPhone === "Unknown")
+          result.adminPhone = value.replace(/^tel:/i, "").trim();
+        break;
+      case "admin country":
+      case "administrative country":
+        if (!isRedactedValue(value) && result.adminCountry === "Unknown")
+          result.adminCountry = value;
+        break;
+
+      // ── Technical contact ─────────────────────────────────────────────────
+      case "tech name":
+      case "technical name":
+      case "technical contact name":
+      case "tech contact name":
+      case "tech contact":
+      case "technical contact":
+        if (!isRedactedValue(value) && result.techName === "Unknown")
+          result.techName = value;
+        break;
+      case "tech organization":
+      case "tech organisation":
+      case "tech org":
+      case "technical organization":
+      case "technical organisation":
+        if (!isRedactedValue(value) && result.techOrganization === "Unknown")
+          result.techOrganization = value;
+        break;
+      case "tech email":
+      case "tech e-mail":
+      case "technical email":
+      case "technical e-mail":
+      case "tech contact email":
+        if (!isRedactedValue(value) && result.techEmail === "Unknown")
+          result.techEmail = value;
+        break;
+      case "tech phone":
+      case "tech telephone":
+      case "technical phone":
+      case "technical telephone":
+      case "tech contact phone":
+        if (!isRedactedValue(value) && result.techPhone === "Unknown")
+          result.techPhone = value.replace(/^tel:/i, "").trim();
+        break;
+
+      // ── Abuse contact ─────────────────────────────────────────────────────
       case "registrar abuse contact phone":
-      case "ac phone number":
+      case "abuse phone":
+      case "abuse contact phone":
         if (!isRedactedValue(value))
-          result.abusePhone = value.replace("tel:", "").trim();
+          result.abusePhone = value.replace(/^tel:/i, "").trim();
         break;
       case "registrar abuse contact email":
       case "abuse-mailbox":
         if (!isRedactedValue(value)) result.abuseEmail = value;
         break;
       case "orgtechphone":
-        if (!isRedactedValue(value)) result.registrantPhone = value;
+        if (!isRedactedValue(value) && result.techPhone === "Unknown")
+          result.techPhone = value.replace(/^tel:/i, "").trim();
         break;
       case "registrant email":
+      case "registrant contact email":
         if (!isRedactedValue(value))
           result.registrantEmail = value.replace(
             "Select Request Email Form at ",
@@ -612,15 +812,22 @@ export async function analyzeWhois(data: string): Promise<WhoisAnalyzeResult> {
           );
         break;
       case "dnssec":
+      case "dnssec status":
+      case "signed":
         result.dnssec = value;
         break;
       case "email":
-      case "ac e-mail":
-        if (!isRedactedValue(value)) result.registrantEmail = value;
+        if (!isRedactedValue(value) && result.registrantEmail === "Unknown")
+          result.registrantEmail = value;
         break;
       case "e-mail":
         if (!isRedactedValue(value) && result.registrantEmail === "Unknown")
           result.registrantEmail = value;
+        break;
+      case "registrar url":
+      case "referral url":
+      case "registrar website":
+        if (result.registrarURL === "Unknown") result.registrarURL = value;
         break;
       case "cidr":
         result.cidr = value;
@@ -659,6 +866,34 @@ export async function analyzeWhois(data: string): Promise<WhoisAnalyzeResult> {
       result.registrar === "Unknown"
     ) {
       result.registrar = value;
+    } else if (
+      includeArgs(key, "admin", "administrative") &&
+      includeArgs(key, "email", "e-mail", "mail") &&
+      result.adminEmail === "Unknown" &&
+      !isRedactedValue(value)
+    ) {
+      result.adminEmail = value;
+    } else if (
+      includeArgs(key, "admin", "administrative") &&
+      includeArgs(key, "phone", "tel") &&
+      result.adminPhone === "Unknown" &&
+      !isRedactedValue(value)
+    ) {
+      result.adminPhone = value.replace(/^tel:/i, "").trim();
+    } else if (
+      includeArgs(key, "tech", "technical") &&
+      includeArgs(key, "email", "e-mail", "mail") &&
+      result.techEmail === "Unknown" &&
+      !isRedactedValue(value)
+    ) {
+      result.techEmail = value;
+    } else if (
+      includeArgs(key, "tech", "technical") &&
+      includeArgs(key, "phone", "tel") &&
+      result.techPhone === "Unknown" &&
+      !isRedactedValue(value)
+    ) {
+      result.techPhone = value.replace(/^tel:/i, "").trim();
     } else if (
       includeArgs(key, "contact email") &&
       result.registrantEmail === "Unknown" &&
