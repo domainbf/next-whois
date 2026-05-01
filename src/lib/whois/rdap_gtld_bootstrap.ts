@@ -1,7 +1,7 @@
 /**
  * Static RDAP bootstrap for gTLDs — generated from IANA dns.json
  * Source: https://data.iana.org/rdap/dns.json
- * Published: 2026-03-23T19:00:02Z
+ * Published: 2026-04-18T17:52:34Z
  *
  * ccTLDs are handled separately via CCTLD_RDAP_OVERRIDES in rdap_client.ts
  * (which covers more registries than the IANA bootstrap).
@@ -610,6 +610,7 @@ export const GTLD_RDAP_BOOTSTRAP: Record<string, string> = {
   "memorial": "https://rdap.identitydigital.services/rdap/",
   "men": "https://rdap.nic.men/",
   "menu": "https://rdap.nic.menu/",
+  "merck": "https://rdap-merck.dns.business/rdap/",
   "merckmsd": "https://rdap.nic.merckmsd/",
   "miami": "https://rdap.nic.miami/",
   "microsoft": "https://rdap.nominet.uk/microsoft/",
