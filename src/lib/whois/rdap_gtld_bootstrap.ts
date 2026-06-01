@@ -1,7 +1,7 @@
 /**
  * Static RDAP bootstrap for gTLDs — generated from IANA dns.json
  * Source: https://data.iana.org/rdap/dns.json
- * Published: 2026-04-18T17:52:34Z
+ * Published: 2026-05-20T18:00:01Z
  *
  * ccTLDs are handled separately via CCTLD_RDAP_OVERRIDES in rdap_client.ts
  * (which covers more registries than the IANA bootstrap).
@@ -38,7 +38,7 @@ export const GTLD_RDAP_BOOTSTRAP: Record<string, string> = {
   "airforce": "https://rdap.identitydigital.services/rdap/",
   "airtel": "https://rdap.nic.airtel/",
   "akdn": "https://rdap.identitydigital.services/rdap/",
-  "alibaba": "https://rdap.identitydigital.services/rdap/",
+  "alibaba": "https://rdap.aliregistry.cn/rdap/",
   "alipay": "https://rdap.identitydigital.services/rdap/",
   "allfinanz": "https://rdap.centralnic.com/allfinanz/",
   "allstate": "https://rdap.identitydigital.services/rdap/",
